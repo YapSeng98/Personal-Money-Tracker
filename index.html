@@ -286,9 +286,66 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 }
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+/* ── LOGIN OVERLAY ── */
+#login-overlay{position:fixed;inset:0;z-index:1000;background:linear-gradient(135deg,#0D1117 0%,#1a2744 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:40px 36px;text-align:center;width:100%;max-width:360px;backdrop-filter:blur(10px);}
+.login-logo{font-family:var(--fd);font-size:30px;font-weight:700;color:white;margin-bottom:6px;}
+.login-logo-badge{display:inline-block;background:var(--jade);color:white;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:.5px;vertical-align:middle;margin-left:6px;}
+.login-subtitle{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:28px;letter-spacing:.3px;min-height:20px;}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:10px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.25);transition:all .15s;}
+.pin-dot.filled{background:var(--jade);border-color:var(--jade);transform:scale(1.1);}
+.pin-dot.error{background:var(--coral);border-color:var(--coral);}
+.pin-error{font-size:12px;color:var(--coral);height:18px;margin-bottom:14px;transition:opacity .2s;}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.numpad-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;color:white;font-size:22px;font-weight:600;padding:16px 10px;cursor:pointer;transition:all .12s;font-family:var(--fd);user-select:none;}
+.numpad-btn:hover{background:rgba(255,255,255,.13);}
+.numpad-btn:active{background:rgba(255,255,255,.2);transform:scale(.94);}
+.numpad-btn.special{font-size:16px;color:rgba(255,255,255,.55);}
+.login-footer{display:flex;flex-direction:column;gap:8px;align-items:center;}
+.login-link{font-size:11px;color:rgba(255,255,255,.28);cursor:pointer;transition:color .15s;border:none;background:none;padding:6px 12px;}
+.login-link:hover{color:rgba(255,255,255,.6);}
+.login-connecting{font-size:12px;color:var(--jade);display:none;margin-top:4px;}
 </style>
 </head>
 <body>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- LOGIN OVERLAY                                -->
+<!-- ════════════════════════════════════════════ -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">💰 PFMT <span class="login-logo-badge">PDI</span></div>
+    <div class="login-subtitle" id="login-subtitle">Enter your PIN to continue</div>
+    <div class="pin-dots">
+      <span class="pin-dot" id="pd0"></span>
+      <span class="pin-dot" id="pd1"></span>
+      <span class="pin-dot" id="pd2"></span>
+      <span class="pin-dot" id="pd3"></span>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="numpad">
+      <button class="numpad-btn" onclick="pinInput('1')">1</button>
+      <button class="numpad-btn" onclick="pinInput('2')">2</button>
+      <button class="numpad-btn" onclick="pinInput('3')">3</button>
+      <button class="numpad-btn" onclick="pinInput('4')">4</button>
+      <button class="numpad-btn" onclick="pinInput('5')">5</button>
+      <button class="numpad-btn" onclick="pinInput('6')">6</button>
+      <button class="numpad-btn" onclick="pinInput('7')">7</button>
+      <button class="numpad-btn" onclick="pinInput('8')">8</button>
+      <button class="numpad-btn" onclick="pinInput('9')">9</button>
+      <button class="numpad-btn special" onclick="pinClear()" title="Clear">⊗</button>
+      <button class="numpad-btn" onclick="pinInput('0')">0</button>
+      <button class="numpad-btn special" onclick="pinBackspace()" title="Backspace">⌫</button>
+    </div>
+    <div class="login-footer">
+      <div class="login-connecting" id="login-connecting">🔗 Connecting to PDI…</div>
+      <button class="login-link" id="forgot-btn" onclick="pinForgot()">Forgot PIN? Reset all data</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
 
 <!-- ── SIDEBAR ── -->
@@ -303,6 +360,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   <div class="nav-section">Manage</div>
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
+  <button class="nav-item" onclick="lockApp()" style="color:rgba(255,120,120,.7);margin-top:4px;"><span class="icon">🔒</span> Lock</button>
   <div class="sidebar-bottom">
     <div id="sn-conn-status" class="sn-status" onclick="showView('settings',document.querySelectorAll('.nav-item')[6])">
       <span class="dot" id="sn-dot" style="background:#6B7280;animation:none;"></span>
@@ -569,6 +627,17 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+        <div class="settings-section">
+          <h3>App Security</h3>
+          <div class="setting-row">
+            <div><div class="setting-label">App PIN</div><div class="setting-sub">4-digit PIN required to open the app</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="changePin()">Change PIN</button>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Lock Now</div><div class="setting-sub">Requires PIN to re-enter</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="lockApp()">🔒 Lock</button>
+          </div>
         </div>
         <div class="settings-section">
           <h3>Data</h3>
@@ -1859,6 +1928,168 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
 });
 
 // ═══════════════════════════════════════════════
+// PIN / LOCK
+// ═══════════════════════════════════════════════
+const PIN_KEY = 'pfmt_pin';
+let _pinBuf = '';
+let _pinMode = 'unlock'; // unlock | setup | setup-confirm | change | change-confirm
+let _pinConfirm = '';
+
+async function _hashPin(pin) {
+  const enc = new TextEncoder().encode('pfmt:' + pin);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function _updateDots() {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById(`pd${i}`);
+    if (!d) return;
+    d.classList.toggle('filled', i < _pinBuf.length);
+    d.classList.remove('error');
+  }
+}
+
+function pinInput(digit) {
+  if (_pinBuf.length >= 4) return;
+  _pinBuf += digit;
+  _updateDots();
+  document.getElementById('pin-error').textContent = '';
+  if (_pinBuf.length === 4) setTimeout(_submitPin, 140);
+}
+
+function pinBackspace() {
+  _pinBuf = _pinBuf.slice(0, -1);
+  _updateDots();
+}
+
+function pinClear() {
+  _pinBuf = '';
+  _updateDots();
+}
+
+function _pinShake(msg) {
+  _pinBuf = '';
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById(`pd${i}`);
+    if (d) { d.classList.add('error'); d.classList.remove('filled'); }
+  }
+  document.getElementById('pin-error').textContent = msg;
+  setTimeout(() => {
+    for (let i = 0; i < 4; i++) {
+      const d = document.getElementById(`pd${i}`);
+      if (d) d.classList.remove('error');
+    }
+  }, 700);
+}
+
+async function _submitPin() {
+  const hash = await _hashPin(_pinBuf);
+  const stored = localStorage.getItem(PIN_KEY);
+
+  if (_pinMode === 'unlock') {
+    if (hash === stored) {
+      _doUnlock();
+    } else {
+      _pinShake('Wrong PIN. Try again.');
+    }
+
+  } else if (_pinMode === 'setup') {
+    _pinConfirm = _pinBuf;
+    _pinBuf = '';
+    _pinMode = 'setup-confirm';
+    document.getElementById('login-subtitle').textContent = 'Confirm your PIN';
+    _updateDots();
+
+  } else if (_pinMode === 'setup-confirm') {
+    const ch = await _hashPin(_pinConfirm);
+    if (hash === ch) {
+      localStorage.setItem(PIN_KEY, hash);
+      _doUnlock();
+    } else {
+      _pinConfirm = '';
+      _pinMode = 'setup';
+      _pinShake('PINs don\'t match. Start again.');
+      document.getElementById('login-subtitle').textContent = 'Set up your PIN';
+    }
+
+  } else if (_pinMode === 'change') {
+    _pinConfirm = _pinBuf;
+    _pinBuf = '';
+    _pinMode = 'change-confirm';
+    document.getElementById('login-subtitle').textContent = 'Confirm new PIN';
+    _updateDots();
+
+  } else if (_pinMode === 'change-confirm') {
+    const ch = await _hashPin(_pinConfirm);
+    if (hash === ch) {
+      localStorage.setItem(PIN_KEY, hash);
+      _hidePinOverlay();
+      showToast('PIN updated successfully', 'success');
+    } else {
+      _pinConfirm = '';
+      _pinMode = 'change';
+      _pinShake('PINs don\'t match. Try again.');
+      document.getElementById('login-subtitle').textContent = 'Enter new PIN';
+    }
+  }
+}
+
+function _showPinOverlay(mode, subtitle) {
+  _pinMode = mode;
+  _pinBuf = '';
+  _pinConfirm = '';
+  _updateDots();
+  document.getElementById('login-subtitle').textContent = subtitle;
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('forgot-btn').style.display = mode === 'unlock' ? 'inline-block' : 'none';
+  document.getElementById('login-connecting').style.display = 'none';
+  document.getElementById('login-overlay').style.display = 'flex';
+}
+
+function _hidePinOverlay() {
+  document.getElementById('login-overlay').style.display = 'none';
+}
+
+async function _doUnlock() {
+  if (state.snPassword && state.snInstance) {
+    document.getElementById('login-connecting').style.display = 'block';
+    try {
+      setConnStatus('connecting');
+      await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
+      setConnStatus('connected');
+    } catch(e) {
+      setConnStatus('disconnected');
+    }
+  }
+  _hidePinOverlay();
+}
+
+function lockApp() {
+  const stored = localStorage.getItem(PIN_KEY);
+  if (!stored) { showToast('Set a PIN first in Settings → App Security', 'info'); return; }
+  _showPinOverlay('unlock', 'Enter your PIN to continue');
+}
+
+function changePin() {
+  _showPinOverlay('change', 'Enter your new PIN');
+}
+
+function pinForgot() {
+  if (!confirm('This will erase ALL your data and remove the PIN. Are you sure?')) return;
+  localStorage.clear();
+  location.reload();
+}
+
+document.addEventListener('keydown', e => {
+  const ov = document.getElementById('login-overlay');
+  if (!ov || ov.style.display === 'none') return;
+  if (e.key >= '0' && e.key <= '9') pinInput(e.key);
+  else if (e.key === 'Backspace') pinBackspace();
+  else if (e.key === 'Escape') pinClear();
+});
+
+// ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
 (function init() {
@@ -1889,6 +2120,14 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
 
   updateMonthUI();
   updateLastSync();
+
+  // Show login overlay
+  const storedPin = localStorage.getItem(PIN_KEY);
+  if (storedPin) {
+    _showPinOverlay('unlock', 'Enter your PIN to continue');
+  } else {
+    _showPinOverlay('setup', 'Create a 4-digit PIN to protect your data');
+  }
 })();
 </script>
 </body>
