@@ -287,61 +287,193 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
 
-/* ── LOGIN OVERLAY ── */
-#login-overlay{position:fixed;inset:0;z-index:1000;background:linear-gradient(135deg,#0D1117 0%,#1a2744 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
-.login-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:40px 36px;text-align:center;width:100%;max-width:360px;backdrop-filter:blur(10px);}
-.login-logo{font-family:var(--fd);font-size:30px;font-weight:700;color:white;margin-bottom:6px;}
-.login-logo-badge{display:inline-block;background:var(--jade);color:white;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:.5px;vertical-align:middle;margin-left:6px;}
-.login-subtitle{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:28px;letter-spacing:.3px;min-height:20px;}
-.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:10px;}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.25);transition:all .15s;}
-.pin-dot.filled{background:var(--jade);border-color:var(--jade);transform:scale(1.1);}
-.pin-dot.error{background:var(--coral);border-color:var(--coral);}
-.pin-error{font-size:12px;color:var(--coral);height:18px;margin-bottom:14px;transition:opacity .2s;}
-.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
-.numpad-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;color:white;font-size:22px;font-weight:600;padding:16px 10px;cursor:pointer;transition:all .12s;font-family:var(--fd);user-select:none;}
-.numpad-btn:hover{background:rgba(255,255,255,.13);}
-.numpad-btn:active{background:rgba(255,255,255,.2);transform:scale(.94);}
-.numpad-btn.special{font-size:16px;color:rgba(255,255,255,.55);}
-.login-footer{display:flex;flex-direction:column;gap:8px;align-items:center;}
-.login-link{font-size:11px;color:rgba(255,255,255,.28);cursor:pointer;transition:color .15s;border:none;background:none;padding:6px 12px;}
-.login-link:hover{color:rgba(255,255,255,.6);}
-.login-connecting{font-size:12px;color:var(--jade);display:none;margin-top:4px;}
+/* ══════════════════════════════════════════════
+   LOGIN OVERLAY — Modern Fintech Design
+══════════════════════════════════════════════ */
+#login-overlay{
+  position:fixed;inset:0;z-index:1000;overflow:hidden;
+  background:#07101F;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* animated background blobs */
+.l-blob{position:absolute;border-radius:50%;pointer-events:none;filter:blur(90px);opacity:.3;}
+.l-blob-1{width:480px;height:480px;background:radial-gradient(circle,#00C896,transparent);top:-160px;right:-140px;animation:lbf 9s ease-in-out infinite;}
+.l-blob-2{width:360px;height:360px;background:radial-gradient(circle,#3B82F6,transparent);bottom:-100px;left:-80px;animation:lbf 12s ease-in-out infinite reverse;}
+.l-blob-3{width:240px;height:240px;background:radial-gradient(circle,#8B5CF6,transparent);top:40%;right:-60px;animation:lbf 7s ease-in-out infinite 2s;}
+@keyframes lbf{0%,100%{transform:translate(0,0) scale(1);}40%{transform:translate(24px,-28px) scale(1.07);}70%{transform:translate(-14px,16px) scale(.94);}}
+
+/* grid overlay texture */
+#login-overlay::before{
+  content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+
+/* content wrapper */
+.l-wrap{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:340px;padding:24px 20px 20px;
+}
+
+/* top badge */
+.l-badge{
+  font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--jade);background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.3);
+  border-radius:99px;padding:4px 14px;margin-bottom:24px;
+}
+
+/* app icon */
+.l-icon{
+  width:76px;height:76px;border-radius:24px;margin-bottom:18px;
+  background:linear-gradient(135deg,#00C896 0%,#0EA5E9 100%);
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  box-shadow:0 0 0 0 rgba(0,200,150,.5);
+  animation:iconGlow 3s ease-in-out infinite;
+}
+@keyframes iconGlow{0%,100%{box-shadow:0 8px 32px rgba(0,200,150,.35);}50%{box-shadow:0 8px 48px rgba(0,200,150,.6),0 0 0 8px rgba(0,200,150,.08);}}
+
+.l-appname{font-family:var(--fd);font-size:28px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:4px;}
+.l-tagline{font-size:12px;color:rgba(255,255,255,.35);letter-spacing:.3px;margin-bottom:32px;}
+
+/* divider line */
+.l-divider{width:40px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);border-radius:99px;margin-bottom:28px;}
+
+.l-subtitle{
+  font-size:15px;font-weight:600;color:rgba(255,255,255,.88);
+  margin-bottom:22px;min-height:22px;letter-spacing:.1px;
+  transition:opacity .2s;
+}
+
+/* PIN dots */
+.pin-dots{display:flex;gap:18px;justify-content:center;margin-bottom:10px;}
+.pin-dot{
+  width:15px;height:15px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.18);background:transparent;
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.pin-dot.filled{
+  background:#00C896;border-color:#00C896;
+  box-shadow:0 0 0 4px rgba(0,200,150,.18),0 0 18px rgba(0,200,150,.5);
+  transform:scale(1.2);
+}
+.pin-dot.error{
+  background:#FF5B5B;border-color:#FF5B5B;
+  box-shadow:0 0 18px rgba(255,91,91,.5);
+}
+@keyframes pinShake{
+  0%,100%{transform:translateX(0);}
+  20%,60%{transform:translateX(-10px);}
+  40%,80%{transform:translateX(10px);}
+}
+.pin-dots.shaking{animation:pinShake .35s ease;}
+
+.pin-error{font-size:11px;color:#FF8080;height:18px;margin-bottom:22px;text-align:center;font-weight:500;}
+
+/* numpad — circular buttons */
+.numpad{
+  display:grid;grid-template-columns:repeat(3,72px);
+  gap:14px;justify-content:center;margin-bottom:22px;
+}
+.numpad-btn{
+  width:72px;height:72px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);
+  color:#fff;cursor:pointer;user-select:none;
+  transition:all .12s ease;
+  backdrop-filter:blur(8px);
+}
+.numpad-btn:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.15);}
+.numpad-btn:active{background:rgba(0,200,150,.22);border-color:rgba(0,200,150,.5);transform:scale(.91);}
+.nb-num{font-family:var(--fd);font-size:24px;font-weight:600;line-height:1;}
+.nb-sub{font-size:7.5px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.28);}
+.numpad-btn.special{background:transparent;border-color:transparent;}
+.numpad-btn.special:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);}
+.numpad-btn.special .nb-num{font-size:18px;color:rgba(255,255,255,.45);}
+.numpad-empty{width:72px;height:72px;}
+
+/* connecting indicator */
+.l-connecting{
+  display:none;align-items:center;gap:8px;
+  font-size:12px;font-weight:600;color:#00C896;
+  padding:8px 18px;border-radius:99px;margin-bottom:10px;
+  background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);
+}
+.l-spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(0,200,150,.3);border-top-color:#00C896;animation:lspin .7s linear infinite;}
+@keyframes lspin{to{transform:rotate(360deg);}}
+
+/* footer */
+.l-footer{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.login-link{font-size:11px;color:rgba(255,255,255,.22);border:none;background:none;cursor:pointer;padding:8px 16px;font-family:var(--ff);transition:color .15s;}
+.login-link:hover{color:rgba(255,255,255,.5);}
+
+/* version tag */
+.l-version{font-size:10px;color:rgba(255,255,255,.12);margin-top:8px;letter-spacing:.5px;font-family:var(--fm);}
+
+@media(max-width:380px){
+  .numpad{grid-template-columns:repeat(3,64px);gap:10px;}
+  .numpad-btn,.numpad-empty{width:64px;height:64px;}
+  .nb-num{font-size:20px;}
+  .l-icon{width:64px;height:64px;font-size:28px;}
+  .l-appname{font-size:24px;}
+}
 </style>
 </head>
 <body>
 
 <!-- ════════════════════════════════════════════ -->
-<!-- LOGIN OVERLAY                                -->
+<!-- LOGIN OVERLAY — Modern Fintech              -->
 <!-- ════════════════════════════════════════════ -->
 <div id="login-overlay">
-  <div class="login-card">
-    <div class="login-logo">💰 PFMT <span class="login-logo-badge">PDI</span></div>
-    <div class="login-subtitle" id="login-subtitle">Enter your PIN to continue</div>
-    <div class="pin-dots">
+  <!-- animated background -->
+  <div class="l-blob l-blob-1"></div>
+  <div class="l-blob l-blob-2"></div>
+  <div class="l-blob l-blob-3"></div>
+
+  <div class="l-wrap">
+    <!-- branding -->
+    <div class="l-badge">PERSONAL FINANCE</div>
+    <div class="l-icon">💰</div>
+    <div class="l-appname">PFMT</div>
+    <div class="l-tagline">Money Tracker · ServiceNow PDI</div>
+    <div class="l-divider"></div>
+
+    <!-- PIN area -->
+    <div class="l-subtitle" id="login-subtitle">Enter your PIN</div>
+    <div class="pin-dots" id="pin-dots-wrap">
       <span class="pin-dot" id="pd0"></span>
       <span class="pin-dot" id="pd1"></span>
       <span class="pin-dot" id="pd2"></span>
       <span class="pin-dot" id="pd3"></span>
     </div>
     <div class="pin-error" id="pin-error"></div>
+
+    <!-- numpad (iOS-style circular) -->
     <div class="numpad">
-      <button class="numpad-btn" onclick="pinInput('1')">1</button>
-      <button class="numpad-btn" onclick="pinInput('2')">2</button>
-      <button class="numpad-btn" onclick="pinInput('3')">3</button>
-      <button class="numpad-btn" onclick="pinInput('4')">4</button>
-      <button class="numpad-btn" onclick="pinInput('5')">5</button>
-      <button class="numpad-btn" onclick="pinInput('6')">6</button>
-      <button class="numpad-btn" onclick="pinInput('7')">7</button>
-      <button class="numpad-btn" onclick="pinInput('8')">8</button>
-      <button class="numpad-btn" onclick="pinInput('9')">9</button>
-      <button class="numpad-btn special" onclick="pinClear()" title="Clear">⊗</button>
-      <button class="numpad-btn" onclick="pinInput('0')">0</button>
-      <button class="numpad-btn special" onclick="pinBackspace()" title="Backspace">⌫</button>
+      <button class="numpad-btn" onclick="pinInput('1')"><span class="nb-num">1</span></button>
+      <button class="numpad-btn" onclick="pinInput('2')"><span class="nb-num">2</span><span class="nb-sub">ABC</span></button>
+      <button class="numpad-btn" onclick="pinInput('3')"><span class="nb-num">3</span><span class="nb-sub">DEF</span></button>
+      <button class="numpad-btn" onclick="pinInput('4')"><span class="nb-num">4</span><span class="nb-sub">GHI</span></button>
+      <button class="numpad-btn" onclick="pinInput('5')"><span class="nb-num">5</span><span class="nb-sub">JKL</span></button>
+      <button class="numpad-btn" onclick="pinInput('6')"><span class="nb-num">6</span><span class="nb-sub">MNO</span></button>
+      <button class="numpad-btn" onclick="pinInput('7')"><span class="nb-num">7</span><span class="nb-sub">PQRS</span></button>
+      <button class="numpad-btn" onclick="pinInput('8')"><span class="nb-num">8</span><span class="nb-sub">TUV</span></button>
+      <button class="numpad-btn" onclick="pinInput('9')"><span class="nb-num">9</span><span class="nb-sub">WXYZ</span></button>
+      <div class="numpad-empty"></div>
+      <button class="numpad-btn" onclick="pinInput('0')"><span class="nb-num">0</span></button>
+      <button class="numpad-btn special" onclick="pinBackspace()"><span class="nb-num">⌫</span></button>
     </div>
-    <div class="login-footer">
-      <div class="login-connecting" id="login-connecting">🔗 Connecting to PDI…</div>
+
+    <!-- footer -->
+    <div class="l-footer">
+      <div class="l-connecting" id="login-connecting">
+        <div class="l-spinner"></div>
+        Connecting to PDI…
+      </div>
       <button class="login-link" id="forgot-btn" onclick="pinForgot()">Forgot PIN? Reset all data</button>
+      <div class="l-version">PFMT v2.0 · PDI</div>
     </div>
   </div>
 </div>
@@ -1970,11 +2102,16 @@ function pinClear() {
 
 function _pinShake(msg) {
   _pinBuf = '';
+  const wrap = document.getElementById('pin-dots-wrap');
   for (let i = 0; i < 4; i++) {
     const d = document.getElementById(`pd${i}`);
     if (d) { d.classList.add('error'); d.classList.remove('filled'); }
   }
   document.getElementById('pin-error').textContent = msg;
+  if (wrap) {
+    wrap.classList.add('shaking');
+    setTimeout(() => wrap.classList.remove('shaking'), 400);
+  }
   setTimeout(() => {
     for (let i = 0; i < 4; i++) {
       const d = document.getElementById(`pd${i}`);
@@ -2043,7 +2180,8 @@ function _showPinOverlay(mode, subtitle) {
   document.getElementById('login-subtitle').textContent = subtitle;
   document.getElementById('pin-error').textContent = '';
   document.getElementById('forgot-btn').style.display = mode === 'unlock' ? 'inline-block' : 'none';
-  document.getElementById('login-connecting').style.display = 'none';
+  const lc = document.getElementById('login-connecting');
+  if (lc) lc.style.display = 'none';
   document.getElementById('login-overlay').style.display = 'flex';
 }
 
@@ -2053,7 +2191,8 @@ function _hidePinOverlay() {
 
 async function _doUnlock() {
   if (state.snPassword && state.snInstance) {
-    document.getElementById('login-connecting').style.display = 'block';
+    const lc = document.getElementById('login-connecting');
+    if (lc) lc.style.display = 'flex';
     try {
       setConnStatus('connecting');
       await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
