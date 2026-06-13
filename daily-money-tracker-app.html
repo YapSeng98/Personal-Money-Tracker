@@ -763,12 +763,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <div class="settings-section">
           <h3>AI Configuration</h3>
           <div class="form-group">
-            <label class="form-label">Google Gemini API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
+            <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
             <div style="display:flex;gap:8px;">
-              <input class="form-input" type="password" id="gemini-key-input" placeholder="AIzaSy…">
+              <input class="form-input" type="password" id="gemini-key-input" placeholder="gsk_…">
               <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free tier: 1,500 requests/day — no credit card needed. Get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sky);">aistudio.google.com ↗</a></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky);">console.groq.com ↗</a></div>
           </div>
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
@@ -1812,19 +1812,19 @@ async function getAccountsAI() {
 async function callAI(prompt, targetId) {
   const el = document.getElementById(targetId);
   if (!state.geminiKey) {
-    el.innerHTML = '<span style="color:#F59E0B;">⚠️ Add your free Google Gemini API key in <strong>Settings → AI Configuration</strong> to enable insights.</span>';
+    el.innerHTML = '<span style="color:#F59E0B;">⚠️ Add your free Groq API key in <strong>Settings → AI Configuration</strong> to enable insights.</span>';
     return;
   }
   el.innerHTML = '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${state.geminiKey}`, {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.geminiKey}` },
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.status); }
     const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No insights generated.';
+    const text = data.choices?.[0]?.message?.content || 'No insights generated.';
     el.innerHTML = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   } catch (e) {
     el.innerHTML = `<span style="color:#FF8080;">Error: ${e.message}</span>`;
