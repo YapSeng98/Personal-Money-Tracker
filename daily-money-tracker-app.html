@@ -808,7 +808,7 @@ let state = {
   accounts: JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS)),
   currentType: 'expense',
   nextId: 100,
-  filterMonth: new Date().toISOString().substring(0, 7), // 'YYYY-MM'
+  filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   anthropicKey: '',
   snInstance: 'dev275144.service-now.com',
   lastSync: null,
@@ -909,7 +909,7 @@ function openTxnModal(id = null) {
   document.getElementById('txn-modal-title').textContent  = editing ? 'Edit Transaction' : 'Add Transaction';
   document.getElementById('txn-edit-badge').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('txn-edit-id').value            = id !== null ? id : '';
-  document.getElementById('txn-date').value               = new Date().toISOString().split('T')[0];
+  document.getElementById('txn-date').value               = localDateStr();
   document.getElementById('txn-amount').value             = '';
   document.getElementById('txn-desc').value               = '';
   document.getElementById('txn-notes').value              = '';
@@ -1083,7 +1083,7 @@ function openGoalModal(id = null) {
   document.getElementById('goal-monthly').value = '';
 
   const d = new Date(); d.setFullYear(d.getFullYear() + 1);
-  document.getElementById('goal-date').value = d.toISOString().split('T')[0];
+  document.getElementById('goal-date').value = localDateStr(d);
 
   if (editing) {
     const g = state.goals.find(x => x.id == id);
@@ -1168,16 +1168,24 @@ function getMonthLabel(ym) {
   const [y, m] = ym.split('-');
   return new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
 }
+function localYM(d) {
+  const dt = d || new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+}
+function localDateStr(d) {
+  const dt = d || new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
 function changeMonth(delta) {
   const [y, m] = state.filterMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
-  state.filterMonth = d.toISOString().substring(0, 7);
+  state.filterMonth = localYM(d);
   saveState();
   renderAll();
   updateMonthUI();
 }
 function resetMonth() {
-  state.filterMonth = new Date().toISOString().substring(0, 7);
+  state.filterMonth = localYM();
   saveState();
   renderAll();
   updateMonthUI();
@@ -1185,9 +1193,8 @@ function resetMonth() {
 function updateMonthUI() {
   const el = document.getElementById('month-label');
   if (el) el.textContent = getMonthLabel(state.filterMonth);
-  const cur = new Date().toISOString().substring(0, 7);
   const todayBtn = document.getElementById('month-today-btn');
-  if (todayBtn) todayBtn.style.display = state.filterMonth === cur ? 'none' : 'inline-flex';
+  if (todayBtn) todayBtn.style.display = state.filterMonth === localYM() ? 'none' : 'inline-flex';
 }
 function getMonthTxns(month) {
   return state.transactions.filter(t => t.date.startsWith(month || state.filterMonth));
@@ -1738,7 +1745,7 @@ async function syncFromSN() {
 // SAMPLE DATA + UTILS
 // ═══════════════════════════════════════════════
 function loadSampleData() {
-  const d = n => { const dt = new Date(); dt.setDate(dt.getDate()-n); return dt.toISOString().split('T')[0]; };
+  const d = n => { const dt = new Date(); dt.setDate(dt.getDate()-n); return localDateStr(dt); };
   state.transactions = [
     {id:1,type:'income', amount:6200,   description:'Monthly Salary',      category:'Salary',       account:'DBS Checking', date:d(10),notes:''},
     {id:2,type:'expense',amount:84.30,  description:'NTUC FairPrice',       category:'Groceries',    account:'DBS Checking', date:d(0), notes:''},
