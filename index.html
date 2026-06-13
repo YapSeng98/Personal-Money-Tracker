@@ -816,6 +816,8 @@ let state = {
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   anthropicKey: '',
   snInstance: 'dev275144.service-now.com',
+  snUsername: 'admin',
+  snPassword: '',
   lastSync: null,
   currency: 'SGD'
 };
@@ -835,6 +837,8 @@ function saveState() {
       filterMonth: state.filterMonth,
       anthropicKey: state.anthropicKey,
       snInstance: state.snInstance,
+      snUsername: state.snUsername,
+      snPassword: state.snPassword,
       lastSync: state.lastSync,
       currency: state.currency
     };
@@ -1664,8 +1668,8 @@ const SN = {
   get base() { return `https://${state.snInstance}/api/now/table`; },
   connected: false,
   authHeader() {
-    const u = document.getElementById('sn-username')?.value || 'admin';
-    const p = document.getElementById('sn-password')?.value || '';
+    const u = state.snUsername || document.getElementById('sn-username')?.value || 'admin';
+    const p = state.snPassword || document.getElementById('sn-password')?.value || '';
     return 'Basic ' + btoa(u + ':' + p);
   },
   async get(table, params={}) {
@@ -1681,11 +1685,19 @@ const SN = {
   }
 };
 
+function saveSNCredentials() {
+  const u = document.getElementById('sn-username')?.value.trim();
+  const p = document.getElementById('sn-password')?.value;
+  if (u) state.snUsername = u;
+  if (p !== undefined) state.snPassword = p;
+  saveState();
+}
+
 function saveSNInstance() {
   const val = document.getElementById('sn-instance-input')?.value.trim();
   if (!val) { showToast('Enter an instance URL', 'error'); return; }
   state.snInstance = val.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  saveState();
+  saveSNCredentials();
   showToast(`Instance set to ${state.snInstance}`, 'success');
   // update visible links
   document.querySelectorAll('a[href*="dev275144"]').forEach(a => {
@@ -1715,7 +1727,8 @@ function setConnStatus(status) {
 }
 
 async function testConnection() {
-  const p = document.getElementById('sn-password')?.value;
+  saveSNCredentials();
+  const p = state.snPassword;
   if (!p) { showToast('Enter your PDI password first', 'error'); return; }
   setConnStatus('connecting');
   try {
@@ -1856,6 +1869,12 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
   // Populate settings fields from persisted state
   const snIn = document.getElementById('sn-instance-input');
   if (snIn) snIn.value = state.snInstance;
+  const snUser = document.getElementById('sn-username');
+  if (snUser && state.snUsername) snUser.value = state.snUsername;
+  const snPass = document.getElementById('sn-password');
+  if (snPass && state.snPassword) snPass.value = state.snPassword;
+  if (snPass) snPass.addEventListener('change', saveSNCredentials);
+  if (snUser) snUser.addEventListener('change', saveSNCredentials);
   const aiIn = document.getElementById('anthropic-key-input');
   if (aiIn && state.anthropicKey) aiIn.value = state.anthropicKey;
   const aiStatus = document.getElementById('ai-key-status');
