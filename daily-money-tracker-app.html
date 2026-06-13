@@ -253,6 +253,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   .btn-jade{padding:8px 14px;font-size:14px;font-weight:700;min-width:36px;justify-content:center;}
   .topbar{padding:0 14px;}
   .topbar-actions{gap:6px;}
+  .responsive-grid{grid-template-columns:1fr!important;}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
 }
 
 /* ── MONTH NAV ── */
@@ -321,7 +323,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="topbar-title" id="topbar-title">Dashboard</div>
     </div>
     <div class="topbar-actions">
-      <button class="btn btn-ghost btn-sm desktop-only" onclick="exportCSV()" title="Export transactions as CSV">⬇ CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
       <button class="btn btn-ghost btn-sm desktop-only" onclick="exportSNJSON()" title="Export SN-ready JSON">⬇ SN JSON</button>
       <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
       <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
@@ -400,7 +402,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ════ BUDGETS ════ -->
     <div class="view" id="view-budgets">
-      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;">
+      <div class="responsive-grid" style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;">
         <div>
           <div class="panel">
             <div class="panel-header">
@@ -426,7 +428,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ════ GOALS ════ -->
     <div class="view" id="view-goals">
-      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;">
+      <div class="responsive-grid" style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;">
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">Savings Goals</div>
@@ -469,7 +471,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ════ ACCOUNTS ════ -->
     <div class="view" id="view-accounts">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="responsive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div class="panel">
           <div class="panel-header"><div class="panel-title">My Accounts</div><button class="btn btn-primary btn-sm" onclick="openAccountModal()">+ Add</button></div>
           <div id="accounts-list"></div>
