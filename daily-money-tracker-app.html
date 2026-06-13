@@ -982,7 +982,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 <div class="modal-backdrop" id="account-modal">
   <div class="modal modal-sm">
     <div class="modal-header">
-      <div class="modal-title">Add Account</div>
+      <div class="modal-title" id="acc-modal-title">Add Account</div>
       <button class="modal-close" onclick="document.getElementById('account-modal').classList.remove('open')">✕</button>
     </div>
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
@@ -993,7 +993,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="form-group"><label class="form-label">Institution</label><select class="form-input" id="acc-institution"><option>DBS</option><option>OCBC</option><option>UOB</option><option>Standard Chartered</option><option>Grab Financial</option><option>Other</option></select></div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-jade" onclick="saveAccount()">Add Account</button>
+      <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
     </div>
   </div>
 </div>
@@ -1371,17 +1371,56 @@ async function deleteGoal(id) {
 }
 
 // Account
-function openAccountModal() { document.getElementById('account-modal').classList.add('open'); }
+let _editingAccountId = null;
+
+function openAccountModal(id = null) {
+  _editingAccountId = id;
+  const isEdit = id !== null;
+  document.getElementById('acc-modal-title').textContent = isEdit ? 'Edit Account' : 'Add Account';
+  document.getElementById('acc-save-btn').textContent    = isEdit ? 'Save Changes' : 'Add Account';
+  if (isEdit) {
+    const acc = state.accounts.find(a => a.id === id);
+    if (!acc) return;
+    document.getElementById('acc-name').value        = acc.name;
+    document.getElementById('acc-type').value        = acc.type;
+    document.getElementById('acc-balance').value     = acc.balance;
+    document.getElementById('acc-institution').value = acc.institution;
+  } else {
+    document.getElementById('acc-name').value        = '';
+    document.getElementById('acc-type').value        = 'Checking';
+    document.getElementById('acc-balance').value     = '';
+    document.getElementById('acc-institution').value = 'DBS';
+  }
+  document.getElementById('account-modal').classList.add('open');
+}
+
 function saveAccount() {
-  const name = document.getElementById('acc-name').value.trim();
-  const type = document.getElementById('acc-type').value;
-  const balance = parseFloat(document.getElementById('acc-balance').value) || 0;
+  const name        = document.getElementById('acc-name').value.trim();
+  const type        = document.getElementById('acc-type').value;
+  const balance     = parseFloat(document.getElementById('acc-balance').value) || 0;
   const institution = document.getElementById('acc-institution').value;
   if (!name) { showToast('Enter an account name', 'error'); return; }
-  state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon: type === 'Credit Card' ? '💳' : '🏦' });
+  const icon = type === 'Credit Card' ? '💳' : '🏦';
+  if (_editingAccountId !== null) {
+    const idx = state.accounts.findIndex(a => a.id === _editingAccountId);
+    if (idx !== -1) state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
+  } else {
+    state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon });
+  }
+  _editingAccountId = null;
   document.getElementById('account-modal').classList.remove('open');
+  saveState();
   renderAll();
-  showToast(`Account saved → x_pfmt_account`, 'success');
+  showToast('Account saved', 'success');
+}
+
+async function deleteAccount(id) {
+  const ok = await showConfirm('Delete account?', 'This will remove the account from your records.', 'Delete', 'btn-coral');
+  if (!ok) return;
+  state.accounts = state.accounts.filter(a => a.id !== id);
+  saveState();
+  renderAll();
+  showToast('Account deleted', 'info');
 }
 
 // ═══════════════════════════════════════════════
@@ -1704,6 +1743,10 @@ function renderAccounts() {
       <div class="account-ico" style="background:${a.balance<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon}</div>
       <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
       <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(Math.abs(a.balance))}</div>
+      <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
+        <button onclick="openAccountModal(${a.id})" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
+        <button onclick="deleteAccount(${a.id})" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
+      </div>
     </div>`).join('')}`;
 
   // ── Account Insights panel ──
