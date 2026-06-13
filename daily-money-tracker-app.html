@@ -1240,7 +1240,7 @@ function renderDashboard() {
   document.getElementById('hero-balance').textContent  = fmt(s.balance);
   document.getElementById('hero-income').textContent   = '+' + fmt(s.income);
   document.getElementById('hero-expense').textContent  = '-' + fmt(s.expense);
-  document.getElementById('kpi-txn-count').textContent = state.transactions.length;
+  document.getElementById('kpi-txn-count').textContent = getMonthTxns().length;
   document.getElementById('kpi-avg-daily').textContent = fmt(s.avgDaily);
   const srEl = document.getElementById('kpi-savings-rate');
   srEl.textContent  = s.savingsRate.toFixed(1) + '%';
