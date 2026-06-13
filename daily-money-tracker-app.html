@@ -1707,7 +1707,10 @@ function renderAccounts() {
     </div>`).join('')}`;
 
   // ── Account Insights panel ──
-  if (!state.accounts.length) return;
+  if (!state.accounts.length) {
+    document.getElementById('account-insights-body').innerHTML = '<div class="empty"><div class="icon">📊</div><p>Add accounts to see insights</p></div>';
+    return;
+  }
   const typeColors = {Checking:'var(--sky)',Savings:'var(--jade)',Investment:'var(--violet)','Credit Card':'var(--coral)',Cash:'var(--amber)',Other:'var(--muted)'};
   const byType = {};
   state.accounts.forEach(a => {
