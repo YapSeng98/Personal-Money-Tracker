@@ -763,12 +763,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <div class="settings-section">
           <h3>AI Configuration</h3>
           <div class="form-group">
-            <label class="form-label">Anthropic API Key</label>
+            <label class="form-label">Google Gemini API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
             <div style="display:flex;gap:8px;">
-              <input class="form-input" type="password" id="anthropic-key-input" placeholder="sk-ant-api03-…">
+              <input class="form-input" type="password" id="gemini-key-input" placeholder="AIzaSy…">
               <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Required for Now Assist AI insights. Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--sky);">console.anthropic.com ↗</a></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free tier: 1,500 requests/day — no credit card needed. Get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sky);">aistudio.google.com ↗</a></div>
           </div>
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
@@ -1033,7 +1033,7 @@ let state = {
   currentType: 'expense',
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
-  anthropicKey: '',
+  geminiKey: '',
   snInstance: 'dev275144.service-now.com',
   snUsername: 'admin',
   snPassword: '',
@@ -1054,7 +1054,7 @@ function saveState() {
       accounts: state.accounts,
       nextId: state.nextId,
       filterMonth: state.filterMonth,
-      anthropicKey: state.anthropicKey,
+      geminiKey: state.geminiKey,
       snInstance: state.snInstance,
       snUsername: state.snUsername,
       snPassword: state.snPassword,
@@ -1069,6 +1069,9 @@ function loadState() {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return false;
     const saved = JSON.parse(raw);
+    // migrate old anthropicKey → geminiKey if present
+    if (saved.anthropicKey && !saved.geminiKey) saved.geminiKey = saved.anthropicKey;
+    delete saved.anthropicKey;
     Object.assign(state, saved);
     return true;
   } catch(e) { return false; }
@@ -1808,25 +1811,20 @@ async function getAccountsAI() {
 // ═══════════════════════════════════════════════
 async function callAI(prompt, targetId) {
   const el = document.getElementById(targetId);
-  if (!state.anthropicKey) {
-    el.innerHTML = '<span style="color:#F59E0B;">⚠️ Add your Anthropic API key in <strong>Settings → AI Configuration</strong> to enable insights.</span>';
+  if (!state.geminiKey) {
+    el.innerHTML = '<span style="color:#F59E0B;">⚠️ Add your free Google Gemini API key in <strong>Settings → AI Configuration</strong> to enable insights.</span>';
     return;
   }
   el.innerHTML = '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': state.anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, messages:[{role:'user',content:prompt}] })
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.status); }
     const data = await res.json();
-    const text = data.content?.find(c=>c.type==='text')?.text || 'No insights generated.';
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No insights generated.';
     el.innerHTML = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   } catch (e) {
     el.innerHTML = `<span style="color:#FF8080;">Error: ${e.message}</span>`;
@@ -1971,13 +1969,13 @@ function saveSNInstance() {
 }
 
 function saveAIKey() {
-  const val = document.getElementById('anthropic-key-input')?.value.trim();
+  const val = document.getElementById('gemini-key-input')?.value.trim();
   if (!val) { showToast('Enter an API key', 'error'); return; }
-  state.anthropicKey = val;
+  state.geminiKey = val;
   saveState();
   const el = document.getElementById('ai-key-status');
-  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = '✓ Key saved'; }
-  showToast('API key saved', 'success');
+  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = '✓ Gemini key saved'; }
+  showToast('Gemini API key saved', 'success');
 }
 
 function setConnStatus(status) {
@@ -2310,14 +2308,14 @@ document.addEventListener('keydown', e => {
   if (snPass && state.snPassword) snPass.value = state.snPassword;
   if (snPass) snPass.addEventListener('change', saveSNCredentials);
   if (snUser) snUser.addEventListener('change', saveSNCredentials);
-  const aiIn = document.getElementById('anthropic-key-input');
-  if (aiIn && state.anthropicKey) aiIn.value = state.anthropicKey;
+  const aiIn = document.getElementById('gemini-key-input');
+  if (aiIn && state.geminiKey) aiIn.value = state.geminiKey;
   const aiStatus = document.getElementById('ai-key-status');
-  if (aiStatus && state.anthropicKey) {
+  if (aiStatus && state.geminiKey) {
     aiStatus.style.display = 'block';
     aiStatus.style.background = 'var(--jade-s)';
     aiStatus.style.color = 'var(--jade-d)';
-    aiStatus.textContent = '✓ Key saved';
+    aiStatus.textContent = '✓ Gemini key saved';
   }
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = state.currency || 'SGD';
