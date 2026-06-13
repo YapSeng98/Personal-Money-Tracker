@@ -1974,8 +1974,8 @@ function saveAIKey() {
   state.geminiKey = val;
   saveState();
   const el = document.getElementById('ai-key-status');
-  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = '✓ Gemini key saved'; }
-  showToast('Gemini API key saved', 'success');
+  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = '✓ Groq key saved'; }
+  showToast('Groq API key saved', 'success');
 }
 
 function setConnStatus(status) {
@@ -2315,7 +2315,7 @@ document.addEventListener('keydown', e => {
     aiStatus.style.display = 'block';
     aiStatus.style.background = 'var(--jade-s)';
     aiStatus.style.color = 'var(--jade-d)';
-    aiStatus.textContent = '✓ Gemini key saved';
+    aiStatus.textContent = '✓ Groq key saved';
   }
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = state.currency || 'SGD';
