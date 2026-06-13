@@ -1290,6 +1290,7 @@ function renderTransactions() {
   const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
 
   let txns = state.transactions.filter(t => {
+    if (!t.date.startsWith(state.filterMonth))               return false;
     if (typeF   && t.type !== typeF)                         return false;
     if (catF    && t.category !== catF)                      return false;
     if (searchF && !t.description.toLowerCase().includes(searchF)) return false;
