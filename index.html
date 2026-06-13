@@ -1622,7 +1622,7 @@ async function pushAllToSN() {
   let ok = 0, fail = 0;
   for (const t of localTxns) {
     try {
-      const rec = await SN.post('x_pfmt_transaction', {
+      const rec = await SN.post('x_1472763_person_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
         category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
       });
@@ -1737,7 +1737,7 @@ async function testConnection() {
   }
   // Step 2: check if PFMT tables exist
   try {
-    await SN.get('x_pfmt_transaction', { sysparm_limit:1 });
+    await SN.get('x_1472763_person_0_transaction', { sysparm_limit:1 });
     setConnStatus('connected');
     showToast('✅ Connected — PFMT tables found!', 'success');
   } catch(e) {
@@ -1750,18 +1750,18 @@ async function testConnection() {
 async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
-    const [txns,budgets,goals,accounts] = await Promise.all([
-      SN.get('x_pfmt_transaction',{sysparm_query:'state=2'}),
-      SN.get('x_pfmt_budget'),
-      SN.get('x_pfmt_savings_goal'),
-      SN.get('x_pfmt_account',{sysparm_query:'is_active=true'})
+    const [txns, accounts] = await Promise.all([
+      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
     ]);
-    state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    state.budgets      = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
-    state.goals        = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
-    if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    if (txns.length) {
+      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
+    }
+    if (accounts.length) {
+      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    }
     renderAll();
-    showToast(`Synced: ${txns.length} transactions, ${budgets.length} budgets, ${goals.length} goals`, 'success');
+    showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
   } catch(e) {
     showToast('Sync failed: ' + e.message, 'error');
   }
