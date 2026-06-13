@@ -476,15 +476,15 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <div class="panel-header"><div class="panel-title">My Accounts</div><button class="btn btn-primary btn-sm" onclick="openAccountModal()">+ Add</button></div>
           <div id="accounts-list"></div>
         </div>
-        <div class="panel">
-          <div class="panel-header"><div class="panel-title">ServiceNow Table Map</div></div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">x_pfmt_account field mapping:</div>
-          <div class="sn-mapping-row"><span>account_name</span><span class="sn-field-name">String(100)</span></div>
-          <div class="sn-mapping-row"><span>account_type</span><span class="sn-field-name">Choice</span></div>
-          <div class="sn-mapping-row"><span>current_balance</span><span class="sn-field-name">Currency</span></div>
-          <div class="sn-mapping-row"><span>is_active</span><span class="sn-field-name">Boolean</span></div>
-          <div style="margin-top:12px;padding:10px 12px;background:var(--sky-s);border:1px solid #bfdbfe;border-radius:8px;font-size:12px;color:#1D4ED8;">
-            💡 Studio → x_pfmt → Tables → x_pfmt_account
+        <div>
+          <div class="panel" style="margin-bottom:16px;" id="account-insights">
+            <div class="panel-header"><div class="panel-title">Account Insights</div></div>
+            <div id="account-insights-body"><div class="empty"><div class="icon">📊</div><p>Add accounts to see insights</p></div></div>
+          </div>
+          <div class="ai-panel">
+            <div class="ai-header"><div class="ai-badge">Now Assist</div><div class="ai-title">Wealth Coach</div></div>
+            <div class="ai-output" id="accounts-ai-output">Get AI advice on optimising your account balances and savings strategy.</div>
+            <button class="ai-btn" onclick="getAccountsAI()">💰 Analyse My Accounts</button>
           </div>
         </div>
       </div>
@@ -1456,18 +1456,69 @@ function renderAnalytics() {
 function renderAccounts() {
   const totalAssets = state.accounts.filter(a=>a.balance>0).reduce((s,a)=>s+a.balance,0);
   const totalDebt   = state.accounts.filter(a=>a.balance<0).reduce((s,a)=>s+Math.abs(a.balance),0);
+  const netWorth    = totalAssets - totalDebt;
   document.getElementById('accounts-list').innerHTML = `
     <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;">
       <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Assets</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmt(totalAssets)}</div></div>
       <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Debt</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmt(totalDebt)}</div></div>
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Net Worth</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmt(totalAssets-totalDebt)}</div></div>
+      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Net Worth</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmt(netWorth)}</div></div>
     </div>
     ${state.accounts.map(a=>`
     <div class="account-row">
       <div class="account-ico" style="background:${a.balance<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon}</div>
       <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
-      <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(a.balance)}</div>
+      <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(Math.abs(a.balance))}</div>
     </div>`).join('')}`;
+
+  // ── Account Insights panel ──
+  if (!state.accounts.length) return;
+  const typeColors = {Checking:'var(--sky)',Savings:'var(--jade)',Investment:'var(--violet)','Credit Card':'var(--coral)',Cash:'var(--amber)',Other:'var(--muted)'};
+  const byType = {};
+  state.accounts.forEach(a => {
+    if (!byType[a.type]) byType[a.type] = 0;
+    byType[a.type] += Math.max(0, a.balance);
+  });
+  const debtRatio = totalAssets > 0 ? (totalDebt/totalAssets*100) : 0;
+  const drColor   = debtRatio > 30 ? 'var(--coral)' : debtRatio > 10 ? 'var(--amber)' : 'var(--jade)';
+  const allocationRows = Object.entries(byType)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([type, bal]) => {
+      const pct = totalAssets > 0 ? (bal/totalAssets*100) : 0;
+      const col = typeColors[type] || 'var(--muted)';
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
+          <span>${type}</span><span style="font-family:var(--fm);color:var(--muted)">${pct.toFixed(1)}% · ${fmt(bal)}</span>
+        </div>
+        <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;">
+          <div style="width:${pct.toFixed(1)}%;height:100%;border-radius:99px;background:${col};transition:width .4s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+  document.getElementById('account-insights-body').innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;">Asset Allocation</div>
+      ${allocationRows || '<div class="empty" style="padding:10px 0"><p>No positive balances</p></div>'}
+    </div>
+    <div style="background:var(--surface);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Debt Ratio</div>
+        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:${drColor}">${debtRatio.toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${debtRatio>30?'High':debtRatio>10?'Moderate':'Low'} risk</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Accounts</div>
+        <div style="font-family:var(--fd);font-size:18px;font-weight:700;">${state.accounts.length}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${state.accounts.filter(a=>a.balance<0).length} with debt</div>
+      </div>
+    </div>`;
+}
+
+async function getAccountsAI() {
+  const totalAssets = state.accounts.filter(a=>a.balance>0).reduce((s,a)=>s+a.balance,0);
+  const totalDebt   = state.accounts.filter(a=>a.balance<0).reduce((s,a)=>s+Math.abs(a.balance),0);
+  const prompt = `You are a personal finance advisor. Analyse these accounts for a Singapore user and give 3-4 concise, actionable tips to optimise their finances:\n\nAccounts:\n${state.accounts.map(a=>`- ${a.name} (${a.institution}, ${a.type}): ${fmt(a.balance)}`).join('\n')}\n\nTotal Assets: ${fmt(totalAssets)}, Total Debt: ${fmt(totalDebt)}, Net Worth: ${fmt(totalAssets-totalDebt)}\n\nFocus on: emergency fund adequacy, debt reduction priority, savings diversification. Keep it practical and brief.`;
+  await callAI(prompt, 'accounts-ai-output');
 }
 
 // ═══════════════════════════════════════════════
