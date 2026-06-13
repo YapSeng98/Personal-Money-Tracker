@@ -1715,28 +1715,35 @@ function setConnStatus(status) {
 }
 
 async function testConnection() {
-  const u = document.getElementById('sn-username')?.value?.trim();
   const p = document.getElementById('sn-password')?.value;
   if (!p) { showToast('Enter your PDI password first', 'error'); return; }
   setConnStatus('connecting');
   try {
-    await SN.get('x_pfmt_transaction', { sysparm_limit:1 });
-    setConnStatus('connected');
-    showToast('✅ Connected to ' + state.snInstance, 'success');
+    // Step 1: verify credentials with a built-in table
+    await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
   } catch(e) {
     setConnStatus('error');
     const msg = e.message || '';
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.toLowerCase().includes('cors')) {
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
       showToast('CORS blocked — add a CORS rule in your PDI (see Settings tip)', 'error');
-    } else if (msg.includes('401') || msg.includes('Unauthorized')) {
+    } else if (msg.includes('401')) {
       showToast('Wrong username or password', 'error');
     } else if (msg.includes('403')) {
-      showToast('Access denied — check user roles in PDI', 'error');
-    } else if (msg.includes('404')) {
-      showToast('Table x_pfmt_transaction not found — install the PFMT app in PDI first', 'error');
+      showToast('Access denied — check admin role in PDI', 'error');
     } else {
-      showToast('Connection failed: ' + (msg || 'unknown error'), 'error');
+      showToast('Connection failed: ' + msg, 'error');
     }
+    return;
+  }
+  // Step 2: check if PFMT tables exist
+  try {
+    await SN.get('x_pfmt_transaction', { sysparm_limit:1 });
+    setConnStatus('connected');
+    showToast('✅ Connected — PFMT tables found!', 'success');
+  } catch(e) {
+    // Credentials OK but app not installed — still mark connected so export works
+    setConnStatus('connected');
+    showToast('✅ Connected — but PFMT tables not found. Install the scoped app first.', 'info');
   }
 }
 
