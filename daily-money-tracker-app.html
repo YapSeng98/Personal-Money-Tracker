@@ -1029,7 +1029,7 @@ let state = {
   transactions: [],
   budgets: [],
   goals: [],
-  accounts: JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS)),
+  accounts: [],
   currentType: 'expense',
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
@@ -2036,9 +2036,10 @@ function loadSampleData() {
 }
 
 function clearData() {
-  showConfirm('Clear all data?', 'This removes all transactions, budgets and goals.', 'Clear All', 'btn-coral').then(ok => {
+  showConfirm('Clear all data?', 'This removes all transactions, budgets, goals and accounts.', 'Clear All', 'btn-coral').then(ok => {
     if (!ok) return;
-    state.transactions = []; state.budgets = []; state.goals = [];
+    state.transactions = []; state.budgets = []; state.goals = []; state.accounts = []; state.nextId = 100;
+    saveState();
     renderAll();
     showToast('All data cleared', 'info');
   });
