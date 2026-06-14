@@ -417,6 +417,30 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 /* version tag */
 .l-version{font-size:10px;color:rgba(255,255,255,.12);margin-top:8px;letter-spacing:.5px;font-family:var(--fm);}
 
+/* credential login form */
+.l-input{
+  width:100%;box-sizing:border-box;
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:11px 14px;
+  color:#fff;font-size:14px;font-family:var(--ff);
+  transition:border-color .15s,background .15s;
+  outline:none;-webkit-appearance:none;
+}
+.l-input::placeholder{color:rgba(255,255,255,.22);}
+.l-input:focus{border-color:rgba(0,200,150,.5);background:rgba(0,200,150,.05);}
+.l-field-label{font-size:10px;color:rgba(255,255,255,.38);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:block;font-weight:600;}
+.l-btn{
+  width:100%;padding:13px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#00C896 0%,#0EA5E9 100%);
+  color:#fff;font-size:15px;font-weight:700;font-family:var(--ff);
+  cursor:pointer;letter-spacing:.2px;
+  box-shadow:0 4px 24px rgba(0,200,150,.3);
+  transition:opacity .15s,transform .1s;
+}
+.l-btn:hover{opacity:.9;}
+.l-btn:active{transform:scale(.97);}
+.l-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
 @media(max-width:380px){
   .numpad{grid-template-columns:repeat(3,64px);gap:10px;}
   .numpad-btn,.numpad-empty{width:64px;height:64px;}
@@ -459,7 +483,32 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="l-tagline">Money Tracker · ServiceNow PDI</div>
     <div class="l-divider"></div>
 
-    <!-- PIN area -->
+    <!-- CREDENTIALS PANEL — shown when no SN account saved -->
+    <div id="cred-panel" style="display:none;width:100%;">
+      <div class="l-subtitle" style="text-align:center;margin-bottom:16px;">Sign in with ServiceNow</div>
+      <div style="width:100%;display:flex;flex-direction:column;gap:11px;margin-bottom:14px;">
+        <div>
+          <label class="l-field-label">Instance URL</label>
+          <input id="cred-instance" class="l-input" type="text" placeholder="dev000000.service-now.com"
+            autocomplete="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <div>
+          <label class="l-field-label">Username</label>
+          <input id="cred-username" class="l-input" type="text" placeholder="admin"
+            autocomplete="username" autocapitalize="none">
+        </div>
+        <div>
+          <label class="l-field-label">Password</label>
+          <input id="cred-password" class="l-input" type="password" placeholder="••••••••"
+            autocomplete="current-password" onkeydown="if(event.key==='Enter')snLogin()">
+        </div>
+      </div>
+      <div id="cred-error" style="font-size:11px;color:#FF8080;min-height:18px;margin-bottom:10px;text-align:center;font-weight:500;"></div>
+      <button class="l-btn" id="cred-submit-btn" onclick="snLogin()">Sign In →</button>
+      <button class="login-link" onclick="snSkipLogin()" style="margin-top:4px;">Use without account (local only)</button>
+    </div>
+
+    <!-- PIN area (hidden while credential form is shown) -->
     <div class="l-subtitle" id="login-subtitle">Enter your PIN</div>
     <div class="pin-dots" id="pin-dots-wrap">
       <span class="pin-dot" id="pd0"></span>
@@ -796,6 +845,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <div class="setting-row">
             <div><div class="setting-label">Lock Now</div><div class="setting-sub">Requires PIN to re-enter</div></div>
             <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="lockApp()">🔒 Lock</button>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Sign Out</div><div class="setting-sub">Clear ServiceNow credentials &amp; PIN</div></div>
+            <button class="btn btn-coral" style="font-size:12px;padding:7px 14px;" onclick="logoutSN()">Sign Out</button>
           </div>
         </div>
         <div class="settings-section">
@@ -2772,7 +2825,42 @@ async function _submitPin() {
   }
 }
 
+function _showCredentialsForm() {
+  const credPanel = document.getElementById('cred-panel');
+  const pdWrap = document.getElementById('pin-dots-wrap');
+  const npad = document.querySelector('.numpad');
+  const perr = document.getElementById('pin-error');
+  const lsub = document.getElementById('login-subtitle');
+  const forgotBtn = document.getElementById('forgot-btn');
+  const lc = document.getElementById('login-connecting');
+  if (credPanel) credPanel.style.display = 'block';
+  if (pdWrap) pdWrap.style.display = 'none';
+  if (npad) npad.style.display = 'none';
+  if (perr) perr.style.display = 'none';
+  if (lsub) lsub.style.display = 'none';
+  if (forgotBtn) forgotBtn.style.display = 'none';
+  if (lc) lc.style.display = 'none';
+  // Pre-fill saved instance/username if returning
+  const inst = document.getElementById('cred-instance');
+  const user = document.getElementById('cred-username');
+  if (inst && state.snInstance) inst.value = state.snInstance;
+  if (user && state.snUsername) user.value = state.snUsername;
+  document.getElementById('login-overlay').style.display = 'flex';
+}
+
 function _showPinOverlay(mode, subtitle) {
+  // Hide credential form and restore PIN elements
+  const credPanel = document.getElementById('cred-panel');
+  const pdWrap = document.getElementById('pin-dots-wrap');
+  const npad = document.querySelector('.numpad');
+  const perr = document.getElementById('pin-error');
+  const lsub = document.getElementById('login-subtitle');
+  if (credPanel) credPanel.style.display = 'none';
+  if (pdWrap) pdWrap.style.display = 'flex';
+  if (npad) npad.style.display = 'grid';
+  if (perr) perr.style.display = 'block';
+  if (lsub) lsub.style.display = 'block';
+
   _pinMode = mode;
   _pinBuf = '';
   _pinConfirm = '';
@@ -2824,6 +2912,80 @@ function pinForgot() {
   location.reload();
 }
 
+async function snLogin() {
+  const inst = document.getElementById('cred-instance')?.value.trim();
+  const user = document.getElementById('cred-username')?.value.trim();
+  const pass = document.getElementById('cred-password')?.value;
+  const errEl = document.getElementById('cred-error');
+  const btn = document.getElementById('cred-submit-btn');
+  const lc = document.getElementById('login-connecting');
+
+  if (!inst) { errEl.textContent = 'Enter your ServiceNow instance URL.'; return; }
+  if (!user) { errEl.textContent = 'Enter your username.'; return; }
+  if (!pass) { errEl.textContent = 'Enter your password.'; return; }
+
+  errEl.textContent = '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  if (lc) lc.style.display = 'flex';
+
+  // Temporarily apply credentials so SN.authHeader() uses them
+  const prevInst = state.snInstance, prevUser = state.snUsername, prevPass = state.snPassword;
+  state.snInstance = inst.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  state.snUsername = user;
+  state.snPassword = pass;
+
+  try {
+    setConnStatus('connecting');
+    await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
+    // Credentials valid — persist them
+    saveState();
+    // Sync settings panel inputs
+    const snIn = document.getElementById('sn-instance-input');
+    const snUser = document.getElementById('sn-username');
+    const snPass = document.getElementById('sn-password');
+    if (snIn) snIn.value = state.snInstance;
+    if (snUser) snUser.value = state.snUsername;
+    if (snPass) snPass.value = state.snPassword;
+    setConnStatus('connected');
+    if (lc) lc.style.display = 'none';
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
+    // Transition to PIN (setup if first time, else unlock)
+    const storedPin = localStorage.getItem(PIN_KEY);
+    if (storedPin) {
+      _showPinOverlay('unlock', t('login_enter_pin'));
+    } else {
+      _showPinOverlay('setup', t('login_setup_pin'));
+    }
+  } catch(e) {
+    state.snInstance = prevInst; state.snUsername = prevUser; state.snPassword = prevPass;
+    setConnStatus('disconnected');
+    if (lc) lc.style.display = 'none';
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
+    errEl.textContent = 'Connection failed — check your instance URL, username, and password.';
+  }
+}
+
+function snSkipLogin() {
+  localStorage.setItem('pfmt_local', '1');
+  const storedPin = localStorage.getItem(PIN_KEY);
+  if (storedPin) {
+    _showPinOverlay('unlock', t('login_enter_pin'));
+  } else {
+    _showPinOverlay('setup', t('login_setup_pin'));
+  }
+}
+
+function logoutSN() {
+  if (!confirm('Sign out of ServiceNow? Your local data is kept, but credentials and PIN will be cleared.')) return;
+  state.snUsername = '';
+  state.snPassword = '';
+  localStorage.removeItem(PIN_KEY);
+  localStorage.removeItem('pfmt_local');
+  saveState();
+  setConnStatus('disconnected');
+  _showCredentialsForm();
+}
+
 document.addEventListener('keydown', e => {
   const ov = document.getElementById('login-overlay');
   if (!ov || ov.style.display === 'none') return;
@@ -2869,7 +3031,10 @@ document.addEventListener('keydown', e => {
 
   // Show login overlay
   const storedPin = localStorage.getItem(PIN_KEY);
-  if (storedPin) {
+  if (!state.snPassword && !localStorage.getItem('pfmt_local')) {
+    // No SN account saved yet — show credentials login form
+    _showCredentialsForm();
+  } else if (storedPin) {
     _showPinOverlay('unlock', t('login_enter_pin'));
   } else {
     _showPinOverlay('setup', t('login_setup_pin'));
