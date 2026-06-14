@@ -831,7 +831,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         </div>
         <div class="settings-section">
           <h3>Preferences</h3>
-          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>EUR</option><option>GBP</option><option>JPY</option><option>CNY</option><option>HKD</option><option>IDR</option><option>THB</option><option>PHP</option><option>INR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="changeCurrency(this.value)"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>EUR</option><option>GBP</option><option>JPY</option><option>CNY</option><option>HKD</option><option>IDR</option><option>THB</option><option>PHP</option><option>INR</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
@@ -1317,7 +1317,8 @@ let state = {
   snPassword: '',
   lastSync: null,
   currency: 'SGD',
-  language: 'en'
+  language: 'en',
+  preferenceId: ''
 };
 
 // ═══════════════════════════════════════════════
@@ -1340,7 +1341,8 @@ function saveState() {
       snPassword: state.snPassword,
       lastSync: state.lastSync,
       currency: state.currency,
-      language: state.language
+      language: state.language,
+      preferenceId: state.preferenceId
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -1719,6 +1721,7 @@ function handleInstitutionChange(sel) {
   if (!state.institutions.includes(trimmed)) {
     state.institutions.push(trimmed);
     saveState();
+    _syncPreferences();
   }
   populateInstitutionDropdown(trimmed);
 }
@@ -1728,6 +1731,7 @@ function removeInstitution(inst) {
   if (inUse) { showToast(`"${inst}" is used by an account and cannot be removed.`, 'error'); return; }
   state.institutions = state.institutions.filter(i => i !== inst);
   saveState();
+  _syncPreferences();
   populateInstitutionDropdown();
 }
 
@@ -2469,16 +2473,27 @@ async function _autoSyncOnLogin() {
   try {
     setSyncStatus('syncing', 'Loading data…');
     const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
-    const [txns, accounts, budgets, goals] = await Promise.all([
+    const [txns, accounts, budgets, goals, prefs] = await Promise.all([
       SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
       SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
       SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[])
+      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_preference',    uq).catch(()=>[])
     ]);
     if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
     if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
     if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
+    if (prefs.length) {
+      const p = prefs[0];
+      state.preferenceId = p.sys_id;
+      if (p.institutions) { try { const inst = JSON.parse(p.institutions); if (Array.isArray(inst) && inst.length) state.institutions = inst; } catch(e) {} }
+      if (p.currency) state.currency = p.currency;
+      if (p.language) state.language = p.language;
+      const cs = document.getElementById('currency-select'); if (cs) cs.value = state.currency;
+      const ls = document.getElementById('language-select'); if (ls) ls.value = state.language;
+      applyLanguage();
+    }
     state.lastSync = new Date().toISOString();
     saveState();
     renderAll();
@@ -2524,8 +2539,32 @@ const SN = {
     const res = await fetch(`${SN.base}/${table}?sysparm_input_display_value=true`, { method:'POST', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
     if (!res.ok) throw new Error(`${res.status}`);
     return (await res.json()).result;
+  },
+  async patch(table, sys_id, body) {
+    const res = await fetch(`${SN.base}/${table}/${sys_id}?sysparm_input_display_value=true`, { method:'PATCH', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
+    if (!res.ok) throw new Error(`${res.status}`);
+    return (await res.json()).result;
   }
 };
+
+async function _syncPreferences() {
+  if (!SN.connected) return;
+  try {
+    const body = {
+      institutions: JSON.stringify(state.institutions),
+      currency: state.currency,
+      language: state.language,
+      user: state.snUsername
+    };
+    if (state.preferenceId) {
+      await SN.patch('x_1472763_person_0_preference', state.preferenceId, body);
+    } else {
+      const rec = await SN.post('x_1472763_person_0_preference', body);
+      state.preferenceId = rec.sys_id;
+      saveState();
+    }
+  } catch(e) { /* silent */ }
+}
 
 function saveSNCredentials() {
   const u = document.getElementById('sn-username')?.value.trim();
@@ -2551,7 +2590,15 @@ function changeLanguage(lang) {
   state.language = lang;
   saveState();
   renderAll();
+  _syncPreferences();
   showToast(lang === 'zh' ? '语言已切换为中文 ✓' : 'Language set to English ✓', 'success');
+}
+
+function changeCurrency(val) {
+  state.currency = val;
+  saveState();
+  renderAll();
+  _syncPreferences();
 }
 
 function saveAIKey() {
@@ -2614,20 +2661,31 @@ async function syncFromSN() {
   try {
     setSyncStatus('syncing', 'Syncing all…');
     const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
-    const [txns, accounts, budgets, goals] = await Promise.all([
+    const [txns, accounts, budgets, goals, prefs] = await Promise.all([
       SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
       SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
       SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[])
+      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_preference',    uq).catch(()=>[])
     ]);
     if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
     if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
     if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
+    if (prefs.length) {
+      const p = prefs[0];
+      state.preferenceId = p.sys_id;
+      if (p.institutions) { try { const inst = JSON.parse(p.institutions); if (Array.isArray(inst) && inst.length) state.institutions = inst; } catch(e) {} }
+      if (p.currency) state.currency = p.currency;
+      if (p.language) state.language = p.language;
+      const cs = document.getElementById('currency-select'); if (cs) cs.value = state.currency;
+      const ls = document.getElementById('language-select'); if (ls) ls.value = state.language;
+      applyLanguage();
+    }
     state.lastSync = new Date().toISOString();
     saveState(); renderAll(); updateLastSync();
     setSyncStatus('ok', 'Synced ✓');
-    showToast(`Synced: ${txns.length} txns · ${accounts.length} accounts · ${budgets.length} budgets · ${goals.length} goals`, 'success');
+    showToast(`Synced: ${txns.length} txns · ${accounts.length} accts · ${budgets.length} budgets · ${goals.length} goals · prefs`, 'success');
   } catch(e) {
     setSyncStatus('error', 'Sync failed');
     showToast('Sync failed: ' + e.message, 'error');
