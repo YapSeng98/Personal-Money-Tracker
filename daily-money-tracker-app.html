@@ -1308,6 +1308,7 @@ let state = {
   goals: [],
   accounts: [],
   institutions: [...DEFAULT_INSTITUTIONS],
+  institutionMap: {},
   currentType: 'expense',
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
@@ -1342,7 +1343,8 @@ function saveState() {
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
-      preferenceId: state.preferenceId
+      preferenceId: state.preferenceId,
+      institutionMap: state.institutionMap
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -1721,7 +1723,7 @@ function handleInstitutionChange(sel) {
   if (!state.institutions.includes(trimmed)) {
     state.institutions.push(trimmed);
     saveState();
-    _syncPreferences();
+    _pushInstitution(trimmed);
   }
   populateInstitutionDropdown(trimmed);
 }
@@ -1731,7 +1733,7 @@ function removeInstitution(inst) {
   if (inUse) { showToast(`"${inst}" is used by an account and cannot be removed.`, 'error'); return; }
   state.institutions = state.institutions.filter(i => i !== inst);
   saveState();
-  _syncPreferences();
+  _deleteInstitution(inst);
   populateInstitutionDropdown();
 }
 
@@ -2473,21 +2475,25 @@ async function _autoSyncOnLogin() {
   try {
     setSyncStatus('syncing', 'Loading data…');
     const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
-    const [txns, accounts, budgets, goals, prefs] = await Promise.all([
+    const [txns, accounts, budgets, goals, insts, prefs] = await Promise.all([
       SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
       SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
       SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
       SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_institution',   uq).catch(()=>[]),
       SN.get('x_1472763_person_0_preference',    uq).catch(()=>[])
     ]);
     if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
     if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
     if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
+    if (insts.length) {
+      state.institutionMap = {};
+      state.institutions = insts.map(r => { const n = r.institution_name||''; state.institutionMap[n] = r.sys_id; return n; }).filter(Boolean);
+    }
     if (prefs.length) {
       const p = prefs[0];
       state.preferenceId = p.sys_id;
-      if (p.institutions) { try { const inst = JSON.parse(p.institutions); if (Array.isArray(inst) && inst.length) state.institutions = inst; } catch(e) {} }
       if (p.currency) state.currency = p.currency;
       if (p.language) state.language = p.language;
       const cs = document.getElementById('currency-select'); if (cs) cs.value = state.currency;
@@ -2544,18 +2550,17 @@ const SN = {
     const res = await fetch(`${SN.base}/${table}/${sys_id}?sysparm_input_display_value=true`, { method:'PATCH', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
     if (!res.ok) throw new Error(`${res.status}`);
     return (await res.json()).result;
+  },
+  async delete(table, sys_id) {
+    const res = await fetch(`${SN.base}/${table}/${sys_id}`, { method:'DELETE', headers:{'Authorization':SN.authHeader(),'Accept':'application/json'} });
+    if (!res.ok) throw new Error(`${res.status}`);
   }
 };
 
 async function _syncPreferences() {
   if (!SN.connected) return;
   try {
-    const body = {
-      institutions: JSON.stringify(state.institutions),
-      currency: state.currency,
-      language: state.language,
-      user: state.snUsername
-    };
+    const body = { currency: state.currency, language: state.language, user: state.snUsername };
     if (state.preferenceId) {
       await SN.patch('x_1472763_person_0_preference', state.preferenceId, body);
     } else {
@@ -2563,6 +2568,26 @@ async function _syncPreferences() {
       state.preferenceId = rec.sys_id;
       saveState();
     }
+  } catch(e) { /* silent */ }
+}
+
+async function _pushInstitution(name) {
+  if (!SN.connected) return;
+  try {
+    const rec = await SN.post('x_1472763_person_0_institution', { institution_name: name, user: state.snUsername });
+    state.institutionMap[name] = rec.sys_id;
+    saveState();
+  } catch(e) { /* silent */ }
+}
+
+async function _deleteInstitution(name) {
+  if (!SN.connected) return;
+  const sys_id = state.institutionMap[name];
+  if (!sys_id) return;
+  try {
+    await SN.delete('x_1472763_person_0_institution', sys_id);
+    delete state.institutionMap[name];
+    saveState();
   } catch(e) { /* silent */ }
 }
 
@@ -2661,21 +2686,25 @@ async function syncFromSN() {
   try {
     setSyncStatus('syncing', 'Syncing all…');
     const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
-    const [txns, accounts, budgets, goals, prefs] = await Promise.all([
+    const [txns, accounts, budgets, goals, insts, prefs] = await Promise.all([
       SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
       SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
       SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
       SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_institution',   uq).catch(()=>[]),
       SN.get('x_1472763_person_0_preference',    uq).catch(()=>[])
     ]);
     if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
     if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
     if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
+    if (insts.length) {
+      state.institutionMap = {};
+      state.institutions = insts.map(r => { const n = r.institution_name||''; state.institutionMap[n] = r.sys_id; return n; }).filter(Boolean);
+    }
     if (prefs.length) {
       const p = prefs[0];
       state.preferenceId = p.sys_id;
-      if (p.institutions) { try { const inst = JSON.parse(p.institutions); if (Array.isArray(inst) && inst.length) state.institutions = inst; } catch(e) {} }
       if (p.currency) state.currency = p.currency;
       if (p.language) state.language = p.language;
       const cs = document.getElementById('currency-select'); if (cs) cs.value = state.currency;
@@ -2685,7 +2714,7 @@ async function syncFromSN() {
     state.lastSync = new Date().toISOString();
     saveState(); renderAll(); updateLastSync();
     setSyncStatus('ok', 'Synced ✓');
-    showToast(`Synced: ${txns.length} txns · ${accounts.length} accts · ${budgets.length} budgets · ${goals.length} goals · prefs`, 'success');
+    showToast(`Synced: ${txns.length} txns · ${accounts.length} accts · ${budgets.length} budgets · ${goals.length} goals · ${insts.length} institutions`, 'success');
   } catch(e) {
     setSyncStatus('error', 'Sync failed');
     showToast('Sync failed: ' + e.message, 'error');
