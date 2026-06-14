@@ -2363,9 +2363,10 @@ async function pushAllToSN() {
     try {
       const rec = await SN.post('x_1472763_person_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
-        category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
+        category: t.category, account: t.account, transaction_date: t.date,
+        notes: t.notes || '', user_name: state.snUsername
       });
-      t.id = rec.sys_id; // replace local id with SN sys_id
+      t.id = rec.sys_id;
       ok++;
     } catch { fail++; }
   }
@@ -2403,7 +2404,8 @@ async function _autoPushTxn(txn) {
     const rec = await SN.post('x_1472763_person_0_transaction', {
       transaction_type: txn.type, amount: txn.amount,
       description: txn.description, category: txn.category,
-      account: txn.account, transaction_date: txn.date, notes: txn.notes || ''
+      account: txn.account, transaction_date: txn.date,
+      notes: txn.notes || '', user_name: state.snUsername
     });
     txn.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2422,7 +2424,8 @@ async function _autoPushAccount(acc) {
     setSyncStatus('syncing', 'Syncing…');
     const rec = await SN.post('x_1472763_person_0_account', {
       account_name: acc.name, account_type: acc.type,
-      institution_name: acc.institution, current_balance: acc.balance
+      institution_name: acc.institution, current_balance: acc.balance,
+      user_name: state.snUsername
     });
     acc.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2441,7 +2444,8 @@ async function _autoPushBudget(b) {
     setSyncStatus('syncing', 'Syncing…');
     const rec = await SN.post('x_1472763_person_0_budget', {
       category: b.category, budget_amount: b.amount,
-      spent_amount: getBudgetSpent(b.category), alert_threshold_pct: b.alertPct || 80
+      spent_amount: getBudgetSpent(b.category), alert_threshold_pct: b.alertPct || 80,
+      user_name: state.snUsername
     });
     b.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2456,7 +2460,8 @@ async function _autoPushGoal(g) {
     setSyncStatus('syncing', 'Syncing…');
     const rec = await SN.post('x_1472763_person_0_savings_goal', {
       goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
-      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date
+      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date,
+      user_name: state.snUsername
     });
     g.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2469,11 +2474,12 @@ async function _autoSyncOnLogin() {
   if (!SN.connected) return;
   try {
     setSyncStatus('syncing', 'Loading data…');
+    const uq = state.snUsername ? { sysparm_query:`user_name=${state.snUsername}` } : {};
     const [txns, accounts, budgets, goals] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction',  {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_account',       {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_budget',        {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_savings_goal',  {}).catch(()=>[])
+      SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[])
     ]);
     if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
@@ -2613,11 +2619,12 @@ async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
     setSyncStatus('syncing', 'Syncing all…');
+    const uq = state.snUsername ? { sysparm_query:`user_name=${state.snUsername}` } : {};
     const [txns, accounts, budgets, goals] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction',  {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_account',       {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_budget',        {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_savings_goal',  {}).catch(()=>[])
+      SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
+      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[])
     ]);
     if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
