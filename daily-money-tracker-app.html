@@ -103,6 +103,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .txn-amt.neg{color:var(--coral);}
 .txn-actions{display:flex;gap:4px;opacity:0;transition:opacity .15s;}
 .txn-row:hover .txn-actions{opacity:1;}
+@media(hover:none){.txn-actions{opacity:1;}}
 .icon-btn{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-size:13px;transition:all .15s;}
 .icon-btn.edit{background:var(--sky-s);color:var(--sky);}
 .icon-btn.edit:hover{background:#dbeafe;}
