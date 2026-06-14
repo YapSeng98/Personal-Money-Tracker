@@ -988,7 +988,11 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
       <div class="form-group"><label class="form-label">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
     </div>
-    <div class="form-group"><label class="form-label">Institution</label><select class="form-input" id="acc-institution"><option>DBS</option><option>OCBC</option><option>UOB</option><option>Standard Chartered</option><option>Grab Financial</option><option>Other</option></select></div>
+    <div class="form-group">
+      <label class="form-label">Institution</label>
+      <select class="form-input" id="acc-institution" onchange="handleInstitutionChange(this)"></select>
+      <div id="institution-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
@@ -1236,11 +1240,14 @@ const DEFAULT_ACCOUNTS = [
   { id: 3, name: 'Grab PayLater', type: 'Credit Card', institution: 'Grab', balance: -380.00,  icon: '💳' }
 ];
 
+const DEFAULT_INSTITUTIONS = ['DBS','OCBC','UOB','Standard Chartered','Grab Financial','Other'];
+
 let state = {
   transactions: [],
   budgets: [],
   goals: [],
   accounts: [],
+  institutions: [...DEFAULT_INSTITUTIONS],
   currentType: 'expense',
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
@@ -1264,6 +1271,7 @@ function saveState() {
       budgets: state.budgets,
       goals: state.goals,
       accounts: state.accounts,
+      institutions: state.institutions,
       nextId: state.nextId,
       filterMonth: state.filterMonth,
       geminiKey: state.geminiKey,
@@ -1285,6 +1293,9 @@ function loadState() {
     // migrate old anthropicKey → geminiKey if present
     if (saved.anthropicKey && !saved.geminiKey) saved.geminiKey = saved.anthropicKey;
     delete saved.anthropicKey;
+    if (!saved.institutions || !Array.isArray(saved.institutions) || saved.institutions.length === 0) {
+      saved.institutions = [...DEFAULT_INSTITUTIONS];
+    }
     Object.assign(state, saved);
     return true;
   } catch(e) { return false; }
@@ -1604,6 +1615,56 @@ async function deleteGoal(id) {
 // Account
 let _editingAccountId = null;
 
+function populateInstitutionDropdown(selected) {
+  const sel = document.getElementById('acc-institution');
+  const prev = selected !== undefined ? selected : sel.value;
+  sel.innerHTML = '';
+  state.institutions.forEach(inst => {
+    const opt = document.createElement('option');
+    opt.value = inst;
+    opt.textContent = inst;
+    sel.appendChild(opt);
+  });
+  const addOpt = document.createElement('option');
+  addOpt.value = '__add_new__';
+  addOpt.textContent = '➕ Add new institution...';
+  sel.appendChild(addOpt);
+  sel.value = state.institutions.includes(prev) ? prev : state.institutions[0];
+  renderInstitutionTags();
+}
+
+function renderInstitutionTags() {
+  const container = document.getElementById('institution-tags');
+  if (!container) return;
+  container.innerHTML = '';
+  state.institutions.forEach(inst => {
+    const chip = document.createElement('span');
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:20px;padding:3px 10px;font-size:12px;color:#374151;';
+    chip.innerHTML = `${inst} <button onclick="removeInstitution('${inst.replace(/'/g,"\\'")}') " style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:14px;line-height:1;padding:0;margin-left:2px;">×</button>`;
+    container.appendChild(chip);
+  });
+}
+
+function handleInstitutionChange(sel) {
+  if (sel.value !== '__add_new__') return;
+  const name = prompt('Enter new institution name:');
+  if (!name || !name.trim()) { sel.value = state.institutions[0]; return; }
+  const trimmed = name.trim();
+  if (!state.institutions.includes(trimmed)) {
+    state.institutions.push(trimmed);
+    saveState();
+  }
+  populateInstitutionDropdown(trimmed);
+}
+
+function removeInstitution(inst) {
+  const inUse = state.accounts.some(a => a.institution === inst);
+  if (inUse) { showToast(`"${inst}" is used by an account and cannot be removed.`, 'error'); return; }
+  state.institutions = state.institutions.filter(i => i !== inst);
+  saveState();
+  populateInstitutionDropdown();
+}
+
 function openAccountModal(id = null) {
   _editingAccountId = id;
   const isEdit = id !== null;
@@ -1612,15 +1673,15 @@ function openAccountModal(id = null) {
   if (isEdit) {
     const acc = state.accounts.find(a => a.id === id);
     if (!acc) return;
-    document.getElementById('acc-name').value        = acc.name;
-    document.getElementById('acc-type').value        = acc.type;
-    document.getElementById('acc-balance').value     = acc.balance;
-    document.getElementById('acc-institution').value = acc.institution;
+    document.getElementById('acc-name').value    = acc.name;
+    document.getElementById('acc-type').value    = acc.type;
+    document.getElementById('acc-balance').value = acc.balance;
+    populateInstitutionDropdown(acc.institution);
   } else {
-    document.getElementById('acc-name').value        = '';
-    document.getElementById('acc-type').value        = 'Checking';
-    document.getElementById('acc-balance').value     = '';
-    document.getElementById('acc-institution').value = 'DBS';
+    document.getElementById('acc-name').value    = '';
+    document.getElementById('acc-type').value    = 'Checking';
+    document.getElementById('acc-balance').value = '';
+    populateInstitutionDropdown(state.institutions[0]);
   }
   document.getElementById('account-modal').classList.add('open');
 }
