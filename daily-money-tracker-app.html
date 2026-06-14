@@ -531,11 +531,17 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <button class="hamburger-btn" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbar-title">Dashboard</div>
     </div>
-    <div class="topbar-actions">
-      <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
-      <button class="btn btn-ghost btn-sm desktop-only" onclick="exportSNJSON()" title="Export SN-ready JSON">⬇ SN JSON</button>
-      <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
-      <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="sync-indicator" title="Sync status" style="font-size:11px;color:var(--muted);display:none;align-items:center;gap:4px;">
+        <span id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
+        <span id="sync-label">—</span>
+      </span>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
+        <button class="btn btn-ghost btn-sm desktop-only" onclick="exportSNJSON()" title="Export SN-ready JSON">⬇ SN JSON</button>
+        <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
+        <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
+      </div>
     </div>
   </div>
   <div class="month-nav" id="month-nav-bar">
@@ -1456,7 +1462,8 @@ function saveTransaction() {
   } else {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt, description: desc, category: cat, account: acct, date, notes };
     state.transactions.unshift(txn);
-    showToast(t('toast_txn_saved') + ' → x_pfmt_transaction', 'success');
+    showToast(t('toast_txn_saved'), 'success');
+    _autoPushTxn(txn);
   }
 
   closeTxnModal();
@@ -1699,7 +1706,9 @@ function saveAccount() {
     const idx = state.accounts.findIndex(a => a.id === _editingAccountId);
     if (idx !== -1) state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
   } else {
-    state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon });
+    const acc = { id: state.nextId++, name, type, institution, balance, icon };
+    state.accounts.push(acc);
+    _autoPushAccount(acc);
   }
   _editingAccountId = null;
   document.getElementById('account-modal').classList.remove('open');
@@ -2314,6 +2323,79 @@ function updateLastSync() {
   }
 }
 
+function setSyncStatus(status, label) {
+  const ind  = document.getElementById('sync-indicator');
+  const dot  = document.getElementById('sync-dot');
+  const lbl  = document.getElementById('sync-label');
+  if (!ind) return;
+  ind.style.display = 'flex';
+  const colors = { syncing:'#F59E0B', ok:'#00C896', error:'#FF5B5B', idle:'#6B7280' };
+  dot.style.background = colors[status] || colors.idle;
+  lbl.textContent = label;
+  if (status === 'ok') setTimeout(() => { ind.style.display = 'none'; }, 3000);
+}
+
+async function _autoPushTxn(txn) {
+  if (!SN.connected) return;
+  try {
+    setSyncStatus('syncing', 'Syncing…');
+    const rec = await SN.post('x_1472763_person_0_transaction', {
+      transaction_type: txn.type, amount: txn.amount,
+      description: txn.description, category: txn.category,
+      account: txn.account, transaction_date: txn.date, notes: txn.notes || ''
+    });
+    txn.id = rec.sys_id;
+    state.lastSync = new Date().toISOString();
+    saveState();
+    updateLastSync();
+    setSyncStatus('ok', 'Synced ✓');
+  } catch(e) {
+    setSyncStatus('error', 'Sync failed');
+  }
+}
+
+async function _autoPushAccount(acc) {
+  if (!SN.connected) return;
+  try {
+    setSyncStatus('syncing', 'Syncing…');
+    const rec = await SN.post('x_1472763_person_0_account', {
+      account_name: acc.name, account_type: acc.type,
+      institution_name: acc.institution, current_balance: acc.balance
+    });
+    acc.id = rec.sys_id;
+    state.lastSync = new Date().toISOString();
+    saveState();
+    updateLastSync();
+    setSyncStatus('ok', 'Synced ✓');
+  } catch(e) {
+    setSyncStatus('error', 'Sync failed');
+  }
+}
+
+async function _autoSyncOnLogin() {
+  if (!SN.connected) return;
+  try {
+    setSyncStatus('syncing', 'Loading data…');
+    const [txns, accounts] = await Promise.all([
+      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
+    ]);
+    if (txns.length) {
+      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
+    }
+    if (accounts.length) {
+      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    }
+    state.lastSync = new Date().toISOString();
+    saveState();
+    renderAll();
+    updateLastSync();
+    setSyncStatus('ok', 'Up to date ✓');
+  } catch(e) {
+    setSyncStatus('error', 'Sync failed');
+  }
+}
+
 function openAI() {
   if (!state.transactions.length) { showToast('Add some transactions first!', 'info'); return; }
   callAI(`You are a personal finance advisor. Analyse this data and give 3-4 specific actionable insights in 2-3 sentences each. Use ** for key numbers.\n\n${buildSummary()}`, 'ai-output');
@@ -2671,6 +2753,9 @@ async function _doUnlock() {
       setConnStatus('connecting');
       await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
       setConnStatus('connected');
+      _hidePinOverlay();
+      await _autoSyncOnLogin();
+      return;
     } catch(e) {
       setConnStatus('disconnected');
     }
