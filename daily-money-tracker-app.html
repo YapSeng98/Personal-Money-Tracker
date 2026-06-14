@@ -2362,7 +2362,7 @@ async function pushAllToSN() {
       const rec = await SN.post('x_1472763_person_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
         category: t.category, account: t.account, transaction_date: t.date,
-        notes: t.notes || '', user_name: state.snUsername
+        notes: t.notes || '', user: state.snUsername
       });
       t.id = rec.sys_id;
       ok++;
@@ -2401,7 +2401,7 @@ async function _autoPushTxn(txn) {
       transaction_type: txn.type, amount: txn.amount,
       description: txn.description, category: txn.category,
       account: txn.account, transaction_date: txn.date,
-      notes: txn.notes || '', user_name: state.snUsername
+      notes: txn.notes || '', user: state.snUsername
     });
     txn.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2420,7 +2420,7 @@ async function _autoPushAccount(acc) {
     const rec = await SN.post('x_1472763_person_0_account', {
       account_name: acc.name, account_type: acc.type,
       institution_name: acc.institution, current_balance: acc.balance,
-      user_name: state.snUsername
+      user: state.snUsername
     });
     acc.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2439,7 +2439,7 @@ async function _autoPushBudget(b) {
     const rec = await SN.post('x_1472763_person_0_budget', {
       category: b.category, budget_amount: b.amount,
       spent_amount: getBudgetSpent(b.category), alert_threshold_pct: b.alertPct || 80,
-      user_name: state.snUsername
+      user: state.snUsername
     });
     b.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2455,7 +2455,7 @@ async function _autoPushGoal(g) {
     const rec = await SN.post('x_1472763_person_0_savings_goal', {
       goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
       current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date,
-      user_name: state.snUsername
+      user: state.snUsername
     });
     g.id = rec.sys_id;
     state.lastSync = new Date().toISOString();
@@ -2468,7 +2468,7 @@ async function _autoSyncOnLogin() {
   if (!SN.connected) return;
   try {
     setSyncStatus('syncing', 'Loading data…');
-    const uq = state.snUsername ? { sysparm_query:`user_name=${state.snUsername}` } : {};
+    const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
     const [txns, accounts, budgets, goals] = await Promise.all([
       SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
       SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
@@ -2521,7 +2521,7 @@ const SN = {
     return (await res.json()).result || [];
   },
   async post(table, body) {
-    const res = await fetch(`${SN.base}/${table}`, { method:'POST', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
+    const res = await fetch(`${SN.base}/${table}?sysparm_input_display_value=true`, { method:'POST', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
     if (!res.ok) throw new Error(`${res.status}`);
     return (await res.json()).result;
   }
@@ -2613,7 +2613,7 @@ async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
     setSyncStatus('syncing', 'Syncing all…');
-    const uq = state.snUsername ? { sysparm_query:`user_name=${state.snUsername}` } : {};
+    const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
     const [txns, accounts, budgets, goals] = await Promise.all([
       SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
       SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
