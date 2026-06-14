@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Money Tracker — ServiceNow PFMT Design & Diagrams</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --ink:        #0D1117;
+    --ink-2:      #1C2333;
+    --ink-3:      #2D3748;
+    --muted:      #6B7280;
+    --border:     #E2E8F0;
+    --surface:    #F7F9FC;
+    --white:      #FFFFFF;
+
+    /* Brand */
+    --jade:       #00C896;
+    --jade-dark:  #00A37A;
+    --jade-soft:  #E6FBF5;
+    --coral:      #FF5B5B;
+    --coral-soft: #FFF0F0;
+    --amber:      #F59E0B;
+    --amber-soft: #FFFBEB;
+    --sky:        #3B82F6;
+    --sky-soft:   #EFF6FF;
+    --violet:     #8B5CF6;
+    --violet-soft:#F5F3FF;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body:    'Inter', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+  .nav-brand { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .nav-brand span { color: var(--jade); }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a { font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; transition: color .2s; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-badge { background: var(--jade); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; letter-spacing: .5px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--ink);
+    color: white;
+    padding: 80px 40px 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .hero::after {
+    content:'';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--jade), var(--sky), var(--violet), var(--coral));
+  }
+  .hero-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 99px; padding: 4px 14px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,.7); margin-bottom: 24px; }
+  .hero-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--jade); display: inline-block; }
+  h1 { font-family: var(--font-display); font-size: clamp(36px, 5vw, 64px); font-weight: 700; line-height: 1.1; margin-bottom: 20px; letter-spacing: -1.5px; }
+  h1 em { font-style: normal; color: var(--jade); }
+  .hero-sub { font-size: 17px; color: rgba(255,255,255,.6); max-width: 560px; margin-bottom: 40px; line-height: 1.7; }
+  .hero-stats { display: flex; gap: 40px; padding: 28px 0 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .hero-stat label { font-size: 11px; color: rgba(255,255,255,.4); letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .hero-stat strong { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: white; }
+
+  /* ── SECTION SYSTEM ── */
+  section { padding: 72px 40px; }
+  section:nth-child(even) { background: white; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--jade); margin-bottom: 12px; }
+  h2 { font-family: var(--font-display); font-size: clamp(24px, 3vw, 38px); font-weight: 700; letter-spacing: -0.8px; margin-bottom: 12px; }
+  h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+  .section-intro { font-size: 16px; color: var(--muted); max-width: 600px; margin-bottom: 48px; line-height: 1.7; }
+
+  /* ── GRID HELPERS ── */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  @media(max-width:900px){ .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
+
+  /* ── CARD ── */
+  .card {
+    background: white; border: 1px solid var(--border); border-radius: 16px; padding: 28px;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.07); transform: translateY(-2px); }
+  .card.dark { background: var(--ink); border-color: var(--ink-2); color: white; }
+  .card.jade { background: var(--jade-soft); border-color: #b3f0de; }
+  .card.coral { background: var(--coral-soft); border-color: #ffc5c5; }
+  .card.sky { background: var(--sky-soft); border-color: #bfdbfe; }
+  .card.violet { background: var(--violet-soft); border-color: #ddd6fe; }
+  .card.amber { background: var(--amber-soft); border-color: #fde68a; }
+
+  /* ── SCREEN MOCKUP ── */
+  .phone-frame {
+    width: 320px; min-height: 620px;
+    background: var(--ink); border-radius: 40px;
+    padding: 16px; margin: 0 auto;
+    box-shadow: 0 40px 80px rgba(0,0,0,.3), 0 0 0 2px #2D3748;
+    position: relative;
+  }
+  .phone-screen {
+    background: var(--surface); border-radius: 28px; overflow: hidden;
+    min-height: 588px; padding: 20px 16px;
+  }
+  .phone-notch {
+    width: 90px; height: 24px; background: var(--ink); border-radius: 0 0 16px 16px;
+    margin: 0 auto 16px;
+  }
+
+  .screen-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .screen-greeting { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--ink); }
+  .screen-date { font-size: 11px; color: var(--muted); }
+
+  .balance-card {
+    background: linear-gradient(135deg, #0D1117 0%, #1a2744 100%);
+    border-radius: 20px; padding: 24px 20px; margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .balance-card::before {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(0,200,150,.15);
+  }
+  .balance-label { font-size: 11px; color: rgba(255,255,255,.5); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .balance-amount { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: white; margin-bottom: 16px; }
+  .balance-row { display: flex; gap: 16px; }
+  .balance-sub { flex: 1; }
+  .balance-sub label { font-size: 10px; color: rgba(255,255,255,.4); display: block; margin-bottom: 2px; }
+  .balance-sub span { font-size: 13px; font-weight: 600; }
+  .balance-sub.inc span { color: var(--jade); }
+  .balance-sub.exp span { color: var(--coral); }
+
+  .quick-add { display: flex; gap: 8px; margin-bottom: 20px; }
+  .qa-btn {
+    flex: 1; padding: 10px 6px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: var(--font-body); font-size: 11px; font-weight: 600; text-align: center;
+  }
+  .qa-btn.income { background: var(--jade-soft); color: var(--jade-dark); }
+  .qa-btn.expense { background: var(--coral-soft); color: var(--coral); }
+  .qa-btn.transfer { background: var(--sky-soft); color: var(--sky); }
+
+  .txn-list { }
+  .txn-section-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .txn-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .txn-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .txn-info { flex: 1; }
+  .txn-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .txn-cat { font-size: 10px; color: var(--muted); }
+  .txn-amount { font-family: var(--font-display); font-size: 14px; font-weight: 700; }
+  .txn-amount.pos { color: var(--jade-dark); }
+  .txn-amount.neg { color: var(--coral); }
+
+  /* ── DIAGRAM SYSTEM ── */
+  .diagram-box {
+    background: white; border: 1px solid var(--border); border-radius: 20px;
+    padding: 40px; overflow: auto;
+  }
+  .diagram-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .diagram-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 32px; }
+
+  /* ERD */
+  .erd-wrap { overflow-x: auto; }
+  .erd { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: flex-start; min-width: 700px; }
+  .erd-table {
+    border: 2px solid var(--border); border-radius: 12px; overflow: hidden;
+    min-width: 200px; box-shadow: 0 4px 16px rgba(0,0,0,.05);
+  }
+  .erd-head {
+    padding: 12px 16px; font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .erd-head .tbl-icon { font-size: 16px; }
+  .erd-row {
+    padding: 7px 16px; font-family: var(--font-mono); font-size: 11px;
+    display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--border);
+    color: var(--ink-3);
+  }
+  .erd-row .pk { color: var(--amber); font-weight: 700; }
+  .erd-row .fk { color: var(--sky); font-weight: 700; }
+  .erd-row .type { color: var(--muted); margin-left: auto; font-size: 10px; }
+
+  .t-transactions .erd-head { background: linear-gradient(90deg,#0D1117,#1a2744); color: white; }
+  .t-accounts .erd-head { background: var(--jade-soft); color: var(--jade-dark); }
+  .t-categories .erd-head { background: var(--violet-soft); color: var(--violet); }
+  .t-budgets .erd-head { background: var(--amber-soft); color: #92400E; }
+  .t-goals .erd-head { background: var(--sky-soft); color: #1D4ED8; }
+  .t-users .erd-head { background: var(--coral-soft); color: var(--coral); }
+
+  /* FLOW DIAGRAM */
+  .flow { display: flex; flex-direction: column; gap: 0; align-items: center; }
+  .flow-row { display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .flow-node {
+    border-radius: 12px; padding: 14px 20px; font-size: 12px; font-weight: 600;
+    text-align: center; min-width: 150px; position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .flow-node.start { background: var(--ink); color: white; border-radius: 99px; min-width: 120px; }
+  .flow-node.end { background: var(--jade); color: white; border-radius: 99px; min-width: 120px; }
+  .flow-node.process { background: white; border: 2px solid var(--border); color: var(--ink); }
+  .flow-node.decision { background: var(--amber-soft); border: 2px solid var(--amber); color: #78350F; transform: rotate(0deg); }
+  .flow-node.sn { background: var(--sky-soft); border: 2px solid #93C5FD; color: #1D4ED8; }
+  .flow-node.sn::before { content: 'ServiceNow'; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; display: block; color: var(--sky); margin-bottom: 3px; opacity: .7; }
+  .flow-node.alert { background: var(--coral-soft); border: 2px solid #FCA5A5; color: #991B1B; }
+  .flow-arrow { text-align: center; color: var(--muted); font-size: 20px; line-height: 1; padding: 6px 0; }
+  .flow-arrow.right { padding: 0 4px; font-size: 20px; }
+  .flow-label { font-size: 10px; color: var(--muted); text-align: center; margin-top: -4px; margin-bottom: 4px; }
+
+  /* ARCHITECTURE */
+  .arch { display: grid; grid-template-columns: 1fr 2px 1fr 2px 1fr; gap: 0; min-width: 700px; }
+  .arch-layer { padding: 20px 16px; }
+  .arch-divider { background: var(--border); }
+  .arch-layer-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
+  .arch-component {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px; font-size: 12px; font-weight: 500; color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .arch-component .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); border-bottom: 2px solid var(--border); }
+  .data-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--surface); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .tag.green { background: var(--jade-soft); color: var(--jade-dark); }
+  .tag.blue { background: var(--sky-soft); color: #1D4ED8; }
+  .tag.purple { background: var(--violet-soft); color: #5B21B6; }
+  .tag.red { background: var(--coral-soft); color: #B91C1C; }
+  .tag.yellow { background: var(--amber-soft); color: #78350F; }
+  .tag.gray { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+  /* SPRINT TIMELINE */
+  .sprint-track { position: relative; padding-left: 32px; }
+  .sprint-track::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .sprint-item { position: relative; margin-bottom: 28px; }
+  .sprint-dot { position: absolute; left: -27px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; }
+  .sprint-item h4 { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .sprint-item p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* PALETTE */
+  .palette { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .swatch { width: 56px; height: 56px; border-radius: 12px; position: relative; cursor: default; }
+  .swatch label { position: absolute; bottom: -18px; left: 0; right: 0; text-align: center; font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+
+  /* SN MODULE BADGE */
+  .sn-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--sky-soft); border: 1px solid #93C5FD; border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #1D4ED8; }
+  .sn-badge::before { content: '⚡'; }
+
+  /* LEGEND */
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* RESPONSIVE ─ hero stats wrap */
+  @media(max-width:600px) {
+    nav { padding: 0 16px; }
+    section { padding: 48px 16px; }
+    .hero { padding: 48px 16px 0; }
+    .hero-stats { flex-wrap: wrap; gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-brand">💰 <span>PFMT</span> Design System</div>
+  <div class="nav-links">
+    <a href="#screens">Screens</a>
+    <a href="#erd">Data Model</a>
+    <a href="#flows">Flows</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#tables">Tables</a>
+    <a href="#sprints">Sprints</a>
+  </div>
+  <span class="nav-badge">ServiceNow</span>
+</nav>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-tag">Personal Finance Money Tracker · ServiceNow PDI</div>
+  <h1>Daily Money Tracker<br><em>Design Blueprint</em></h1>
+  <p class="hero-sub">Complete UI design, entity-relationship model, workflow diagrams, and ServiceNow architecture — ready for Sprint 1 implementation on your PDI.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><label>Custom Tables</label><strong>6</strong></div>
+    <div class="hero-stat"><label>Workflows</label><strong>4</strong></div>
+    <div class="hero-stat"><label>Portal Pages</label><strong>5</strong></div>
+    <div class="hero-stat"><label>Sprint Weeks</label><strong>6</strong></div>
+    <div class="hero-stat"><label>Automation Flows</label><strong>8</strong></div>
+  </div>
+  <!-- invisible spacer so gradient line shows cleanly -->
+  <div style="height:40px;"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 1: COLOR & TYPE SYSTEM                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="design">
+  <div class="section-label">Design System</div>
+  <h2>Colour & Typography</h2>
+  <p class="section-intro">A financial-grade palette: dark-ink authority for data trust, jade green for growth and income signals, coral red for spend warnings, amber for budget thresholds.</p>
+
+  <div class="grid-2" style="margin-bottom:40px;">
+    <div class="card">
+      <h3>Core Palette</h3>
+      <div class="palette" style="margin-top:16px;">
+        <div style="position:relative;margin-bottom:24px;">
+          <div class="swatch" style="background:#0D1117;"></div>
+          <label style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:#6B7280;font-family:monospace;">#0D1117<br>Ink</label>
+        </div>
+        <div style="position:relative;margin-bottom:24px;">
+          <div class="swatch" style="background:#00C896;"></div>
+          <label style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:#6B7280;font-family:monospace;">#00C896<br>Jade</label>
+        </div>
+        <div style="position:relative;margin-bottom:24px;">
+          <div class="swatch" style="background:#FF5B5B;"></div>
+          <label style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:#6B7280;font-family:monospace;">#FF5B5B<br>Coral</label>
+        </div>
+        <div style="position:relative;margin-bottom:24px;">
+          <div class="swatch" style="background:#F59E0B;"></div>
+          <label style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:#6B7280;font-family:monospace;">#F59E0B<br>Amber</label>
+        </div>
+        <div style="position:relative;margin-bottom:24px;">
+          <div class="swatch" style="background:#3B82F6;"></div>
+          <label style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:#6B7280;font-family:monospace;">#3B82F6<br>Sky</label>
+        </div>
+        <div style="position:relative;margin-bottom:24px;">
+          <div class="swatch" style="background:#F7F9FC;border:1px solid #E2E8F0;"></div>
+          <label style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:#6B7280;font-family:monospace;">#F7F9FC<br>Surface</label>
+        </div>
+      </div>
+      <div style="height:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h3>Type Scale</h3>
+      <div style="margin-top:16px; display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1.1;">Dashboard Balance</div>
+          <div style="font-size:11px;color:#6B7280;font-family:monospace;">Space Grotesk 700 · Display Headings</div>
+        </div>
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;">Section Title & Cards</div>
+          <div style="font-size:11px;color:#6B7280;font-family:monospace;">Space Grotesk 600 · Section Headers</div>
+        </div>
+        <div>
+          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:400;color:#2D3748;">Transaction descriptions and body copy sit here with generous line-height for scan-readability.</div>
+          <div style="font-size:11px;color:#6B7280;font-family:monospace;">Inter 400 · Body text</div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:#0D1117;">$4,820.50 · SGD · 2025-06-10</div>
+          <div style="font-size:11px;color:#6B7280;font-family:monospace;">JetBrains Mono · Numbers & Codes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 2: SCREEN MOCKUPS                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="screens" style="background:white;">
+  <div class="section-label">UI Mockups</div>
+  <h2>App Screen Designs</h2>
+  <p class="section-intro">Five core screens covering the full daily money management loop — from quick capture through budget tracking and goal progress.</p>
+
+  <div style="display:flex; gap:32px; flex-wrap:wrap; justify-content:center; overflow-x:auto;">
+
+    <!-- SCREEN 1: Dashboard -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="screen-header">
+            <div><div class="screen-greeting">Good morning 👋</div><div class="screen-date">Wednesday, 10 Jun 2026</div></div>
+            <div style="width:36px;height:36px;background:#E6FBF5;border-radius:50%;display:flex;align-items:center;justify-content:center;">🔔</div>
+          </div>
+          <div class="balance-card">
+            <div class="balance-label">Net Balance</div>
+            <div class="balance-amount">$4,820<span style="font-size:18px;">.50</span></div>
+            <div class="balance-row">
+              <div class="balance-sub inc"><label>Income</label><span>+$6,200.00</span></div>
+              <div class="balance-sub exp"><label>Expenses</label><span>-$1,379.50</span></div>
+            </div>
+          </div>
+          <div class="quick-add">
+            <button class="qa-btn income">+ Income</button>
+            <button class="qa-btn expense">− Expense</button>
+            <button class="qa-btn transfer">⇄ Transfer</button>
+          </div>
+          <div class="txn-list">
+            <div class="txn-section-label">Today</div>
+            <div class="txn-item">
+              <div class="txn-icon" style="background:#E6FBF5;">☕</div>
+              <div class="txn-info"><div class="txn-name">Starbucks</div><div class="txn-cat">Food & Drink</div></div>
+              <div class="txn-amount neg">-$6.80</div>
+            </div>
+            <div class="txn-item">
+              <div class="txn-icon" style="background:#EFF6FF;">🚇</div>
+              <div class="txn-info"><div class="txn-name">MRT Top-Up</div><div class="txn-cat">Transport</div></div>
+              <div class="txn-amount neg">-$20.00</div>
+            </div>
+            <div class="txn-item">
+              <div class="txn-icon" style="background:#E6FBF5;">💼</div>
+              <div class="txn-info"><div class="txn-name">Salary Credit</div><div class="txn-cat">Income</div></div>
+              <div class="txn-amount pos">+$6,200.00</div>
+            </div>
+            <div class="txn-item" style="border:none;">
+              <div class="txn-icon" style="background:#F5F3FF;">🛒</div>
+              <div class="txn-info"><div class="txn-name">FairPrice</div><div class="txn-cat">Groceries</div></div>
+              <div class="txn-amount neg">-$84.30</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#6B7280;">Dashboard</div>
+    </div>
+
+    <!-- SCREEN 2: Add Transaction -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <div style="width:32px;height:32px;background:#F7F9FC;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">←</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;">Add Expense</div>
+          </div>
+          <!-- type toggle -->
+          <div style="display:flex;background:#F7F9FC;border-radius:12px;padding:4px;gap:4px;margin-bottom:20px;">
+            <div style="flex:1;background:white;border-radius:9px;padding:8px;text-align:center;font-size:12px;font-weight:700;color:#FF5B5B;box-shadow:0 1px 4px rgba(0,0,0,.08);">Expense</div>
+            <div style="flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;color:#6B7280;">Income</div>
+            <div style="flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;color:#6B7280;">Transfer</div>
+          </div>
+          <!-- amount -->
+          <div style="background:linear-gradient(135deg,#0D1117,#1a2744);border-radius:18px;padding:24px 20px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Amount (SGD)</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:white;">$84.30</div>
+          </div>
+          <!-- fields -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;color:#6B7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Description</div>
+              <div style="font-size:13px;font-weight:500;">FairPrice Supermarket</div>
+            </div>
+            <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;color:#6B7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Category</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13px;font-weight:500;">🛒 Groceries</span><span style="color:#6B7280;font-size:12px;">▼</span></div>
+            </div>
+            <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;color:#6B7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Account</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13px;font-weight:500;">💳 DBS Checking</span><span style="color:#6B7280;font-size:12px;">▼</span></div>
+            </div>
+            <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;color:#6B7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Date</div>
+              <div style="font-size:13px;font-weight:500;">10 Jun 2026</div>
+            </div>
+          </div>
+          <div style="margin-top:16px;background:#FF5B5B;border-radius:12px;padding:14px;text-align:center;font-weight:700;color:white;font-size:14px;">Save Expense</div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#6B7280;">Add Transaction</div>
+    </div>
+
+    <!-- SCREEN 3: Budget -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="screen-header">
+            <div><div class="screen-greeting">Budgets</div><div class="screen-date">June 2026</div></div>
+            <div style="background:#0D1117;color:white;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;">+ New</div>
+          </div>
+          <!-- overall -->
+          <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-radius:14px;padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:12px;font-weight:700;color:#0D1117;">Monthly Spend</div>
+              <div style="font-size:12px;color:#6B7280;">$1,379 / $2,500</div>
+            </div>
+            <div style="background:#E2E8F0;border-radius:99px;height:8px;overflow:hidden;">
+              <div style="background:linear-gradient(90deg,#00C896,#00A37A);width:55%;height:100%;border-radius:99px;"></div>
+            </div>
+            <div style="font-size:10px;color:#00A37A;margin-top:6px;font-weight:600;">55% used · $1,121 remaining</div>
+          </div>
+          <!-- budget items -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="background:white;border:1px solid #E2E8F0;border-radius:12px;padding:14px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span style="font-size:18px;">🍜</span>
+                <div style="flex:1;">
+                  <div style="font-size:12px;font-weight:700;">Food & Drink</div>
+                  <div style="font-size:10px;color:#6B7280;">$380 / $500</div>
+                </div>
+                <div style="font-size:10px;color:#F59E0B;font-weight:700;">76%</div>
+              </div>
+              <div style="background:#E2E8F0;border-radius:99px;height:6px;overflow:hidden;">
+                <div style="background:#F59E0B;width:76%;height:100%;border-radius:99px;"></div>
+              </div>
+            </div>
+            <div style="background:white;border:1px solid #E2E8F0;border-radius:12px;padding:14px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span style="font-size:18px;">🚗</span>
+                <div style="flex:1;">
+                  <div style="font-size:12px;font-weight:700;">Transport</div>
+                  <div style="font-size:10px;color:#6B7280;">$120 / $300</div>
+                </div>
+                <div style="font-size:10px;color:#00A37A;font-weight:700;">40%</div>
+              </div>
+              <div style="background:#E2E8F0;border-radius:99px;height:6px;overflow:hidden;">
+                <div style="background:#00C896;width:40%;height:100%;border-radius:99px;"></div>
+              </div>
+            </div>
+            <div style="background:white;border:1px solid #E2E8F0;border-radius:12px;padding:14px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span style="font-size:18px;">🛍️</span>
+                <div style="flex:1;">
+                  <div style="font-size:12px;font-weight:700;">Shopping</div>
+                  <div style="font-size:10px;color:#FF5B5B;">$510 / $400 ⚠️</div>
+                </div>
+                <div style="font-size:10px;color:#FF5B5B;font-weight:700;">127%</div>
+              </div>
+              <div style="background:#E2E8F0;border-radius:99px;height:6px;overflow:hidden;">
+                <div style="background:#FF5B5B;width:100%;height:100%;border-radius:99px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#6B7280;">Budget Tracker</div>
+    </div>
+
+    <!-- SCREEN 4: Goals -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="screen-header">
+            <div><div class="screen-greeting">Savings Goals</div><div class="screen-date">3 Active Goals</div></div>
+            <div style="background:#00C896;color:white;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;">+ Goal</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="background:linear-gradient(135deg,#0D1117,#1a2744);border-radius:16px;padding:18px;color:white;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
+                <div>
+                  <div style="font-size:18px;margin-bottom:4px;">✈️</div>
+                  <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;">Japan Trip</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;">Target: Dec 2026</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#00C896;">$3,200</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,.4);">of $5,000</div>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,.1);border-radius:99px;height:8px;overflow:hidden;">
+                <div style="background:linear-gradient(90deg,#00C896,#3B82F6);width:64%;height:100%;border-radius:99px;"></div>
+              </div>
+              <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:6px;">64% · $1,800 to go</div>
+            </div>
+            <div style="background:white;border:1px solid #E2E8F0;border-radius:16px;padding:16px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+                <div><div style="font-size:16px;margin-bottom:3px;">🏠</div><div style="font-size:13px;font-weight:700;">House Down Payment</div><div style="font-size:10px;color:#6B7280;margin-top:1px;">Target: Jun 2028</div></div>
+                <div style="text-align:right;"><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:#3B82F6;">$18,500</div><div style="font-size:10px;color:#6B7280;">of $80,000</div></div>
+              </div>
+              <div style="background:#E2E8F0;border-radius:99px;height:6px;overflow:hidden;">
+                <div style="background:#3B82F6;width:23%;height:100%;border-radius:99px;"></div>
+              </div>
+            </div>
+            <div style="background:white;border:1px solid #E2E8F0;border-radius:16px;padding:16px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+                <div><div style="font-size:16px;margin-bottom:3px;">🚨</div><div style="font-size:13px;font-weight:700;">Emergency Fund</div><div style="font-size:10px;color:#6B7280;margin-top:1px;">Target: Dec 2026</div></div>
+                <div style="text-align:right;"><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:#00A37A;">$9,800</div><div style="font-size:10px;color:#6B7280;">of $10,000</div></div>
+              </div>
+              <div style="background:#E2E8F0;border-radius:99px;height:6px;overflow:hidden;">
+                <div style="background:#00C896;width:98%;height:100%;border-radius:99px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#6B7280;">Savings Goals</div>
+    </div>
+
+    <!-- SCREEN 5: Analytics -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="screen-header">
+            <div><div class="screen-greeting">Analytics</div><div class="screen-date">Last 30 days</div></div>
+            <div style="background:#8B5CF6;color:white;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;">Export</div>
+          </div>
+          <!-- bar chart mock -->
+          <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-radius:14px;padding:16px;margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;margin-bottom:12px;">Spend by Category</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span>🍜 Food & Drink</span><span style="font-weight:600;">$380</span></div>
+                <div style="background:#E2E8F0;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#8B5CF6;width:76%;height:100%;border-radius:99px;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span>🛍️ Shopping</span><span style="font-weight:600;color:#FF5B5B;">$510</span></div>
+                <div style="background:#E2E8F0;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#FF5B5B;width:100%;height:100%;border-radius:99px;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span>🏠 Bills</span><span style="font-weight:600;">$289</span></div>
+                <div style="background:#E2E8F0;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#3B82F6;width:58%;height:100%;border-radius:99px;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span>🚗 Transport</span><span style="font-weight:600;">$120</span></div>
+                <div style="background:#E2E8F0;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#00C896;width:24%;height:100%;border-radius:99px;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;"><span>🏥 Health</span><span style="font-weight:600;">$80</span></div>
+                <div style="background:#E2E8F0;border-radius:99px;height:7px;overflow:hidden;"><div style="background:#F59E0B;width:16%;height:100%;border-radius:99px;"></div></div>
+              </div>
+            </div>
+          </div>
+          <!-- KPIs -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="background:#E6FBF5;border-radius:12px;padding:12px;">
+              <div style="font-size:9px;color:#00A37A;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Savings Rate</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:#00A37A;">22.3%</div>
+            </div>
+            <div style="background:#EFF6FF;border-radius:12px;padding:12px;">
+              <div style="font-size:9px;color:#1D4ED8;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Avg. Daily Spend</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:#1D4ED8;">$45.98</div>
+            </div>
+            <div style="background:#FFF0F0;border-radius:12px;padding:12px;">
+              <div style="font-size:9px;color:#B91C1C;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Over Budget</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:#FF5B5B;">1 Cat.</div>
+            </div>
+            <div style="background:#F5F3FF;border-radius:12px;padding:12px;">
+              <div style="font-size:9px;color:#5B21B6;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Transactions</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:#8B5CF6;">47</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#6B7280;">Analytics</div>
+    </div>
+
+  </div><!-- end screen row -->
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 3: ERD                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="erd">
+  <div class="section-label">Data Model</div>
+  <h2>Entity Relationship Diagram</h2>
+  <p class="section-intro">Six custom tables on your ServiceNow PDI, each prefixed <code style="font-family:monospace;background:#F7F9FC;border:1px solid #E2E8F0;padding:2px 6px;border-radius:4px;">x_pfmt_</code>. All reference fields use ServiceNow Reference field type pointing to the sys_id of the related record.</p>
+
+  <div class="diagram-box">
+    <div class="erd-wrap">
+      <div class="erd">
+
+        <!-- USERS -->
+        <div class="erd-table t-users">
+          <div class="erd-head"><span class="tbl-icon">👤</span>x_pfmt_user_profile</div>
+          <div class="erd-row"><span class="pk">PK</span> sys_id <span class="type">GUID</span></div>
+          <div class="erd-row">user_name <span class="type">String(100)</span></div>
+          <div class="erd-row">email <span class="type">Email</span></div>
+          <div class="erd-row">currency_preference <span class="type">String(3)</span></div>
+          <div class="erd-row">monthly_income_target <span class="type">Currency</span></div>
+          <div class="erd-row">created_on <span class="type">Date/Time</span></div>
+        </div>
+
+        <!-- ACCOUNTS -->
+        <div class="erd-table t-accounts">
+          <div class="erd-head"><span class="tbl-icon">🏦</span>x_pfmt_account</div>
+          <div class="erd-row"><span class="pk">PK</span> sys_id <span class="type">GUID</span></div>
+          <div class="erd-row"><span class="fk">FK</span> user_profile → x_pfmt_user_profile <span class="type">Ref</span></div>
+          <div class="erd-row">account_name <span class="type">String(100)</span></div>
+          <div class="erd-row">account_type <span class="type">Choice</span></div>
+          <div class="erd-row">institution_name <span class="type">String(100)</span></div>
+          <div class="erd-row">current_balance <span class="type">Currency</span></div>
+          <div class="erd-row">currency <span class="type">String(3)</span></div>
+          <div class="erd-row">is_active <span class="type">Boolean</span></div>
+        </div>
+
+        <!-- CATEGORIES -->
+        <div class="erd-table t-categories">
+          <div class="erd-head"><span class="tbl-icon">🏷️</span>x_pfmt_category</div>
+          <div class="erd-row"><span class="pk">PK</span> sys_id <span class="type">GUID</span></div>
+          <div class="erd-row"><span class="fk">FK</span> user_profile → x_pfmt_user_profile <span class="type">Ref</span></div>
+          <div class="erd-row">category_name <span class="type">String(80)</span></div>
+          <div class="erd-row">category_type <span class="type">Choice</span></div>
+          <div class="erd-row">icon_emoji <span class="type">String(10)</span></div>
+          <div class="erd-row">color_hex <span class="type">String(7)</span></div>
+          <div class="erd-row">is_system_default <span class="type">Boolean</span></div>
+        </div>
+
+        <!-- TRANSACTIONS (CENTER) -->
+        <div class="erd-table t-transactions" style="order:-1;grid-column:span 1;">
+          <div class="erd-head"><span class="tbl-icon">💳</span>x_pfmt_transaction</div>
+          <div class="erd-row"><span class="pk">PK</span> sys_id <span class="type">GUID</span></div>
+          <div class="erd-row"><span class="fk">FK</span> account → x_pfmt_account <span class="type">Ref</span></div>
+          <div class="erd-row"><span class="fk">FK</span> category → x_pfmt_category <span class="type">Ref</span></div>
+          <div class="erd-row"><span class="fk">FK</span> budget_line → x_pfmt_budget <span class="type">Ref</span></div>
+          <div class="erd-row">transaction_type <span class="type">Choice</span></div>
+          <div class="erd-row">amount <span class="type">Currency</span></div>
+          <div class="erd-row">description <span class="type">String(255)</span></div>
+          <div class="erd-row">transaction_date <span class="type">Date</span></div>
+          <div class="erd-row">is_recurring <span class="type">Boolean</span></div>
+          <div class="erd-row">recurring_frequency <span class="type">Choice</span></div>
+          <div class="erd-row">attachment <span class="type">Attachment</span></div>
+          <div class="erd-row">notes <span class="type">String(1000)</span></div>
+          <div class="erd-row">state <span class="type">Choice</span></div>
+        </div>
+
+        <!-- BUDGETS -->
+        <div class="erd-table t-budgets">
+          <div class="erd-head"><span class="tbl-icon">📊</span>x_pfmt_budget</div>
+          <div class="erd-row"><span class="pk">PK</span> sys_id <span class="type">GUID</span></div>
+          <div class="erd-row"><span class="fk">FK</span> user_profile → x_pfmt_user_profile <span class="type">Ref</span></div>
+          <div class="erd-row"><span class="fk">FK</span> category → x_pfmt_category <span class="type">Ref</span></div>
+          <div class="erd-row">budget_name <span class="type">String(100)</span></div>
+          <div class="erd-row">period_type <span class="type">Choice</span></div>
+          <div class="erd-row">budget_amount <span class="type">Currency</span></div>
+          <div class="erd-row">spent_amount <span class="type">Currency</span></div>
+          <div class="erd-row">remaining_amount <span class="type">Currency</span></div>
+          <div class="erd-row">alert_threshold_pct <span class="type">Integer</span></div>
+          <div class="erd-row">period_start <span class="type">Date</span></div>
+          <div class="erd-row">period_end <span class="type">Date</span></div>
+          <div class="erd-row">rollover_enabled <span class="type">Boolean</span></div>
+        </div>
+
+        <!-- GOALS -->
+        <div class="erd-table t-goals">
+          <div class="erd-head"><span class="tbl-icon">🎯</span>x_pfmt_savings_goal</div>
+          <div class="erd-row"><span class="pk">PK</span> sys_id <span class="type">GUID</span></div>
+          <div class="erd-row"><span class="fk">FK</span> account → x_pfmt_account <span class="type">Ref</span></div>
+          <div class="erd-row"><span class="fk">FK</span> user_profile → x_pfmt_user_profile <span class="type">Ref</span></div>
+          <div class="erd-row">goal_name <span class="type">String(100)</span></div>
+          <div class="erd-row">target_amount <span class="type">Currency</span></div>
+          <div class="erd-row">current_amount <span class="type">Currency</span></div>
+          <div class="erd-row">target_date <span class="type">Date</span></div>
+          <div class="erd-row">monthly_contribution <span class="type">Currency</span></div>
+          <div class="erd-row">goal_status <span class="type">Choice</span></div>
+          <div class="erd-row">icon_emoji <span class="type">String(10)</span></div>
+        </div>
+
+      </div><!-- erd -->
+
+      <!-- relation lines legend -->
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#3B82F6;"></div>FK = Reference field (many-to-one)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#F59E0B;"></div>PK = sys_id (auto-generated GUID)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#00C896;"></div>x_pfmt_ = Custom scoped app prefix</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FF5B5B;"></div>Choice fields use sys_choice_list</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 4: WORKFLOW FLOWS                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="flows" style="background:white;">
+  <div class="section-label">Flow Designer</div>
+  <h2>Automation Workflow Diagrams</h2>
+  <p class="section-intro">Four core flows built in ServiceNow Flow Designer. Each trigger maps to a real table event or scheduled job in your PDI scoped app.</p>
+
+  <div class="grid-2">
+
+    <!-- FLOW 1: Add Transaction -->
+    <div class="diagram-box">
+      <div class="diagram-title">Flow 1 — Add Transaction</div>
+      <div class="diagram-subtitle">Trigger: Record Created on x_pfmt_transaction</div>
+      <div class="flow">
+        <div class="flow-node start">Record Created</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Validate Amount > 0<br>Check account is active</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node decision">Is Expense?</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-row">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">YES</div>
+            <div class="flow-node sn">Debit Account Balance<br>(GlideRecord update)</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node sn">Add Spend to Budget.spent_amount<br>(Business Rule)</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node decision">Budget &gt; 80%?</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node alert">Send Budget Alert<br>Email + In-App</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">NO (Income)</div>
+            <div class="flow-node sn">Credit Account Balance<br>(GlideRecord update)</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node sn">Check Savings Goals<br>Contribution available?</div>
+          </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node end">Transaction Saved ✓</div>
+      </div>
+    </div>
+
+    <!-- FLOW 2: Budget Alert -->
+    <div class="diagram-box">
+      <div class="diagram-title">Flow 2 — Monthly Budget Reset</div>
+      <div class="diagram-subtitle">Trigger: Scheduled Job — 1st of every month, 00:01 SGT</div>
+      <div class="flow">
+        <div class="flow-node start">Scheduled Trigger</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Query all x_pfmt_budget<br>where period_type = 'Monthly'</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">For Each Budget Record:<br>Archive spent_amount to history</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node decision">rollover_enabled?</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-row">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">YES</div>
+            <div class="flow-node sn">Carry remaining_amount<br>forward to new budget</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">NO</div>
+            <div class="flow-node sn">Reset spent_amount = 0<br>remaining = budget_amount</div>
+          </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Create new budget period record<br>Update period_start / period_end</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Send Monthly Summary Email<br>(Notification Record)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node end">Reset Complete ✓</div>
+      </div>
+    </div>
+
+    <!-- FLOW 3: Savings Goal -->
+    <div class="diagram-box">
+      <div class="diagram-title">Flow 3 — Savings Goal Progress</div>
+      <div class="diagram-subtitle">Trigger: Record Updated on x_pfmt_savings_goal</div>
+      <div class="flow">
+        <div class="flow-node start">Goal Record Updated</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Recalculate progress %<br>(current_amount / target_amount × 100)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Calculate projected_date<br>(GlideDateTime math)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node decision">current_amount ≥ target_amount?</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-row">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">YES — ACHIEVED</div>
+            <div class="flow-node sn">Update goal_status = 'Achieved'</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node alert" style="background:#E6FBF5;border-color:#b3f0de;color:#00A37A;">🎉 Send Goal Achievement<br>Congratulations Notification</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">NO — IN PROGRESS</div>
+            <div class="flow-node sn">Check if on_track<br>vs target_date</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node decision">Behind schedule?</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node alert">Send nudge notification<br>Suggest contribution</div>
+          </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node end">Goal Updated ✓</div>
+      </div>
+    </div>
+
+    <!-- FLOW 4: Recurring Transaction -->
+    <div class="diagram-box">
+      <div class="diagram-title">Flow 4 — Recurring Transaction</div>
+      <div class="diagram-subtitle">Trigger: Scheduled Job — Daily at 08:00 SGT</div>
+      <div class="flow">
+        <div class="flow-node start">Daily Scheduled Trigger</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node sn">Query x_pfmt_transaction<br>where is_recurring = true<br>AND next_run_date = today</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node decision">Records found?</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-row">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">YES</div>
+            <div class="flow-node sn">For Each: Clone record<br>Set transaction_date = today</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node sn">Trigger Flow 1<br>(Add Transaction)</div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node sn">Update next_run_date<br>based on frequency</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+            <div style="font-size:10px;color:#6B7280;padding:4px 0;">NO</div>
+            <div class="flow-node process" style="background:#F7F9FC;">No action<br>Log audit entry</div>
+          </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node end">Recurring Run Complete ✓</div>
+      </div>
+    </div>
+
+  </div><!-- grid-2 -->
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 5: ARCHITECTURE                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="architecture">
+  <div class="section-label">Platform Architecture</div>
+  <h2>ServiceNow Layer Diagram</h2>
+  <p class="section-intro">How the PFMT app maps to ServiceNow platform layers — from the portal UI down to the data layer.</p>
+
+  <div class="diagram-box" style="overflow-x:auto;">
+    <div style="min-width:720px;">
+      <!-- layer headers -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;margin-bottom:2px;">
+        <div style="background:#0D1117;color:white;padding:14px 20px;border-radius:12px 0 0 0;text-align:center;">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;opacity:.6;margin-bottom:4px;">Presentation Layer</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;">Service Portal + Mobile</div>
+        </div>
+        <div style="background:#1a2744;color:white;padding:14px 20px;text-align:center;">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;opacity:.6;margin-bottom:4px;">Logic Layer</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;">Business Rules + Flows</div>
+        </div>
+        <div style="background:#1D4ED8;color:white;padding:14px 20px;border-radius:0 12px 0 0;text-align:center;">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;opacity:.6;margin-bottom:4px;">Data Layer</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;">Custom Tables + APIs</div>
+        </div>
+      </div>
+
+      <!-- layer body -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;">
+        <!-- presentation -->
+        <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-top:none;border-right:none;padding:20px;border-radius:0 0 0 12px;">
+          <div class="arch-component"><div class="dot" style="background:#00C896;"></div>Dashboard Widget</div>
+          <div class="arch-component"><div class="dot" style="background:#00C896;"></div>Transaction Form Widget</div>
+          <div class="arch-component"><div class="dot" style="background:#00C896;"></div>Budget Tracker Widget</div>
+          <div class="arch-component"><div class="dot" style="background:#00C896;"></div>Goals Progress Widget</div>
+          <div class="arch-component"><div class="dot" style="background:#3B82F6;"></div>Analytics Dashboard Page</div>
+          <div class="arch-component"><div class="dot" style="background:#8B5CF6;"></div>Now Mobile App (ANF)</div>
+        </div>
+        <!-- logic -->
+        <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-top:none;padding:20px;">
+          <div class="arch-component"><div class="dot" style="background:#F59E0B;"></div>BR: After Insert — Balance Update</div>
+          <div class="arch-component"><div class="dot" style="background:#F59E0B;"></div>BR: Before Insert — Validation</div>
+          <div class="arch-component"><div class="dot" style="background:#F59E0B;"></div>CS: Category Auto-suggest</div>
+          <div class="arch-component"><div class="dot" style="background:#F59E0B;"></div>CS: Budget Progress Bar</div>
+          <div class="arch-component"><div class="dot" style="background:#FF5B5B;"></div>Flow: Add Transaction</div>
+          <div class="arch-component"><div class="dot" style="background:#FF5B5B;"></div>Flow: Monthly Budget Reset</div>
+          <div class="arch-component"><div class="dot" style="background:#FF5B5B;"></div>Flow: Goal Progress Check</div>
+          <div class="arch-component"><div class="dot" style="background:#FF5B5B;"></div>Flow: Recurring Transactions</div>
+        </div>
+        <!-- data -->
+        <div style="background:#F7F9FC;border:1px solid #E2E8F0;border-top:none;border-left:none;padding:20px;border-radius:0 0 12px 0;">
+          <div class="arch-component"><div class="dot" style="background:#1D4ED8;"></div>x_pfmt_transaction</div>
+          <div class="arch-component"><div class="dot" style="background:#1D4ED8;"></div>x_pfmt_account</div>
+          <div class="arch-component"><div class="dot" style="background:#1D4ED8;"></div>x_pfmt_category</div>
+          <div class="arch-component"><div class="dot" style="background:#1D4ED8;"></div>x_pfmt_budget</div>
+          <div class="arch-component"><div class="dot" style="background:#1D4ED8;"></div>x_pfmt_savings_goal</div>
+          <div class="arch-component"><div class="dot" style="background:#1D4ED8;"></div>x_pfmt_user_profile</div>
+          <div class="arch-component"><div class="dot" style="background:#8B5CF6;"></div>Scripted REST API (GET/POST)</div>
+          <div class="arch-component"><div class="dot" style="background:#8B5CF6;"></div>ACL — Row-level security</div>
+        </div>
+      </div>
+
+      <!-- integration row -->
+      <div style="background:#0D1117;border-radius:0 0 12px 12px;padding:16px 20px;margin-top:2px;display:flex;gap:24px;flex-wrap:wrap;">
+        <div style="color:white;">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">Cross-cutting</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span class="sn-badge" style="background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.3);color:#93C5FD;">ATF — Automated Tests</span>
+            <span class="sn-badge" style="background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.3);color:#C4B5FD;">Update Sets</span>
+            <span class="sn-badge" style="background:rgba(0,200,150,.15);border-color:rgba(0,200,150,.3);color:#6EE7B7;">Platform Analytics KPIs</span>
+            <span class="sn-badge" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:#FCD34D;">Now Assist</span>
+            <span class="sn-badge" style="background:rgba(255,91,91,.15);border-color:rgba(255,91,91,.3);color:#FCA5A5;">Notifications</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 6: TABLE FIELD SPECS                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="tables" style="background:white;">
+  <div class="section-label">Field Specifications</div>
+  <h2>ServiceNow Table Field Guide</h2>
+  <p class="section-intro">Key field definitions for the two most complex tables. Use these when creating tables in your PDI Studio.</p>
+
+  <div style="margin-bottom:40px;">
+    <h3 style="margin-bottom:16px;">x_pfmt_transaction — Full Field Spec</h3>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Field Name</th>
+            <th>Label</th>
+            <th>Type</th>
+            <th>Mandatory</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="font-family:monospace;font-size:12px;">account</td><td>Account</td><td><span class="tag blue">Reference</span></td><td>✅ Yes</td><td>→ x_pfmt_account.sys_id</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">category</td><td>Category</td><td><span class="tag purple">Reference</span></td><td>✅ Yes</td><td>→ x_pfmt_category.sys_id</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">transaction_type</td><td>Type</td><td><span class="tag yellow">Choice</span></td><td>✅ Yes</td><td>expense / income / transfer</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">amount</td><td>Amount</td><td><span class="tag green">Currency</span></td><td>✅ Yes</td><td>Always positive; direction from type</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">description</td><td>Description</td><td><span class="tag gray">String 255</span></td><td>✅ Yes</td><td>What was purchased</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">transaction_date</td><td>Date</td><td><span class="tag blue">Date</span></td><td>✅ Yes</td><td>Defaults to today via Client Script</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">is_recurring</td><td>Recurring?</td><td><span class="tag gray">Boolean</span></td><td>No</td><td>Shows recurring_frequency field on true</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">recurring_frequency</td><td>Frequency</td><td><span class="tag yellow">Choice</span></td><td>No</td><td>daily / weekly / monthly</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">next_run_date</td><td>Next Run</td><td><span class="tag blue">Date</span></td><td>No</td><td>Set by Flow 4 after each run</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">state</td><td>Status</td><td><span class="tag yellow">Choice</span></td><td>✅ Yes</td><td>1=Draft, 2=Confirmed, 3=Voided</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">attachment</td><td>Receipt</td><td><span class="tag gray">Attachment</span></td><td>No</td><td>Photo receipt upload</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">notes</td><td>Notes</td><td><span class="tag gray">String 1000</span></td><td>No</td><td>Free-text memo field</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <h3 style="margin-bottom:16px;">x_pfmt_budget — Full Field Spec</h3>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Field Name</th>
+            <th>Label</th>
+            <th>Type</th>
+            <th>Mandatory</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="font-family:monospace;font-size:12px;">category</td><td>Category</td><td><span class="tag purple">Reference</span></td><td>✅ Yes</td><td>One budget per category per period</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">budget_amount</td><td>Budget Limit</td><td><span class="tag green">Currency</span></td><td>✅ Yes</td><td>Max spend for period</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">spent_amount</td><td>Spent</td><td><span class="tag green">Currency</span></td><td>Calculated</td><td>Updated by BR on transaction insert</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">remaining_amount</td><td>Remaining</td><td><span class="tag green">Currency</span></td><td>Calculated</td><td>budget_amount − spent_amount</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">alert_threshold_pct</td><td>Alert at %</td><td><span class="tag gray">Integer</span></td><td>No</td><td>Default 80. Triggers notification</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">period_type</td><td>Period</td><td><span class="tag yellow">Choice</span></td><td>✅ Yes</td><td>weekly / monthly / yearly</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">period_start</td><td>Start Date</td><td><span class="tag blue">Date</span></td><td>✅ Yes</td><td>Set by Flow 2 on reset</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">period_end</td><td>End Date</td><td><span class="tag blue">Date</span></td><td>✅ Yes</td><td>Set by Flow 2 on reset</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">rollover_enabled</td><td>Rollover?</td><td><span class="tag gray">Boolean</span></td><td>No</td><td>Carry unspent amount forward</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION 7: SPRINT PLAN                                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="sprints">
+  <div class="section-label">Implementation Plan</div>
+  <h2>3-Sprint Build Roadmap</h2>
+  <p class="section-intro">Six weeks of focused PDI work, from data model to portal UI to automation flows. Each sprint delivers a testable, usable milestone.</p>
+
+  <div class="grid-2">
+    <div>
+      <div class="sprint-track">
+
+        <div class="sprint-item">
+          <div class="sprint-dot" style="background:#00C896;"></div>
+          <div class="card jade">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span class="tag green">Sprint 1 · Weeks 1–2</span>
+              <span style="font-size:11px;color:#00A37A;font-weight:700;">Foundation</span>
+            </div>
+            <h4 style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:10px;">Data Model & Scoped App</h4>
+            <ul style="font-size:13px;color:#2D3748;padding-left:16px;line-height:2;">
+              <li>Create scoped app <code style="font-family:monospace;font-size:11px;background:white;border:1px solid #b3f0de;padding:1px 5px;border-radius:4px;">x_pfmt</code> in Studio</li>
+              <li>Build all 6 custom tables with field specs</li>
+              <li>Configure ACLs (user_profile row-level)</li>
+              <li>Seed system-default categories (15 rows)</li>
+              <li>Basic Business Rule: balance update on txn insert</li>
+              <li>ATF test: create account + transaction</li>
+            </ul>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid #b3f0de;font-size:11px;color:#00A37A;font-weight:600;">✅ Deliverable: Working data layer on PDI</div>
+          </div>
+        </div>
+
+        <div class="sprint-item">
+          <div class="sprint-dot" style="background:#3B82F6;"></div>
+          <div class="card sky">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span class="tag blue">Sprint 2 · Weeks 3–4</span>
+              <span style="font-size:11px;color:#1D4ED8;font-weight:700;">UI & Automation</span>
+            </div>
+            <h4 style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:10px;">Portal + Flow Designer</h4>
+            <ul style="font-size:13px;color:#2D3748;padding-left:16px;line-height:2;">
+              <li>Service Portal: 5 pages (dashboard, add txn, budgets, goals, analytics)</li>
+              <li>Angular widgets: balance card, transaction list, budget bars</li>
+              <li>Client Scripts: auto-date, category suggest, amount format</li>
+              <li>Flow 1 (Add Transaction) + Flow 4 (Recurring)</li>
+              <li>Notifications: budget alert email template</li>
+              <li>Now Mobile compatible page layout</li>
+            </ul>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid #bfdbfe;font-size:11px;color:#1D4ED8;font-weight:600;">✅ Deliverable: Functional portal with real data</div>
+          </div>
+        </div>
+
+        <div class="sprint-item">
+          <div class="sprint-dot" style="background:#8B5CF6;"></div>
+          <div class="card violet">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span class="tag purple">Sprint 3 · Weeks 5–6</span>
+              <span style="font-size:11px;color:#5B21B6;font-weight:700;">Analytics & Polish</span>
+            </div>
+            <h4 style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:10px;">Analytics, Goals & Handover</h4>
+            <ul style="font-size:13px;color:#2D3748;padding-left:16px;line-height:2;">
+              <li>Platform Analytics KPIs: savings rate, avg daily spend</li>
+              <li>Flow 2 (Monthly Reset) + Flow 3 (Goal Progress)</li>
+              <li>Scripted REST API for external data import</li>
+              <li>Now Assist prompt integration (spend analysis)</li>
+              <li>Full ATF test suite across all flows</li>
+              <li>Export Update Set for backup</li>
+            </ul>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid #ddd6fe;font-size:11px;color:#5B21B6;font-weight:600;">✅ Deliverable: Production-ready PFMT app</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- QUICK REF -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div class="card dark">
+        <h3 style="color:white;margin-bottom:16px;">ServiceNow Module Mapping</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">Custom Tables</span>
+            <span class="sn-badge">Studio</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">Balance Update Logic</span>
+            <span class="sn-badge">Business Rules</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">Form Interactivity</span>
+            <span class="sn-badge">Client Scripts</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">Automation Flows</span>
+            <span class="sn-badge">Flow Designer</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">Portal UI Widgets</span>
+            <span class="sn-badge">Service Portal</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">Row-level Security</span>
+            <span class="sn-badge">ACL Manager</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">KPIs & Charts</span>
+            <span class="sn-badge">Platform Analytics</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
+            <span style="font-size:13px;color:rgba(255,255,255,.7);">External Integration</span>
+            <span class="sn-badge">Scripted REST API</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card amber">
+        <h3 style="margin-bottom:14px;">⚠️ PDI Build Reminders</h3>
+        <ul style="font-size:13px;color:#78350F;padding-left:16px;line-height:2.1;">
+          <li>Always scope your app — never build in Global</li>
+          <li>Use <code style="font-family:monospace;font-size:11px;">x_pfmt_</code> prefix on all table/field names</li>
+          <li>Test Business Rules on <em>After</em> insert, not Before, for balance updates</li>
+          <li>Use <code style="font-family:monospace;font-size:11px;">GlideAggregate</code> for spent_amount SUM queries</li>
+          <li>Export Update Set after every Sprint milestone</li>
+          <li>Enable ATF in PDI settings before Sprint 1</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="background:var(--ink);color:rgba(255,255,255,.4);padding:32px 40px;font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <span>💰 PFMT Daily Money Tracker — ServiceNow Design Blueprint</span>
+  <span>Built for PDI implementation · June 2026</span>
+</footer>
+
+</body>
+</html>

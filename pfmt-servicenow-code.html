@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFMT — ServiceNow Implementation Code</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --ink:#0D1117; --ink2:#1C2333; --ink3:#161B22;
+  --muted:#6B7280; --border:#30363D; --surface:#0D1117;
+  --surface2:#161B22; --surface3:#21262D;
+  --jade:#00C896; --jade-d:#00A37A; --jade-s:rgba(0,200,150,.1);
+  --coral:#FF5B5B; --coral-s:rgba(255,91,91,.1);
+  --amber:#F59E0B; --amber-s:rgba(245,158,11,.1);
+  --sky:#3B82F6; --sky-s:rgba(59,130,246,.1);
+  --violet:#8B5CF6; --violet-s:rgba(139,92,246,.1);
+  --white:#fff;
+  --ff:'Inter',sans-serif; --fd:'Space Grotesk',sans-serif; --fm:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--ff);background:var(--surface);color:#E6EDF3;line-height:1.6;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 40px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+.nav-brand{font-family:var(--fd);font-size:15px;font-weight:700;color:#E6EDF3;display:flex;align-items:center;gap:8px;}
+.nav-brand .accent{color:var(--jade);}
+.nav-links{display:flex;gap:4px;}
+.nav-link{font-size:12px;font-weight:500;color:#8B949E;text-decoration:none;padding:5px 12px;border-radius:6px;transition:all .15s;border:none;background:none;cursor:pointer;}
+.nav-link:hover,.nav-link.active{background:var(--surface3);color:#E6EDF3;}
+.badge{background:var(--jade);color:var(--ink);font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.5px;}
+
+/* LAYOUT */
+.shell{display:flex;min-height:calc(100vh - 56px);}
+.sidebar{width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;}
+.sb-section{padding:16px 16px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#484F58;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:12px;font-weight:500;color:#8B949E;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;border-left:2px solid transparent;}
+.sb-item:hover{color:#E6EDF3;background:var(--surface3);}
+.sb-item.active{color:var(--jade);background:rgba(0,200,150,.08);border-left-color:var(--jade);}
+.sb-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+.main{flex:1;padding:36px 40px;max-width:100%;overflow-x:hidden;}
+
+/* SECTION */
+.section{display:none;}
+.section.active{display:block;}
+.section-label{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--jade);margin-bottom:10px;}
+h1{font-family:var(--fd);font-size:28px;font-weight:700;color:#E6EDF3;margin-bottom:8px;letter-spacing:-.5px;}
+h2{font-family:var(--fd);font-size:22px;font-weight:700;color:#E6EDF3;margin-bottom:8px;letter-spacing:-.3px;}
+h3{font-family:var(--fd);font-size:16px;font-weight:700;color:#E6EDF3;margin-bottom:10px;}
+.lead{font-size:14px;color:#8B949E;line-height:1.7;margin-bottom:28px;max-width:640px;}
+
+/* CODE BLOCK */
+.code-wrap{position:relative;margin-bottom:28px;}
+.code-header{background:var(--surface3);border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;}
+.code-header-left{display:flex;align-items:center;gap:10px;}
+.code-file{font-family:var(--fm);font-size:12px;color:#8B949E;}
+.code-type{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:5px;}
+.ct-br{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.ct-cs{background:rgba(59,130,246,.15);color:#7EB8FF;border:1px solid rgba(59,130,246,.3);}
+.ct-gr{background:rgba(0,200,150,.15);color:var(--jade);border:1px solid rgba(0,200,150,.3);}
+.ct-fd{background:rgba(139,92,246,.15);color:#C4B5FD;border:1px solid rgba(139,92,246,.3);}
+.ct-api{background:rgba(255,91,91,.15);color:#FCA5A5;border:1px solid rgba(255,91,91,.3);}
+.ct-sql{background:rgba(248,113,113,.15);color:#FCA5A5;border:1px solid rgba(248,113,113,.3);}
+.copy-btn{background:var(--surface3);border:1px solid var(--border);color:#8B949E;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--ff);}
+.copy-btn:hover{background:#21262D;color:#E6EDF3;border-color:#484F58;}
+.copy-btn.copied{background:var(--jade-s);color:var(--jade);border-color:var(--jade-d);}
+pre{background:var(--ink3);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:20px 24px;overflow-x:auto;font-family:var(--fm);font-size:12.5px;line-height:1.75;color:#E6EDF3;}
+pre code{font-family:inherit;}
+
+/* Syntax highlight */
+.kw{color:#FF7B72;}         /* keywords */
+.fn{color:#D2A8FF;}         /* functions */
+.str{color:#A5D6FF;}        /* strings */
+.num{color:#79C0FF;}        /* numbers */
+.cm{color:#8B949E;font-style:italic;} /* comments */
+.var{color:#FFA657;}        /* variables */
+.prop{color:#7EE787;}       /* properties */
+.op{color:#FF7B72;}         /* operators */
+.cls{color:#F0883E;}        /* class names */
+
+/* INFO CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:28px;}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+.card-icon{font-size:24px;margin-bottom:10px;}
+.card h4{font-family:var(--fd);font-size:14px;font-weight:700;color:#E6EDF3;margin-bottom:6px;}
+.card p{font-size:12px;color:#8B949E;line-height:1.6;}
+.card.jade{border-color:rgba(0,200,150,.3);background:rgba(0,200,150,.05);}
+.card.sky{border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.05);}
+.card.amber{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.05);}
+.card.violet{border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.05);}
+.card.coral{border-color:rgba(255,91,91,.3);background:rgba(255,91,91,.05);}
+
+/* STEP LIST */
+.steps{counter-reset:step;margin-bottom:28px;}
+.step{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);}
+.step:last-child{border-bottom:none;}
+.step-num{width:28px;height:28px;border-radius:8px;background:var(--jade-s);border:1px solid rgba(0,200,150,.3);color:var(--jade);font-family:var(--fm);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.step-body h4{font-size:13px;font-weight:700;color:#E6EDF3;margin-bottom:4px;}
+.step-body p{font-size:12px;color:#8B949E;line-height:1.6;}
+.step-body code{font-family:var(--fm);font-size:11px;background:var(--surface3);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--jade);}
+
+/* TABLE */
+.ref-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:24px;}
+.ref-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#484F58;border-bottom:1px solid var(--border);}
+.ref-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;color:#8B949E;}
+.ref-table td:first-child{font-family:var(--fm);color:var(--jade);font-size:11px;}
+.ref-table tr:hover td{background:var(--surface2);}
+.tag{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;}
+.t-g{background:var(--jade-s);color:var(--jade);border:1px solid rgba(0,200,150,.3);}
+.t-b{background:var(--sky-s);color:#7EB8FF;border:1px solid rgba(59,130,246,.3);}
+.t-y{background:var(--amber-s);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.t-r{background:var(--coral-s);color:#FCA5A5;border:1px solid rgba(255,91,91,.3);}
+.t-v{background:var(--violet-s);color:#C4B5FD;border:1px solid rgba(139,92,246,.3);}
+
+/* alert */
+.alert{border-radius:10px;padding:14px 18px;font-size:12px;line-height:1.7;margin-bottom:20px;display:flex;gap:10px;}
+.alert-jade{background:var(--jade-s);border:1px solid rgba(0,200,150,.3);color:#7EE7C0;}
+.alert-amber{background:var(--amber-s);border:1px solid rgba(245,158,11,.3);color:#FCD34D;}
+.alert-sky{background:var(--sky-s);border:1px solid rgba(59,130,246,.3);color:#93C5FD;}
+
+@media(max-width:800px){.sidebar{display:none;}.main{padding:20px 16px;}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">💰 PFMT <span class="accent">·</span> ServiceNow Code</div>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="showSection('setup',this)">Setup</button>
+    <button class="nav-link" onclick="showSection('business-rules',this)">Business Rules</button>
+    <button class="nav-link" onclick="showSection('client-scripts',this)">Client Scripts</button>
+    <button class="nav-link" onclick="showSection('glide',this)">GlideRecord</button>
+    <button class="nav-link" onclick="showSection('flow',this)">Flow Actions</button>
+    <button class="nav-link" onclick="showSection('rest',this)">REST API</button>
+    <button class="nav-link" onclick="showSection('portal',this)">Portal Widget</button>
+  </div>
+  <span class="badge">PDI Ready</span>
+</nav>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-section">Setup</div>
+  <button class="sb-item active" onclick="showSection('setup',this)"><div class="dot" style="background:var(--jade)"></div>App Scaffold</button>
+
+  <div class="sb-section">Server-Side</div>
+  <button class="sb-item" onclick="showSection('business-rules',this)"><div class="dot" style="background:var(--amber)"></div>Business Rules</button>
+  <button class="sb-item" onclick="showSection('glide',this)"><div class="dot" style="background:var(--jade)"></div>GlideRecord Scripts</button>
+
+  <div class="sb-section">Client-Side</div>
+  <button class="sb-item" onclick="showSection('client-scripts',this)"><div class="dot" style="background:var(--sky)"></div>Client Scripts</button>
+  <button class="sb-item" onclick="showSection('portal',this)"><div class="dot" style="background:var(--violet)"></div>Portal Widget</button>
+
+  <div class="sb-section">Integration</div>
+  <button class="sb-item" onclick="showSection('flow',this)"><div class="dot" style="background:var(--violet)"></div>Flow Designer</button>
+  <button class="sb-item" onclick="showSection('rest',this)"><div class="dot" style="background:var(--coral)"></div>REST API</button>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: SETUP                              -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section active" id="section-setup">
+  <div class="section-label">Getting Started</div>
+  <h1>App Scaffold & Table Setup</h1>
+  <p class="lead">Everything you need to run in your ServiceNow PDI Studio to create the scoped app, tables, and seed data. Run these in order.</p>
+
+  <div class="cards">
+    <div class="card jade"><div class="card-icon">📦</div><h4>Scoped App</h4><p>Create app with prefix <code style="font-family:monospace;color:var(--jade)">x_pfmt_</code> in Studio. All scripts below belong inside this scope.</p></div>
+    <div class="card sky"><div class="card-icon">🗄️</div><h4>6 Custom Tables</h4><p>user_profile, account, category, transaction, budget, savings_goal. Each extends the base <code style="font-family:monospace;color:var(--jade)">task</code> table where appropriate.</p></div>
+    <div class="card amber"><div class="card-icon">⚡</div><h4>4 Automations</h4><p>Flow Designer flows for transaction processing, budget reset, goal tracking, and recurring transactions.</p></div>
+    <div class="card violet"><div class="card-icon">🌐</div><h4>Service Portal</h4><p>5 portal pages, 6 Angular widgets. Dashboard, transactions, budgets, goals, analytics — all mobile-ready.</p></div>
+  </div>
+
+  <div class="alert alert-amber">
+    <span>⚠️</span>
+    <span><strong>PDI Prerequisite:</strong> Activate the <strong>Flow Designer</strong> and <strong>Service Portal</strong> plugins on your PDI before running any scripts. Navigate to <code style="font-family:monospace">System Definition → Plugins</code> to confirm.</span>
+  </div>
+
+  <h2>Step-by-Step PDI Setup</h2>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Create Scoped Application</h4><p>Studio → <code>Create Application</code> → Name: "Personal Finance Money Tracker" → Scope: <code>x_pfmt</code> → Version: 1.0.0</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Create all 6 tables</h4><p>Studio → Create File → Table. Use exact names: <code>x_pfmt_user_profile</code>, <code>x_pfmt_account</code>, <code>x_pfmt_category</code>, <code>x_pfmt_transaction</code>, <code>x_pfmt_budget</code>, <code>x_pfmt_savings_goal</code></p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Add fields using specs from Design Blueprint</h4><p>For each table, add fields as defined in the Design Blueprint HTML. Pay close attention to field types — use <code>Currency</code> not <code>Decimal</code> for amounts.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Add Business Rules</h4><p>Studio → Create File → Business Rule. Paste each script from the Business Rules tab. Set correct table, when, and conditions.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Add Client Scripts</h4><p>Studio → Create File → Client Script. Paste each script. Set <code>Type</code> to onChange or onLoad as specified.</p></div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><h4>Run seed data script</h4><p>Navigate to <code>Scripts - Background</code> and run the Category Seed Script below to populate default categories.</p></div></div>
+    <div class="step"><div class="step-num">7</div><div class="step-body"><h4>Create Flow Designer flows</h4><p>Flow Designer → New Flow → Paste trigger + action config from the Flow tab. Activate each flow.</p></div></div>
+    <div class="step"><div class="step-num">8</div><div class="step-body"><h4>Deploy Service Portal widget</h4><p>Service Portal → Portal → Widgets → New. Paste HTML/CSS/JS from Portal tab.</p></div></div>
+  </div>
+
+  <!-- Seed Script -->
+  <h3>Category Seed Script</h3>
+  <p class="lead" style="margin-bottom:16px;">Run this in <strong>Scripts - Background</strong> to populate the 13 default categories.</p>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">Scripts - Background</span>
+        <span class="code-type ct-gr">GlideRecord</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// PFMT — Seed Default Categories</span>
+<span class="cm">// Run in: Scripts - Background (Global or scoped as x_pfmt)</span>
+
+<span class="kw">var</span> <span class="var">categories</span> = [
+  { <span class="prop">name</span>: <span class="str">'Food & Drink'</span>,    <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🍜'</span>, <span class="prop">color</span>: <span class="str">#8B5CF6'</span> },
+  { <span class="prop">name</span>: <span class="str">'Transport'</span>,       <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🚇'</span>, <span class="prop">color</span>: <span class="str">'#00C896'</span> },
+  { <span class="prop">name</span>: <span class="str">'Groceries'</span>,       <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🛒'</span>, <span class="prop">color</span>: <span class="str">'#3B82F6'</span> },
+  { <span class="prop">name</span>: <span class="str">'Shopping'</span>,         <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🛍️'</span>, <span class="prop">color</span>: <span class="str">'#FF5B5B'</span> },
+  { <span class="prop">name</span>: <span class="str">'Bills & Utilities'</span>, <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🏠'</span>, <span class="prop">color</span>: <span class="str">'#F59E0B'</span> },
+  { <span class="prop">name</span>: <span class="str">'Health'</span>,           <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🏥'</span>, <span class="prop">color</span>: <span class="str">'#EC4899'</span> },
+  { <span class="prop">name</span>: <span class="str">'Entertainment'</span>,    <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'🎬'</span>, <span class="prop">color</span>: <span class="str">'#F97316'</span> },
+  { <span class="prop">name</span>: <span class="str">'Education'</span>,        <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'📚'</span>, <span class="prop">color</span>: <span class="str">'#6366F1'</span> },
+  { <span class="prop">name</span>: <span class="str">'Travel'</span>,           <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'✈️'</span>, <span class="prop">color</span>: <span class="str">'#14B8A6'</span> },
+  { <span class="prop">name</span>: <span class="str">'Salary'</span>,           <span class="prop">type</span>: <span class="str">'income'</span>,  <span class="prop">icon</span>: <span class="str">'💼'</span>, <span class="prop">color</span>: <span class="str">'#00C896'</span> },
+  { <span class="prop">name</span>: <span class="str">'Freelance'</span>,        <span class="prop">type</span>: <span class="str">'income'</span>,  <span class="prop">icon</span>: <span class="str">'💻'</span>, <span class="prop">color</span>: <span class="str">'#3B82F6'</span> },
+  { <span class="prop">name</span>: <span class="str">'Investment'</span>,       <span class="prop">type</span>: <span class="str">'income'</span>,  <span class="prop">icon</span>: <span class="str">'📈'</span>, <span class="prop">color</span>: <span class="str">'#8B5CF6'</span> },
+  { <span class="prop">name</span>: <span class="str">'Other'</span>,            <span class="prop">type</span>: <span class="str">'expense'</span>, <span class="prop">icon</span>: <span class="str">'💰'</span>, <span class="prop">color</span>: <span class="str">'#6B7280'</span> }
+];
+
+<span class="var">categories</span>.<span class="fn">forEach</span>(<span class="kw">function</span>(<span class="var">cat</span>) {
+  <span class="kw">var</span> <span class="var">gr</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_category'</span>);
+  <span class="var">gr</span>.<span class="fn">initialize</span>();
+  <span class="var">gr</span>.<span class="prop">category_name</span>    = <span class="var">cat</span>.<span class="prop">name</span>;
+  <span class="var">gr</span>.<span class="prop">category_type</span>    = <span class="var">cat</span>.<span class="prop">type</span>;
+  <span class="var">gr</span>.<span class="prop">icon_emoji</span>        = <span class="var">cat</span>.<span class="prop">icon</span>;
+  <span class="var">gr</span>.<span class="prop">color_hex</span>         = <span class="var">cat</span>.<span class="prop">color</span>;
+  <span class="var">gr</span>.<span class="prop">is_system_default</span> = <span class="kw">true</span>;
+  <span class="var">gr</span>.<span class="fn">insert</span>();
+  <span class="fn">gs.info</span>(<span class="str">'Created category: '</span> + <span class="var">cat</span>.<span class="prop">name</span>);
+});
+
+<span class="fn">gs.info</span>(<span class="str">'PFMT: '</span> + <span class="var">categories</span>.<span class="prop">length</span> + <span class="str">' categories seeded successfully.'</span>);</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: BUSINESS RULES                     -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section" id="section-business-rules">
+  <div class="section-label">Server-Side Logic</div>
+  <h1>Business Rules</h1>
+  <p class="lead">Four Business Rules covering the core server-side logic. All run on the <code style="font-family:monospace;color:var(--jade)">x_pfmt_transaction</code> table unless noted.</p>
+
+  <!-- BR 1 -->
+  <h2>BR 1 — Update Account Balance</h2>
+  <p class="lead" style="margin-bottom:16px;">Updates the linked account's balance after every confirmed transaction insert or update.</p>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_transaction · After · Insert, Update</span>
+        <span class="code-type ct-br">Business Rule</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// BR Name  : PFMT - Update Account Balance</span>
+<span class="cm">// Table    : x_pfmt_transaction</span>
+<span class="cm">// When     : After · Insert + Update</span>
+<span class="cm">// Condition: current.state == '2' (Confirmed)</span>
+
+(<span class="kw">function</span> <span class="fn">executeRule</span>(<span class="var">current</span>, <span class="var">previous</span>) {
+
+  <span class="kw">var</span> <span class="var">accountGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_account'</span>);
+  <span class="kw">if</span> (!<span class="var">accountGR</span>.<span class="fn">get</span>(<span class="var">current</span>.<span class="prop">account</span>.<span class="fn">toString</span>())) {
+    <span class="fn">gs.error</span>(<span class="str">'PFMT BR1: Account not found - '</span> + <span class="var">current</span>.<span class="prop">account</span>);
+    <span class="kw">return</span>;
+  }
+
+  <span class="kw">var</span> <span class="var">amount</span>   = <span class="fn">parseFloat</span>(<span class="var">current</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">txnType</span>  = <span class="var">current</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>();
+  <span class="kw">var</span> <span class="var">balance</span>  = <span class="fn">parseFloat</span>(<span class="var">accountGR</span>.<span class="prop">current_balance</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">isUpdate</span> = (<span class="var">current</span>.<span class="prop">operation</span>() === <span class="str">'update'</span>);
+
+  <span class="cm">// On update, reverse the previous transaction first</span>
+  <span class="kw">if</span> (<span class="var">isUpdate</span> && <span class="var">previous</span>.<span class="prop">state</span>.<span class="fn">toString</span>() === <span class="str">'2'</span>) {
+    <span class="kw">var</span> <span class="var">prevAmt</span>  = <span class="fn">parseFloat</span>(<span class="var">previous</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+    <span class="kw">var</span> <span class="var">prevType</span> = <span class="var">previous</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>();
+    <span class="var">balance</span> += (<span class="var">prevType</span> === <span class="str">'income'</span>) ? -<span class="var">prevAmt</span> : <span class="var">prevAmt</span>;
+  }
+
+  <span class="cm">// Apply new transaction</span>
+  <span class="kw">if</span> (<span class="var">txnType</span> === <span class="str">'income'</span>) {
+    <span class="var">balance</span> += <span class="var">amount</span>;
+  } <span class="kw">else if</span> (<span class="var">txnType</span> === <span class="str">'expense'</span>) {
+    <span class="var">balance</span> -= <span class="var">amount</span>;
+  }
+  <span class="cm">// Transfer: handled by a separate paired transaction</span>
+
+  <span class="var">accountGR</span>.<span class="prop">current_balance</span> = <span class="var">balance</span>;
+  <span class="var">accountGR</span>.<span class="fn">update</span>();
+
+  <span class="fn">gs.info</span>(<span class="str">'PFMT BR1: Balance updated for account '</span> +
+    <span class="var">accountGR</span>.<span class="prop">account_name</span> + <span class="str">' → '</span> + <span class="var">balance</span>);
+
+})(<span class="var">current</span>, <span class="var">previous</span>);</code></pre>
+  </div>
+
+  <!-- BR 2 -->
+  <h2>BR 2 — Update Budget Spent Amount</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_transaction · After · Insert</span>
+        <span class="code-type ct-br">Business Rule</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// BR Name  : PFMT - Update Budget Spent</span>
+<span class="cm">// Table    : x_pfmt_transaction</span>
+<span class="cm">// When     : After · Insert</span>
+<span class="cm">// Condition: current.transaction_type == 'expense'</span>
+
+(<span class="kw">function</span> <span class="fn">executeRule</span>(<span class="var">current</span>, <span class="var">previous</span>) {
+
+  <span class="kw">var</span> <span class="var">categoryID</span> = <span class="var">current</span>.<span class="prop">category</span>.<span class="fn">toString</span>();
+  <span class="kw">var</span> <span class="var">amount</span>     = <span class="fn">parseFloat</span>(<span class="var">current</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">today</span>      = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+
+  <span class="cm">// Find active budget for this category in the current period</span>
+  <span class="kw">var</span> <span class="var">budgetGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_budget'</span>);
+  <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'category'</span>, <span class="var">categoryID</span>);
+  <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'period_start'</span>, <span class="str">'<='</span>, <span class="var">today</span>);
+  <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'period_end'</span>,   <span class="str">'>='</span>, <span class="var">today</span>);
+  <span class="var">budgetGR</span>.<span class="fn">query</span>();
+
+  <span class="kw">if</span> (!<span class="var">budgetGR</span>.<span class="fn">next</span>()) <span class="kw">return</span>; <span class="cm">// no active budget for this category</span>
+
+  <span class="kw">var</span> <span class="var">currentSpent</span> = <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">spent_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">budgetLimit</span>  = <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">budget_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">newSpent</span>     = <span class="var">currentSpent</span> + <span class="var">amount</span>;
+  <span class="kw">var</span> <span class="var">alertPct</span>     = <span class="fn">parseInt</span>(<span class="var">budgetGR</span>.<span class="prop">alert_threshold_pct</span>.<span class="fn">toString</span>()) || <span class="num">80</span>;
+
+  <span class="var">budgetGR</span>.<span class="prop">spent_amount</span>     = <span class="var">newSpent</span>;
+  <span class="var">budgetGR</span>.<span class="prop">remaining_amount</span> = <span class="var">budgetLimit</span> - <span class="var">newSpent</span>;
+  <span class="var">budgetGR</span>.<span class="fn">update</span>();
+
+  <span class="cm">// Trigger alert notification if threshold crossed</span>
+  <span class="kw">var</span> <span class="var">pct</span> = <span class="var">budgetLimit</span> > <span class="num">0</span> ? (<span class="var">newSpent</span> / <span class="var">budgetLimit</span>) * <span class="num">100</span> : <span class="num">0</span>;
+  <span class="kw">if</span> (<span class="var">pct</span> >= <span class="var">alertPct</span>) {
+    <span class="fn">gs.eventQueue</span>(
+      <span class="str">'x_pfmt.budget.threshold_reached'</span>,
+      <span class="var">budgetGR</span>,
+      <span class="var">pct</span>.<span class="fn">toFixed</span>(<span class="num">1</span>),
+      <span class="var">budgetGR</span>.<span class="prop">category</span>.<span class="prop">category_name</span>
+    );
+  }
+
+})(<span class="var">current</span>, <span class="var">previous</span>);</code></pre>
+  </div>
+
+  <!-- BR 3 -->
+  <h2>BR 3 — Validate Transaction Before Insert</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_transaction · Before · Insert, Update</span>
+        <span class="code-type ct-br">Business Rule</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// BR Name  : PFMT - Validate Transaction</span>
+<span class="cm">// Table    : x_pfmt_transaction</span>
+<span class="cm">// When     : Before · Insert + Update</span>
+
+(<span class="kw">function</span> <span class="fn">executeRule</span>(<span class="var">current</span>, <span class="var">previous</span>) {
+
+  <span class="kw">var</span> <span class="var">amount</span> = <span class="fn">parseFloat</span>(<span class="var">current</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+
+  <span class="cm">// Amount must be positive</span>
+  <span class="kw">if</span> (<span class="var">amount</span> <= <span class="num">0</span>) {
+    <span class="var">current</span>.<span class="fn">setAbortAction</span>(<span class="kw">true</span>);
+    <span class="fn">gs.addErrorMessage</span>(<span class="str">'Transaction amount must be greater than zero.'</span>);
+    <span class="kw">return</span>;
+  }
+
+  <span class="cm">// Account must be active</span>
+  <span class="kw">var</span> <span class="var">acctGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_account'</span>);
+  <span class="kw">if</span> (<span class="var">acctGR</span>.<span class="fn">get</span>(<span class="var">current</span>.<span class="prop">account</span>.<span class="fn">toString</span>())) {
+    <span class="kw">if</span> (!<span class="var">acctGR</span>.<span class="prop">is_active</span>) {
+      <span class="var">current</span>.<span class="fn">setAbortAction</span>(<span class="kw">true</span>);
+      <span class="fn">gs.addErrorMessage</span>(<span class="str">'Cannot post to an inactive account.'</span>);
+      <span class="kw">return</span>;
+    }
+  }
+
+  <span class="cm">// Future dates: warn (allow with state Draft)</span>
+  <span class="kw">var</span> <span class="var">txnDate</span>  = <span class="kw">new</span> <span class="cls">GlideDate</span>();
+  <span class="var">txnDate</span>.<span class="fn">setValue</span>(<span class="var">current</span>.<span class="prop">transaction_date</span>.<span class="fn">toString</span>());
+  <span class="kw">var</span> <span class="var">today</span>    = <span class="kw">new</span> <span class="cls">GlideDate</span>();
+  <span class="kw">if</span> (<span class="var">txnDate</span>.<span class="fn">after</span>(<span class="var">today</span>) && <span class="var">current</span>.<span class="prop">state</span>.<span class="fn">toString</span>() !== <span class="str">'1'</span>) {
+    <span class="var">current</span>.<span class="prop">state</span> = <span class="str">'1'</span>; <span class="cm">// force Draft for future-dated</span>
+    <span class="fn">gs.addInfoMessage</span>(<span class="str">'Future-dated transaction saved as Draft.'</span>);
+  }
+
+  <span class="cm">// Set next_run_date for recurring transactions</span>
+  <span class="kw">if</span> (<span class="var">current</span>.<span class="prop">is_recurring</span> && <span class="var">current</span>.<span class="prop">operation</span>() === <span class="str">'insert'</span>) {
+    <span class="kw">var</span> <span class="var">freq</span>    = <span class="var">current</span>.<span class="prop">recurring_frequency</span>.<span class="fn">toString</span>();
+    <span class="kw">var</span> <span class="var">nextRun</span> = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+    <span class="kw">if</span> (<span class="var">freq</span> === <span class="str">'daily'</span>)   <span class="var">nextRun</span>.<span class="fn">addDaysUTC</span>(<span class="num">1</span>);
+    <span class="kw">if</span> (<span class="var">freq</span> === <span class="str">'weekly'</span>)  <span class="var">nextRun</span>.<span class="fn">addDaysUTC</span>(<span class="num">7</span>);
+    <span class="kw">if</span> (<span class="var">freq</span> === <span class="str">'monthly'</span>) <span class="var">nextRun</span>.<span class="fn">addMonthsUTC</span>(<span class="num">1</span>);
+    <span class="var">current</span>.<span class="prop">next_run_date</span> = <span class="var">nextRun</span>.<span class="fn">getDate</span>();
+  }
+
+})(<span class="var">current</span>, <span class="var">previous</span>);</code></pre>
+  </div>
+
+  <!-- BR 4 — Budget calculated fields -->
+  <h2>BR 4 — Budget Calculated Fields</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_budget · Before · Insert, Update</span>
+        <span class="code-type ct-br">Business Rule</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// BR Name  : PFMT - Budget Calculated Fields</span>
+<span class="cm">// Table    : x_pfmt_budget</span>
+<span class="cm">// When     : Before · Insert + Update</span>
+
+(<span class="kw">function</span> <span class="fn">executeRule</span>(<span class="var">current</span>, <span class="var">previous</span>) {
+
+  <span class="kw">var</span> <span class="var">budgetAmt</span> = <span class="fn">parseFloat</span>(<span class="var">current</span>.<span class="prop">budget_amount</span>.<span class="fn">toString</span>())  || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">spentAmt</span>  = <span class="fn">parseFloat</span>(<span class="var">current</span>.<span class="prop">spent_amount</span>.<span class="fn">toString</span>())   || <span class="num">0</span>;
+
+  <span class="var">current</span>.<span class="prop">remaining_amount</span> = <span class="var">budgetAmt</span> - <span class="var">spentAmt</span>;
+
+  <span class="cm">// Auto-set period dates if not provided</span>
+  <span class="kw">if</span> (!<span class="var">current</span>.<span class="prop">period_start</span>.<span class="fn">nil</span>()) <span class="kw">return</span>;
+
+  <span class="kw">var</span> <span class="var">periodType</span> = <span class="var">current</span>.<span class="prop">period_type</span>.<span class="fn">toString</span>();
+  <span class="kw">var</span> <span class="var">now</span>        = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="kw">var</span> <span class="var">start</span>      = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="kw">var</span> <span class="var">end</span>        = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+
+  <span class="kw">if</span> (<span class="var">periodType</span> === <span class="str">'monthly'</span>) {
+    <span class="cm">// First and last day of current month</span>
+    <span class="kw">var</span> <span class="var">year</span>  = <span class="var">now</span>.<span class="fn">getYearUTC</span>();
+    <span class="kw">var</span> <span class="var">month</span> = <span class="var">now</span>.<span class="fn">getMonthUTC</span>();
+    <span class="var">start</span>.<span class="fn">setValueUTC</span>(<span class="var">year</span> + <span class="str">'-'</span> + <span class="fn">gs.zeroPad</span>(<span class="var">month</span>,<span class="num">2</span>) + <span class="str">'-01 00:00:00'</span>);
+    <span class="var">end</span>.<span class="fn">addMonthsUTC</span>(<span class="num">1</span>); <span class="var">end</span>.<span class="fn">addDaysUTC</span>(-<span class="num">1</span>);
+    <span class="var">end</span>.<span class="fn">setValueUTC</span>(<span class="var">end</span>.<span class="fn">getYearUTC</span>() + <span class="str">'-'</span> + <span class="fn">gs.zeroPad</span>(<span class="var">end</span>.<span class="fn">getMonthUTC</span>(),<span class="num">2</span>) + <span class="str">'-'</span> + <span class="fn">gs.zeroPad</span>(<span class="var">end</span>.<span class="fn">getDayOfMonthUTC</span>(),<span class="num">2</span>) + <span class="str">' 23:59:59'</span>);
+  } <span class="kw">else if</span> (<span class="var">periodType</span> === <span class="str">'weekly'</span>) {
+    <span class="var">end</span>.<span class="fn">addDaysUTC</span>(<span class="num">6</span>);
+  } <span class="kw">else if</span> (<span class="var">periodType</span> === <span class="str">'yearly'</span>) {
+    <span class="var">end</span>.<span class="fn">addYearsUTC</span>(<span class="num">1</span>); <span class="var">end</span>.<span class="fn">addDaysUTC</span>(-<span class="num">1</span>);
+  }
+
+  <span class="var">current</span>.<span class="prop">period_start</span> = <span class="var">start</span>.<span class="fn">getDate</span>();
+  <span class="var">current</span>.<span class="prop">period_end</span>   = <span class="var">end</span>.<span class="fn">getDate</span>();
+
+})(<span class="var">current</span>, <span class="var">previous</span>);</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: CLIENT SCRIPTS                     -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section" id="section-client-scripts">
+  <div class="section-label">Client-Side Logic</div>
+  <h1>Client Scripts</h1>
+  <p class="lead">Three Client Scripts covering UX enhancements: auto-date defaulting, category filtering by type, and live budget progress display on the transaction form.</p>
+
+  <!-- CS 1 -->
+  <h2>CS 1 — Auto-Default Transaction Date</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_transaction · onLoad · Desktop + Mobile</span>
+        <span class="code-type ct-cs">Client Script</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// CS Name : PFMT - Default Transaction Date</span>
+<span class="cm">// Table   : x_pfmt_transaction</span>
+<span class="cm">// Type    : onLoad</span>
+
+<span class="kw">function</span> <span class="fn">onLoad</span>() {
+  <span class="cm">// Only default if this is a new record</span>
+  <span class="kw">if</span> (<span class="fn">g_form</span>.<span class="fn">isNewRecord</span>()) {
+    <span class="kw">var</span> <span class="var">today</span> = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+    <span class="fn">g_form</span>.<span class="fn">setValue</span>(<span class="str">'transaction_date'</span>, <span class="var">today</span>.<span class="fn">getDate</span>().<span class="fn">getByFormat</span>(<span class="str">'yyyy-MM-dd'</span>));
+
+    <span class="cm">// Default state to 'Confirmed' (2) for new records</span>
+    <span class="fn">g_form</span>.<span class="fn">setValue</span>(<span class="str">'state'</span>, <span class="str">'2'</span>);
+
+    <span class="cm">// Hide recurring fields until toggled</span>
+    <span class="fn">g_form</span>.<span class="fn">setDisplay</span>(<span class="str">'recurring_frequency'</span>, <span class="kw">false</span>);
+    <span class="fn">g_form</span>.<span class="fn">setDisplay</span>(<span class="str">'next_run_date'</span>,        <span class="kw">false</span>);
+  }
+}</code></pre>
+  </div>
+
+  <!-- CS 2 -->
+  <h2>CS 2 — Filter Categories by Transaction Type</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_transaction · onChange · transaction_type</span>
+        <span class="code-type ct-cs">Client Script</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// CS Name : PFMT - Filter Categories by Type</span>
+<span class="cm">// Table   : x_pfmt_transaction</span>
+<span class="cm">// Type    : onChange</span>
+<span class="cm">// Field   : transaction_type</span>
+
+<span class="kw">function</span> <span class="fn">onChange</span>(<span class="var">control</span>, <span class="var">oldValue</span>, <span class="var">newValue</span>, <span class="var">isLoading</span>) {
+  <span class="kw">if</span> (<span class="var">isLoading</span> || <span class="var">newValue</span> === <span class="str">''</span>) <span class="kw">return</span>;
+
+  <span class="cm">// Build filter query for category reference field</span>
+  <span class="kw">var</span> <span class="var">filterQuery</span> = <span class="str">''</span>;
+
+  <span class="kw">if</span> (<span class="var">newValue</span> === <span class="str">'expense'</span> || <span class="var">newValue</span> === <span class="str">'transfer'</span>) {
+    <span class="var">filterQuery</span> = <span class="str">'category_type=expense'</span>;
+  } <span class="kw">else if</span> (<span class="var">newValue</span> === <span class="str">'income'</span>) {
+    <span class="var">filterQuery</span> = <span class="str">'category_type=income'</span>;
+  }
+
+  <span class="cm">// Apply filter to category reference field lookup</span>
+  <span class="fn">g_form</span>.<span class="fn">clearValue</span>(<span class="str">'category'</span>);
+  <span class="fn">g_form</span>.<span class="fn">getReference</span>(<span class="str">'category'</span>).<span class="prop">sys_id</span>;
+  <span class="fn">g_form</span>.<span class="fn">setLookupFilter</span>(
+    <span class="str">'category'</span>,
+    <span class="var">filterQuery</span>,
+    <span class="str">'x_pfmt_category'</span>
+  );
+}</code></pre>
+  </div>
+
+  <!-- CS 3 -->
+  <h2>CS 3 — Toggle Recurring Fields + Show Budget Status</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">x_pfmt_transaction · onChange · is_recurring / category</span>
+        <span class="code-type ct-cs">Client Script</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// CS Name : PFMT - Recurring Toggle & Budget Hint</span>
+<span class="cm">// Table   : x_pfmt_transaction</span>
+<span class="cm">// Type    : onChange (apply to both is_recurring and category fields)</span>
+
+<span class="kw">function</span> <span class="fn">onChange</span>(<span class="var">control</span>, <span class="var">oldValue</span>, <span class="var">newValue</span>, <span class="var">isLoading</span>) {
+  <span class="kw">var</span> <span class="var">fieldName</span> = <span class="fn">g_form</span>.<span class="fn">getFieldName</span>(<span class="var">control</span>);
+
+  <span class="cm">// ── Toggle recurring fields ──────────────────</span>
+  <span class="kw">if</span> (<span class="var">fieldName</span> === <span class="str">'is_recurring'</span>) {
+    <span class="kw">var</span> <span class="var">show</span> = (<span class="var">newValue</span> === <span class="str">'true'</span> || <span class="var">newValue</span> === <span class="kw">true</span>);
+    <span class="fn">g_form</span>.<span class="fn">setDisplay</span>(<span class="str">'recurring_frequency'</span>, <span class="var">show</span>);
+    <span class="fn">g_form</span>.<span class="fn">setDisplay</span>(<span class="str">'next_run_date'</span>,        <span class="var">show</span>);
+    <span class="kw">if</span> (<span class="var">show</span>) <span class="fn">g_form</span>.<span class="fn">setMandatory</span>(<span class="str">'recurring_frequency'</span>, <span class="kw">true</span>);
+    <span class="kw">else</span>      <span class="fn">g_form</span>.<span class="fn">setMandatory</span>(<span class="str">'recurring_frequency'</span>, <span class="kw">false</span>);
+  }
+
+  <span class="cm">// ── Show budget hint on category change ──────</span>
+  <span class="kw">if</span> (<span class="var">fieldName</span> === <span class="str">'category'</span> && <span class="var">newValue</span> && !<span class="var">isLoading</span>) {
+    <span class="kw">var</span> <span class="var">ga</span> = <span class="kw">new</span> <span class="cls">GlideAjax</span>(<span class="str">'PFMTBudgetHelper'</span>);
+    <span class="var">ga</span>.<span class="fn">addParam</span>(<span class="str">'sysparm_name'</span>,       <span class="str">'getBudgetStatus'</span>);
+    <span class="var">ga</span>.<span class="fn">addParam</span>(<span class="str">'sysparm_category'</span>,   <span class="var">newValue</span>);
+    <span class="var">ga</span>.<span class="fn">getXMLAnswer</span>(<span class="kw">function</span>(<span class="var">answer</span>) {
+      <span class="kw">if</span> (<span class="var">answer</span>) {
+        <span class="kw">var</span> <span class="var">data</span> = <span class="cls">JSON</span>.<span class="fn">parse</span>(<span class="var">answer</span>);
+        <span class="kw">if</span> (<span class="var">data</span>.<span class="prop">found</span>) {
+          <span class="kw">var</span> <span class="var">pct</span> = (<span class="var">data</span>.<span class="prop">spent</span> / <span class="var">data</span>.<span class="prop">limit</span> * <span class="num">100</span>).<span class="fn">toFixed</span>(<span class="num">1</span>);
+          <span class="kw">var</span> <span class="var">msg</span> = <span class="str">'Budget: $'</span> + <span class="var">data</span>.<span class="prop">spent</span> + <span class="str">' spent of $'</span> + <span class="var">data</span>.<span class="prop">limit</span> + <span class="str">' ('</span> + <span class="var">pct</span> + <span class="str">'%)'</span>;
+          <span class="fn">g_form</span>.<span class="fn">showFieldMsg</span>(<span class="str">'category'</span>, <span class="var">msg</span>,
+            <span class="var">data</span>.<span class="prop">spent</span> > <span class="var">data</span>.<span class="prop">limit</span> ? <span class="str">'error'</span> : <span class="str">'info'</span>);
+        }
+      }
+    });
+  }
+}</code></pre>
+  </div>
+
+  <!-- Script Include: GlideAjax helper -->
+  <h2>Script Include — PFMTBudgetHelper (GlideAjax)</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left">
+        <span class="code-file">Script Include · PFMTBudgetHelper · Client-callable</span>
+        <span class="code-type ct-gr">GlideRecord</span>
+      </div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// Script Include: PFMTBudgetHelper</span>
+<span class="cm">// Accessible from: Client scripts via GlideAjax</span>
+<span class="cm">// Check "Client callable" checkbox in Studio</span>
+
+<span class="kw">var</span> <span class="cls">PFMTBudgetHelper</span> = <span class="cls">Class</span>.<span class="fn">create</span>();
+<span class="cls">PFMTBudgetHelper</span>.<span class="prop">prototype</span> = <span class="cls">Object</span>.<span class="fn">extendsObject</span>(<span class="cls">AbstractAjaxProcessor</span>, {
+
+  <span class="fn">getBudgetStatus</span>: <span class="kw">function</span>() {
+    <span class="kw">var</span> <span class="var">categoryID</span> = <span class="kw">this</span>.<span class="fn">getParameter</span>(<span class="str">'sysparm_category'</span>);
+    <span class="kw">var</span> <span class="var">today</span>      = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+
+    <span class="kw">var</span> <span class="var">budgetGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_budget'</span>);
+    <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'category'</span>,    <span class="var">categoryID</span>);
+    <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'period_start'</span>, <span class="str">'<='</span>, <span class="var">today</span>);
+    <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'period_end'</span>,   <span class="str">'>='</span>, <span class="var">today</span>);
+    <span class="var">budgetGR</span>.<span class="fn">query</span>();
+
+    <span class="kw">if</span> (<span class="var">budgetGR</span>.<span class="fn">next</span>()) {
+      <span class="kw">return</span> <span class="cls">JSON</span>.<span class="fn">stringify</span>({
+        <span class="prop">found</span>  : <span class="kw">true</span>,
+        <span class="prop">spent</span>  : <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">spent_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>,
+        <span class="prop">limit</span>  : <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">budget_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>,
+        <span class="prop">remaining</span>: <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">remaining_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>
+      });
+    }
+    <span class="kw">return</span> <span class="cls">JSON</span>.<span class="fn">stringify</span>({ <span class="prop">found</span>: <span class="kw">false</span> });
+  },
+
+  <span class="prop">type</span>: <span class="str">'PFMTBudgetHelper'</span>
+});</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: GLIDERECORD                        -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section" id="section-glide">
+  <div class="section-label">GlideRecord Patterns</div>
+  <h1>GlideRecord Script Library</h1>
+  <p class="lead">Reusable GlideRecord patterns for all six PFMT tables. Copy these into Script Includes, Background Scripts, or Flow Actions as needed.</p>
+
+  <h2>Query — Get All Transactions for User This Month</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Script Include · PFMTUtils</span><span class="code-type ct-gr">GlideRecord</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">/**
+ * Get all transactions for a user in the current calendar month
+ * @param {string} userProfileSysID - sys_id of x_pfmt_user_profile record
+ * @returns {Array} array of transaction objects
+ */</span>
+<span class="kw">function</span> <span class="fn">getMonthlyTransactions</span>(<span class="var">userProfileSysID</span>) {
+  <span class="kw">var</span> <span class="var">results</span> = [];
+  <span class="kw">var</span> <span class="var">now</span>     = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="kw">var</span> <span class="var">year</span>    = <span class="var">now</span>.<span class="fn">getYearUTC</span>();
+  <span class="kw">var</span> <span class="var">month</span>   = <span class="fn">gs.zeroPad</span>(<span class="var">now</span>.<span class="fn">getMonthUTC</span>(), <span class="num">2</span>);
+
+  <span class="kw">var</span> <span class="var">startGDT</span> = <span class="kw">new</span> <span class="cls">GlideDateTime</span>(<span class="var">year</span> + <span class="str">'-'</span> + <span class="var">month</span> + <span class="str">'-01 00:00:00'</span>);
+  <span class="kw">var</span> <span class="var">endGDT</span>   = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="var">endGDT</span>.<span class="fn">addMonthsUTC</span>(<span class="num">1</span>);
+  <span class="var">endGDT</span>.<span class="fn">addDaysUTC</span>(-<span class="num">1</span>);
+
+  <span class="kw">var</span> <span class="var">gr</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_transaction'</span>);
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'account.user_profile'</span>, <span class="var">userProfileSysID</span>); <span class="cm">// dot-walk</span>
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_date'</span>, <span class="str">'>='</span>, <span class="var">startGDT</span>.<span class="fn">getDate</span>());
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_date'</span>, <span class="str">'<='</span>, <span class="var">endGDT</span>.<span class="fn">getDate</span>());
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'state'</span>, <span class="str">'2'</span>); <span class="cm">// Confirmed only</span>
+  <span class="var">gr</span>.<span class="prop">orderByDesc</span>(<span class="str">'transaction_date'</span>);
+  <span class="var">gr</span>.<span class="fn">query</span>();
+
+  <span class="kw">while</span> (<span class="var">gr</span>.<span class="fn">next</span>()) {
+    <span class="var">results</span>.<span class="fn">push</span>({
+      <span class="prop">sys_id</span>      : <span class="var">gr</span>.<span class="prop">sys_id</span>.<span class="fn">toString</span>(),
+      <span class="prop">description</span>: <span class="var">gr</span>.<span class="prop">description</span>.<span class="fn">toString</span>(),
+      <span class="prop">amount</span>      : <span class="fn">parseFloat</span>(<span class="var">gr</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()),
+      <span class="prop">type</span>        : <span class="var">gr</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>(),
+      <span class="prop">category</span>    : <span class="var">gr</span>.<span class="prop">category</span>.<span class="prop">category_name</span>.<span class="fn">toString</span>(),
+      <span class="prop">account</span>     : <span class="var">gr</span>.<span class="prop">account</span>.<span class="prop">account_name</span>.<span class="fn">toString</span>(),
+      <span class="prop">date</span>        : <span class="var">gr</span>.<span class="prop">transaction_date</span>.<span class="fn">toString</span>()
+    });
+  }
+  <span class="kw">return</span> <span class="var">results</span>;
+}
+
+<span class="cm">// ── Aggregate: Total spent per category this month ──</span>
+<span class="kw">function</span> <span class="fn">getCategorySpendTotals</span>(<span class="var">userProfileSysID</span>) {
+  <span class="kw">var</span> <span class="var">now</span>   = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="kw">var</span> <span class="var">year</span>  = <span class="var">now</span>.<span class="fn">getYearUTC</span>();
+  <span class="kw">var</span> <span class="var">month</span> = <span class="fn">gs.zeroPad</span>(<span class="var">now</span>.<span class="fn">getMonthUTC</span>(), <span class="num">2</span>);
+
+  <span class="kw">var</span> <span class="var">ga</span> = <span class="kw">new</span> <span class="cls">GlideAggregate</span>(<span class="str">'x_pfmt_transaction'</span>);
+  <span class="var">ga</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_type'</span>,        <span class="str">'expense'</span>);
+  <span class="var">ga</span>.<span class="fn">addQuery</span>(<span class="str">'account.user_profile'</span>,    <span class="var">userProfileSysID</span>);
+  <span class="var">ga</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_date'</span>, <span class="str">'>='</span>,  <span class="var">year</span> + <span class="str">'-'</span> + <span class="var">month</span> + <span class="str">'-01'</span>);
+  <span class="var">ga</span>.<span class="fn">addAggregate</span>(<span class="str">'SUM'</span>, <span class="str">'amount'</span>);
+  <span class="var">ga</span>.<span class="fn">groupBy</span>(<span class="str">'category'</span>);
+  <span class="var">ga</span>.<span class="fn">orderByAggregate</span>(<span class="str">'SUM'</span>, <span class="str">'amount'</span>);
+  <span class="var">ga</span>.<span class="fn">query</span>();
+
+  <span class="kw">var</span> <span class="var">totals</span> = {};
+  <span class="kw">while</span> (<span class="var">ga</span>.<span class="fn">next</span>()) {
+    <span class="kw">var</span> <span class="var">catName</span> = <span class="var">ga</span>.<span class="prop">category</span>.<span class="prop">category_name</span>.<span class="fn">toString</span>();
+    <span class="var">totals</span>[<span class="var">catName</span>] = <span class="fn">parseFloat</span>(<span class="var">ga</span>.<span class="fn">getAggregate</span>(<span class="str">'SUM'</span>, <span class="str">'amount'</span>)) || <span class="num">0</span>;
+  }
+  <span class="kw">return</span> <span class="var">totals</span>;
+}</code></pre>
+  </div>
+
+  <h2>Savings Goal Progress Updater</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Flow Action Script · Update Goal Progress</span><span class="code-type ct-gr">GlideRecord</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">/**
+ * Update savings goal progress and check if achieved.
+ * Use inside a Flow Designer Action script step.
+ * inputs.goalSysID  - sys_id of x_pfmt_savings_goal
+ * inputs.addAmount  - amount to add to current_amount
+ */</span>
+(<span class="kw">function</span>() {
+  <span class="kw">var</span> <span class="var">goalID</span>    = inputs.<span class="prop">goalSysID</span>;
+  <span class="kw">var</span> <span class="var">addAmount</span> = <span class="fn">parseFloat</span>(inputs.<span class="prop">addAmount</span>) || <span class="num">0</span>;
+
+  <span class="kw">var</span> <span class="var">goalGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_savings_goal'</span>);
+  <span class="kw">if</span> (!<span class="var">goalGR</span>.<span class="fn">get</span>(<span class="var">goalID</span>)) {
+    outputs.<span class="prop">status</span>  = <span class="str">'error'</span>;
+    outputs.<span class="prop">message</span> = <span class="str">'Goal not found'</span>;
+    <span class="kw">return</span>;
+  }
+
+  <span class="kw">var</span> <span class="var">current</span> = <span class="fn">parseFloat</span>(<span class="var">goalGR</span>.<span class="prop">current_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">target</span>  = <span class="fn">parseFloat</span>(<span class="var">goalGR</span>.<span class="prop">target_amount</span>.<span class="fn">toString</span>())  || <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">updated</span> = <span class="var">current</span> + <span class="var">addAmount</span>;
+
+  <span class="var">goalGR</span>.<span class="prop">current_amount</span> = <span class="var">updated</span>;
+
+  <span class="kw">if</span> (<span class="var">updated</span> >= <span class="var">target</span>) {
+    <span class="var">goalGR</span>.<span class="prop">goal_status</span> = <span class="str">'achieved'</span>;
+    outputs.<span class="prop">achieved</span>   = <span class="kw">true</span>;
+    outputs.<span class="prop">message</span>    = <span class="str">'Goal achieved! 🎉'</span>;
+  } <span class="kw">else</span> {
+    <span class="var">goalGR</span>.<span class="prop">goal_status</span> = <span class="str">'in_progress'</span>;
+    <span class="kw">var</span> <span class="var">pct</span>            = ((<span class="var">updated</span> / <span class="var">target</span>) * <span class="num">100</span>).<span class="fn">toFixed</span>(<span class="num">1</span>);
+    <span class="cm">// Project completion date based on monthly contribution</span>
+    <span class="kw">var</span> <span class="var">contrib</span>     = <span class="fn">parseFloat</span>(<span class="var">goalGR</span>.<span class="prop">monthly_contribution</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+    <span class="kw">var</span> <span class="var">remaining</span>   = <span class="var">target</span> - <span class="var">updated</span>;
+    <span class="kw">var</span> <span class="var">monthsLeft</span>  = <span class="var">contrib</span> > <span class="num">0</span> ? <span class="cls">Math</span>.<span class="fn">ceil</span>(<span class="var">remaining</span> / <span class="var">contrib</span>) : <span class="num">0</span>;
+    outputs.<span class="prop">achieved</span>   = <span class="kw">false</span>;
+    outputs.<span class="prop">message</span>    = <span class="var">pct</span> + <span class="str">'% complete. '</span> +
+                          (<span class="var">monthsLeft</span> > <span class="num">0</span> ? <span class="var">monthsLeft</span> + <span class="str">' months to target.'</span> : <span class="str">''</span>);
+  }
+
+  <span class="var">goalGR</span>.<span class="fn">update</span>();
+  outputs.<span class="prop">status</span>       = <span class="str">'success'</span>;
+  outputs.<span class="prop">progress_pct</span> = <span class="cls">Math</span>.<span class="fn">min</span>((<span class="var">updated</span>/<span class="var">target</span>)*<span class="num">100</span>, <span class="num">100</span>).<span class="fn">toFixed</span>(<span class="num">1</span>);
+})();</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: FLOW DESIGNER                      -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section" id="section-flow">
+  <div class="section-label">Flow Designer</div>
+  <h1>Flow Configuration Scripts</h1>
+  <p class="lead">Script steps and action scripts for the four PFMT Flow Designer flows. Paste these into Script steps within your flows.</p>
+
+  <div class="alert alert-sky">
+    <span>ℹ️</span>
+    <span>In Flow Designer: each script below goes into a <strong>Script</strong> action step. Use <code>inputs</code> and <code>outputs</code> objects to pass data between steps.</span>
+  </div>
+
+  <h2>Flow 2 — Monthly Budget Reset Script</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Flow: Monthly Budget Reset · Script Step</span><span class="code-type ct-fd">Flow Designer</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">/**
+ * Flow 2 — Monthly Budget Reset
+ * Trigger: Scheduled · 1st of month 00:01
+ * This script step: Resets all monthly budgets
+ */</span>
+(<span class="kw">function</span>() {
+  <span class="kw">var</span> <span class="var">resetCount</span>   = <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">rolloverCount</span> = <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">today</span>         = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="kw">var</span> <span class="var">year</span>          = <span class="var">today</span>.<span class="fn">getYearUTC</span>();
+  <span class="kw">var</span> <span class="var">month</span>         = <span class="var">today</span>.<span class="fn">getMonthUTC</span>();
+
+  <span class="cm">// New period dates</span>
+  <span class="kw">var</span> <span class="var">newStart</span> = <span class="var">year</span> + <span class="str">'-'</span> + <span class="fn">gs.zeroPad</span>(<span class="var">month</span>, <span class="num">2</span>) + <span class="str">'-01'</span>;
+  <span class="kw">var</span> <span class="var">nextMonth</span> = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="var">nextMonth</span>.<span class="fn">addMonthsUTC</span>(<span class="num">1</span>);
+  <span class="kw">var</span> <span class="var">newEnd</span>   = <span class="var">nextMonth</span>.<span class="fn">getYearUTC</span>() + <span class="str">'-'</span> +
+                 <span class="fn">gs.zeroPad</span>(<span class="var">nextMonth</span>.<span class="fn">getMonthUTC</span>(), <span class="num">2</span>) + <span class="str">'-01'</span>;
+
+  <span class="kw">var</span> <span class="var">budgetGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_budget'</span>);
+  <span class="var">budgetGR</span>.<span class="fn">addQuery</span>(<span class="str">'period_type'</span>, <span class="str">'monthly'</span>);
+  <span class="var">budgetGR</span>.<span class="fn">query</span>();
+
+  <span class="kw">while</span> (<span class="var">budgetGR</span>.<span class="fn">next</span>()) {
+    <span class="kw">var</span> <span class="var">prevSpent</span>  = <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">spent_amount</span>.<span class="fn">toString</span>())  || <span class="num">0</span>;
+    <span class="kw">var</span> <span class="var">budgetAmt</span>  = <span class="fn">parseFloat</span>(<span class="var">budgetGR</span>.<span class="prop">budget_amount</span>.<span class="fn">toString</span>()) || <span class="num">0</span>;
+    <span class="kw">var</span> <span class="var">rollover</span>   = (<span class="var">budgetGR</span>.<span class="prop">rollover_enabled</span>.<span class="fn">toString</span>() === <span class="str">'true'</span>);
+    <span class="kw">var</span> <span class="var">remaining</span>  = <span class="cls">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="var">budgetAmt</span> - <span class="var">prevSpent</span>);
+
+    <span class="cm">// Create history record (optional - create x_pfmt_budget_history table)</span>
+    <span class="fn">gs.info</span>(<span class="str">'PFMT Flow2: Archiving budget ['</span> + <span class="var">budgetGR</span>.<span class="prop">sys_id</span> +
+      <span class="str">'] spent='</span> + <span class="var">prevSpent</span> + <span class="str">' of '</span> + <span class="var">budgetAmt</span>);
+
+    <span class="cm">// Apply rollover</span>
+    <span class="kw">var</span> <span class="var">newBudgetAmt</span> = <span class="var">rollover</span> ? (<span class="var">budgetAmt</span> + <span class="var">remaining</span>) : <span class="var">budgetAmt</span>;
+
+    <span class="var">budgetGR</span>.<span class="prop">budget_amount</span>   = <span class="var">newBudgetAmt</span>;
+    <span class="var">budgetGR</span>.<span class="prop">spent_amount</span>    = <span class="num">0</span>;
+    <span class="var">budgetGR</span>.<span class="prop">remaining_amount</span> = <span class="var">newBudgetAmt</span>;
+    <span class="var">budgetGR</span>.<span class="prop">period_start</span>    = <span class="var">newStart</span>;
+    <span class="var">budgetGR</span>.<span class="prop">period_end</span>      = <span class="var">newEnd</span>;
+    <span class="var">budgetGR</span>.<span class="fn">update</span>();
+
+    <span class="var">resetCount</span>++;
+    <span class="kw">if</span> (<span class="var">rollover</span>) <span class="var">rolloverCount</span>++;
+  }
+
+  outputs.<span class="prop">budgets_reset</span>    = <span class="var">resetCount</span>;
+  outputs.<span class="prop">rollovers_applied</span> = <span class="var">rolloverCount</span>;
+  outputs.<span class="prop">new_period</span>        = <span class="var">newStart</span> + <span class="str">' to '</span> + <span class="var">newEnd</span>;
+  <span class="fn">gs.info</span>(<span class="str">'PFMT Flow2: Reset '</span> + <span class="var">resetCount</span> + <span class="str">' budgets. '</span> + <span class="var">rolloverCount</span> + <span class="str">' rollovers.'</span>);
+})();</code></pre>
+  </div>
+
+  <h2>Flow 4 — Recurring Transaction Processor</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Flow: Recurring Transactions · Script Step · Daily 08:00</span><span class="code-type ct-fd">Flow Designer</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">/**
+ * Flow 4 — Process Recurring Transactions
+ * Trigger: Scheduled · Daily 08:00 SGT
+ * Clones due recurring transactions and resets next_run_date
+ */</span>
+(<span class="kw">function</span>() {
+  <span class="kw">var</span> <span class="var">processedCount</span> = <span class="num">0</span>;
+  <span class="kw">var</span> <span class="var">today</span>          = <span class="kw">new</span> <span class="cls">GlideDate</span>();
+  <span class="var">today</span>.<span class="fn">setValue</span>(<span class="kw">new</span> <span class="cls">GlideDateTime</span>().<span class="fn">getDate</span>().<span class="fn">getValue</span>());
+
+  <span class="kw">var</span> <span class="var">gr</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_transaction'</span>);
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'is_recurring'</span>, <span class="kw">true</span>);
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'next_run_date'</span>, <span class="str">'<='</span>, <span class="var">today</span>);
+  <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'state'</span>, <span class="str">'2'</span>); <span class="cm">// Confirmed templates only</span>
+  <span class="var">gr</span>.<span class="fn">query</span>();
+
+  <span class="kw">while</span> (<span class="var">gr</span>.<span class="fn">next</span>()) {
+    <span class="cm">// Clone the transaction as a new record</span>
+    <span class="kw">var</span> <span class="var">newTxn</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_transaction'</span>);
+    <span class="var">newTxn</span>.<span class="fn">initialize</span>();
+    <span class="var">newTxn</span>.<span class="prop">account</span>           = <span class="var">gr</span>.<span class="prop">account</span>;
+    <span class="var">newTxn</span>.<span class="prop">category</span>          = <span class="var">gr</span>.<span class="prop">category</span>;
+    <span class="var">newTxn</span>.<span class="prop">transaction_type</span>  = <span class="var">gr</span>.<span class="prop">transaction_type</span>;
+    <span class="var">newTxn</span>.<span class="prop">amount</span>            = <span class="var">gr</span>.<span class="prop">amount</span>;
+    <span class="var">newTxn</span>.<span class="prop">description</span>       = <span class="var">gr</span>.<span class="prop">description</span>;
+    <span class="var">newTxn</span>.<span class="prop">transaction_date</span>  = <span class="var">today</span>;
+    <span class="var">newTxn</span>.<span class="prop">state</span>             = <span class="str">'2'</span>; <span class="cm">// Confirmed</span>
+    <span class="var">newTxn</span>.<span class="prop">is_recurring</span>      = <span class="kw">false</span>; <span class="cm">// clone is a one-off</span>
+    <span class="var">newTxn</span>.<span class="prop">notes</span>             = <span class="str">'Auto-generated from recurring template: '</span> + <span class="var">gr</span>.<span class="prop">sys_id</span>;
+    <span class="var">newTxn</span>.<span class="fn">insert</span>();
+
+    <span class="cm">// Update the template's next_run_date</span>
+    <span class="kw">var</span> <span class="var">freq</span>    = <span class="var">gr</span>.<span class="prop">recurring_frequency</span>.<span class="fn">toString</span>();
+    <span class="kw">var</span> <span class="var">nextRun</span> = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+    <span class="kw">if</span>      (<span class="var">freq</span> === <span class="str">'daily'</span>)   <span class="var">nextRun</span>.<span class="fn">addDaysUTC</span>(<span class="num">1</span>);
+    <span class="kw">else if</span> (<span class="var">freq</span> === <span class="str">'weekly'</span>)  <span class="var">nextRun</span>.<span class="fn">addDaysUTC</span>(<span class="num">7</span>);
+    <span class="kw">else if</span> (<span class="var">freq</span> === <span class="str">'monthly'</span>) <span class="var">nextRun</span>.<span class="fn">addMonthsUTC</span>(<span class="num">1</span>);
+
+    <span class="var">gr</span>.<span class="prop">next_run_date</span> = <span class="var">nextRun</span>.<span class="fn">getDate</span>();
+    <span class="var">gr</span>.<span class="fn">update</span>();
+    <span class="var">processedCount</span>++;
+  }
+
+  outputs.<span class="prop">transactions_created</span> = <span class="var">processedCount</span>;
+  <span class="fn">gs.info</span>(<span class="str">'PFMT Flow4: Processed '</span> + <span class="var">processedCount</span> + <span class="str">' recurring transactions.'</span>);
+})();</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: REST API                           -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section" id="section-rest">
+  <div class="section-label">Integration</div>
+  <h1>Scripted REST API</h1>
+  <p class="lead">A Scripted REST API resource exposing the PFMT data for external consumption — useful for connecting the companion web app or a mobile app to your PDI data.</p>
+
+  <h2>Scripted REST Resource: /pfmt/v1/transactions</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Scripted REST · GET + POST · /api/x_pfmt/pfmt/v1/transactions</span><span class="code-type ct-api">REST API</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="cm">// Scripted REST API Resource</span>
+<span class="cm">// Name     : PFMT API</span>
+<span class="cm">// Base Path: /pfmt/v1</span>
+<span class="cm">// Resource : /transactions</span>
+<span class="cm">// Methods  : GET, POST</span>
+
+(<span class="kw">function</span> <span class="fn">process</span>(<span class="var">request</span>, <span class="var">response</span>) {
+
+  <span class="kw">var</span> <span class="var">method</span> = <span class="var">request</span>.<span class="fn">getMethod</span>();
+
+  <span class="cm">// ── GET /api/x_pfmt/pfmt/v1/transactions ─────</span>
+  <span class="kw">if</span> (<span class="var">method</span> === <span class="str">'GET'</span>) {
+    <span class="kw">var</span> <span class="var">limit</span>  = <span class="fn">parseInt</span>(<span class="var">request</span>.<span class="fn">queryParams</span>.<span class="prop">limit</span>)   || <span class="num">50</span>;
+    <span class="kw">var</span> <span class="var">type</span>   = <span class="var">request</span>.<span class="fn">queryParams</span>.<span class="prop">type</span>    || <span class="str">''</span>;
+    <span class="kw">var</span> <span class="var">month</span>  = <span class="var">request</span>.<span class="fn">queryParams</span>.<span class="prop">month</span>   || <span class="str">''</span>;
+
+    <span class="kw">var</span> <span class="var">gr</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_transaction'</span>);
+    <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'sys_created_by'</span>, <span class="fn">gs.getUserName</span>()); <span class="cm">// RBAC: own records</span>
+    <span class="kw">if</span> (<span class="var">type</span>) <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_type'</span>, <span class="var">type</span>);
+    <span class="kw">if</span> (<span class="var">month</span>) <span class="var">gr</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_date'</span>, <span class="str">'STARTSWITH'</span>, <span class="var">month</span>);
+    <span class="var">gr</span>.<span class="prop">orderByDesc</span>(<span class="str">'transaction_date'</span>);
+    <span class="var">gr</span>.<span class="fn">setLimit</span>(<span class="var">limit</span>);
+    <span class="var">gr</span>.<span class="fn">query</span>();
+
+    <span class="kw">var</span> <span class="var">results</span> = [];
+    <span class="kw">while</span> (<span class="var">gr</span>.<span class="fn">next</span>()) {
+      <span class="var">results</span>.<span class="fn">push</span>({
+        <span class="prop">sys_id</span>      : <span class="var">gr</span>.<span class="prop">sys_id</span>.<span class="fn">toString</span>(),
+        <span class="prop">type</span>        : <span class="var">gr</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>(),
+        <span class="prop">amount</span>      : <span class="fn">parseFloat</span>(<span class="var">gr</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()),
+        <span class="prop">description</span>: <span class="var">gr</span>.<span class="prop">description</span>.<span class="fn">toString</span>(),
+        <span class="prop">category</span>    : <span class="var">gr</span>.<span class="prop">category</span>.<span class="prop">category_name</span>.<span class="fn">toString</span>(),
+        <span class="prop">account</span>     : <span class="var">gr</span>.<span class="prop">account</span>.<span class="prop">account_name</span>.<span class="fn">toString</span>(),
+        <span class="prop">date</span>        : <span class="var">gr</span>.<span class="prop">transaction_date</span>.<span class="fn">toString</span>(),
+        <span class="prop">state</span>       : <span class="var">gr</span>.<span class="prop">state</span>.<span class="prop">getDisplayValue</span>(),
+        <span class="prop">notes</span>       : <span class="var">gr</span>.<span class="prop">notes</span>.<span class="fn">toString</span>()
+      });
+    }
+
+    <span class="var">response</span>.<span class="fn">setStatus</span>(<span class="num">200</span>);
+    <span class="var">response</span>.<span class="fn">setBody</span>({ <span class="prop">result</span>: <span class="var">results</span>, <span class="prop">count</span>: <span class="var">results</span>.<span class="prop">length</span> });
+    <span class="kw">return</span>;
+  }
+
+  <span class="cm">// ── POST /api/x_pfmt/pfmt/v1/transactions ────</span>
+  <span class="kw">if</span> (<span class="var">method</span> === <span class="str">'POST'</span>) {
+    <span class="kw">var</span> <span class="var">body</span> = <span class="var">request</span>.<span class="fn">body</span>.<span class="prop">data</span>;
+
+    <span class="kw">if</span> (!<span class="var">body</span>.<span class="prop">amount</span> || <span class="fn">parseFloat</span>(<span class="var">body</span>.<span class="prop">amount</span>) <= <span class="num">0</span>) {
+      <span class="var">response</span>.<span class="fn">setStatus</span>(<span class="num">400</span>);
+      <span class="var">response</span>.<span class="fn">setBody</span>({ <span class="prop">error</span>: <span class="str">'amount must be > 0'</span> });
+      <span class="kw">return</span>;
+    }
+
+    <span class="kw">var</span> <span class="var">newGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_transaction'</span>);
+    <span class="var">newGR</span>.<span class="fn">initialize</span>();
+    <span class="var">newGR</span>.<span class="prop">transaction_type</span>  = <span class="var">body</span>.<span class="prop">type</span>        || <span class="str">'expense'</span>;
+    <span class="var">newGR</span>.<span class="prop">amount</span>            = <span class="fn">parseFloat</span>(<span class="var">body</span>.<span class="prop">amount</span>);
+    <span class="var">newGR</span>.<span class="prop">description</span>       = <span class="var">body</span>.<span class="prop">description</span> || <span class="str">''</span>;
+    <span class="var">newGR</span>.<span class="prop">transaction_date</span>  = <span class="var">body</span>.<span class="prop">date</span>        ||
+                               <span class="kw">new</span> <span class="cls">GlideDateTime</span>().<span class="fn">getDate</span>().<span class="fn">getValue</span>();
+    <span class="var">newGR</span>.<span class="prop">notes</span>             = <span class="var">body</span>.<span class="prop">notes</span>       || <span class="str">''</span>;
+    <span class="var">newGR</span>.<span class="prop">state</span>             = <span class="str">'2'</span>; <span class="cm">// Confirmed</span>
+
+    <span class="cm">// Resolve account and category by name if provided</span>
+    <span class="kw">if</span> (<span class="var">body</span>.<span class="prop">account_name</span>) {
+      <span class="kw">var</span> <span class="var">acctGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_account'</span>);
+      <span class="var">acctGR</span>.<span class="fn">addQuery</span>(<span class="str">'account_name'</span>, <span class="var">body</span>.<span class="prop">account_name</span>);
+      <span class="var">acctGR</span>.<span class="fn">query</span>();
+      <span class="kw">if</span> (<span class="var">acctGR</span>.<span class="fn">next</span>()) <span class="var">newGR</span>.<span class="prop">account</span> = <span class="var">acctGR</span>.<span class="prop">sys_id</span>;
+    }
+    <span class="kw">if</span> (<span class="var">body</span>.<span class="prop">category_name</span>) {
+      <span class="kw">var</span> <span class="var">catGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_category'</span>);
+      <span class="var">catGR</span>.<span class="fn">addQuery</span>(<span class="str">'category_name'</span>, <span class="var">body</span>.<span class="prop">category_name</span>);
+      <span class="var">catGR</span>.<span class="fn">query</span>();
+      <span class="kw">if</span> (<span class="var">catGR</span>.<span class="fn">next</span>()) <span class="var">newGR</span>.<span class="prop">category</span> = <span class="var">catGR</span>.<span class="prop">sys_id</span>;
+    }
+
+    <span class="kw">var</span> <span class="var">sysID</span> = <span class="var">newGR</span>.<span class="fn">insert</span>();
+    <span class="var">response</span>.<span class="fn">setStatus</span>(<span class="num">201</span>);
+    <span class="var">response</span>.<span class="fn">setBody</span>({ <span class="prop">result</span>: { <span class="prop">sys_id</span>: <span class="var">sysID</span>, <span class="prop">status</span>: <span class="str">'created'</span> }});
+    <span class="kw">return</span>;
+  }
+
+  <span class="var">response</span>.<span class="fn">setStatus</span>(<span class="num">405</span>);
+  <span class="var">response</span>.<span class="fn">setBody</span>({ <span class="prop">error</span>: <span class="str">'Method not allowed'</span> });
+
+})(<span class="var">request</span>, <span class="var">response</span>);</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SECTION: PORTAL WIDGET                      -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section" id="section-portal">
+  <div class="section-label">Service Portal</div>
+  <h1>Dashboard Balance Widget</h1>
+  <p class="lead">The main Service Portal widget — shows the balance hero card and recent transactions. Create in <strong>Service Portal → Widgets → New</strong>.</p>
+
+  <h2>Widget HTML Template</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Widget: PFMT Dashboard · HTML Template</span><span class="code-type ct-api">Service Portal</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code>&lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"pfmt-dashboard"</span>&gt;
+
+  &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"balance-card"</span>&gt;
+    &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"balance-label"</span>&gt;Net Balance&lt;/<span class="prop">div</span>&gt;
+    &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"balance-amount"</span>&gt;
+      {{c.data.currency}} {{c.data.netBalance | number:'1.2-2'}}
+    &lt;/<span class="prop">div</span>&gt;
+    &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"balance-row"</span>&gt;
+      &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"income-sub"</span>&gt;
+        &lt;<span class="prop">span</span> <span class="kw">class</span>=<span class="str">"label"</span>&gt;Income&lt;/<span class="prop">span</span>&gt;
+        &lt;<span class="prop">span</span> <span class="kw">class</span>=<span class="str">"value green"</span>&gt;+{{c.data.totalIncome | number:'1.2-2'}}&lt;/<span class="prop">span</span>&gt;
+      &lt;/<span class="prop">div</span>&gt;
+      &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"expense-sub"</span>&gt;
+        &lt;<span class="prop">span</span> <span class="kw">class</span>=<span class="str">"label"</span>&gt;Expenses&lt;/<span class="prop">span</span>&gt;
+        &lt;<span class="prop">span</span> <span class="kw">class</span>=<span class="str">"value red"</span>&gt;-{{c.data.totalExpenses | number:'1.2-2'}}&lt;/<span class="prop">span</span>&gt;
+      &lt;/<span class="prop">div</span>&gt;
+    &lt;/<span class="prop">div</span>&gt;
+  &lt;/<span class="prop">div</span>&gt;
+
+  &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"quick-actions"</span>&gt;
+    &lt;<span class="prop">button</span> <span class="kw">ng-click</span>=<span class="str">"c.addTransaction('expense')"</span> <span class="kw">class</span>=<span class="str">"btn-expense"</span>&gt;
+      − Expense
+    &lt;/<span class="prop">button</span>&gt;
+    &lt;<span class="prop">button</span> <span class="kw">ng-click</span>=<span class="str">"c.addTransaction('income')"</span> <span class="kw">class</span>=<span class="str">"btn-income"</span>&gt;
+      + Income
+    &lt;/<span class="prop">button</span>&gt;
+  &lt;/<span class="prop">div</span>&gt;
+
+  &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"recent-header"</span>&gt;Recent Transactions&lt;/<span class="prop">div</span>&gt;
+  &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"txn-list"</span>&gt;
+    &lt;<span class="prop">div</span> <span class="kw">ng-repeat</span>=<span class="str">"txn in c.data.transactions"</span> <span class="kw">class</span>=<span class="str">"txn-row"</span>&gt;
+      &lt;<span class="prop">span</span> <span class="kw">class</span>=<span class="str">"txn-icon"</span>&gt;{{txn.icon}}&lt;/<span class="prop">span</span>&gt;
+      &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"txn-info"</span>&gt;
+        &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"txn-desc"</span>&gt;{{txn.description}}&lt;/<span class="prop">div</span>&gt;
+        &lt;<span class="prop">div</span> <span class="kw">class</span>=<span class="str">"txn-meta"</span>&gt;{{txn.category}} · {{txn.date}}&lt;/<span class="prop">div</span>&gt;
+      &lt;/<span class="prop">div</span>&gt;
+      &lt;<span class="prop">div</span> <span class="kw">ng-class</span>=<span class="str">"txn.type == 'income' ? 'amt-pos' : 'amt-neg'"</span>&gt;
+        {{txn.type == 'income' ? '+' : '-'}}{{txn.amount | number:'1.2-2'}}
+      &lt;/<span class="prop">div</span>&gt;
+    &lt;/<span class="prop">div</span>&gt;
+    &lt;<span class="prop">div</span> <span class="kw">ng-if</span>=<span class="str">"c.data.transactions.length === 0"</span> <span class="kw">class</span>=<span class="str">"empty"</span>&gt;
+      No transactions yet. Add your first one!
+    &lt;/<span class="prop">div</span>&gt;
+  &lt;/<span class="prop">div</span>&gt;
+
+&lt;/<span class="prop">div</span>&gt;</code></pre>
+  </div>
+
+  <h2>Widget Client Controller (AngularJS)</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Widget: PFMT Dashboard · Client Controller</span><span class="code-type ct-cs">Client Script</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code><span class="kw">function</span>(<span class="var">$scope</span>, <span class="var">$http</span>) {
+  <span class="kw">var</span> <span class="var">c</span> = <span class="kw">this</span>;
+
+  <span class="cm">// Reload data from server controller</span>
+  <span class="var">c</span>.<span class="fn">refreshData</span> = <span class="kw">function</span>() {
+    <span class="var">c</span>.<span class="prop">server</span>.<span class="fn">update</span>().<span class="fn">then</span>(<span class="kw">function</span>(<span class="var">response</span>) {
+      <span class="var">c</span>.<span class="prop">data</span> = <span class="var">response</span>.<span class="prop">data</span>;
+    });
+  };
+
+  <span class="cm">// Open transaction modal</span>
+  <span class="var">c</span>.<span class="fn">addTransaction</span> = <span class="kw">function</span>(<span class="var">type</span>) {
+    <span class="var">$scope</span>.<span class="fn">$emit</span>(<span class="str">'pfmt:openAddModal'</span>, { <span class="prop">defaultType</span>: <span class="var">type</span> });
+  };
+}</code></pre>
+  </div>
+
+  <h2>Widget Server Script</h2>
+  <div class="code-wrap">
+    <div class="code-header">
+      <div class="code-header-left"><span class="code-file">Widget: PFMT Dashboard · Server Script</span><span class="code-type ct-gr">GlideRecord</span></div>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <pre><code>(<span class="kw">function</span>() {
+  <span class="kw">var</span> <span class="var">user</span> = <span class="fn">gs.getUserID</span>();
+  <span class="kw">var</span> <span class="var">now</span>  = <span class="kw">new</span> <span class="cls">GlideDateTime</span>();
+  <span class="kw">var</span> <span class="var">year</span> = <span class="var">now</span>.<span class="fn">getYearUTC</span>();
+  <span class="kw">var</span> <span class="var">mon</span>  = <span class="fn">gs.zeroPad</span>(<span class="var">now</span>.<span class="fn">getMonthUTC</span>(), <span class="num">2</span>);
+
+  <span class="cm">// ── Aggregate income and expenses this month ──</span>
+  <span class="kw">var</span> <span class="var">ga</span> = <span class="kw">new</span> <span class="cls">GlideAggregate</span>(<span class="str">'x_pfmt_transaction'</span>);
+  <span class="var">ga</span>.<span class="fn">addQuery</span>(<span class="str">'sys_created_by'</span>,  <span class="fn">gs.getUserName</span>());
+  <span class="var">ga</span>.<span class="fn">addQuery</span>(<span class="str">'transaction_date'</span>, <span class="str">'STARTSWITH'</span>, <span class="var">year</span> + <span class="str">'-'</span> + <span class="var">mon</span>);
+  <span class="var">ga</span>.<span class="fn">addQuery</span>(<span class="str">'state'</span>, <span class="str">'2'</span>);
+  <span class="var">ga</span>.<span class="fn">addAggregate</span>(<span class="str">'SUM'</span>, <span class="str">'amount'</span>);
+  <span class="var">ga</span>.<span class="fn">groupBy</span>(<span class="str">'transaction_type'</span>);
+  <span class="var">ga</span>.<span class="fn">query</span>();
+
+  <span class="kw">var</span> <span class="var">totalIncome</span> = <span class="num">0</span>, <span class="var">totalExpenses</span> = <span class="num">0</span>;
+  <span class="kw">while</span> (<span class="var">ga</span>.<span class="fn">next</span>()) {
+    <span class="kw">var</span> <span class="var">amt</span> = <span class="fn">parseFloat</span>(<span class="var">ga</span>.<span class="fn">getAggregate</span>(<span class="str">'SUM'</span>, <span class="str">'amount'</span>)) || <span class="num">0</span>;
+    <span class="kw">if</span> (<span class="var">ga</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>() === <span class="str">'income'</span>)  <span class="var">totalIncome</span>   = <span class="var">amt</span>;
+    <span class="kw">if</span> (<span class="var">ga</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>() === <span class="str">'expense'</span>) <span class="var">totalExpenses</span> = <span class="var">amt</span>;
+  }
+
+  <span class="cm">// ── Recent 10 transactions ────────────────────</span>
+  <span class="kw">var</span> <span class="var">txns</span> = [];
+  <span class="kw">var</span> <span class="var">txnGR</span> = <span class="kw">new</span> <span class="cls">GlideRecord</span>(<span class="str">'x_pfmt_transaction'</span>);
+  <span class="var">txnGR</span>.<span class="fn">addQuery</span>(<span class="str">'sys_created_by'</span>, <span class="fn">gs.getUserName</span>());
+  <span class="var">txnGR</span>.<span class="fn">addQuery</span>(<span class="str">'state'</span>, <span class="str">'2'</span>);
+  <span class="var">txnGR</span>.<span class="prop">orderByDesc</span>(<span class="str">'transaction_date'</span>);
+  <span class="var">txnGR</span>.<span class="fn">setLimit</span>(<span class="num">10</span>);
+  <span class="var">txnGR</span>.<span class="fn">query</span>();
+
+  <span class="kw">var</span> <span class="var">icons</span> = {
+    <span class="str">'Food & Drink'</span>:<span class="str">'🍜'</span>, <span class="str">'Transport'</span>:<span class="str">'🚇'</span>, <span class="str">'Groceries'</span>:<span class="str">'🛒'</span>,
+    <span class="str">'Shopping'</span>:<span class="str">'🛍️'</span>,   <span class="str">'Bills'</span>:<span class="str">'🏠'</span>,      <span class="str">'Health'</span>:<span class="str">'🏥'</span>,
+    <span class="str">'Salary'</span>:<span class="str">'💼'</span>,     <span class="str">'Freelance'</span>:<span class="str">'💻'</span>
+  };
+
+  <span class="kw">while</span> (<span class="var">txnGR</span>.<span class="fn">next</span>()) {
+    <span class="kw">var</span> <span class="var">cat</span> = <span class="var">txnGR</span>.<span class="prop">category</span>.<span class="prop">category_name</span>.<span class="fn">toString</span>();
+    <span class="var">txns</span>.<span class="fn">push</span>({
+      <span class="prop">description</span>: <span class="var">txnGR</span>.<span class="prop">description</span>.<span class="fn">toString</span>(),
+      <span class="prop">amount</span>      : <span class="fn">parseFloat</span>(<span class="var">txnGR</span>.<span class="prop">amount</span>.<span class="fn">toString</span>()),
+      <span class="prop">type</span>        : <span class="var">txnGR</span>.<span class="prop">transaction_type</span>.<span class="fn">toString</span>(),
+      <span class="prop">category</span>    : <span class="var">cat</span>,
+      <span class="prop">icon</span>        : <span class="var">icons</span>[<span class="var">cat</span>] || <span class="str">'💰'</span>,
+      <span class="prop">date</span>        : <span class="var">txnGR</span>.<span class="prop">transaction_date</span>.<span class="fn">toString</span>()
+    });
+  }
+
+  <span class="var">data</span>.<span class="prop">netBalance</span>    = <span class="var">totalIncome</span> - <span class="var">totalExpenses</span>;
+  <span class="var">data</span>.<span class="prop">totalIncome</span>   = <span class="var">totalIncome</span>;
+  <span class="var">data</span>.<span class="prop">totalExpenses</span> = <span class="var">totalExpenses</span>;
+  <span class="var">data</span>.<span class="prop">transactions</span>  = <span class="var">txns</span>;
+  <span class="var">data</span>.<span class="prop">currency</span>      = <span class="str">'SGD'</span>;
+})();</code></pre>
+  </div>
+</div>
+
+</main><!-- .main -->
+</div><!-- .shell -->
+
+<script>
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-link, .sb-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  // activate all matching buttons (nav + sidebar)
+  document.querySelectorAll('[onclick*="' + name + '"]').forEach(b => b.classList.add('active'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>

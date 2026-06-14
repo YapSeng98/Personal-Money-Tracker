@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFMT — How to Link with ServiceNow PDI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --ink:#0D1117; --ink2:#1C2333;
+  --muted:#6B7280; --border:#E2E8F0; --surface:#F7F9FC; --white:#fff;
+  --jade:#00C896; --jade-d:#00A37A; --jade-s:#E6FBF5;
+  --coral:#FF5B5B; --coral-s:#FFF0F0;
+  --amber:#F59E0B; --amber-s:#FFFBEB;
+  --sky:#3B82F6; --sky-s:#EFF6FF;
+  --violet:#8B5CF6; --violet-s:#F5F3FF;
+  --ff:'Inter',sans-serif; --fd:'Space Grotesk',sans-serif; --fm:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--ff);background:var(--surface);color:var(--ink);line-height:1.6;}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 40px;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{font-family:var(--fd);font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.nav-brand .g{color:var(--jade);}
+.nav-pill{background:var(--ink);color:white;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.5px;}
+.nav-instance{font-family:var(--fm);font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:8px;}
+
+/* ── HERO ── */
+.hero{
+  background:var(--ink);
+  padding:60px 40px 0;
+  overflow:hidden;position:relative;
+}
+.hero::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--jade),var(--sky),var(--violet));
+}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:99px;padding:4px 14px;font-size:12px;color:rgba(255,255,255,.6);font-weight:500;margin-bottom:20px;}
+.hero-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--jade);display:inline-block;}
+h1{font-family:var(--fd);font-size:clamp(28px,4vw,52px);font-weight:700;color:white;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px;}
+h1 em{font-style:normal;color:var(--jade);}
+.hero-sub{font-size:16px;color:rgba(255,255,255,.55);max-width:560px;margin-bottom:40px;line-height:1.7;}
+.hero-instance{display:inline-flex;align-items:center;gap:8px;background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);border-radius:10px;padding:10px 16px;margin-bottom:0;}
+.hero-instance code{font-family:var(--fm);font-size:13px;color:var(--jade);font-weight:500;}
+.hero-instance a{font-size:12px;color:var(--jade);font-weight:700;text-decoration:none;border:1px solid rgba(0,200,150,.35);border-radius:6px;padding:3px 10px;transition:background .15s;}
+.hero-instance a:hover{background:rgba(0,200,150,.15);}
+.hero-spacer{height:40px;}
+
+/* ── LAYOUT ── */
+.page{max-width:860px;margin:0 auto;padding:0 40px;}
+section{padding:56px 0;}
+section+section{border-top:1px solid var(--border);}
+
+.section-eyebrow{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--jade);margin-bottom:10px;}
+h2{font-family:var(--fd);font-size:clamp(22px,3vw,32px);font-weight:700;letter-spacing:-.5px;margin-bottom:10px;}
+.section-intro{font-size:15px;color:var(--muted);line-height:1.7;max-width:600px;margin-bottom:36px;}
+
+/* ── PHASE HEADER ── */
+.phase{
+  display:flex;align-items:center;gap:14px;
+  background:var(--ink);border-radius:16px;padding:18px 22px;
+  margin-bottom:24px;
+}
+.phase-num{
+  width:40px;height:40px;border-radius:12px;
+  background:var(--jade);color:var(--ink);
+  font-family:var(--fd);font-size:16px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.phase-body{}
+.phase-title{font-family:var(--fd);font-size:16px;font-weight:700;color:white;margin-bottom:2px;}
+.phase-sub{font-size:12px;color:rgba(255,255,255,.45);}
+
+/* ── STEP CARD ── */
+.step-card{
+  background:white;border:1px solid var(--border);border-radius:14px;
+  padding:22px 24px;margin-bottom:14px;
+  display:grid;grid-template-columns:36px 1fr;gap:16px;
+  transition:box-shadow .2s;
+}
+.step-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.06);}
+.step-num{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--surface);border:2px solid var(--border);
+  font-family:var(--fm);font-size:12px;font-weight:700;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
+}
+.step-num.done{background:var(--jade-s);border-color:#b3f0de;color:var(--jade-d);}
+.step-body h3{font-family:var(--fd);font-size:15px;font-weight:700;margin-bottom:6px;}
+.step-body p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px;}
+.step-body p:last-child{margin-bottom:0;}
+
+/* nav path pill */
+.nav-path{
+  display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;
+  background:var(--ink);border-radius:8px;padding:6px 12px;
+  font-family:var(--fm);font-size:11px;color:rgba(255,255,255,.7);
+  margin-bottom:10px;
+}
+.nav-path .sep{color:rgba(255,255,255,.3);padding:0 2px;}
+.nav-path .hl{color:var(--jade);font-weight:700;}
+
+/* code snippet */
+.snippet{
+  background:var(--ink2);border:1px solid #2D3748;border-radius:8px;
+  padding:12px 16px;font-family:var(--fm);font-size:12px;line-height:1.75;
+  color:#E6EDF3;overflow-x:auto;margin-top:8px;position:relative;
+}
+.copy-btn{
+  position:absolute;top:8px;right:8px;
+  background:#2D3748;border:1px solid #374151;color:#8B949E;
+  padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;
+  cursor:pointer;transition:all .15s;font-family:var(--ff);border:none;
+}
+.copy-btn:hover{background:#374151;color:white;}
+.copy-btn.copied{background:var(--jade-s);color:var(--jade-d);}
+.kw{color:#FF7B72;} .str{color:#A5D6FF;} .cm{color:#6E7681;font-style:italic;} .jade{color:#7EE787;} .prop{color:#FFA657;}
+
+/* alert boxes */
+.alert{border-radius:10px;padding:13px 16px;font-size:13px;line-height:1.7;margin-bottom:14px;display:flex;gap:10px;}
+.alert-jade{background:var(--jade-s);border:1px solid #b3f0de;color:#065F46;}
+.alert-amber{background:var(--amber-s);border:1px solid #fde68a;color:#78350F;}
+.alert-sky{background:var(--sky-s);border:1px solid #bfdbfe;color:#1E40AF;}
+.alert-coral{background:var(--coral-s);border:1px solid #fca5a5;color:#991B1B;}
+
+/* link button */
+.link-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--ink);color:white;border-radius:9px;
+  padding:8px 16px;font-size:12px;font-weight:700;text-decoration:none;
+  transition:background .15s;margin-top:8px;
+}
+.link-btn:hover{background:var(--ink2);}
+.link-btn.jade{background:var(--jade);color:var(--ink);}
+.link-btn.jade:hover{background:var(--jade-d);}
+.link-btn.sky{background:var(--sky);color:white;}
+
+/* table */
+.ref-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
+.ref-table th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);border-bottom:2px solid var(--border);}
+.ref-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.ref-table td:first-child{font-family:var(--fm);font-size:11px;color:var(--jade-d);}
+.ref-table tr:hover td{background:var(--surface);}
+.tag{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;}
+.t-g{background:var(--jade-s);color:var(--jade-d);}
+.t-b{background:var(--sky-s);color:#1D4ED8;}
+.t-y{background:var(--amber-s);color:#78350F;}
+.t-v{background:var(--violet-s);color:#5B21B6;}
+.t-r{background:var(--coral-s);color:#991B1B;}
+
+/* quick links grid */
+.links-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:16px;}
+.link-card{
+  background:white;border:1px solid var(--border);border-radius:12px;padding:14px 16px;
+  text-decoration:none;color:var(--ink);display:flex;align-items:center;gap:12px;
+  transition:all .15s;
+}
+.link-card:hover{border-color:var(--jade);box-shadow:0 4px 16px rgba(0,200,150,.1);transform:translateY(-1px);}
+.link-card .lc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.link-card .lc-body{}
+.link-card .lc-title{font-size:13px;font-weight:700;}
+.link-card .lc-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.link-card .lc-arrow{margin-left:auto;color:var(--muted);font-size:14px;flex-shrink:0;}
+
+/* checklist */
+.checklist{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.checklist li{
+  display:flex;align-items:flex-start;gap:10px;
+  background:white;border:1px solid var(--border);border-radius:10px;padding:12px 14px;
+  font-size:13px;color:var(--ink-3);
+}
+.checklist li::before{content:'☐';font-size:16px;color:var(--border);flex-shrink:0;margin-top:-1px;}
+.checklist li strong{color:var(--ink);}
+
+/* progress tracker */
+.progress-track{display:flex;gap:0;margin-bottom:28px;overflow-x:auto;padding-bottom:4px;}
+.progress-step{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  min-width:90px;padding:0 8px;position:relative;flex:1;
+}
+.progress-step::after{
+  content:'';position:absolute;top:15px;left:50%;right:-50%;
+  height:2px;background:var(--border);z-index:0;
+}
+.progress-step:last-child::after{display:none;}
+.ps-dot{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;z-index:1;flex-shrink:0;
+  border:2px solid var(--border);background:white;color:var(--muted);
+}
+.ps-dot.phase1{background:var(--jade);border-color:var(--jade-d);color:white;}
+.ps-dot.phase2{background:var(--sky);border-color:#2563EB;color:white;}
+.ps-dot.phase3{background:var(--violet);border-color:#6D28D9;color:white;}
+.ps-dot.phase4{background:var(--amber);border-color:#D97706;color:white;}
+.ps-dot.phase5{background:var(--coral);border-color:#DC2626;color:white;}
+.ps-label{font-size:10px;font-weight:600;color:var(--muted);text-align:center;line-height:1.3;}
+
+@media(max-width:600px){
+  nav{padding:0 16px;}
+  .hero{padding:40px 16px 0;}
+  .page{padding:0 16px;}
+  .links-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">💰 PFMT <span class="g">·</span> Integration Guide</div>
+  <div class="nav-instance">dev275144.service-now.com</div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="page">
+    <div class="hero-eyebrow">Step-by-Step · ServiceNow PDI Integration</div>
+    <h1>How to Link PFMT<br>with <em>ServiceNow</em></h1>
+    <p class="hero-sub">From a blank PDI to a fully connected money tracker — five phases covering app creation, table setup, script deployment, portal build, and live testing.</p>
+    <div class="hero-instance">
+      <span>🟢</span>
+      <code>https://dev275144.service-now.com</code>
+      <a href="https://dev275144.service-now.com" target="_blank">Open PDI ↗</a>
+    </div>
+  </div>
+  <div class="hero-spacer"></div>
+</div>
+
+<div class="page">
+
+<!-- PHASE OVERVIEW -->
+<section>
+  <div class="section-eyebrow">Overview</div>
+  <h2>5 Phases to Full Integration</h2>
+  <p class="section-intro">Each phase builds on the last. Complete them in order — skipping ahead will cause missing table errors in scripts.</p>
+
+  <div class="progress-track">
+    <div class="progress-step"><div class="ps-dot phase1">1</div><div class="ps-label">Create<br>Scoped App</div></div>
+    <div class="progress-step"><div class="ps-dot phase2">2</div><div class="ps-label">Build<br>Tables</div></div>
+    <div class="progress-step"><div class="ps-dot phase3">3</div><div class="ps-label">Deploy<br>Scripts</div></div>
+    <div class="progress-step"><div class="ps-dot phase4">4</div><div class="ps-label">Build<br>Portal</div></div>
+    <div class="progress-step"><div class="ps-dot phase5">5</div><div class="ps-label">Test &<br>Go Live</div></div>
+  </div>
+
+  <div class="alert alert-amber">
+    <span>⚠️</span>
+    <div><strong>Before you start:</strong> Log into your PDI at <a href="https://dev275144.service-now.com" target="_blank" style="color:inherit;font-weight:700;">dev275144.service-now.com</a> and confirm <strong>Flow Designer</strong> and <strong>Service Portal</strong> plugins are active. Go to <strong>System Definition → Plugins</strong> to check.</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PHASE 1: CREATE SCOPED APP                       -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="phase1">
+  <div class="phase">
+    <div class="phase-num">1</div>
+    <div class="phase-body">
+      <div class="phase-title">Create the Scoped Application</div>
+      <div class="phase-sub">Studio · ~10 minutes</div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num done">1</div>
+    <div class="step-body">
+      <h3>Open Studio</h3>
+      <p>In your PDI, click the main menu (top-left grid icon). Type <strong>Studio</strong> in the filter, then click it to open the App IDE in a new tab.</p>
+      <div class="nav-path">
+        <span>All</span><span class="sep">→</span>
+        <span>System Applications</span><span class="sep">→</span>
+        <span class="hl">Studio</span>
+      </div>
+      <a href="https://dev275144.service-now.com/now/studio" target="_blank" class="link-btn jade">Open Studio ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num done">2</div>
+    <div class="step-body">
+      <h3>Create Application</h3>
+      <p>In Studio, click <strong>Create Application</strong>. Fill in the fields exactly as shown:</p>
+      <div class="snippet">
+<span class="prop">Name</span>        : <span class="str">Personal Finance Money Tracker</span>
+<span class="prop">Scope</span>       : <span class="jade">x_pfmt</span>
+<span class="prop">Version</span>     : <span class="str">1.0.0</span>
+<span class="prop">Short desc</span>  : <span class="str">Daily money tracking and budgeting app</span>
+      </div>
+      <p style="margin-top:10px;">Click <strong>Create</strong>. Studio will reload inside your new scoped app.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num done">3</div>
+    <div class="step-body">
+      <h3>Confirm Scope is Active</h3>
+      <p>In the top-right corner of the ServiceNow banner, you should see the scope switcher showing <strong>Personal Finance Money Tracker</strong>. If it still says <em>Global</em>, click the scope picker and switch to your new app. All work from here must be done inside this scope.</p>
+      <div class="alert alert-coral" style="margin-top:10px;">
+        <span>🚫</span>
+        <span>Never create PFMT tables or scripts in the <strong>Global</strong> scope — they won't be packaged with your app and will break on export.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PHASE 2: BUILD TABLES                            -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="phase2">
+  <div class="phase">
+    <div class="phase-num">2</div>
+    <div class="phase-body">
+      <div class="phase-title">Build the 6 Custom Tables</div>
+      <div class="phase-sub">Studio → Create File → Table · ~30 minutes</div>
+    </div>
+  </div>
+
+  <div class="alert alert-sky">
+    <span>ℹ️</span>
+    <span>For each table: in Studio click <strong>Create File → Data Model → Table</strong>. Set the exact name below — ServiceNow will auto-prefix it with <code style="font-family:monospace;">x_pfmt_</code>.</span>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Create Table: x_pfmt_user_profile</h3>
+      <div class="snippet">
+<span class="prop">Table name</span>  : <span class="jade">user_profile</span>          <span class="cm">→ becomes x_pfmt_user_profile</span>
+<span class="prop">Label</span>       : <span class="str">User Profile</span>
+<span class="prop">Extends</span>     : <span class="str">Task [task]</span>            <span class="cm">→ or leave blank</span>
+<span class="prop">Add fields</span>  :
+  user_name            String(100)   Mandatory
+  email                Email
+  currency_preference  String(3)     Default: SGD
+  monthly_income_target Currency
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>Create Table: x_pfmt_account</h3>
+      <div class="snippet">
+<span class="prop">Table name</span>  : <span class="jade">account</span>
+<span class="prop">Add fields</span>  :
+  user_profile    Reference → x_pfmt_user_profile   Mandatory
+  account_name    String(100)   Mandatory
+  account_type    Choice        [checking,savings,credit_card,cash,investment]
+  institution_name String(100)
+  current_balance  Currency      Default: 0
+  currency         String(3)     Default: SGD
+  is_active        True/False    Default: true
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3>Create Table: x_pfmt_category</h3>
+      <div class="snippet">
+<span class="prop">Table name</span>  : <span class="jade">category</span>
+<span class="prop">Add fields</span>  :
+  user_profile       Reference → x_pfmt_user_profile
+  category_name      String(80)    Mandatory
+  category_type      Choice        [expense, income]
+  icon_emoji         String(10)
+  color_hex          String(7)
+  is_system_default  True/False    Default: false
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h3>Create Table: x_pfmt_transaction  ← Core table</h3>
+      <div class="snippet">
+<span class="prop">Table name</span>  : <span class="jade">transaction</span>
+<span class="prop">Add fields</span>  :
+  account             Reference → x_pfmt_account    Mandatory
+  category            Reference → x_pfmt_category   Mandatory
+  transaction_type    Choice  [expense, income, transfer]  Mandatory
+  amount              Currency   Mandatory
+  description         String(255)  Mandatory
+  transaction_date    Date         Mandatory
+  state               Choice  [1=Draft, 2=Confirmed, 3=Voided]  Default: 2
+  is_recurring        True/False   Default: false
+  recurring_frequency Choice  [daily, weekly, monthly]
+  next_run_date       Date
+  notes               String(1000)
+  attachment          Attachment
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <h3>Create Table: x_pfmt_budget</h3>
+      <div class="snippet">
+<span class="prop">Table name</span>  : <span class="jade">budget</span>
+<span class="prop">Add fields</span>  :
+  user_profile        Reference → x_pfmt_user_profile  Mandatory
+  category            Reference → x_pfmt_category      Mandatory
+  budget_name         String(100)
+  period_type         Choice  [weekly, monthly, yearly]  Default: monthly
+  budget_amount       Currency   Mandatory
+  spent_amount        Currency   Default: 0
+  remaining_amount    Currency   Default: 0
+  alert_threshold_pct Integer    Default: 80
+  period_start        Date
+  period_end          Date
+  rollover_enabled    True/False  Default: false
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <h3>Create Table: x_pfmt_savings_goal</h3>
+      <div class="snippet">
+<span class="prop">Table name</span>  : <span class="jade">savings_goal</span>
+<span class="prop">Add fields</span>  :
+  user_profile          Reference → x_pfmt_user_profile  Mandatory
+  account               Reference → x_pfmt_account
+  goal_name             String(100)   Mandatory
+  target_amount         Currency      Mandatory
+  current_amount        Currency      Default: 0
+  monthly_contribution  Currency
+  target_date           Date
+  goal_status           Choice  [in_progress, achieved, paused]  Default: in_progress
+  icon_emoji            String(10)
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">7</div>
+    <div class="step-body">
+      <h3>Seed Default Categories</h3>
+      <p>Navigate to <strong>Scripts - Background</strong>. Open <code>GR_Utilities.js</code> from your PFMT folder, copy the <code>seedCategories()</code> function body, paste it, and click <strong>Run script</strong>. This creates all 13 default categories.</p>
+      <div class="nav-path">
+        <span>All</span><span class="sep">→</span>
+        <span>System Definition</span><span class="sep">→</span>
+        <span class="hl">Scripts - Background</span>
+      </div>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys.scripts.do" target="_blank" class="link-btn">Open Scripts - Background ↗</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PHASE 3: DEPLOY SCRIPTS                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="phase3">
+  <div class="phase">
+    <div class="phase-num">3</div>
+    <div class="phase-body">
+      <div class="phase-title">Deploy Scripts from Your Code Files</div>
+      <div class="phase-sub">Studio · Business Rules · Client Scripts · Script Includes · ~40 minutes</div>
+    </div>
+  </div>
+
+  <p class="section-intro">For each script below: in Studio click <strong>Create File</strong>, choose the type, fill in the settings, and paste the matching file from your PFMT folder.</p>
+
+  <!-- Business Rules -->
+  <h3 style="font-family:var(--fd);font-size:17px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">Business Rules — Studio → Create File → Server Development → Business Rule</h3>
+
+  <table class="ref-table">
+    <thead>
+      <tr><th>File to Paste</th><th>Table</th><th>When</th><th>Operation</th><th>Condition</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>BR_ValidateTransaction.js</td>
+        <td>x_pfmt_transaction</td>
+        <td><span class="tag t-y">Before</span></td>
+        <td>Insert + Update</td>
+        <td><em>none</em></td>
+      </tr>
+      <tr>
+        <td>BR_UpdateAccountBalance.js</td>
+        <td>x_pfmt_transaction</td>
+        <td><span class="tag t-g">After</span></td>
+        <td>Insert + Update</td>
+        <td>state = 2</td>
+      </tr>
+      <tr>
+        <td>BR_UpdateBudgetSpent.js</td>
+        <td>x_pfmt_transaction</td>
+        <td><span class="tag t-g">After</span></td>
+        <td>Insert</td>
+        <td>transaction_type = expense</td>
+      </tr>
+      <tr>
+        <td>BR_BudgetCalculatedFields.js</td>
+        <td>x_pfmt_budget</td>
+        <td><span class="tag t-y">Before</span></td>
+        <td>Insert + Update</td>
+        <td><em>none</em></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Script Include -->
+  <h3 style="font-family:var(--fd);font-size:17px;margin:28px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border);">Script Include — Studio → Create File → Server Development → Script Include</h3>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>SI_PFMTBudgetHelper.js</h3>
+      <p>Name: <code style="font-family:monospace;background:var(--surface);padding:2px 6px;border-radius:4px;font-size:12px;">PFMTBudgetHelper</code> — tick the <strong>"Client callable"</strong> checkbox — paste the file content.</p>
+      <div class="alert alert-amber" style="margin-top:8px;">
+        <span>⚠️</span>
+        <span>If "Client callable" is not ticked, the GlideAjax call from the Client Script will silently fail.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Scripts -->
+  <h3 style="font-family:var(--fd);font-size:17px;margin:28px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border);">Client Scripts — Studio → Create File → Client Development → Client Script</h3>
+
+  <table class="ref-table">
+    <thead>
+      <tr><th>File to Paste</th><th>Table</th><th>Type</th><th>Field</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>CS_DefaultTransactionDate.js</td>
+        <td>x_pfmt_transaction</td>
+        <td><span class="tag t-b">onLoad</span></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>CS_FilterCategoriesByType.js</td>
+        <td>x_pfmt_transaction</td>
+        <td><span class="tag t-v">onChange</span></td>
+        <td>transaction_type</td>
+      </tr>
+      <tr>
+        <td>CS_RecurringToggleAndBudgetHint.js</td>
+        <td>x_pfmt_transaction</td>
+        <td><span class="tag t-v">onChange</span></td>
+        <td>is_recurring, category</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Flow Designer -->
+  <h3 style="font-family:var(--fd);font-size:17px;margin:28px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border);">Flow Designer — Open Flow Designer → New Flow</h3>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Flow 2 — Monthly Budget Reset</h3>
+      <p>In Flow Designer: <strong>New → Flow</strong> → Name it <em>PFMT Monthly Budget Reset</em> → Add trigger: <strong>Date · Scheduled Daily</strong> → set to 1st of month 00:01 → Add action: <strong>Script</strong> → paste <code>FLOW_MonthlyBudgetReset.js</code> → <strong>Activate</strong>.</p>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/%24flow-designer.do" target="_blank" class="link-btn">Open Flow Designer ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>Flow 4 — Recurring Transactions</h3>
+      <p>New Flow → Name: <em>PFMT Recurring Transactions</em> → Trigger: <strong>Date · Scheduled Daily at 08:00</strong> → Add action: <strong>Script</strong> → paste <code>FLOW_RecurringTransactions.js</code> → <strong>Activate</strong>.</p>
+    </div>
+  </div>
+
+  <!-- REST API -->
+  <h3 style="font-family:var(--fd);font-size:17px;margin:28px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border);">Scripted REST API — All → System Web Services → Scripted REST APIs</h3>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Create the PFMT REST API</h3>
+      <div class="snippet">
+<span class="prop">Name</span>      : <span class="str">PFMT API</span>
+<span class="prop">API ID</span>    : <span class="jade">pfmt</span>
+<span class="prop">Base path</span> : <span class="jade">/pfmt/v1</span>
+      </div>
+      <p style="margin-top:10px;">Inside the new API, click <strong>Resources → New</strong>:</p>
+      <div class="snippet">
+<span class="prop">Name</span>     : <span class="str">Transactions</span>
+<span class="prop">Path</span>     : <span class="jade">/transactions</span>
+<span class="prop">Methods</span>  : GET, POST
+<span class="cm">→ Paste REST_TransactionsAPI.js into the Script field</span>
+      </div>
+      <p style="margin-top:10px;">Your live endpoint will be:<br>
+      <code style="font-family:monospace;font-size:12px;background:var(--surface);padding:4px 8px;border-radius:5px;display:inline-block;margin-top:4px;">https://dev275144.service-now.com/api/x_pfmt/pfmt/v1/transactions</code></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PHASE 4: SERVICE PORTAL                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="phase4">
+  <div class="phase">
+    <div class="phase-num">4</div>
+    <div class="phase-body">
+      <div class="phase-title">Build the Service Portal Widget</div>
+      <div class="phase-sub">Service Portal Designer · ~20 minutes</div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Open Service Portal</h3>
+      <div class="nav-path">
+        <span>All</span><span class="sep">→</span>
+        <span>Service Portal</span><span class="sep">→</span>
+        <span class="hl">Service Portal Configuration</span>
+      </div>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" target="_blank" class="link-btn">Open Portal Designer ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>Create New Widget</h3>
+      <p>In the Portal Config sidebar, click <strong>Widgets → Create a new widget</strong>. Name it <strong>PFMT Dashboard</strong>. Then paste each file into the matching tab:</p>
+      <table class="ref-table" style="margin-top:10px;">
+        <thead><tr><th>File</th><th>Paste into Tab</th></tr></thead>
+        <tbody>
+          <tr><td>PORTAL_Widget_HTML.html</td><td>HTML Template</td></tr>
+          <tr><td>PORTAL_Widget_CSS.scss</td><td>CSS</td></tr>
+          <tr><td>PORTAL_Widget_ClientController.js</td><td>Client Controller</td></tr>
+          <tr><td>PORTAL_Widget_ServerScript.js</td><td>Server Script</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:10px;">Click <strong>Save</strong>.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3>Add Widget to a Portal Page</h3>
+      <p>In Service Portal Config → <strong>Pages → New</strong> → ID: <code style="font-family:monospace;font-size:12px;background:var(--surface);padding:2px 5px;border-radius:4px;">pfmt_dashboard</code> → Open in Designer → drag your <strong>PFMT Dashboard</strong> widget from the widget list onto the canvas → Save.</p>
+      <p style="margin-top:8px;">Your portal page will be live at:<br>
+      <code style="font-family:monospace;font-size:12px;background:var(--surface);padding:4px 8px;border-radius:5px;display:inline-block;margin-top:4px;">https://dev275144.service-now.com/sp?id=pfmt_dashboard</code></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PHASE 5: TEST & GO LIVE                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="phase5">
+  <div class="phase">
+    <div class="phase-num">5</div>
+    <div class="phase-body">
+      <div class="phase-title">Test, Verify & Go Live</div>
+      <div class="phase-sub">ATF · Manual testing · Update Set export · ~20 minutes</div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Create a Test Transaction Manually</h3>
+      <p>Navigate to your <code>x_pfmt_transaction</code> table list and click <strong>New</strong>. Fill in all mandatory fields and save. Then check:</p>
+      <ul style="font-size:13px;color:var(--muted);padding-left:16px;line-height:2.2;margin-top:6px;">
+        <li>Account <code>current_balance</code> decreased (for expense)</li>
+        <li>Matching Budget <code>spent_amount</code> increased</li>
+        <li>Transaction <code>state</code> = Confirmed</li>
+        <li>No error messages in the Activity log</li>
+      </ul>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/x_pfmt_transaction_list.do" target="_blank" class="link-btn">Open x_pfmt_transaction ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>Test the REST API with a GET Request</h3>
+      <p>Open your browser and visit this URL while logged into your PDI. You should get a JSON response with your transactions:</p>
+      <div class="snippet">
+GET https://dev275144.service-now.com/api/x_pfmt/pfmt/v1/transactions
+
+<span class="cm">Expected response:</span>
+{
+  <span class="prop">"result"</span>: [...],
+  <span class="prop">"count"</span>: <span class="jade">1</span>
+}
+      </div>
+      <p style="margin-top:10px;">Or use the <strong>REST API Explorer</strong> in your PDI:</p>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/api_explorer.do" target="_blank" class="link-btn">Open REST API Explorer ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3>Run ATF Tests</h3>
+      <p>Navigate to <strong>Automated Test Framework → Tests → New</strong>. Create a test that inserts an <code>x_pfmt_transaction</code> record and asserts <code>account.current_balance</code> changed correctly.</p>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_atf_test_list.do" target="_blank" class="link-btn">Open ATF Tests ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h3>Export an Update Set</h3>
+      <p>Always export your work after each sprint. Navigate to <strong>Local Update Sets → New</strong> → name it <em>PFMT Sprint 1</em> → set it as Current → do your work → then <strong>Complete</strong> → <strong>Export to XML</strong>. Keep this file as your backup.</p>
+      <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_update_set_list.do" target="_blank" class="link-btn">Open Update Sets ↗</a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <h3>View Your Live Portal</h3>
+      <p>Open the portal page in your browser. Log in if prompted. Your PFMT dashboard widget should show the balance card and recent transactions pulled live from your PDI tables.</p>
+      <a href="https://dev275144.service-now.com/sp?id=pfmt_dashboard" target="_blank" class="link-btn jade">Open Live Portal ↗</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- QUICK LINKS                                      -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="links">
+  <div class="section-eyebrow">Quick Reference</div>
+  <h2>All PDI Module Links</h2>
+  <p class="section-intro">Bookmark these — they open directly inside your <strong>dev275144</strong> instance. You must be logged in for them to work.</p>
+
+  <div class="links-grid">
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/ui_page.do%3Fsys_id%3D69085175831903102f0e76d6feaad395" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#FFF0F0;">📄</div>
+      <div class="lc-body"><div class="lc-title">Your UI Page</div><div class="lc-sub">sys_id: 690851…</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/studio" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#E6FBF5;">🏗️</div>
+      <div class="lc-body"><div class="lc-title">Studio</div><div class="lc-sub">Build scoped app</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/%24flow-designer.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#F5F3FF;">⚡</div>
+      <div class="lc-body"><div class="lc-title">Flow Designer</div><div class="lc-sub">Automation flows</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#EFF6FF;">🌐</div>
+      <div class="lc-body"><div class="lc-title">Service Portal</div><div class="lc-sub">Portal + widgets</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_script_list.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#FFFBEB;">⚙️</div>
+      <div class="lc-body"><div class="lc-title">Business Rules</div><div class="lc-sub">All 4 BR scripts</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_client_script_list.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#EFF6FF;">💻</div>
+      <div class="lc-body"><div class="lc-title">Client Scripts</div><div class="lc-sub">All 3 CS scripts</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_script_include_list.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#E6FBF5;">📜</div>
+      <div class="lc-body"><div class="lc-title">Script Includes</div><div class="lc-sub">PFMTBudgetHelper</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/api_explorer.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#FFF0F0;">🔌</div>
+      <div class="lc-body"><div class="lc-title">REST API Explorer</div><div class="lc-sub">Test your endpoints</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys.scripts.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#F5F3FF;">🖥️</div>
+      <div class="lc-body"><div class="lc-title">Scripts - Background</div><div class="lc-sub">Run seed scripts</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_atf_test_list.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#E6FBF5;">🧪</div>
+      <div class="lc-body"><div class="lc-title">ATF Tests</div><div class="lc-sub">Automated testing</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_update_set_list.do" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#FFFBEB;">📦</div>
+      <div class="lc-body"><div class="lc-title">Update Sets</div><div class="lc-sub">Export your work</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_pfmt" target="_blank" class="link-card">
+      <div class="lc-icon" style="background:#EFF6FF;">🗄️</div>
+      <div class="lc-body"><div class="lc-title">PFMT Tables</div><div class="lc-sub">All x_pfmt_ tables</div></div>
+      <div class="lc-arrow">↗</div>
+    </a>
+    <a href="https://dev275144.service-now.com/sp?id=pfmt_dashboard" target="_blank" class="link-card" style="border-color:var(--jade);">
+      <div class="lc-icon" style="background:var(--jade-s);">🌟</div>
+      <div class="lc-body"><div class="lc-title" style="color:var(--jade-d);">Live Portal Page</div><div class="lc-sub">Your PFMT dashboard</div></div>
+      <div class="lc-arrow" style="color:var(--jade);">↗</div>
+    </a>
+  </div>
+</section>
+
+<!-- COMPLETION CHECKLIST -->
+<section>
+  <div class="section-eyebrow">Checklist</div>
+  <h2>Sprint 1 Completion Checklist</h2>
+  <p class="section-intro">Tick these off as you go. When all are done, export your Update Set.</p>
+
+  <ul class="checklist">
+    <li><div><strong>Scoped app created</strong> — x_pfmt scope active in Studio</div></li>
+    <li><div><strong>All 6 tables created</strong> — x_pfmt_user_profile, account, category, transaction, budget, savings_goal</div></li>
+    <li><div><strong>Categories seeded</strong> — 13 rows in x_pfmt_category via Scripts - Background</div></li>
+    <li><div><strong>4 Business Rules deployed</strong> — Validate, Balance Update, Budget Spent, Calculated Fields</div></li>
+    <li><div><strong>Script Include deployed</strong> — PFMTBudgetHelper with "Client callable" ticked</div></li>
+    <li><div><strong>3 Client Scripts deployed</strong> — onLoad date default, onChange category filter, onChange recurring toggle</div></li>
+    <li><div><strong>Flow 2 active</strong> — Monthly Budget Reset scheduled for 1st of month</div></li>
+    <li><div><strong>Flow 4 active</strong> — Recurring Transactions scheduled daily at 08:00</div></li>
+    <li><div><strong>REST API live</strong> — GET /api/x_pfmt/pfmt/v1/transactions returns 200</div></li>
+    <li><div><strong>Portal widget deployed</strong> — PFMT Dashboard widget on pfmt_dashboard page</div></li>
+    <li><div><strong>Manual transaction test passed</strong> — balance + budget updated correctly</div></li>
+    <li><div><strong>Update Set exported</strong> — PFMT Sprint 1 XML saved as backup</div></li>
+  </ul>
+</section>
+
+</div><!-- .page -->
+
+<!-- FOOTER -->
+<footer style="background:var(--ink);color:rgba(255,255,255,.4);padding:28px 40px;font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:56px;">
+  <span>💰 PFMT · ServiceNow Integration Guide · dev275144</span>
+  <span>Follow phases 1→5 in order · Export Update Set after each sprint</span>
+</footer>
+
+</body>
+</html>

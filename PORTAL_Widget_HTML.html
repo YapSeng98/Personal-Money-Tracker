@@ -1,0 +1,55 @@
+<!-- ============================================================ -->
+<!-- PFMT Service Portal Widget — Dashboard Balance               -->
+<!-- Location: Service Portal → Widgets → New                    -->
+<!-- Paste into: HTML Template tab                                -->
+<!-- ============================================================ -->
+
+<div class="pfmt-dashboard">
+
+  <!-- Balance Hero Card -->
+  <div class="balance-card">
+    <div class="balance-label">Net Balance</div>
+    <div class="balance-amount">
+      {{c.data.currency}} {{c.data.netBalance | number:'1.2-2'}}
+    </div>
+    <div class="balance-row">
+      <div class="income-sub">
+        <span class="label">Income</span>
+        <span class="value green">+{{c.data.totalIncome | number:'1.2-2'}}</span>
+      </div>
+      <div class="expense-sub">
+        <span class="label">Expenses</span>
+        <span class="value red">-{{c.data.totalExpenses | number:'1.2-2'}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Action Buttons -->
+  <div class="quick-actions">
+    <button ng-click="c.addTransaction('expense')" class="btn-expense">
+      − Expense
+    </button>
+    <button ng-click="c.addTransaction('income')" class="btn-income">
+      + Income
+    </button>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="recent-header">Recent Transactions</div>
+  <div class="txn-list">
+    <div ng-repeat="txn in c.data.transactions" class="txn-row">
+      <span class="txn-icon">{{txn.icon}}</span>
+      <div class="txn-info">
+        <div class="txn-desc">{{txn.description}}</div>
+        <div class="txn-meta">{{txn.category}} · {{txn.date}}</div>
+      </div>
+      <div ng-class="txn.type == 'income' ? 'amt-pos' : 'amt-neg'">
+        {{txn.type == 'income' ? '+' : '-'}}{{txn.amount | number:'1.2-2'}}
+      </div>
+    </div>
+    <div ng-if="c.data.transactions.length === 0" class="empty">
+      No transactions yet. Add your first one!
+    </div>
+  </div>
+
+</div>
