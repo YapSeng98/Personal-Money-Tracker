@@ -554,7 +554,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="balance-hero">
         <div class="balance-grid">
           <div>
-            <div class="balance-main-label">Net Balance (SGD)</div>
+            <div class="balance-main-label" data-curr-label="Net Balance (CURR)">Net Balance (SGD)</div>
             <div class="balance-main-val" id="hero-balance">$0.00</div>
           </div>
           <div class="balance-side">
@@ -776,7 +776,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         </div>
         <div class="settings-section">
           <h3>Preferences</h3>
-          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>EUR</option><option>GBP</option><option>JPY</option><option>CNY</option><option>HKD</option><option>IDR</option><option>THB</option><option>PHP</option><option>INR</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
@@ -820,9 +820,9 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <button class="type-tab transfer" id="tab-transfer" onclick="setType('transfer',this)">Transfer</button>
     </div>
     <div class="form-group">
-      <label class="form-label">Amount (SGD)</label>
+      <label class="form-label" data-curr-label="Amount (CURR)">Amount (SGD)</label>
       <div class="amount-input-wrap">
-        <span class="amount-prefix">$</span>
+        <span class="amount-prefix curr-sym">$</span>
         <input class="form-input" type="number" id="txn-amount" placeholder="0.00" step="0.01" min="0">
       </div>
     </div>
@@ -890,16 +890,16 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Monthly Budget Limit (SGD)</label>
+      <label class="form-label" data-curr-label="Monthly Budget Limit (CURR)">Monthly Budget Limit (SGD)</label>
       <div class="amount-input-wrap">
-        <span class="amount-prefix">$</span>
+        <span class="amount-prefix curr-sym">$</span>
         <input class="form-input" type="number" id="budget-amount" placeholder="0.00" step="0.01">
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Current Spent (SGD) — optional override</label>
+      <label class="form-label" data-curr-label="Current Spent (CURR) — optional override">Current Spent (SGD) — optional override</label>
       <div class="amount-input-wrap">
-        <span class="amount-prefix">$</span>
+        <span class="amount-prefix curr-sym">$</span>
         <input class="form-input" type="number" id="budget-spent" placeholder="0.00" step="0.01" value="0">
       </div>
     </div>
@@ -940,17 +940,17 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Target Amount (SGD)</label>
-        <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-target" placeholder="5000"></div>
+        <label class="form-label" data-curr-label="Target Amount (CURR)">Target Amount (SGD)</label>
+        <div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="goal-target" placeholder="5000"></div>
       </div>
       <div class="form-group">
-        <label class="form-label">Current Saved (SGD)</label>
-        <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-current" placeholder="0" value="0"></div>
+        <label class="form-label" data-curr-label="Current Saved (CURR)">Current Saved (SGD)</label>
+        <div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="goal-current" placeholder="0" value="0"></div>
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Monthly Contribution (SGD)</label>
-      <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-monthly" placeholder="e.g. 500"></div>
+      <label class="form-label" data-curr-label="Monthly Contribution (CURR)">Monthly Contribution (SGD)</label>
+      <div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="goal-monthly" placeholder="e.g. 500"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Target Date</label>
@@ -987,7 +987,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
-      <div class="form-group"><label class="form-label">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
+      <div class="form-group"><label class="form-label" data-curr-label="Balance (CURR)">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
     </div>
     <div class="form-group">
       <label class="form-label">Institution</label>
@@ -1720,7 +1720,18 @@ async function deleteAccount(id) {
 // ═══════════════════════════════════════════════
 // RENDER ENGINE
 // ═══════════════════════════════════════════════
-const fmt = n => '$' + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const CURRENCY_SYMBOLS = { SGD:'$', USD:'$', AUD:'A$', MYR:'RM ', EUR:'€', GBP:'£', JPY:'¥', CNY:'¥', HKD:'HK$', IDR:'Rp ', THB:'฿', PHP:'₱', INR:'₹' };
+const currSym = () => CURRENCY_SYMBOLS[state.currency] ?? (state.currency + ' ');
+const fmt = n => currSym() + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+function updateCurrencyDisplay() {
+  const sym  = currSym();
+  const code = state.currency;
+  document.querySelectorAll('.curr-sym').forEach(el => el.textContent = sym);
+  document.querySelectorAll('[data-curr-label]').forEach(el => {
+    el.textContent = el.dataset.currLabel.replace(/CURR/g, code);
+  });
+}
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
 const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Health':'🏥','Entertainment':'🎬','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
 
@@ -1875,6 +1886,7 @@ function applyLanguage() {
 
 function renderAll() {
   applyLanguage();
+  updateCurrencyDisplay();
   renderDashboard();
   renderTransactions();
   renderBudgets();
@@ -2047,7 +2059,7 @@ function renderGoals() {
   document.getElementById('goals-list').innerHTML = state.goals.map(g => {
     const pct      = Math.min((g.current/g.target)*100, 100);
     const achieved = g.current >= g.target;
-    const color    = achieved ? 'var(--jade)' : pct > 50 ? 'var(--sky)' : 'var(--violet)';
+    const color = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
     const monthsLeft = g.monthly > 0 ? Math.ceil(remaining/g.monthly) : null;
     return `<div class="goal-card">
