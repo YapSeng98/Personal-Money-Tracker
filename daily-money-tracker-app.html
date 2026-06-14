@@ -1386,15 +1386,15 @@ function openTxnModal(id = null) {
   }
 
   if (editing) {
-    const t = state.transactions.find(x => x.id == id);
-    if (!t) return;
-    setType(t.type, document.getElementById(`tab-${t.type}`));
-    document.getElementById('txn-amount').value  = t.amount;
-    document.getElementById('txn-desc').value    = t.description;
-    document.getElementById('txn-date').value    = t.date;
-    document.getElementById('txn-notes').value   = t.notes || '';
-    setSelectVal('txn-cat',     t.category);
-    setSelectVal('txn-account', t.account);
+    const txn = state.transactions.find(x => x.id == id);
+    if (!txn) return;
+    setType(txn.type, document.getElementById(`tab-${txn.type}`));
+    document.getElementById('txn-amount').value  = txn.amount;
+    document.getElementById('txn-desc').value    = txn.description;
+    document.getElementById('txn-date').value    = txn.date;
+    document.getElementById('txn-notes').value   = txn.notes || '';
+    setSelectVal('txn-cat',     txn.category);
+    setSelectVal('txn-account', txn.account);
     document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
@@ -1464,11 +1464,12 @@ function saveTransaction() {
 }
 
 async function deleteTransaction(id) {
-  const t = state.transactions.find(x => x.id == id);
-  if (!t) return;
-  const ok = await showConfirm(t('confirm_del_txn'), `"${t.description}" — $${t.amount.toFixed(2)}`);
+  const txn = state.transactions.find(x => x.id == id);
+  if (!txn) return;
+  const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
 }
