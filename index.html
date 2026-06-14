@@ -603,6 +603,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <select class="form-input" id="filter-cat" onchange="renderTransactions()">
             <option value="">All Categories</option>
           </select>
+          <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral);border-color:var(--coral);">✕ Clear</button>
         </div>
         <div id="all-txns"><div class="empty"><div class="icon">📭</div><p>No transactions found.</p></div></div>
       </div>
@@ -1867,10 +1868,22 @@ function populateCategoryFilter() {
   sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${catIcon(c)} ${c}</option>`).join('');
 }
 
+function clearFilters() {
+  const si = document.getElementById('search-input');
+  const ft = document.getElementById('filter-type');
+  const fc = document.getElementById('filter-cat');
+  if (si) si.value = '';
+  if (ft) ft.value = '';
+  if (fc) fc.value = '';
+  renderTransactions();
+}
+
 function renderTransactions() {
   const typeF   = document.getElementById('filter-type')?.value || '';
   const catF    = document.getElementById('filter-cat')?.value  || '';
   const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const clearBtn = document.getElementById('clear-filters-btn');
+  if (clearBtn) clearBtn.style.display = (typeF || catF || searchF) ? 'inline-flex' : 'none';
 
   let txns = state.transactions.filter(t => {
     if (!t.date.startsWith(state.filterMonth))               return false;
