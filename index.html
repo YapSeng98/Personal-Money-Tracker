@@ -1530,8 +1530,10 @@ function saveBudget() {
     }
   } else {
     if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
-    state.budgets.push({ id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert });
-    showToast(t('toast_budget_saved') + ' → x_pfmt_budget', 'success');
+    const bud = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert };
+    state.budgets.push(bud);
+    _autoPushBudget(bud);
+    showToast(t('toast_budget_saved'), 'success');
   }
 
   closeBudgetModal();
@@ -1604,8 +1606,10 @@ function saveGoal() {
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    state.goals.push({ id: state.nextId++, name, icon, target, current, monthly, date });
-    showToast(t('toast_goal_saved') + ' → x_pfmt_savings_goal', 'success');
+    const goal = { id: state.nextId++, name, icon, target, current, monthly, date };
+    state.goals.push(goal);
+    _autoPushGoal(goal);
+    showToast(t('toast_goal_saved'), 'success');
   }
 
   closeGoalModal();
@@ -2378,20 +2382,50 @@ async function _autoPushAccount(acc) {
 }
 
 // ── Silent pull from SN (called on login) ────────────────────
+async function _autoPushBudget(b) {
+  if (!SN.connected) return;
+  try {
+    setSyncStatus('syncing', 'Syncing…');
+    const rec = await SN.post('x_1472763_person_0_budget', {
+      category: b.category, budget_amount: b.amount,
+      spent_amount: getBudgetSpent(b.category), alert_threshold_pct: b.alertPct || 80
+    });
+    b.id = rec.sys_id;
+    state.lastSync = new Date().toISOString();
+    saveState(); updateLastSync();
+    setSyncStatus('ok', 'Synced ✓');
+  } catch(e) { setSyncStatus('error', 'Sync failed'); }
+}
+
+async function _autoPushGoal(g) {
+  if (!SN.connected) return;
+  try {
+    setSyncStatus('syncing', 'Syncing…');
+    const rec = await SN.post('x_1472763_person_0_savings_goal', {
+      goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
+      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date
+    });
+    g.id = rec.sys_id;
+    state.lastSync = new Date().toISOString();
+    saveState(); updateLastSync();
+    setSyncStatus('ok', 'Synced ✓');
+  } catch(e) { setSyncStatus('error', 'Sync failed'); }
+}
+
 async function _autoSyncOnLogin() {
   if (!SN.connected) return;
   try {
     setSyncStatus('syncing', 'Loading data…');
-    const [txns, accounts] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
+    const [txns, accounts, budgets, goals] = await Promise.all([
+      SN.get('x_1472763_person_0_transaction',  {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_account',       {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_budget',        {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_savings_goal',  {}).catch(()=>[])
     ]);
-    if (txns.length) {
-      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    }
-    if (accounts.length) {
-      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
-    }
+    if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
+    if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
+    if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
     state.lastSync = new Date().toISOString();
     saveState();
     renderAll();
@@ -2525,19 +2559,23 @@ async function testConnection() {
 async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
-    const [txns, accounts] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
+    setSyncStatus('syncing', 'Syncing all…');
+    const [txns, accounts, budgets, goals] = await Promise.all([
+      SN.get('x_1472763_person_0_transaction',  {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_account',       {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_budget',        {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_savings_goal',  {}).catch(()=>[])
     ]);
-    if (txns.length) {
-      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    }
-    if (accounts.length) {
-      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
-    }
-    renderAll();
-    showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
+    if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
+    if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
+    if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
+    state.lastSync = new Date().toISOString();
+    saveState(); renderAll(); updateLastSync();
+    setSyncStatus('ok', 'Synced ✓');
+    showToast(`Synced: ${txns.length} txns · ${accounts.length} accounts · ${budgets.length} budgets · ${goals.length} goals`, 'success');
   } catch(e) {
+    setSyncStatus('error', 'Sync failed');
     showToast('Sync failed: ' + e.message, 'error');
   }
 }
