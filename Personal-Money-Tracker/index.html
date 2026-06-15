@@ -2063,6 +2063,7 @@ function renderAll() {
   renderAnalytics();
   renderAccounts();
   _updateSNLinks();
+  _updateSNConnCard();
   saveState();
 }
 
@@ -3041,10 +3042,18 @@ async function _onSNAuthSuccess(result) {
 
   _setLoginLoading(true, 'Loading your data…');
   await snLoadAll();
+  // Fetch fresh profile so display_name/email/currency reflect current SN values
+  try {
+    const prof = await snAPI.call('/profile');
+    if (prof) {
+      state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
+      saveState();
+    }
+  } catch(_) {}
   _setLoginLoading(false);
   _hideSNLogin();
   renderAll();
-  showToast(`Welcome, ${state.snUserProfile.display_name} 👋`, 'success');
+  showToast(`Welcome, ${state.snUserProfile.display_name || state.snUserProfile.username} 👋`, 'success');
 }
 
 async function snLogout() {
