@@ -13,13 +13,13 @@
 (function process(request, response) {
 
   var helper = new PFMTAuthHelper();
-  var method = request.getMethod();
+  var method = request.getHeader('X-HTTP-Method');
   var token  = request.getHeader('X-PFMT-Token') || '';
 
   // ── CORS headers ─────────────────────────────────────────
   response.setHeader('Access-Control-Allow-Origin',  '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PFMT-Token');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PFMT-Token, X-HTTP-Method');
 
   if (method === 'OPTIONS') { response.setStatus(200); return; }
 

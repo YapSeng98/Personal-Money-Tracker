@@ -2820,7 +2820,9 @@ const snAPI = {
     return h;
   },
   async call(path, method = 'GET', body = null) {
-    const opts = { method, headers: this.headers() };
+    const h = this.headers();
+    h['X-HTTP-Method'] = method;
+    const opts = { method, headers: h };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(this.base() + path, opts);
     const json = await res.json();

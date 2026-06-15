@@ -24,9 +24,9 @@
   // ── CORS headers (needed for GitHub Pages → SN calls) ────
   response.setHeader('Access-Control-Allow-Origin',  '*');
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PFMT-Token');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PFMT-Token, X-HTTP-Method');
 
-  if (request.getMethod() === 'OPTIONS') {
+  if (request.getHeader('X-HTTP-Method') === 'OPTIONS') {
     response.setStatus(200);
     return;
   }
