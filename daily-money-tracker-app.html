@@ -2824,7 +2824,12 @@ const snAPI = {
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(this.base() + path, opts);
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const msg = (typeof json.error === 'object')
+        ? (json.error.message || JSON.stringify(json.error))
+        : (json.error || `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
     return json.result;
   }
 };
