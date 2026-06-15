@@ -3101,11 +3101,13 @@ async function refreshProfileView() {
     if (!prof) return;
     state.snUserProfile = {
       ...state.snUserProfile,
+      username    : prof.username,
       display_name: prof.display_name,
       email       : prof.email,
       currency    : prof.currency,
       language    : prof.language,
       avatar_color: prof.avatar_color,
+      monthly_income_target: prof.monthly_income_target,
       stats       : prof.stats,
       since       : prof.sys_created_on
     };
@@ -3115,42 +3117,44 @@ async function refreshProfileView() {
 }
 
 function _renderProfileView() {
-  const p = state.snUserProfile;
-  if (!p || !p.username) return;
-
-  const initials = (p.display_name || p.username || '?')
-    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+  const p = state.snUserProfile || {};
 
   const el = id => document.getElementById(id);
   const set = (id, val) => { const e = el(id); if (e) e.textContent = val; };
 
-  const av = el('prof-avatar');
-  if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
+  const username = p.username || state.snUsername || '';
+  const displayName = p.display_name || username || '';
 
-  set('prof-display-name', p.display_name || p.username);
-  set('prof-username', '@' + p.username);
-  set('prof-email', p.email || '');
-  set('prof-detail-name', p.display_name || '—');
-  set('prof-detail-username', p.username);
-  set('prof-detail-email', p.email || '—');
-  set('prof-detail-currency', p.currency || state.currency || 'SGD');
-  set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
-  set('prof-detail-instance', state.snInstance || '—');
-  set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+  if (username || displayName) {
+    const initials = (displayName || username || '?')
+      .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+    const av = el('prof-avatar');
+    if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
 
-  // Stats
+    set('prof-display-name', displayName);
+    set('prof-username', username ? '@' + username : '');
+    set('prof-email', p.email || '');
+    set('prof-detail-name', displayName || '—');
+    set('prof-detail-username', username || '—');
+    set('prof-detail-email', p.email || '—');
+    set('prof-detail-currency', p.currency || state.currency || 'SGD');
+    set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
+    set('prof-detail-instance', state.snInstance || '—');
+    set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+
+    const editName = el('prof-edit-name');
+    const editEmail = el('prof-edit-email');
+    const editIncome = el('prof-edit-income');
+    if (editName)  editName.value  = displayName;
+    if (editEmail) editEmail.value = p.email || '';
+    if (editIncome) editIncome.value = p.monthly_income_target || '';
+  }
+
+  // Stats — always render from local data as fallback
   const stats = p.stats || {};
   set('prof-stat-txn',   stats.transaction_count  ?? state.transactions.length);
   set('prof-stat-acc',   stats.account_count       ?? state.accounts.length);
   set('prof-stat-goals', stats.active_goal_count   ?? state.goals.filter(g => g.status !== 'achieved').length);
-
-  // Pre-fill edit fields
-  const editName = el('prof-edit-name');
-  const editEmail = el('prof-edit-email');
-  const editIncome = el('prof-edit-income');
-  if (editName)  editName.value  = p.display_name || '';
-  if (editEmail) editEmail.value = p.email || '';
-  if (editIncome) editIncome.value = p.monthly_income_target || '';
 }
 
 async function saveProfile() {
