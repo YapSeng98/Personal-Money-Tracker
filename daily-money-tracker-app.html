@@ -790,7 +790,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
               Signed in as <span id="sn-conn-username" style="color:#fff;font-weight:600;"></span>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="testSNAPIConnection()" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">⚡ Test Connection</button>
+              <button id="sn-conn-auth-btn" onclick="_showSNLogin()" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">🔑 Sign In</button>
+              <button onclick="testSNAPIConnection()" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">⚡ Test Connection</button>
               <button onclick="snLoadAll().then(()=>showToast('Synced from ServiceNow','success')).catch(e=>showToast(e.message,'error'))" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">🔄 Sync Data</button>
             </div>
           </div>
@@ -2580,6 +2581,7 @@ function _updateSNConnCard() {
   const inst = document.getElementById('sn-conn-instance');
   const userRow = document.getElementById('sn-conn-user');
   const uname = document.getElementById('sn-conn-username');
+  const authBtn = document.getElementById('sn-conn-auth-btn');
   if (!dot) return;
   if (state.snToken) {
     dot.style.background = '#00C896';
@@ -2588,12 +2590,14 @@ function _updateSNConnCard() {
     inst.textContent = state.snInstance || '—';
     userRow.style.display = 'block';
     uname.textContent = state.snUserProfile?.display_name || state.snUserProfile?.username || '';
+    if (authBtn) { authBtn.textContent = '🚪 Sign Out'; authBtn.setAttribute('onclick', 'snLogout()'); }
   } else {
     dot.style.background = '#6B7280';
     lbl.style.color = 'rgba(255,255,255,.5)';
     lbl.textContent = 'Not signed in';
     inst.textContent = state.snInstance || '—';
     userRow.style.display = 'none';
+    if (authBtn) { authBtn.textContent = '🔑 Sign In'; authBtn.setAttribute('onclick', '_showSNLogin()'); }
   }
 }
 
