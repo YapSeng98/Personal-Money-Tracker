@@ -2162,7 +2162,7 @@ function renderGoals() {
   document.getElementById('goals-list').innerHTML = state.goals.map(g => {
     const pct      = Math.min((g.current/g.target)*100, 100);
     const achieved = g.current >= g.target;
-    const color    = achieved ? 'var(--jade)' : pct > 50 ? 'var(--sky)' : 'var(--violet)';
+    const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
     const monthsLeft = g.monthly > 0 ? Math.ceil(remaining/g.monthly) : null;
     return `<div class="goal-card">
