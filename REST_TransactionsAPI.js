@@ -1,30 +1,44 @@
 // ============================================================
 // PFMT Scripted REST API — /transactions
-// Location : ServiceNow → Scripted REST APIs → New
-// API Name : PFMT API
-// Base Path: /pfmt/v1
+// Location : ServiceNow → Scripted REST APIs
+// API Name : PFMT API  (base path /pfmt/v1)
 // Resource : /transactions
-// Methods  : GET, POST
-// Full URL : https://<instance>.service-now.com/api/x_pfmt/pfmt/v1/transactions
+// Methods  : GET, POST, PUT, DELETE
+// Full URL : https://<instance>.service-now.com/api/x_1472763_person_0/pfmt/v1/transactions
+//
+// All requests require header: X-PFMT-Token: <token>
+// NOTE: Set "Requires authentication" = false on this resource
 // ============================================================
 
 (function process(request, response) {
 
-  var method = request.getMethod();
+  var helper = new PFMTAuthHelper();
+  var method = request.getHeader('X-HTTP-Method');
+  var token  = request.getHeader('X-PFMT-Token') || '';
 
-  // ── GET ─────────────────────────────────────────────────
-  // Query params:
-  //   limit  (int,  default 50)
-  //   type   (string: expense | income | transfer)
-  //   month  (string: YYYY-MM)
-  // Example: GET /api/x_pfmt/pfmt/v1/transactions?type=expense&month=2026-06
+  // ── CORS headers ─────────────────────────────────────────
+  response.setHeader('Access-Control-Allow-Origin',  '*');
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-PFMT-Token, X-HTTP-Method');
+
+  if (method === 'OPTIONS') { response.setStatus(200); return; }
+
+  // ── Validate token ────────────────────────────────────────
+  var profileSysId = helper.validateToken(token);
+  if (!profileSysId) {
+    helper.errorResponse(response, 401, 'Invalid or expired session. Please log in again.');
+    return;
+  }
+
+  // ── GET /transactions ─────────────────────────────────────
+  // Query params: limit, type, month
   if (method === 'GET') {
-    var limit  = parseInt(request.queryParams.limit)   || 50;
-    var type   = request.queryParams.type    || '';
-    var month  = request.queryParams.month   || '';
+    var limit  = parseInt(request.queryParams.limit) || 500;
+    var type   = request.queryParams.type  || '';
+    var month  = request.queryParams.month || '';
 
     var gr = new GlideRecord('x_pfmt_transaction');
-    gr.addQuery('sys_created_by', gs.getUserName()); // RBAC: own records only
+    gr.addQuery('account.user_profile', profileSysId);
     if (type)  gr.addQuery('transaction_type', type);
     if (month) gr.addQuery('transaction_date', 'STARTSWITH', month);
     gr.orderByDesc('transaction_date');
@@ -34,15 +48,14 @@
     var results = [];
     while (gr.next()) {
       results.push({
-        sys_id       : gr.sys_id.toString(),
-        type         : gr.transaction_type.toString(),
-        amount       : parseFloat(gr.amount.toString()),
-        description  : gr.description.toString(),
-        category     : gr.category.category_name.toString(),
-        account      : gr.account.account_name.toString(),
-        date         : gr.transaction_date.toString(),
-        state        : gr.state.getDisplayValue(),
-        notes        : gr.notes.toString()
+        sys_id     : gr.sys_id.toString(),
+        type       : gr.transaction_type.toString(),
+        amount     : parseFloat(gr.amount.toString()),
+        description: gr.description.toString(),
+        category   : gr.category.category_name.toString(),
+        account    : gr.account.account_name.toString(),
+        date       : gr.transaction_date.toString(),
+        notes      : gr.notes.toString()
       });
     }
 
@@ -51,65 +64,128 @@
     return;
   }
 
-  // ── POST ─────────────────────────────────────────────────
-  // Body (JSON):
-  // {
-  //   "type"          : "expense",         // required
-  //   "amount"        : 84.30,             // required
-  //   "description"   : "NTUC FairPrice",  // required
-  //   "date"          : "2026-06-10",      // optional, defaults to today
-  //   "account_name"  : "DBS Checking",    // optional
-  //   "category_name" : "Groceries",       // optional
-  //   "notes"         : "Weekly shop"      // optional
-  // }
+  // ── POST /transactions ────────────────────────────────────
+  // Body: { type, amount, description, date, account_name, category_name, notes }
   if (method === 'POST') {
-    var body = request.body.data;
+    var body = request.body ? request.body.data : {};
 
     if (!body.amount || parseFloat(body.amount) <= 0) {
-      response.setStatus(400);
-      response.setBody({ error: 'amount must be > 0' });
+      helper.errorResponse(response, 400, 'amount must be > 0');
       return;
     }
     if (!body.description) {
-      response.setStatus(400);
-      response.setBody({ error: 'description is required' });
+      helper.errorResponse(response, 400, 'description is required');
       return;
     }
 
     var newGR = new GlideRecord('x_pfmt_transaction');
     newGR.initialize();
-    newGR.transaction_type  = body.type        || 'expense';
-    newGR.amount            = parseFloat(body.amount);
-    newGR.description       = body.description;
-    newGR.transaction_date  = body.date ||
-                              new GlideDateTime().getDate().getValue();
-    newGR.notes             = body.notes || '';
-    newGR.state             = '2'; // Confirmed
+    newGR.transaction_type = body.type        || 'expense';
+    newGR.amount           = parseFloat(body.amount);
+    newGR.description      = body.description;
+    newGR.transaction_date = body.date || new GlideDateTime().getDate().getValue();
+    newGR.notes            = body.notes || '';
+    newGR.state            = '2'; // Confirmed
 
-    // Resolve account by name
+    // Resolve account by name (must belong to this user)
     if (body.account_name) {
-      var acctGR = new GlideRecord('x_pfmt_account');
-      acctGR.addQuery('account_name', body.account_name);
-      acctGR.query();
-      if (acctGR.next()) newGR.account = acctGR.sys_id;
+      var accGR = new GlideRecord('x_pfmt_account');
+      accGR.addQuery('user_profile', profileSysId);
+      accGR.addQuery('account_name', body.account_name);
+      accGR.setLimit(1);
+      accGR.query();
+      if (accGR.next()) newGR.account = accGR.sys_id;
     }
 
     // Resolve category by name
     if (body.category_name) {
       var catGR = new GlideRecord('x_pfmt_category');
       catGR.addQuery('category_name', body.category_name);
+      catGR.setLimit(1);
       catGR.query();
       if (catGR.next()) newGR.category = catGR.sys_id;
     }
 
-    var sysID = newGR.insert();
+    var newSysId = newGR.insert();
     response.setStatus(201);
-    response.setBody({ result: { sys_id: sysID, status: 'created' } });
+    response.setBody({ result: { sys_id: newSysId, status: 'created' } });
     return;
   }
 
-  // ── Method not allowed ───────────────────────────────────
-  response.setStatus(405);
-  response.setBody({ error: 'Method not allowed' });
+  // ── PUT /transactions ─────────────────────────────────────
+  // Body: { sys_id, type, amount, description, date, account_name, category_name, notes }
+  if (method === 'PUT') {
+    var putBody = request.body ? request.body.data : {};
+    if (!putBody.sys_id) {
+      helper.errorResponse(response, 400, 'sys_id is required');
+      return;
+    }
+
+    var editGR = new GlideRecord('x_pfmt_transaction');
+    if (!editGR.get(putBody.sys_id)) {
+      helper.errorResponse(response, 404, 'Transaction not found');
+      return;
+    }
+    // Verify ownership via account.user_profile
+    if (editGR.account.user_profile.toString() !== profileSysId) {
+      helper.errorResponse(response, 403, 'Access denied');
+      return;
+    }
+
+    if (putBody.type        !== undefined) editGR.transaction_type = putBody.type;
+    if (putBody.amount      !== undefined) editGR.amount           = parseFloat(putBody.amount);
+    if (putBody.description !== undefined) editGR.description      = putBody.description;
+    if (putBody.date        !== undefined) editGR.transaction_date = putBody.date;
+    if (putBody.notes       !== undefined) editGR.notes            = putBody.notes;
+
+    if (putBody.account_name) {
+      var putAccGR = new GlideRecord('x_pfmt_account');
+      putAccGR.addQuery('user_profile', profileSysId);
+      putAccGR.addQuery('account_name', putBody.account_name);
+      putAccGR.setLimit(1);
+      putAccGR.query();
+      if (putAccGR.next()) editGR.account = putAccGR.sys_id;
+    }
+    if (putBody.category_name) {
+      var putCatGR = new GlideRecord('x_pfmt_category');
+      putCatGR.addQuery('category_name', putBody.category_name);
+      putCatGR.setLimit(1);
+      putCatGR.query();
+      if (putCatGR.next()) editGR.category = putCatGR.sys_id;
+    }
+
+    editGR.update();
+    response.setStatus(200);
+    response.setBody({ result: { sys_id: putBody.sys_id, status: 'updated' } });
+    return;
+  }
+
+  // ── DELETE /transactions ──────────────────────────────────
+  // Body or query param: { sys_id }
+  if (method === 'DELETE') {
+    var delBody = request.body ? request.body.data : {};
+    var delId   = delBody.sys_id || request.queryParams.sys_id;
+    if (!delId) {
+      helper.errorResponse(response, 400, 'sys_id is required');
+      return;
+    }
+
+    var delGR = new GlideRecord('x_pfmt_transaction');
+    if (!delGR.get(delId)) {
+      helper.errorResponse(response, 404, 'Transaction not found');
+      return;
+    }
+    if (delGR.account.user_profile.toString() !== profileSysId) {
+      helper.errorResponse(response, 403, 'Access denied');
+      return;
+    }
+
+    delGR.deleteRecord();
+    response.setStatus(200);
+    response.setBody({ result: { sys_id: delId, status: 'deleted' } });
+    return;
+  }
+
+  helper.errorResponse(response, 405, 'Method not allowed');
 
 })(request, response);

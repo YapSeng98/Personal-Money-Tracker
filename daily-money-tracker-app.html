@@ -103,7 +103,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .txn-amt.neg{color:var(--coral);}
 .txn-actions{display:flex;gap:4px;opacity:0;transition:opacity .15s;}
 .txn-row:hover .txn-actions{opacity:1;}
-@media(hover:none){.txn-actions{opacity:1;}}
 .icon-btn{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-size:13px;transition:all .15s;}
 .icon-btn.edit{background:var(--sky-s);color:var(--sky);}
 .icon-btn.edit:hover{background:#dbeafe;}
@@ -417,29 +416,51 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 /* version tag */
 .l-version{font-size:10px;color:rgba(255,255,255,.12);margin-top:8px;letter-spacing:.5px;font-family:var(--fm);}
 
-/* credential login form */
-.l-input{
-  width:100%;box-sizing:border-box;
-  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);
-  border-radius:10px;padding:11px 14px;
-  color:#fff;font-size:14px;font-family:var(--ff);
-  transition:border-color .15s,background .15s;
-  outline:none;-webkit-appearance:none;
+/* ── SN LOGIN FORM ── */
+.sn-login-panel{width:100%;display:none;flex-direction:column;gap:0;}
+.sn-login-panel.active{display:flex;}
+.sn-login-input{
+  width:100%;padding:11px 14px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  color:#fff;font-size:14px;font-family:var(--ff);outline:none;
+  transition:border-color .15s,background .15s;margin-bottom:10px;
 }
-.l-input::placeholder{color:rgba(255,255,255,.22);}
-.l-input:focus{border-color:rgba(0,200,150,.5);background:rgba(0,200,150,.05);}
-.l-field-label{font-size:10px;color:rgba(255,255,255,.38);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:block;font-weight:600;}
-.l-btn{
-  width:100%;padding:13px;border-radius:12px;border:none;
-  background:linear-gradient(135deg,#00C896 0%,#0EA5E9 100%);
-  color:#fff;font-size:15px;font-weight:700;font-family:var(--ff);
-  cursor:pointer;letter-spacing:.2px;
-  box-shadow:0 4px 24px rgba(0,200,150,.3);
-  transition:opacity .15s,transform .1s;
+.sn-login-input::placeholder{color:rgba(255,255,255,.28);}
+.sn-login-input:focus{border-color:rgba(0,200,150,.6);background:rgba(255,255,255,.1);}
+.sn-login-btn{
+  width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;
+  font-size:14px;font-weight:700;font-family:var(--ff);
+  background:var(--jade);color:white;transition:all .15s;margin-bottom:8px;
 }
-.l-btn:hover{opacity:.9;}
-.l-btn:active{transform:scale(.97);}
-.l-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.sn-login-btn:hover{background:var(--jade-d);}
+.sn-login-btn:disabled{opacity:.5;cursor:not-allowed;}
+.sn-login-btn.secondary{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);}
+.sn-login-btn.secondary:hover{background:rgba(255,255,255,.12);}
+.sn-login-err{font-size:12px;color:#FF8080;text-align:center;min-height:18px;margin-bottom:8px;font-weight:500;}
+.sn-login-toggle{font-size:12px;color:rgba(255,255,255,.4);text-align:center;cursor:pointer;border:none;background:none;font-family:var(--ff);padding:6px;}
+.sn-login-toggle span{color:var(--jade);font-weight:600;}
+.sn-login-toggle:hover span{text-decoration:underline;}
+
+/* ── PROFILE VIEW ── */
+.profile-hero{background:linear-gradient(135deg,var(--ink) 0%,#1a2744 100%);border-radius:20px;padding:28px 32px;color:white;margin-bottom:20px;display:flex;align-items:center;gap:20px;}
+.profile-avatar{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;font-family:var(--fd);color:white;flex-shrink:0;}
+.profile-name{font-family:var(--fd);font-size:22px;font-weight:700;color:white;margin-bottom:4px;}
+.profile-username{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:4px;}
+.profile-email{font-size:12px;color:rgba(255,255,255,.35);}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.profile-stat{background:white;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;}
+.profile-stat-val{font-family:var(--fd);font-size:24px;font-weight:700;margin-bottom:4px;}
+.profile-stat-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.profile-section{background:white;border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;}
+.profile-section h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:16px;}
+.profile-field{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.profile-field:last-child{border-bottom:none;padding-bottom:0;}
+.profile-field-lbl{font-size:13px;font-weight:500;color:var(--muted);}
+.profile-field-val{font-size:13px;font-weight:600;color:var(--ink);}
+.profile-edit-btn{font-size:11px;color:var(--sky);font-weight:600;border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.profile-edit-btn:hover{background:var(--sky-s);}
+.profile-signout{width:100%;padding:13px;background:var(--coral-s);color:var(--coral);border:1px solid rgba(255,91,91,.25);border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;}
+.profile-signout:hover{background:var(--coral);color:white;}
 
 @media(max-width:380px){
   .numpad{grid-template-columns:repeat(3,64px);gap:10px;}
@@ -483,64 +504,63 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="l-tagline">Money Tracker · ServiceNow PDI</div>
     <div class="l-divider"></div>
 
-    <!-- CREDENTIALS PANEL — shown when no SN account saved -->
-    <div id="cred-panel" style="display:none;width:100%;">
-      <div class="l-subtitle" style="text-align:center;margin-bottom:16px;">Sign in with ServiceNow</div>
-      <div style="width:100%;display:flex;flex-direction:column;gap:11px;margin-bottom:14px;">
-        <div>
-          <label class="l-field-label">Instance URL</label>
-          <input id="cred-instance" class="l-input" type="text" placeholder="dev000000.service-now.com"
-            autocomplete="off" autocapitalize="none" spellcheck="false">
-        </div>
-        <div>
-          <label class="l-field-label">Username</label>
-          <input id="cred-username" class="l-input" type="text" placeholder="admin"
-            autocomplete="username" autocapitalize="none">
-        </div>
-        <div>
-          <label class="l-field-label">Password</label>
-          <input id="cred-password" class="l-input" type="password" placeholder="••••••••"
-            autocomplete="current-password" onkeydown="if(event.key==='Enter')snLogin()">
-        </div>
+    <!-- ── Panel A: SN Login ── -->
+    <div class="sn-login-panel active" id="panel-login">
+      <input class="sn-login-input" id="sn-li-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
+      <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password"/>
+      <div class="sn-login-err" id="sn-li-err"></div>
+      <button class="sn-login-btn" id="sn-li-btn" onclick="doSNLogin()">Sign In</button>
+      <button class="sn-login-toggle" onclick="showAuthPanel('register')">No account? <span>Create one</span></button>
+    </div>
+
+    <!-- ── Panel B: SN Register ── -->
+    <div class="sn-login-panel" id="panel-register">
+      <input class="sn-login-input" id="sn-reg-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name"/>
+      <input class="sn-login-input" id="sn-reg-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
+      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email (optional)" autocomplete="email"/>
+      <input class="sn-login-input" id="sn-reg-password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password"/>
+      <input class="sn-login-input" id="sn-reg-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/>
+      <div class="sn-login-err" id="sn-reg-err"></div>
+      <button class="sn-login-btn" id="sn-reg-btn" onclick="doSNRegister()">Create Account</button>
+      <button class="sn-login-toggle" onclick="showAuthPanel('login')">Already have an account? <span>Sign in</span></button>
+    </div>
+
+    <!-- ── Panel C: PIN unlock (quick-lock only) ── -->
+    <div class="sn-login-panel" id="panel-pin">
+      <div class="l-subtitle" id="login-subtitle" style="margin-bottom:14px;">Enter your PIN</div>
+      <div class="pin-dots" id="pin-dots-wrap" style="margin-bottom:6px;">
+        <span class="pin-dot" id="pd0"></span>
+        <span class="pin-dot" id="pd1"></span>
+        <span class="pin-dot" id="pd2"></span>
+        <span class="pin-dot" id="pd3"></span>
       </div>
-      <div id="cred-error" style="font-size:11px;color:#FF8080;min-height:18px;margin-bottom:10px;text-align:center;font-weight:500;"></div>
-      <button class="l-btn" id="cred-submit-btn" onclick="snLogin()">Sign In →</button>
-      <button class="login-link" onclick="snSkipLogin()" style="margin-top:4px;">Use without account (local only)</button>
-    </div>
-
-    <!-- PIN area (hidden while credential form is shown) -->
-    <div class="l-subtitle" id="login-subtitle">Enter your PIN</div>
-    <div class="pin-dots" id="pin-dots-wrap">
-      <span class="pin-dot" id="pd0"></span>
-      <span class="pin-dot" id="pd1"></span>
-      <span class="pin-dot" id="pd2"></span>
-      <span class="pin-dot" id="pd3"></span>
-    </div>
-    <div class="pin-error" id="pin-error"></div>
-
-    <!-- numpad (iOS-style circular) -->
-    <div class="numpad">
-      <button class="numpad-btn" onclick="pinInput('1')"><span class="nb-num">1</span></button>
-      <button class="numpad-btn" onclick="pinInput('2')"><span class="nb-num">2</span><span class="nb-sub">ABC</span></button>
-      <button class="numpad-btn" onclick="pinInput('3')"><span class="nb-num">3</span><span class="nb-sub">DEF</span></button>
-      <button class="numpad-btn" onclick="pinInput('4')"><span class="nb-num">4</span><span class="nb-sub">GHI</span></button>
-      <button class="numpad-btn" onclick="pinInput('5')"><span class="nb-num">5</span><span class="nb-sub">JKL</span></button>
-      <button class="numpad-btn" onclick="pinInput('6')"><span class="nb-num">6</span><span class="nb-sub">MNO</span></button>
-      <button class="numpad-btn" onclick="pinInput('7')"><span class="nb-num">7</span><span class="nb-sub">PQRS</span></button>
-      <button class="numpad-btn" onclick="pinInput('8')"><span class="nb-num">8</span><span class="nb-sub">TUV</span></button>
-      <button class="numpad-btn" onclick="pinInput('9')"><span class="nb-num">9</span><span class="nb-sub">WXYZ</span></button>
-      <div class="numpad-empty"></div>
-      <button class="numpad-btn" onclick="pinInput('0')"><span class="nb-num">0</span></button>
-      <button class="numpad-btn special" onclick="pinBackspace()"><span class="nb-num">⌫</span></button>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="numpad">
+        <button class="numpad-btn" onclick="pinInput('1')"><span class="nb-num">1</span></button>
+        <button class="numpad-btn" onclick="pinInput('2')"><span class="nb-num">2</span><span class="nb-sub">ABC</span></button>
+        <button class="numpad-btn" onclick="pinInput('3')"><span class="nb-num">3</span><span class="nb-sub">DEF</span></button>
+        <button class="numpad-btn" onclick="pinInput('4')"><span class="nb-num">4</span><span class="nb-sub">GHI</span></button>
+        <button class="numpad-btn" onclick="pinInput('5')"><span class="nb-num">5</span><span class="nb-sub">JKL</span></button>
+        <button class="numpad-btn" onclick="pinInput('6')"><span class="nb-num">6</span><span class="nb-sub">MNO</span></button>
+        <button class="numpad-btn" onclick="pinInput('7')"><span class="nb-num">7</span><span class="nb-sub">PQRS</span></button>
+        <button class="numpad-btn" onclick="pinInput('8')"><span class="nb-num">8</span><span class="nb-sub">TUV</span></button>
+        <button class="numpad-btn" onclick="pinInput('9')"><span class="nb-num">9</span><span class="nb-sub">WXYZ</span></button>
+        <div class="numpad-empty"></div>
+        <button class="numpad-btn" onclick="pinInput('0')"><span class="nb-num">0</span></button>
+        <button class="numpad-btn special" onclick="pinBackspace()"><span class="nb-num">⌫</span></button>
+      </div>
+      <button class="sn-login-toggle" onclick="snLogout()">Sign out completely <span>→</span></button>
     </div>
 
     <!-- footer -->
     <div class="l-footer">
       <div class="l-connecting" id="login-connecting">
         <div class="l-spinner"></div>
-        Connecting to PDI…
+        <span id="login-connecting-msg">Connecting…</span>
       </div>
-      <button class="login-link" id="forgot-btn" onclick="pinForgot()">Forgot PIN? Reset all data</button>
+      <button class="login-link" id="forgot-btn" onclick="pinForgot()" style="display:none;">Forgot PIN? Reset all data</button>
       <div class="l-version">PFMT v2.0 · PDI</div>
     </div>
   </div>
@@ -559,6 +579,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   <button class="nav-item" onclick="showView('analytics',this)"><span class="icon">📈</span> Analytics</button>
   <div class="nav-section">Manage</div>
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
+  <button class="nav-item" id="nav-profile" onclick="showView('profile',this)"><span class="icon">👤</span> Profile</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
   <button class="nav-item" onclick="lockApp()" style="color:rgba(255,120,120,.7);margin-top:4px;"><span class="icon">🔒</span> Lock</button>
   <div class="sidebar-bottom">
@@ -580,17 +601,11 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <button class="hamburger-btn" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbar-title">Dashboard</div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span id="sync-indicator" title="Sync status" style="font-size:11px;color:var(--muted);display:none;align-items:center;gap:4px;">
-        <span id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
-        <span id="sync-label">—</span>
-      </span>
-      <div class="topbar-actions">
-        <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
-        <button class="btn btn-ghost btn-sm desktop-only" onclick="exportSNJSON()" title="Export SN-ready JSON">⬇ SN JSON</button>
-        <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
-        <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
-      </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
+      <button class="btn btn-ghost btn-sm desktop-only" onclick="exportSNJSON()" title="Export SN-ready JSON">⬇ SN JSON</button>
+      <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
+      <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
     </div>
   </div>
   <div class="month-nav" id="month-nav-bar">
@@ -609,12 +624,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="balance-hero">
         <div class="balance-grid">
           <div>
-            <div class="balance-main-label" data-curr-label="Net Balance (CURR)">Net Balance (SGD)</div>
+            <div class="balance-main-label">Net Balance (SGD)</div>
             <div class="balance-main-val" id="hero-balance">$0.00</div>
           </div>
           <div class="balance-side">
             <div class="balance-sub"><label>Income</label><span class="inc-val" id="hero-income">$0.00</span></div>
-            <div class="balance-sub"><label>Expenses</label><span class="exp-val" id="hero-expense">$0.00</span></div>
+            <div class="balance-side"><div class="balance-sub"><label>Expenses</label><span class="exp-val" id="hero-expense">$0.00</span></div></div>
           </div>
         </div>
       </div>
@@ -831,7 +846,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         </div>
         <div class="settings-section">
           <h3>Preferences</h3>
-          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="changeCurrency(this.value)"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>EUR</option><option>GBP</option><option>JPY</option><option>CNY</option><option>HKD</option><option>IDR</option><option>THB</option><option>PHP</option><option>INR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
@@ -846,10 +861,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
             <div><div class="setting-label">Lock Now</div><div class="setting-sub">Requires PIN to re-enter</div></div>
             <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="lockApp()">🔒 Lock</button>
           </div>
-          <div class="setting-row">
-            <div><div class="setting-label">Sign Out</div><div class="setting-sub">Clear ServiceNow credentials &amp; PIN</div></div>
-            <button class="btn btn-coral" style="font-size:12px;padding:7px 14px;" onclick="logoutSN()">Sign Out</button>
-          </div>
         </div>
         <div class="settings-section">
           <h3>Data</h3>
@@ -858,6 +869,113 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         </div>
       </div>
     </div>
+
+    <!-- ── PROFILE VIEW ── -->
+    <div class="view" id="view-profile">
+
+      <!-- Hero -->
+      <div class="profile-hero">
+        <div class="profile-avatar" id="prof-avatar" style="background:#8B5CF6;">YC</div>
+        <div>
+          <div class="profile-name" id="prof-display-name">—</div>
+          <div class="profile-username" id="prof-username">@—</div>
+          <div class="profile-email" id="prof-email"></div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="prof-stat-txn">—</div>
+          <div class="profile-stat-lbl">Transactions</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="prof-stat-acc">—</div>
+          <div class="profile-stat-lbl">Accounts</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="prof-stat-goals">—</div>
+          <div class="profile-stat-lbl">Active Goals</div>
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div class="profile-section">
+        <h3>Account Details</h3>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Display Name</span>
+          <span class="profile-field-val" id="prof-detail-name">—</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Username</span>
+          <span class="profile-field-val" id="prof-detail-username">—</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Email</span>
+          <span class="profile-field-val" id="prof-detail-email">—</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Currency</span>
+          <span class="profile-field-val" id="prof-detail-currency">SGD</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Language</span>
+          <span class="profile-field-val" id="prof-detail-language">English</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">ServiceNow Instance</span>
+          <span class="profile-field-val" id="prof-detail-instance" style="font-size:11px;color:var(--muted);">—</span>
+        </div>
+        <div class="profile-field" style="border-bottom:none;padding-bottom:0;">
+          <span class="profile-field-lbl">Member Since</span>
+          <span class="profile-field-val" id="prof-detail-since">—</span>
+        </div>
+      </div>
+
+      <!-- Edit section -->
+      <div class="profile-section">
+        <h3>Edit Profile</h3>
+        <div style="display:grid;gap:10px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Display Name</label>
+            <input class="form-input" id="prof-edit-name" type="text" placeholder="Your display name"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Email</label>
+            <input class="form-input" id="prof-edit-email" type="email" placeholder="your@email.com"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Monthly Income Target</label>
+            <input class="form-input" id="prof-edit-income" type="number" placeholder="0.00"/>
+          </div>
+          <button class="btn btn-jade" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Change password -->
+      <div class="profile-section">
+        <h3>Change Password</h3>
+        <div style="display:grid;gap:10px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Current Password</label>
+            <input class="form-input" id="prof-pw-current" type="password" placeholder="••••••••"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">New Password</label>
+            <input class="form-input" id="prof-pw-new" type="password" placeholder="Min 6 characters"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Confirm New Password</label>
+            <input class="form-input" id="prof-pw-confirm" type="password" placeholder="Confirm new password"/>
+          </div>
+          <button class="btn btn-ghost" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
+        </div>
+      </div>
+
+      <!-- Sign out -->
+      <button class="profile-signout" onclick="snLogout()">Sign Out</button>
+
+    </div><!-- end view-profile -->
 
   </div><!-- .content -->
 </main>
@@ -879,9 +997,9 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <button class="type-tab transfer" id="tab-transfer" onclick="setType('transfer',this)">Transfer</button>
     </div>
     <div class="form-group">
-      <label class="form-label" data-curr-label="Amount (CURR)">Amount (SGD)</label>
+      <label class="form-label">Amount (SGD)</label>
       <div class="amount-input-wrap">
-        <span class="amount-prefix curr-sym">$</span>
+        <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="txn-amount" placeholder="0.00" step="0.01" min="0">
       </div>
     </div>
@@ -911,6 +1029,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group">
         <label class="form-label">Account</label>
         <select class="form-input" id="txn-account">
+          <option value="DBS Checking">🏦 DBS Checking</option>
+          <option value="OCBC Savings">🏦 OCBC Savings</option>
+          <option value="Grab PayLater">💳 Grab PayLater</option>
+          <option value="Cash">💵 Cash</option>
         </select>
       </div>
     </div>
@@ -949,16 +1071,16 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label" data-curr-label="Monthly Budget Limit (CURR)">Monthly Budget Limit (SGD)</label>
+      <label class="form-label">Monthly Budget Limit (SGD)</label>
       <div class="amount-input-wrap">
-        <span class="amount-prefix curr-sym">$</span>
+        <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-amount" placeholder="0.00" step="0.01">
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label" data-curr-label="Current Spent (CURR) — optional override">Current Spent (SGD) — optional override</label>
+      <label class="form-label">Current Spent (SGD) — optional override</label>
       <div class="amount-input-wrap">
-        <span class="amount-prefix curr-sym">$</span>
+        <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-spent" placeholder="0.00" step="0.01" value="0">
       </div>
     </div>
@@ -999,17 +1121,17 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label" data-curr-label="Target Amount (CURR)">Target Amount (SGD)</label>
-        <div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="goal-target" placeholder="5000"></div>
+        <label class="form-label">Target Amount (SGD)</label>
+        <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-target" placeholder="5000"></div>
       </div>
       <div class="form-group">
-        <label class="form-label" data-curr-label="Current Saved (CURR)">Current Saved (SGD)</label>
-        <div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="goal-current" placeholder="0" value="0"></div>
+        <label class="form-label">Current Saved (SGD)</label>
+        <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-current" placeholder="0" value="0"></div>
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label" data-curr-label="Monthly Contribution (CURR)">Monthly Contribution (SGD)</label>
-      <div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="goal-monthly" placeholder="e.g. 500"></div>
+      <label class="form-label">Monthly Contribution (SGD)</label>
+      <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-monthly" placeholder="e.g. 500"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Target Date</label>
@@ -1046,13 +1168,9 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
-      <div class="form-group"><label class="form-label" data-curr-label="Balance (CURR)">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix curr-sym">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
+      <div class="form-group"><label class="form-label">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Institution</label>
-      <select class="form-input" id="acc-institution" onchange="handleInstitutionChange(this)"></select>
-      <div id="institution-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-    </div>
+    <div class="form-group"><label class="form-label">Institution</label><select class="form-input" id="acc-institution"><option>DBS</option><option>OCBC</option><option>UOB</option><option>Standard Chartered</option><option>Grab Financial</option><option>Other</option></select></div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
@@ -1300,15 +1418,11 @@ const DEFAULT_ACCOUNTS = [
   { id: 3, name: 'Grab PayLater', type: 'Credit Card', institution: 'Grab', balance: -380.00,  icon: '💳' }
 ];
 
-const DEFAULT_INSTITUTIONS = ['DBS','OCBC','UOB','Standard Chartered','Grab Financial','Other'];
-
 let state = {
   transactions: [],
   budgets: [],
   goals: [],
   accounts: [],
-  institutions: [...DEFAULT_INSTITUTIONS],
-  institutionMap: {},
   currentType: 'expense',
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
@@ -1319,7 +1433,10 @@ let state = {
   lastSync: null,
   currency: 'SGD',
   language: 'en',
-  preferenceId: ''
+  // SN custom auth
+  snToken: null,
+  snProfileSysId: null,
+  snUserProfile: {}  // {username, display_name, email, currency, language, avatar_color, stats}
 };
 
 // ═══════════════════════════════════════════════
@@ -1333,7 +1450,6 @@ function saveState() {
       budgets: state.budgets,
       goals: state.goals,
       accounts: state.accounts,
-      institutions: state.institutions,
       nextId: state.nextId,
       filterMonth: state.filterMonth,
       geminiKey: state.geminiKey,
@@ -1343,8 +1459,10 @@ function saveState() {
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
-      preferenceId: state.preferenceId,
-      institutionMap: state.institutionMap
+      snToken: state.snToken,
+      snProfileSysId: state.snProfileSysId,
+      snUserProfile: state.snUserProfile,
+      snInstance: state.snInstance
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -1357,9 +1475,6 @@ function loadState() {
     // migrate old anthropicKey → geminiKey if present
     if (saved.anthropicKey && !saved.geminiKey) saved.geminiKey = saved.anthropicKey;
     delete saved.anthropicKey;
-    if (!saved.institutions || !Array.isArray(saved.institutions) || saved.institutions.length === 0) {
-      saved.institutions = [...DEFAULT_INSTITUTIONS];
-    }
     Object.assign(state, saved);
     return true;
   } catch(e) { return false; }
@@ -1409,13 +1524,15 @@ function showView(name, el) {
   if (el) el.classList.add('active');
   const titleKeys = {
     dashboard:'topbar_dashboard', transactions:'topbar_transactions', budgets:'topbar_budgets',
-    goals:'topbar_goals', analytics:'topbar_analytics', accounts:'topbar_accounts', settings:'topbar_settings'
+    goals:'topbar_goals', analytics:'topbar_analytics', accounts:'topbar_accounts',
+    settings:'topbar_settings', profile:'Profile'
   };
   document.getElementById('topbar-title').textContent = titleKeys[name] ? t(titleKeys[name]) : name;
   // show month nav only on views where it's relevant
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) monthBar.style.display = ['dashboard','budgets','transactions'].includes(name) ? 'flex' : 'none';
   if (name === 'transactions') populateCategoryFilter();
+  if (name === 'profile') { _renderProfileView(); refreshProfileView(); }
   closeSidebar();
   renderAll();
 }
@@ -1434,30 +1551,16 @@ function openTxnModal(id = null) {
   document.getElementById('txn-desc').value               = '';
   document.getElementById('txn-notes').value              = '';
 
-  // Populate account dropdown from state.accounts
-  const acctSel = document.getElementById('txn-account');
-  acctSel.innerHTML = '';
-  if (state.accounts.length === 0) {
-    acctSel.innerHTML = '<option value="" disabled selected>No accounts — add one in Accounts tab</option>';
-  } else {
-    state.accounts.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.name;
-      opt.textContent = `${a.icon || '🏦'} ${a.name}`;
-      acctSel.appendChild(opt);
-    });
-  }
-
   if (editing) {
-    const txn = state.transactions.find(x => x.id == id);
-    if (!txn) return;
-    setType(txn.type, document.getElementById(`tab-${txn.type}`));
-    document.getElementById('txn-amount').value  = txn.amount;
-    document.getElementById('txn-desc').value    = txn.description;
-    document.getElementById('txn-date').value    = txn.date;
-    document.getElementById('txn-notes').value   = txn.notes || '';
-    setSelectVal('txn-cat',     txn.category);
-    setSelectVal('txn-account', txn.account);
+    const t = state.transactions.find(x => x.id == id);
+    if (!t) return;
+    setType(t.type, document.getElementById(`tab-${t.type}`));
+    document.getElementById('txn-amount').value  = t.amount;
+    document.getElementById('txn-desc').value    = t.description;
+    document.getElementById('txn-date').value    = t.date;
+    document.getElementById('txn-notes').value   = t.notes || '';
+    setSelectVal('txn-cat',     t.category);
+    setSelectVal('txn-account', t.account);
     document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
@@ -1519,8 +1622,7 @@ function saveTransaction() {
   } else {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt, description: desc, category: cat, account: acct, date, notes };
     state.transactions.unshift(txn);
-    showToast(t('toast_txn_saved'), 'success');
-    _autoPushTxn(txn);
+    showToast(t('toast_txn_saved') + ' → x_pfmt_transaction', 'success');
   }
 
   closeTxnModal();
@@ -1528,12 +1630,11 @@ function saveTransaction() {
 }
 
 async function deleteTransaction(id) {
-  const txn = state.transactions.find(x => x.id == id);
-  if (!txn) return;
-  const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
+  const t = state.transactions.find(x => x.id == id);
+  if (!t) return;
+  const ok = await showConfirm(t('confirm_del_txn'), `"${t.description}" — $${t.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
-  saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
 }
@@ -1586,10 +1687,8 @@ function saveBudget() {
     }
   } else {
     if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
-    const bud = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert };
-    state.budgets.push(bud);
-    _autoPushBudget(bud);
-    showToast(t('toast_budget_saved'), 'success');
+    state.budgets.push({ id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert });
+    showToast(t('toast_budget_saved') + ' → x_pfmt_budget', 'success');
   }
 
   closeBudgetModal();
@@ -1662,10 +1761,8 @@ function saveGoal() {
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    const goal = { id: state.nextId++, name, icon, target, current, monthly, date };
-    state.goals.push(goal);
-    _autoPushGoal(goal);
-    showToast(t('toast_goal_saved'), 'success');
+    state.goals.push({ id: state.nextId++, name, icon, target, current, monthly, date });
+    showToast(t('toast_goal_saved') + ' → x_pfmt_savings_goal', 'success');
   }
 
   closeGoalModal();
@@ -1685,58 +1782,6 @@ async function deleteGoal(id) {
 // Account
 let _editingAccountId = null;
 
-function populateInstitutionDropdown(selected) {
-  const sel = document.getElementById('acc-institution');
-  const prev = selected !== undefined ? selected : sel.value;
-  sel.innerHTML = '';
-  state.institutions.forEach(inst => {
-    const opt = document.createElement('option');
-    opt.value = inst;
-    opt.textContent = inst;
-    sel.appendChild(opt);
-  });
-  const addOpt = document.createElement('option');
-  addOpt.value = '__add_new__';
-  addOpt.textContent = '➕ Add new institution...';
-  sel.appendChild(addOpt);
-  sel.value = state.institutions.includes(prev) ? prev : state.institutions[0];
-  renderInstitutionTags();
-}
-
-function renderInstitutionTags() {
-  const container = document.getElementById('institution-tags');
-  if (!container) return;
-  container.innerHTML = '';
-  state.institutions.forEach(inst => {
-    const chip = document.createElement('span');
-    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:20px;padding:3px 10px;font-size:12px;color:#374151;';
-    chip.innerHTML = `${inst} <button onclick="removeInstitution('${inst.replace(/'/g,"\\'")}') " style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:14px;line-height:1;padding:0;margin-left:2px;">×</button>`;
-    container.appendChild(chip);
-  });
-}
-
-function handleInstitutionChange(sel) {
-  if (sel.value !== '__add_new__') return;
-  const name = prompt('Enter new institution name:');
-  if (!name || !name.trim()) { sel.value = state.institutions[0]; return; }
-  const trimmed = name.trim();
-  if (!state.institutions.includes(trimmed)) {
-    state.institutions.push(trimmed);
-    saveState();
-    _pushInstitution(trimmed);
-  }
-  populateInstitutionDropdown(trimmed);
-}
-
-function removeInstitution(inst) {
-  const inUse = state.accounts.some(a => a.institution === inst);
-  if (inUse) { showToast(`"${inst}" is used by an account and cannot be removed.`, 'error'); return; }
-  state.institutions = state.institutions.filter(i => i !== inst);
-  saveState();
-  _deleteInstitution(inst);
-  populateInstitutionDropdown();
-}
-
 function openAccountModal(id = null) {
   _editingAccountId = id;
   const isEdit = id !== null;
@@ -1745,15 +1790,15 @@ function openAccountModal(id = null) {
   if (isEdit) {
     const acc = state.accounts.find(a => a.id === id);
     if (!acc) return;
-    document.getElementById('acc-name').value    = acc.name;
-    document.getElementById('acc-type').value    = acc.type;
-    document.getElementById('acc-balance').value = acc.balance;
-    populateInstitutionDropdown(acc.institution);
+    document.getElementById('acc-name').value        = acc.name;
+    document.getElementById('acc-type').value        = acc.type;
+    document.getElementById('acc-balance').value     = acc.balance;
+    document.getElementById('acc-institution').value = acc.institution;
   } else {
-    document.getElementById('acc-name').value    = '';
-    document.getElementById('acc-type').value    = 'Checking';
-    document.getElementById('acc-balance').value = '';
-    populateInstitutionDropdown(state.institutions[0]);
+    document.getElementById('acc-name').value        = '';
+    document.getElementById('acc-type').value        = 'Checking';
+    document.getElementById('acc-balance').value     = '';
+    document.getElementById('acc-institution').value = 'DBS';
   }
   document.getElementById('account-modal').classList.add('open');
 }
@@ -1769,9 +1814,7 @@ function saveAccount() {
     const idx = state.accounts.findIndex(a => a.id === _editingAccountId);
     if (idx !== -1) state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
   } else {
-    const acc = { id: state.nextId++, name, type, institution, balance, icon };
-    state.accounts.push(acc);
-    _autoPushAccount(acc);
+    state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon });
   }
   _editingAccountId = null;
   document.getElementById('account-modal').classList.remove('open');
@@ -1792,18 +1835,7 @@ async function deleteAccount(id) {
 // ═══════════════════════════════════════════════
 // RENDER ENGINE
 // ═══════════════════════════════════════════════
-const CURRENCY_SYMBOLS = { SGD:'$', USD:'$', AUD:'A$', MYR:'RM ', EUR:'€', GBP:'£', JPY:'¥', CNY:'¥', HKD:'HK$', IDR:'Rp ', THB:'฿', PHP:'₱', INR:'₹' };
-const currSym = () => CURRENCY_SYMBOLS[state.currency] ?? (state.currency + ' ');
-const fmt = n => currSym() + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
-
-function updateCurrencyDisplay() {
-  const sym  = currSym();
-  const code = state.currency;
-  document.querySelectorAll('.curr-sym').forEach(el => el.textContent = sym);
-  document.querySelectorAll('[data-curr-label]').forEach(el => {
-    el.textContent = el.dataset.currLabel.replace(/CURR/g, code);
-  });
-}
+const fmt = n => '$' + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
 const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Health':'🏥','Entertainment':'🎬','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
 
@@ -1958,7 +1990,6 @@ function applyLanguage() {
 
 function renderAll() {
   applyLanguage();
-  updateCurrencyDisplay();
   renderDashboard();
   renderTransactions();
   renderBudgets();
@@ -2131,7 +2162,7 @@ function renderGoals() {
   document.getElementById('goals-list').innerHTML = state.goals.map(g => {
     const pct      = Math.min((g.current/g.target)*100, 100);
     const achieved = g.current >= g.target;
-    const color = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
+    const color    = achieved ? 'var(--jade)' : pct > 50 ? 'var(--sky)' : 'var(--violet)';
     const remaining = g.target - g.current;
     const monthsLeft = g.monthly > 0 ? Math.ceil(remaining/g.monthly) : null;
     return `<div class="goal-card">
@@ -2367,10 +2398,9 @@ async function pushAllToSN() {
     try {
       const rec = await SN.post('x_1472763_person_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
-        category: t.category, account: t.account, transaction_date: t.date,
-        notes: t.notes || '', user: state.snUsername
+        category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
       });
-      t.id = rec.sys_id;
+      t.id = rec.sys_id; // replace local id with SN sys_id
       ok++;
     } catch { fail++; }
   }
@@ -2384,129 +2414,6 @@ function updateLastSync() {
   const el = document.getElementById('last-sync-label');
   if (el && state.lastSync) {
     el.textContent = 'Last sync: ' + new Date(state.lastSync).toLocaleTimeString('en-SG', { hour:'2-digit', minute:'2-digit' });
-  }
-}
-
-function setSyncStatus(status, label) {
-  const ind  = document.getElementById('sync-indicator');
-  const dot  = document.getElementById('sync-dot');
-  const lbl  = document.getElementById('sync-label');
-  if (!ind) return;
-  ind.style.display = 'flex';
-  const colors = { syncing:'#F59E0B', ok:'#00C896', error:'#FF5B5B', idle:'#6B7280' };
-  dot.style.background = colors[status] || colors.idle;
-  lbl.textContent = label;
-  if (status === 'ok') setTimeout(() => { ind.style.display = 'none'; }, 3000);
-}
-
-async function _autoPushTxn(txn) {
-  if (!SN.connected) return;
-  try {
-    setSyncStatus('syncing', 'Syncing…');
-    const rec = await SN.post('x_1472763_person_0_transaction', {
-      transaction_type: txn.type, amount: txn.amount,
-      description: txn.description, category: txn.category,
-      account: txn.account, transaction_date: txn.date,
-      notes: txn.notes || '', user: state.snUsername
-    });
-    txn.id = rec.sys_id;
-    state.lastSync = new Date().toISOString();
-    saveState();
-    updateLastSync();
-    setSyncStatus('ok', 'Synced ✓');
-  } catch(e) {
-    setSyncStatus('error', 'Sync failed');
-  }
-}
-
-async function _autoPushAccount(acc) {
-  if (!SN.connected) return;
-  try {
-    setSyncStatus('syncing', 'Syncing…');
-    const rec = await SN.post('x_1472763_person_0_account', {
-      account_name: acc.name, account_type: acc.type,
-      institution_name: acc.institution, current_balance: acc.balance,
-      user: state.snUsername
-    });
-    acc.id = rec.sys_id;
-    state.lastSync = new Date().toISOString();
-    saveState();
-    updateLastSync();
-    setSyncStatus('ok', 'Synced ✓');
-  } catch(e) {
-    setSyncStatus('error', 'Sync failed');
-  }
-}
-
-async function _autoPushBudget(b) {
-  if (!SN.connected) return;
-  try {
-    setSyncStatus('syncing', 'Syncing…');
-    const rec = await SN.post('x_1472763_person_0_budget', {
-      category: b.category, budget_amount: b.amount,
-      spent_amount: getBudgetSpent(b.category), alert_threshold_pct: b.alertPct || 80,
-      user: state.snUsername
-    });
-    b.id = rec.sys_id;
-    state.lastSync = new Date().toISOString();
-    saveState(); updateLastSync();
-    setSyncStatus('ok', 'Synced ✓');
-  } catch(e) { setSyncStatus('error', 'Sync failed'); }
-}
-
-async function _autoPushGoal(g) {
-  if (!SN.connected) return;
-  try {
-    setSyncStatus('syncing', 'Syncing…');
-    const rec = await SN.post('x_1472763_person_0_savings_goal', {
-      goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
-      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date,
-      user: state.snUsername
-    });
-    g.id = rec.sys_id;
-    state.lastSync = new Date().toISOString();
-    saveState(); updateLastSync();
-    setSyncStatus('ok', 'Synced ✓');
-  } catch(e) { setSyncStatus('error', 'Sync failed'); }
-}
-
-async function _autoSyncOnLogin() {
-  if (!SN.connected) return;
-  try {
-    setSyncStatus('syncing', 'Loading data…');
-    const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
-    const [txns, accounts, budgets, goals, insts, prefs] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_institution',   uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_preference',    uq).catch(()=>[])
-    ]);
-    if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
-    if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
-    if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
-    if (insts.length) {
-      state.institutionMap = {};
-      state.institutions = insts.map(r => { const n = r.institution_name||''; state.institutionMap[n] = r.sys_id; return n; }).filter(Boolean);
-    }
-    if (prefs.length) {
-      const p = prefs[0];
-      state.preferenceId = p.sys_id;
-      if (p.currency) state.currency = p.currency;
-      if (p.language) state.language = p.language;
-      const cs = document.getElementById('currency-select'); if (cs) cs.value = state.currency;
-      const ls = document.getElementById('language-select'); if (ls) ls.value = state.language;
-      applyLanguage();
-    }
-    state.lastSync = new Date().toISOString();
-    saveState();
-    renderAll();
-    updateLastSync();
-    setSyncStatus('ok', 'Up to date ✓');
-  } catch(e) {
-    setSyncStatus('error', 'Sync failed');
   }
 }
 
@@ -2542,54 +2449,11 @@ const SN = {
     return (await res.json()).result || [];
   },
   async post(table, body) {
-    const res = await fetch(`${SN.base}/${table}?sysparm_input_display_value=true`, { method:'POST', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
+    const res = await fetch(`${SN.base}/${table}`, { method:'POST', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
     if (!res.ok) throw new Error(`${res.status}`);
     return (await res.json()).result;
-  },
-  async patch(table, sys_id, body) {
-    const res = await fetch(`${SN.base}/${table}/${sys_id}?sysparm_input_display_value=true`, { method:'PATCH', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return (await res.json()).result;
-  },
-  async delete(table, sys_id) {
-    const res = await fetch(`${SN.base}/${table}/${sys_id}`, { method:'DELETE', headers:{'Authorization':SN.authHeader(),'Accept':'application/json'} });
-    if (!res.ok) throw new Error(`${res.status}`);
   }
 };
-
-async function _syncPreferences() {
-  if (!SN.connected) return;
-  try {
-    const body = { currency: state.currency, language: state.language, user: state.snUsername };
-    if (state.preferenceId) {
-      await SN.patch('x_1472763_person_0_preference', state.preferenceId, body);
-    } else {
-      const rec = await SN.post('x_1472763_person_0_preference', body);
-      state.preferenceId = rec.sys_id;
-      saveState();
-    }
-  } catch(e) { /* silent */ }
-}
-
-async function _pushInstitution(name) {
-  if (!SN.connected) return;
-  try {
-    const rec = await SN.post('x_1472763_person_0_institution', { institution_name: name, user: state.snUsername });
-    state.institutionMap[name] = rec.sys_id;
-    saveState();
-  } catch(e) { /* silent */ }
-}
-
-async function _deleteInstitution(name) {
-  if (!SN.connected) return;
-  const sys_id = state.institutionMap[name];
-  if (!sys_id) return;
-  try {
-    await SN.delete('x_1472763_person_0_institution', sys_id);
-    delete state.institutionMap[name];
-    saveState();
-  } catch(e) { /* silent */ }
-}
 
 function saveSNCredentials() {
   const u = document.getElementById('sn-username')?.value.trim();
@@ -2615,15 +2479,7 @@ function changeLanguage(lang) {
   state.language = lang;
   saveState();
   renderAll();
-  _syncPreferences();
   showToast(lang === 'zh' ? '语言已切换为中文 ✓' : 'Language set to English ✓', 'success');
-}
-
-function changeCurrency(val) {
-  state.currency = val;
-  saveState();
-  renderAll();
-  _syncPreferences();
 }
 
 function saveAIKey() {
@@ -2684,39 +2540,19 @@ async function testConnection() {
 async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
-    setSyncStatus('syncing', 'Syncing all…');
-    const uq = state.snUsername ? { sysparm_query:`user.user_name=${state.snUsername}` } : {};
-    const [txns, accounts, budgets, goals, insts, prefs] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction',  uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_account',       uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_budget',        uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_savings_goal',  uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_institution',   uq).catch(()=>[]),
-      SN.get('x_1472763_person_0_preference',    uq).catch(()=>[])
+    const [txns, accounts] = await Promise.all([
+      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
     ]);
-    if (txns.length)     state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
-    if (budgets.length)  state.budgets = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
-    if (goals.length)    state.goals = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
-    if (insts.length) {
-      state.institutionMap = {};
-      state.institutions = insts.map(r => { const n = r.institution_name||''; state.institutionMap[n] = r.sys_id; return n; }).filter(Boolean);
+    if (txns.length) {
+      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     }
-    if (prefs.length) {
-      const p = prefs[0];
-      state.preferenceId = p.sys_id;
-      if (p.currency) state.currency = p.currency;
-      if (p.language) state.language = p.language;
-      const cs = document.getElementById('currency-select'); if (cs) cs.value = state.currency;
-      const ls = document.getElementById('language-select'); if (ls) ls.value = state.language;
-      applyLanguage();
+    if (accounts.length) {
+      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
     }
-    state.lastSync = new Date().toISOString();
-    saveState(); renderAll(); updateLastSync();
-    setSyncStatus('ok', 'Synced ✓');
-    showToast(`Synced: ${txns.length} txns · ${accounts.length} accts · ${budgets.length} budgets · ${goals.length} goals · ${insts.length} institutions`, 'success');
+    renderAll();
+    showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
   } catch(e) {
-    setSyncStatus('error', 'Sync failed');
     showToast('Sync failed: ' + e.message, 'error');
   }
 }
@@ -2913,40 +2749,7 @@ async function _submitPin() {
   }
 }
 
-function _showCredentialsForm() {
-  const credPanel = document.getElementById('cred-panel');
-  const pdWrap = document.getElementById('pin-dots-wrap');
-  const npad = document.querySelector('.numpad');
-  const perr = document.getElementById('pin-error');
-  const lsub = document.getElementById('login-subtitle');
-  const forgotBtn = document.getElementById('forgot-btn');
-  const lc = document.getElementById('login-connecting');
-  if (credPanel) credPanel.style.display = 'block';
-  if (pdWrap) pdWrap.style.display = 'none';
-  if (npad) npad.style.display = 'none';
-  if (perr) perr.style.display = 'none';
-  if (lsub) lsub.style.display = 'none';
-  if (forgotBtn) forgotBtn.style.display = 'none';
-  if (lc) lc.style.display = 'none';
-  const inst = document.getElementById('cred-instance');
-  const user = document.getElementById('cred-username');
-  if (inst && state.snInstance) inst.value = state.snInstance;
-  if (user && state.snUsername) user.value = state.snUsername;
-  document.getElementById('login-overlay').style.display = 'flex';
-}
-
 function _showPinOverlay(mode, subtitle) {
-  const credPanel = document.getElementById('cred-panel');
-  const pdWrap = document.getElementById('pin-dots-wrap');
-  const npad = document.querySelector('.numpad');
-  const perr = document.getElementById('pin-error');
-  const lsub = document.getElementById('login-subtitle');
-  if (credPanel) credPanel.style.display = 'none';
-  if (pdWrap) pdWrap.style.display = 'flex';
-  if (npad) npad.style.display = 'grid';
-  if (perr) perr.style.display = 'block';
-  if (lsub) lsub.style.display = 'block';
-
   _pinMode = mode;
   _pinBuf = '';
   _pinConfirm = '';
@@ -2971,9 +2774,6 @@ async function _doUnlock() {
       setConnStatus('connecting');
       await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
       setConnStatus('connected');
-      _hidePinOverlay();
-      await _autoSyncOnLogin();
-      return;
     } catch(e) {
       setConnStatus('disconnected');
     }
@@ -2997,76 +2797,6 @@ function pinForgot() {
   location.reload();
 }
 
-async function snLogin() {
-  const inst = document.getElementById('cred-instance')?.value.trim();
-  const user = document.getElementById('cred-username')?.value.trim();
-  const pass = document.getElementById('cred-password')?.value;
-  const errEl = document.getElementById('cred-error');
-  const btn = document.getElementById('cred-submit-btn');
-  const lc = document.getElementById('login-connecting');
-
-  if (!inst) { errEl.textContent = 'Enter your ServiceNow instance URL.'; return; }
-  if (!user) { errEl.textContent = 'Enter your username.'; return; }
-  if (!pass) { errEl.textContent = 'Enter your password.'; return; }
-
-  errEl.textContent = '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
-  if (lc) lc.style.display = 'flex';
-
-  const prevInst = state.snInstance, prevUser = state.snUsername, prevPass = state.snPassword;
-  state.snInstance = inst.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  state.snUsername = user;
-  state.snPassword = pass;
-
-  try {
-    setConnStatus('connecting');
-    await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
-    saveState();
-    const snIn = document.getElementById('sn-instance-input');
-    const snUser = document.getElementById('sn-username');
-    const snPass = document.getElementById('sn-password');
-    if (snIn) snIn.value = state.snInstance;
-    if (snUser) snUser.value = state.snUsername;
-    if (snPass) snPass.value = state.snPassword;
-    setConnStatus('connected');
-    if (lc) lc.style.display = 'none';
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
-    const storedPin = localStorage.getItem(PIN_KEY);
-    if (storedPin) {
-      _showPinOverlay('unlock', t('login_enter_pin'));
-    } else {
-      _showPinOverlay('setup', t('login_setup_pin'));
-    }
-  } catch(e) {
-    state.snInstance = prevInst; state.snUsername = prevUser; state.snPassword = prevPass;
-    setConnStatus('disconnected');
-    if (lc) lc.style.display = 'none';
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
-    errEl.textContent = 'Connection failed — check your instance URL, username, and password.';
-  }
-}
-
-function snSkipLogin() {
-  localStorage.setItem('pfmt_local', '1');
-  const storedPin = localStorage.getItem(PIN_KEY);
-  if (storedPin) {
-    _showPinOverlay('unlock', t('login_enter_pin'));
-  } else {
-    _showPinOverlay('setup', t('login_setup_pin'));
-  }
-}
-
-function logoutSN() {
-  if (!confirm('Sign out of ServiceNow? Your local data is kept, but credentials and PIN will be cleared.')) return;
-  state.snUsername = '';
-  state.snPassword = '';
-  localStorage.removeItem(PIN_KEY);
-  localStorage.removeItem('pfmt_local');
-  saveState();
-  setConnStatus('disconnected');
-  _showCredentialsForm();
-}
-
 document.addEventListener('keydown', e => {
   const ov = document.getElementById('login-overlay');
   if (!ov || ov.style.display === 'none') return;
@@ -3077,6 +2807,330 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Backspace') pinBackspace();
   else if (e.key === 'Escape') pinClear();
 });
+
+// ═══════════════════════════════════════════════
+// SN CUSTOM AUTH — login / register / sync
+// ═══════════════════════════════════════════════
+
+const snAPI = {
+  base() {
+    const inst = (state.snInstance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `https://${inst}/api/x_1472763_person_0/pfmt`;
+  },
+  headers() {
+    const h = { 'Content-Type': 'application/json' };
+    if (state.snToken) h['X-PFMT-Token'] = state.snToken;
+    return h;
+  },
+  async call(path, method = 'GET', body = null) {
+    const h = this.headers();
+    h['X-HTTP-Method'] = method;
+    const opts = { method, headers: h };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(this.base() + path, opts);
+    const json = await res.json();
+    if (!res.ok) {
+      const msg = (typeof json.error === 'object')
+        ? (json.error.message || JSON.stringify(json.error))
+        : (json.error || `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
+    return json.result;
+  }
+};
+
+function showAuthPanel(panel) {
+  ['panel-login','panel-register','panel-pin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === 'panel-' + panel);
+  });
+  document.getElementById('forgot-btn').style.display = panel === 'pin' ? '' : 'none';
+  // Clear errors
+  ['sn-li-err','sn-reg-err'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+}
+
+function _setLoginLoading(on, msg) {
+  const c = document.getElementById('login-connecting');
+  const m = document.getElementById('login-connecting-msg');
+  if (c) c.style.display = on ? 'flex' : 'none';
+  if (m && msg) m.textContent = msg;
+}
+
+async function doSNLogin() {
+  const instance = (document.getElementById('sn-li-instance')?.value || '').trim();
+  const username = (document.getElementById('sn-li-username')?.value || '').trim();
+  const password = document.getElementById('sn-li-password')?.value || '';
+  const errEl    = document.getElementById('sn-li-err');
+  const btn      = document.getElementById('sn-li-btn');
+
+  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
+  if (!username) { errEl.textContent = 'Enter your username'; return; }
+  if (!password) { errEl.textContent = 'Enter your password'; return; }
+
+  state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  errEl.textContent = '';
+  btn.disabled = true;
+  _setLoginLoading(true, 'Signing in…');
+
+  try {
+    const result = await snAPI.call('/auth/login', 'POST', { username, password });
+    _onSNAuthSuccess(result);
+  } catch(e) {
+    errEl.textContent = e.message || 'Login failed. Check your details.';
+    _setLoginLoading(false);
+    btn.disabled = false;
+  }
+}
+
+async function doSNRegister() {
+  const instance     = (document.getElementById('sn-reg-instance')?.value || '').trim();
+  const displayName  = (document.getElementById('sn-reg-displayname')?.value || '').trim();
+  const username     = (document.getElementById('sn-reg-username')?.value || '').trim();
+  const email        = (document.getElementById('sn-reg-email')?.value || '').trim();
+  const password     = document.getElementById('sn-reg-password')?.value || '';
+  const confirm      = document.getElementById('sn-reg-confirm')?.value || '';
+  const errEl        = document.getElementById('sn-reg-err');
+  const btn          = document.getElementById('sn-reg-btn');
+
+  if (!instance)    { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
+  if (!displayName) { errEl.textContent = 'Enter your display name'; return; }
+  if (!username)    { errEl.textContent = 'Enter a username'; return; }
+  if (!password)    { errEl.textContent = 'Enter a password'; return; }
+  if (password !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
+
+  state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  errEl.textContent = '';
+  btn.disabled = true;
+  _setLoginLoading(true, 'Creating account…');
+
+  try {
+    const result = await snAPI.call('/auth/register', 'POST', {
+      username, password, display_name: displayName, email,
+      currency: state.currency, language: state.language
+    });
+    _onSNAuthSuccess(result);
+  } catch(e) {
+    errEl.textContent = e.message || 'Registration failed.';
+    _setLoginLoading(false);
+    btn.disabled = false;
+  }
+}
+
+async function _onSNAuthSuccess(result) {
+  state.snToken        = result.token;
+  state.snProfileSysId = result.user_profile_sys_id;
+  state.snUserProfile  = {
+    username    : result.username,
+    display_name: result.display_name,
+    email       : result.email       || '',
+    currency    : result.currency    || 'SGD',
+    language    : result.language    || 'en',
+    avatar_color: result.avatar_color || '#8B5CF6'
+  };
+  // Apply profile preferences
+  state.currency = state.snUserProfile.currency;
+  state.language = state.snUserProfile.language;
+  saveState();
+
+  _setLoginLoading(true, 'Loading your data…');
+  await snLoadAll();
+  _setLoginLoading(false);
+  _hideSNLogin();
+  renderAll();
+  showToast(`Welcome, ${state.snUserProfile.display_name} 👋`, 'success');
+}
+
+async function snLogout() {
+  if (state.snToken) {
+    try { await snAPI.call('/auth/logout', 'POST'); } catch(_) {}
+  }
+  state.snToken        = null;
+  state.snProfileSysId = null;
+  state.snUserProfile  = {};
+  state.transactions   = [];
+  state.budgets        = [];
+  state.goals          = [];
+  state.accounts       = [];
+  saveState();
+  _showSNLogin();
+  showToast('Signed out', 'info');
+}
+
+function _showSNLogin() {
+  const ol = document.getElementById('login-overlay');
+  if (ol) ol.style.display = 'flex';
+  showAuthPanel('login');
+  // Pre-fill instance if remembered
+  const inst = document.getElementById('sn-li-instance');
+  const reg  = document.getElementById('sn-reg-instance');
+  if (inst && state.snInstance && state.snInstance !== 'dev275144.service-now.com')
+    inst.value = state.snInstance;
+  if (reg && state.snInstance && state.snInstance !== 'dev275144.service-now.com')
+    reg.value = state.snInstance;
+}
+
+function _hideSNLogin() {
+  const ol = document.getElementById('login-overlay');
+  if (ol) ol.style.display = 'none';
+}
+
+// ── Load all data from SN ────────────────────────────────────
+async function snLoadAll() {
+  try {
+    const [txns, budgets, goals, accounts] = await Promise.all([
+      snAPI.call('/transactions?limit=500'),
+      snAPI.call('/budgets'),
+      snAPI.call('/goals'),
+      snAPI.call('/accounts')
+    ]);
+    state.transactions = (txns  || []).map(t => ({
+      id         : t.sys_id,
+      type       : t.type,
+      amount     : t.amount,
+      description: t.description,
+      category   : t.category,
+      account    : t.account,
+      date       : t.date,
+      notes      : t.notes || ''
+    }));
+    state.budgets = (budgets || []).map(b => ({
+      id         : b.sys_id,
+      category   : b.category,
+      icon       : b.category_icon  || '📦',
+      color      : b.category_color || '#6B7280',
+      limit      : b.budget_amount,
+      spent      : b.spent_amount,
+      alertAt    : b.alert_threshold || 80
+    }));
+    state.goals = (goals || []).map(g => ({
+      id          : g.sys_id,
+      name        : g.goal_name,
+      icon        : g.goal_icon || '🎯',
+      target      : g.target_amount,
+      saved       : g.current_amount,
+      monthly     : g.monthly_contribution || 0,
+      targetDate  : g.target_date || '',
+      status      : g.goal_status
+    }));
+    state.accounts = (accounts || []).map(a => ({
+      id         : a.sys_id,
+      name       : a.account_name,
+      type       : a.account_type,
+      institution: a.institution_name || '',
+      balance    : a.current_balance,
+      currency   : a.currency || 'SGD'
+    }));
+    state.lastSync = new Date().toISOString();
+    saveState();
+    updateLastSync();
+  } catch(e) {
+    console.warn('snLoadAll failed:', e.message);
+    showToast('Could not load data from ServiceNow: ' + e.message, 'error');
+  }
+}
+
+// ── Refresh profile stats on profile view ───────────────────
+async function refreshProfileView() {
+  if (!state.snToken) return;
+  try {
+    const prof = await snAPI.call('/profile');
+    if (!prof) return;
+    state.snUserProfile = {
+      ...state.snUserProfile,
+      display_name: prof.display_name,
+      email       : prof.email,
+      currency    : prof.currency,
+      language    : prof.language,
+      avatar_color: prof.avatar_color,
+      stats       : prof.stats,
+      since       : prof.sys_created_on
+    };
+    saveState();
+    _renderProfileView();
+  } catch(e) { /* offline or token expired */ }
+}
+
+function _renderProfileView() {
+  const p = state.snUserProfile;
+  if (!p || !p.username) return;
+
+  const initials = (p.display_name || p.username || '?')
+    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+
+  const el = id => document.getElementById(id);
+  const set = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+
+  const av = el('prof-avatar');
+  if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
+
+  set('prof-display-name', p.display_name || p.username);
+  set('prof-username', '@' + p.username);
+  set('prof-email', p.email || '');
+  set('prof-detail-name', p.display_name || '—');
+  set('prof-detail-username', p.username);
+  set('prof-detail-email', p.email || '—');
+  set('prof-detail-currency', p.currency || state.currency || 'SGD');
+  set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
+  set('prof-detail-instance', state.snInstance || '—');
+  set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+
+  // Stats
+  const stats = p.stats || {};
+  set('prof-stat-txn',   stats.transaction_count  ?? state.transactions.length);
+  set('prof-stat-acc',   stats.account_count       ?? state.accounts.length);
+  set('prof-stat-goals', stats.active_goal_count   ?? state.goals.filter(g => g.status !== 'achieved').length);
+
+  // Pre-fill edit fields
+  const editName = el('prof-edit-name');
+  const editEmail = el('prof-edit-email');
+  const editIncome = el('prof-edit-income');
+  if (editName)  editName.value  = p.display_name || '';
+  if (editEmail) editEmail.value = p.email || '';
+  if (editIncome) editIncome.value = p.monthly_income_target || '';
+}
+
+async function saveProfile() {
+  const display_name = document.getElementById('prof-edit-name')?.value.trim();
+  const email        = document.getElementById('prof-edit-email')?.value.trim();
+  const monthly      = parseFloat(document.getElementById('prof-edit-income')?.value) || 0;
+
+  if (!display_name) { showToast('Enter a display name', 'error'); return; }
+
+  try {
+    await snAPI.call('/profile', 'PUT', { display_name, email, monthly_income_target: monthly });
+    state.snUserProfile.display_name = display_name;
+    state.snUserProfile.email = email;
+    state.snUserProfile.monthly_income_target = monthly;
+    saveState();
+    _renderProfileView();
+    showToast('Profile updated ✓', 'success');
+  } catch(e) {
+    showToast('Update failed: ' + e.message, 'error');
+  }
+}
+
+async function changePassword() {
+  const current = document.getElementById('prof-pw-current')?.value || '';
+  const newPw   = document.getElementById('prof-pw-new')?.value    || '';
+  const confirm = document.getElementById('prof-pw-confirm')?.value || '';
+
+  if (!current) { showToast('Enter your current password', 'error'); return; }
+  if (!newPw)   { showToast('Enter a new password', 'error'); return; }
+  if (newPw !== confirm) { showToast('Passwords do not match', 'error'); return; }
+
+  try {
+    await snAPI.call('/profile', 'PUT', { current_password: current, new_password: newPw });
+    document.getElementById('prof-pw-current').value = '';
+    document.getElementById('prof-pw-new').value     = '';
+    document.getElementById('prof-pw-confirm').value = '';
+    showToast('Password updated ✓', 'success');
+  } catch(e) {
+    showToast(e.message || 'Password update failed', 'error');
+  }
+}
 
 // ═══════════════════════════════════════════════
 // INIT
@@ -3113,14 +3167,30 @@ document.addEventListener('keydown', e => {
   updateMonthUI();
   updateLastSync();
 
-  // Show login overlay
-  const storedPin = localStorage.getItem(PIN_KEY);
-  if (!state.snPassword && !localStorage.getItem('pfmt_local')) {
-    _showCredentialsForm();
-  } else if (storedPin) {
-    _showPinOverlay('unlock', t('login_enter_pin'));
+  // SN Auth flow: check for saved session token
+  if (state.snToken && state.snProfileSysId) {
+    // Token found — validate and load data
+    _hideSNLogin();
+    renderAll();
+    _setLoginLoading(true, 'Verifying session…');
+    snAPI.call('/profile').then(prof => {
+      _setLoginLoading(false);
+      if (prof) {
+        state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
+        saveState();
+        snLoadAll().then(() => renderAll());
+      }
+    }).catch(() => {
+      // Token invalid/expired — force re-login
+      _setLoginLoading(false);
+      state.snToken = null;
+      state.snProfileSysId = null;
+      saveState();
+      _showSNLogin();
+    });
   } else {
-    _showPinOverlay('setup', t('login_setup_pin'));
+    // No saved session — show SN login screen
+    _showSNLogin();
   }
 })();
 </script>
