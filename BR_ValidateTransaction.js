@@ -1,6 +1,6 @@
 // ============================================================
 // PFMT Business Rule 3 — Validate Transaction
-// Table    : x_pfmt_transaction
+// Table    : x_1472763_person_0_transaction
 // When     : Before · Insert + Update
 // ============================================================
 
@@ -16,7 +16,7 @@
   }
 
   // Account must be active
-  var acctGR = new GlideRecord('x_pfmt_account');
+  var acctGR = new GlideRecord('x_1472763_person_0_account');
   if (acctGR.get(current.account.toString())) {
     if (!acctGR.is_active) {
       current.setAbortAction(true);

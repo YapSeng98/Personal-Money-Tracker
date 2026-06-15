@@ -32,7 +32,7 @@
 
   // ── GET /goals ────────────────────────────────────────────
   if (method === 'GET') {
-    var gr = new GlideRecord('x_pfmt_savings_goal');
+    var gr = new GlideRecord('x_1472763_person_0_savings_goal');
     gr.addQuery('user_profile', profileSysId);
     gr.orderBy('goal_name');
     gr.query();
@@ -71,7 +71,7 @@
       return;
     }
 
-    var newGR = new GlideRecord('x_pfmt_savings_goal');
+    var newGR = new GlideRecord('x_1472763_person_0_savings_goal');
     newGR.initialize();
     newGR.user_profile          = profileSysId;
     newGR.goal_name             = body.goal_name;
@@ -85,7 +85,7 @@
 
     // Link to an account if provided
     if (body.account_name) {
-      var accGR = new GlideRecord('x_pfmt_account');
+      var accGR = new GlideRecord('x_1472763_person_0_account');
       accGR.addQuery('user_profile', profileSysId);
       accGR.addQuery('account_name', body.account_name);
       accGR.setLimit(1);
@@ -108,7 +108,7 @@
       return;
     }
 
-    var editGR = new GlideRecord('x_pfmt_savings_goal');
+    var editGR = new GlideRecord('x_1472763_person_0_savings_goal');
     if (!editGR.get(putBody.sys_id) || editGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 404, 'Goal not found');
       return;
@@ -141,7 +141,7 @@
       return;
     }
 
-    var delGR = new GlideRecord('x_pfmt_savings_goal');
+    var delGR = new GlideRecord('x_1472763_person_0_savings_goal');
     if (!delGR.get(delId) || delGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 404, 'Goal not found');
       return;

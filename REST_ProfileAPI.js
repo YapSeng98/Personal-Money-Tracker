@@ -30,7 +30,7 @@
     return;
   }
 
-  var profileGR = new GlideRecord('x_pfmt_user_profile');
+  var profileGR = new GlideRecord('x_1472763_person_0_user_profile');
   if (!profileGR.get(profileSysId)) {
     helper.errorResponse(response, 404, 'User profile not found');
     return;
@@ -40,19 +40,19 @@
   if (method === 'GET') {
     // Gather summary counts for profile display
     var txnCount = 0;
-    var txnGR = new GlideRecord('x_pfmt_transaction');
+    var txnGR = new GlideRecord('x_1472763_person_0_transaction');
     txnGR.addQuery('account.user_profile', profileSysId);
     txnGR.query();
     while (txnGR.next()) txnCount++;
 
     var accCount = 0;
-    var accGR = new GlideRecord('x_pfmt_account');
+    var accGR = new GlideRecord('x_1472763_person_0_account');
     accGR.addQuery('user_profile', profileSysId);
     accGR.query();
     while (accGR.next()) accCount++;
 
     var goalCount = 0;
-    var goalGR = new GlideRecord('x_pfmt_savings_goal');
+    var goalGR = new GlideRecord('x_1472763_person_0_savings_goal');
     goalGR.addQuery('user_profile', profileSysId);
     goalGR.addQuery('goal_status', '!=', 'achieved');
     goalGR.query();

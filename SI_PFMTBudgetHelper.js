@@ -11,7 +11,7 @@ PFMTBudgetHelper.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     var categoryID = this.getParameter('sysparm_category');
     var today      = new GlideDateTime();
 
-    var budgetGR = new GlideRecord('x_pfmt_budget');
+    var budgetGR = new GlideRecord('x_1472763_person_0_budget');
     budgetGR.addQuery('category',    categoryID);
     budgetGR.addQuery('period_start', '<=', today);
     budgetGR.addQuery('period_end',   '>=', today);

@@ -37,7 +37,7 @@
     var type   = request.queryParams.type  || '';
     var month  = request.queryParams.month || '';
 
-    var gr = new GlideRecord('x_pfmt_transaction');
+    var gr = new GlideRecord('x_1472763_person_0_transaction');
     gr.addQuery('account.user_profile', profileSysId);
     if (type)  gr.addQuery('transaction_type', type);
     if (month) gr.addQuery('transaction_date', 'STARTSWITH', month);
@@ -78,7 +78,7 @@
       return;
     }
 
-    var newGR = new GlideRecord('x_pfmt_transaction');
+    var newGR = new GlideRecord('x_1472763_person_0_transaction');
     newGR.initialize();
     newGR.transaction_type = body.type        || 'expense';
     newGR.amount           = parseFloat(body.amount);
@@ -89,7 +89,7 @@
 
     // Resolve account by name (must belong to this user)
     if (body.account_name) {
-      var accGR = new GlideRecord('x_pfmt_account');
+      var accGR = new GlideRecord('x_1472763_person_0_account');
       accGR.addQuery('user_profile', profileSysId);
       accGR.addQuery('account_name', body.account_name);
       accGR.setLimit(1);
@@ -99,7 +99,7 @@
 
     // Resolve category by name
     if (body.category_name) {
-      var catGR = new GlideRecord('x_pfmt_category');
+      var catGR = new GlideRecord('x_1472763_person_0_category');
       catGR.addQuery('category_name', body.category_name);
       catGR.setLimit(1);
       catGR.query();
@@ -121,7 +121,7 @@
       return;
     }
 
-    var editGR = new GlideRecord('x_pfmt_transaction');
+    var editGR = new GlideRecord('x_1472763_person_0_transaction');
     if (!editGR.get(putBody.sys_id)) {
       helper.errorResponse(response, 404, 'Transaction not found');
       return;
@@ -139,7 +139,7 @@
     if (putBody.notes       !== undefined) editGR.notes            = putBody.notes;
 
     if (putBody.account_name) {
-      var putAccGR = new GlideRecord('x_pfmt_account');
+      var putAccGR = new GlideRecord('x_1472763_person_0_account');
       putAccGR.addQuery('user_profile', profileSysId);
       putAccGR.addQuery('account_name', putBody.account_name);
       putAccGR.setLimit(1);
@@ -147,7 +147,7 @@
       if (putAccGR.next()) editGR.account = putAccGR.sys_id;
     }
     if (putBody.category_name) {
-      var putCatGR = new GlideRecord('x_pfmt_category');
+      var putCatGR = new GlideRecord('x_1472763_person_0_category');
       putCatGR.addQuery('category_name', putBody.category_name);
       putCatGR.setLimit(1);
       putCatGR.query();
@@ -170,7 +170,7 @@
       return;
     }
 
-    var delGR = new GlideRecord('x_pfmt_transaction');
+    var delGR = new GlideRecord('x_1472763_person_0_transaction');
     if (!delGR.get(delId)) {
       helper.errorResponse(response, 404, 'Transaction not found');
       return;

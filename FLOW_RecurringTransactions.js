@@ -9,7 +9,7 @@
   var today          = new GlideDate();
   today.setValue(new GlideDateTime().getDate().getValue());
 
-  var gr = new GlideRecord('x_pfmt_transaction');
+  var gr = new GlideRecord('x_1472763_person_0_transaction');
   gr.addQuery('is_recurring',  true);
   gr.addQuery('next_run_date', '<=', today);
   gr.addQuery('state', '2'); // Confirmed templates only
@@ -17,7 +17,7 @@
 
   while (gr.next()) {
     // Clone as a new confirmed transaction
-    var newTxn = new GlideRecord('x_pfmt_transaction');
+    var newTxn = new GlideRecord('x_1472763_person_0_transaction');
     newTxn.initialize();
     newTxn.account           = gr.account;
     newTxn.category          = gr.category;
