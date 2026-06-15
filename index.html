@@ -1429,14 +1429,12 @@ function saveState() {
       geminiKey: state.geminiKey,
       snInstance: state.snInstance,
       snUsername: state.snUsername,
-      snPassword: state.snPassword,
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
-      snUserProfile: state.snUserProfile,
-      snInstance: state.snInstance
+      snUserProfile: state.snUserProfile
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -2594,7 +2592,7 @@ function _updateSNConnCard() {
     dot.style.background = '#6B7280';
     lbl.style.color = 'rgba(255,255,255,.5)';
     lbl.textContent = 'Not signed in';
-    inst.textContent = '—';
+    inst.textContent = state.snInstance || '—';
     userRow.style.display = 'none';
   }
 }
@@ -3028,13 +3026,11 @@ function _showSNLogin() {
   const ol = document.getElementById('login-overlay');
   if (ol) ol.style.display = 'flex';
   showAuthPanel('login');
-  // Pre-fill instance if remembered
+  // Pre-fill instance from saved state
   const inst = document.getElementById('sn-li-instance');
   const reg  = document.getElementById('sn-reg-instance');
-  if (inst && state.snInstance && state.snInstance !== 'dev275144.service-now.com')
-    inst.value = state.snInstance;
-  if (reg && state.snInstance && state.snInstance !== 'dev275144.service-now.com')
-    reg.value = state.snInstance;
+  if (inst && state.snInstance) inst.value = state.snInstance;
+  if (reg  && state.snInstance) reg.value  = state.snInstance;
 }
 
 function _hideSNLogin() {
