@@ -41,7 +41,7 @@
     // Gather summary counts for profile display
     var txnCount = 0;
     var txnGR = new GlideRecord('x_1472763_person_0_transaction');
-    txnGR.addQuery('account.user_profile', profileSysId);
+    txnGR.addQuery('user_profile', profileSysId);
     txnGR.query();
     while (txnGR.next()) txnCount++;
 

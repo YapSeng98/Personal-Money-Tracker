@@ -587,7 +587,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <span class="dot" id="sn-dot" style="background:#6B7280;animation:none;"></span>
       <span id="sn-status-text">Not connected</span>
     </div>
-    <a href="https://dev275144.service-now.com" target="_blank"
+    <a class="sn-quick-link" data-sn-path="" href="#" target="_blank"
        style="display:block;background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.25);border-radius:10px;padding:9px 12px;text-decoration:none;text-align:center;font-size:11px;font-weight:700;color:#00C896;">
       🔗 Open PDI ↗
     </a>
@@ -798,12 +798,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <div class="settings-section">
           <h3>Quick Links</h3>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            <a href="https://dev275144.service-now.com/now/studio" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🏗️ Studio</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/%24flow-designer.do" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">⚡ Flow Designer</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🌐 Service Portal</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_pfmt" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/api_explorer.do" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🔌 REST API Explorer</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_update_set_list.do" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">📦 Update Sets</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/studio" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🏗️ Studio</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/%24flow-designer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">⚡ Flow Designer</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🌐 Service Portal</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_1472763_person_0" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/api_explorer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🔌 REST API Explorer</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_update_set_list.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">📦 Update Sets</div></div><span class="sn-field-name">Open ↗</span></a>
           </div>
         </div>
         <div class="settings-section">
@@ -1619,6 +1619,7 @@ async function saveTransaction() {
     showToast(t('toast_txn_saved'), 'success');
   }
 
+  saveState();
   closeTxnModal();
   renderAll();
 }
@@ -1629,6 +1630,7 @@ async function deleteTransaction(id) {
   const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
   const snIdDel = _snId(txn);
@@ -1682,6 +1684,7 @@ async function saveBudget() {
     const idx = state.budgets.findIndex(b => b.id == editId);
     if (idx >= 0) {
       state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert };
+      saveState();
       const sysId = _snId(state.budgets[idx]);
       if (state.snToken && sysId) {
         snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amt, alert_threshold: alert })
@@ -1693,6 +1696,7 @@ async function saveBudget() {
     if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
     const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert };
     state.budgets.push(bgt);
+    saveState();
     if (state.snToken) {
       snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amt, alert_threshold: alert })
         .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
@@ -1711,6 +1715,7 @@ async function deleteBudget(id) {
   const ok = await showConfirm(t('confirm_del_budget'), `${b.category} — $${b.amount.toFixed(2)} limit`);
   if (!ok) return;
   state.budgets = state.budgets.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_budget_deleted'), 'info');
   const sysId = _snId(b);
@@ -1776,6 +1781,7 @@ async function saveGoal() {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
       state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date };
+      saveState();
       const sysId = _snId(state.goals[idx]);
       if (state.snToken && sysId) {
         snAPI.call('/goals', 'PUT', { sys_id: sysId, ...snPayload })
@@ -1786,6 +1792,7 @@ async function saveGoal() {
   } else {
     const goal = { id: state.nextId++, name, icon, target, current, monthly, date };
     state.goals.push(goal);
+    saveState();
     if (state.snToken) {
       snAPI.call('/goals', 'POST', snPayload)
         .then(res => { if (res?.sys_id) goal.sys_id = res.sys_id; })
@@ -1804,6 +1811,7 @@ async function deleteGoal(id) {
   const ok = await showConfirm(t('confirm_del_goal'), `"${g.name}" — $${g.target.toFixed(2)} target`);
   if (!ok) return;
   state.goals = state.goals.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_goal_deleted'), 'info');
   const sysId = _snId(g);
@@ -2054,6 +2062,7 @@ function renderAll() {
   renderGoals();
   renderAnalytics();
   renderAccounts();
+  _updateSNLinks();
   saveState();
 }
 
@@ -2521,16 +2530,22 @@ function saveSNCredentials() {
   saveState();
 }
 
+function _updateSNLinks() {
+  if (!state.snInstance) return;
+  const base = 'https://' + state.snInstance;
+  document.querySelectorAll('.sn-quick-link').forEach(a => {
+    const path = a.dataset.snPath;
+    a.href = base + (path || '');
+  });
+}
+
 function saveSNInstance() {
   const val = document.getElementById('sn-instance-input')?.value.trim();
   if (!val) { showToast('Enter an instance URL', 'error'); return; }
   state.snInstance = val.replace(/^https?:\/\//, '').replace(/\/$/, '');
   saveSNCredentials();
   showToast(`Instance set to ${state.snInstance}`, 'success');
-  // update visible links
-  document.querySelectorAll('a[href*="dev275144"]').forEach(a => {
-    a.href = a.href.replace('dev275144.service-now.com', state.snInstance);
-  });
+  _updateSNLinks();
 }
 
 function changeLanguage(lang) {
@@ -2551,7 +2566,8 @@ function saveAIKey() {
 }
 
 function setConnStatus(status) {
-  const cfg = { connected:{color:'#00C896',text:'dev275144 · Live',ctext:'Connected'}, connecting:{color:'#F59E0B',text:'Connecting…',ctext:'Connecting…'}, disconnected:{color:'#6B7280',text:'Not connected',ctext:'Not connected'}, error:{color:'#FF5B5B',text:'Connection error',ctext:'Error'} }[status];
+  const inst = state.snInstance || 'Not connected';
+  const cfg = { connected:{color:'#00C896',text:inst+' · Live',ctext:'Connected'}, connecting:{color:'#F59E0B',text:'Connecting…',ctext:'Connecting…'}, disconnected:{color:'#6B7280',text:'Not connected',ctext:'Not connected'}, error:{color:'#FF5B5B',text:'Connection error',ctext:'Error'} }[status];
   document.getElementById('sn-dot').style.background  = cfg.color;
   document.getElementById('sn-status-text').textContent = cfg.text;
   document.getElementById('conn-dot').style.background  = cfg.color;
@@ -3038,6 +3054,8 @@ async function snLogout() {
   state.snToken        = null;
   state.snProfileSysId = null;
   state.snUserProfile  = {};
+  state.snUsername     = null;
+  state.snPassword     = null;
   state.transactions   = [];
   state.budgets        = [];
   state.goals          = [];

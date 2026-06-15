@@ -70,14 +70,18 @@
       return;
     }
 
-    // Resolve category
+    // Resolve category — auto-create if missing
     var catGR = new GlideRecord('x_1472763_person_0_category');
     catGR.addQuery('category_name', body.category_name);
     catGR.setLimit(1);
     catGR.query();
     if (!catGR.next()) {
-      helper.errorResponse(response, 404, 'Category not found: ' + body.category_name);
-      return;
+      catGR = new GlideRecord('x_1472763_person_0_category');
+      catGR.initialize();
+      catGR.category_name = body.category_name;
+      catGR.icon_emoji    = body.category_icon  || '📦';
+      catGR.color_hex     = body.category_color || '#6B7280';
+      catGR.insert();
     }
 
     // Check no duplicate budget for same category this period
