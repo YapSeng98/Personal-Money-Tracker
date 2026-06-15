@@ -40,10 +40,9 @@ PFMTAuthHelper.prototype = {
     return digest.getSHA256Hex(plaintext);
   },
 
-  // ── Generate a random 64-char hex session token ──────────
+  // ── Generate a random 32-char hex session token ──────────
   generateToken: function() {
-    var raw = gs.generateGUID() + gs.generateGUID();
-    return raw.replace(/-/g, '').substring(0, 64);
+    return gs.generateGUID().replace(/-/g, '');
   },
 
   // ── Create a session record (7-day expiry) ───────────────
