@@ -31,14 +31,13 @@
   }
 
   // ── GET /transactions ─────────────────────────────────────
-  // Query params: limit, type, month
   if (method === 'GET') {
     var limit  = parseInt(request.queryParams.limit) || 500;
     var type   = request.queryParams.type  || '';
     var month  = request.queryParams.month || '';
 
     var gr = new GlideRecord('x_1472763_person_0_transaction');
-    gr.addQuery('account.user_profile', profileSysId);
+    gr.addQuery('user_profile', profileSysId);
     if (type)  gr.addQuery('transaction_type', type);
     if (month) gr.addQuery('transaction_date', 'STARTSWITH', month);
     gr.orderByDesc('transaction_date');
@@ -80,6 +79,7 @@
 
     var newGR = new GlideRecord('x_1472763_person_0_transaction');
     newGR.initialize();
+    newGR.user_profile     = profileSysId;
     newGR.transaction_type = body.type        || 'expense';
     newGR.amount           = parseFloat(body.amount);
     newGR.description      = body.description;
@@ -126,8 +126,7 @@
       helper.errorResponse(response, 404, 'Transaction not found');
       return;
     }
-    // Verify ownership via account.user_profile
-    if (editGR.account.user_profile.toString() !== profileSysId) {
+    if (editGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 403, 'Access denied');
       return;
     }
@@ -175,7 +174,7 @@
       helper.errorResponse(response, 404, 'Transaction not found');
       return;
     }
-    if (delGR.account.user_profile.toString() !== profileSysId) {
+    if (delGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 403, 'Access denied');
       return;
     }
