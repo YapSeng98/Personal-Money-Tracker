@@ -3083,6 +3083,9 @@ function logoutSN() {
 document.addEventListener('keydown', e => {
   const ov = document.getElementById('login-overlay');
   if (!ov || ov.style.display === 'none') return;
+  // Don't intercept keys when credential form is active
+  const credPanel = document.getElementById('cred-panel');
+  if (credPanel && credPanel.style.display !== 'none') return;
   if (e.key >= '0' && e.key <= '9') pinInput(e.key);
   else if (e.key === 'Backspace') pinBackspace();
   else if (e.key === 'Escape') pinClear();
