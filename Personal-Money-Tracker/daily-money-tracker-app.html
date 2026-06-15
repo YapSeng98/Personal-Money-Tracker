@@ -1574,6 +1574,11 @@ function setSelectVal(id, val) {
 // ═══════════════════════════════════════════════
 // SAVE TRANSACTION (add + update)
 // ═══════════════════════════════════════════════
+// Returns the SN sys_id for an item regardless of whether it came from SN (id=sys_id) or was created locally (sys_id set after POST)
+function _snId(item) {
+  return item.sys_id || (typeof item.id === 'string' && item.id.length > 20 ? item.id : null);
+}
+
 async function saveTransaction() {
   const amt   = parseFloat(document.getElementById('txn-amount').value);
   const desc  = document.getElementById('txn-desc').value.trim();
@@ -1596,8 +1601,9 @@ async function saveTransaction() {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
         description: desc, category: cat, account: acct, date, notes };
-      if (state.snToken && old.sys_id) {
-        snAPI.call('/transactions', 'PUT', { sys_id: old.sys_id, ...snPayload })
+      const snIdTxn = _snId(old);
+      if (state.snToken && snIdTxn) {
+        snAPI.call('/transactions', 'PUT', { sys_id: snIdTxn, ...snPayload })
           .catch(e => showToast('SN sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_txn_updated'), 'success');
@@ -1626,8 +1632,9 @@ async function deleteTransaction(id) {
   state.transactions = state.transactions.filter(x => x.id != id);
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
-  if (state.snToken && txn.sys_id) {
-    snAPI.call('/transactions', 'DELETE', { sys_id: txn.sys_id })
+  const snIdDel = _snId(txn);
+  if (state.snToken && snIdDel) {
+    snAPI.call('/transactions', 'DELETE', { sys_id: snIdDel })
       .catch(e => showToast('SN delete: ' + e.message, 'warning'));
   }
 }
@@ -1663,7 +1670,7 @@ function closeBudgetModal() {
   document.getElementById('budget-modal').classList.remove('open');
 }
 
-function saveBudget() {
+async function saveBudget() {
   const cat    = document.getElementById('budget-cat').value;
   const amt    = parseFloat(document.getElementById('budget-amount').value);
   const spent  = parseFloat(document.getElementById('budget-spent').value) || 0;
@@ -1676,12 +1683,23 @@ function saveBudget() {
     const idx = state.budgets.findIndex(b => b.id == editId);
     if (idx >= 0) {
       state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert };
+      const sysId = _snId(state.budgets[idx]);
+      if (state.snToken && sysId) {
+        snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amt, alert_threshold: alert })
+          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      }
       showToast(t('toast_budget_updated'), 'success');
     }
   } else {
     if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
-    state.budgets.push({ id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert });
-    showToast(t('toast_budget_saved') + ' → x_pfmt_budget', 'success');
+    const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert };
+    state.budgets.push(bgt);
+    if (state.snToken) {
+      snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amt, alert_threshold: alert })
+        .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
+        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    }
+    showToast(t('toast_budget_saved'), 'success');
   }
 
   closeBudgetModal();
@@ -1696,6 +1714,11 @@ async function deleteBudget(id) {
   state.budgets = state.budgets.filter(x => x.id != id);
   renderAll();
   showToast(t('toast_budget_deleted'), 'info');
+  const sysId = _snId(b);
+  if (state.snToken && sysId) {
+    snAPI.call('/budgets', 'DELETE', { sys_id: sysId })
+      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1735,7 +1758,7 @@ function quickContrib(amount) {
   showToast(`+$${amount} added to goal`, 'info');
 }
 
-function saveGoal() {
+async function saveGoal() {
   const name    = document.getElementById('goal-name').value.trim();
   const icon    = document.getElementById('goal-icon').value;
   const target  = parseFloat(document.getElementById('goal-target').value);
@@ -1747,15 +1770,29 @@ function saveGoal() {
   if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
   if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
+  const snPayload = { goal_name: name, goal_icon: icon, target_amount: target,
+    current_amount: current, monthly_contribution: monthly, target_date: date };
+
   if (editId !== '') {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
       state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date };
+      const sysId = _snId(state.goals[idx]);
+      if (state.snToken && sysId) {
+        snAPI.call('/goals', 'PUT', { sys_id: sysId, ...snPayload })
+          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      }
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    state.goals.push({ id: state.nextId++, name, icon, target, current, monthly, date });
-    showToast(t('toast_goal_saved') + ' → x_pfmt_savings_goal', 'success');
+    const goal = { id: state.nextId++, name, icon, target, current, monthly, date };
+    state.goals.push(goal);
+    if (state.snToken) {
+      snAPI.call('/goals', 'POST', snPayload)
+        .then(res => { if (res?.sys_id) goal.sys_id = res.sys_id; })
+        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    }
+    showToast(t('toast_goal_saved'), 'success');
   }
 
   closeGoalModal();
@@ -1770,6 +1807,11 @@ async function deleteGoal(id) {
   state.goals = state.goals.filter(x => x.id != id);
   renderAll();
   showToast(t('toast_goal_deleted'), 'info');
+  const sysId = _snId(g);
+  if (state.snToken && sysId) {
+    snAPI.call('/goals', 'DELETE', { sys_id: sysId })
+      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+  }
 }
 
 // Account
@@ -1796,18 +1838,34 @@ function openAccountModal(id = null) {
   document.getElementById('account-modal').classList.add('open');
 }
 
-function saveAccount() {
+async function saveAccount() {
   const name        = document.getElementById('acc-name').value.trim();
   const type        = document.getElementById('acc-type').value;
   const balance     = parseFloat(document.getElementById('acc-balance').value) || 0;
   const institution = document.getElementById('acc-institution').value;
   if (!name) { showToast(t('toast_enter_account_name'), 'error'); return; }
   const icon = type === 'Credit Card' ? '💳' : '🏦';
+  const snPayload = { account_name: name, account_type: type, institution_name: institution,
+    current_balance: balance, currency: state.snUserProfile?.currency || state.currency || 'SGD' };
+
   if (_editingAccountId !== null) {
     const idx = state.accounts.findIndex(a => a.id === _editingAccountId);
-    if (idx !== -1) state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
+    if (idx !== -1) {
+      state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
+      const sysId = _snId(state.accounts[idx]);
+      if (state.snToken && sysId) {
+        snAPI.call('/accounts', 'PUT', { sys_id: sysId, ...snPayload })
+          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      }
+    }
   } else {
-    state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon });
+    const acc = { id: state.nextId++, name, type, institution, balance, icon };
+    state.accounts.push(acc);
+    if (state.snToken) {
+      snAPI.call('/accounts', 'POST', snPayload)
+        .then(res => { if (res?.sys_id) acc.sys_id = res.sys_id; })
+        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    }
   }
   _editingAccountId = null;
   document.getElementById('account-modal').classList.remove('open');
@@ -1817,12 +1875,20 @@ function saveAccount() {
 }
 
 async function deleteAccount(id) {
+  const acc = state.accounts.find(a => a.id === id);
   const ok = await showConfirm(t('confirm_del_account'), t('confirm_del_account_msg'), t('confirm_delete')||'Delete', 'btn-coral');
   if (!ok) return;
   state.accounts = state.accounts.filter(a => a.id !== id);
   saveState();
   renderAll();
   showToast(t('toast_account_deleted'), 'info');
+  if (acc) {
+    const sysId = _snId(acc);
+    if (state.snToken && sysId) {
+      snAPI.call('/accounts', 'DELETE', { sys_id: sysId })
+        .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -2996,23 +3062,23 @@ async function snLoadAll() {
       notes      : t.notes || ''
     }));
     state.budgets = (budgets || []).map(b => ({
-      id         : b.sys_id,
-      category   : b.category,
-      icon       : b.category_icon  || '📦',
-      color      : b.category_color || '#6B7280',
-      limit      : b.budget_amount,
-      spent      : b.spent_amount,
-      alertAt    : b.alert_threshold || 80
+      id       : b.sys_id,
+      category : b.category,
+      icon     : b.category_icon  || '📦',
+      color    : b.category_color || '#6B7280',
+      amount   : b.budget_amount,
+      spent    : b.spent_amount,
+      alertPct : b.alert_threshold || 80
     }));
     state.goals = (goals || []).map(g => ({
-      id          : g.sys_id,
-      name        : g.goal_name,
-      icon        : g.goal_icon || '🎯',
-      target      : g.target_amount,
-      saved       : g.current_amount,
-      monthly     : g.monthly_contribution || 0,
-      targetDate  : g.target_date || '',
-      status      : g.goal_status
+      id      : g.sys_id,
+      name    : g.goal_name,
+      icon    : g.goal_icon || '🎯',
+      target  : g.target_amount,
+      current : g.current_amount,
+      monthly : g.monthly_contribution || 0,
+      date    : g.target_date || '',
+      status  : g.goal_status
     }));
     state.accounts = (accounts || []).map(a => ({
       id         : a.sys_id,
