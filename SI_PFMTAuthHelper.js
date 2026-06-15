@@ -37,7 +37,7 @@ PFMTAuthHelper.prototype = {
   // ── Hash a plaintext password with SHA-256 ───────────────
   hashPassword: function(plaintext) {
     var digest = new GlideDigest();
-    return digest.getSHA256String(plaintext);
+    return digest.getSHA256Hex(plaintext);
   },
 
   // ── Generate a random 64-char hex session token ──────────
