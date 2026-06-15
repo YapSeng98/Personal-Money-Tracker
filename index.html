@@ -2828,7 +2828,10 @@ const snAPI = {
     const opts = { method, headers: h };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(this.base() + path, opts);
-    const json = await res.json();
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); }
+    catch (e) { throw new Error(`SN HTTP ${res.status}: ${text.substring(0, 300)}`); }
     if (!res.ok) {
       const msg = (typeof json.error === 'object')
         ? (json.error.message || JSON.stringify(json.error))

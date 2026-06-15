@@ -286,9 +286,286 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 }
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+/* ══════════════════════════════════════════════
+   LOGIN OVERLAY — Modern Fintech Design
+══════════════════════════════════════════════ */
+#login-overlay{
+  position:fixed;inset:0;z-index:1000;overflow-y:auto;
+  background:#07101F;
+  display:flex;align-items:flex-start;justify-content:center;
+}
+
+/* animated background blobs */
+.l-blob{position:absolute;border-radius:50%;pointer-events:none;filter:blur(90px);opacity:.3;}
+.l-blob-1{width:480px;height:480px;background:radial-gradient(circle,#00C896,transparent);top:-160px;right:-140px;animation:lbf 9s ease-in-out infinite;}
+.l-blob-2{width:360px;height:360px;background:radial-gradient(circle,#3B82F6,transparent);bottom:-100px;left:-80px;animation:lbf 12s ease-in-out infinite reverse;}
+.l-blob-3{width:240px;height:240px;background:radial-gradient(circle,#8B5CF6,transparent);top:40%;right:-60px;animation:lbf 7s ease-in-out infinite 2s;}
+@keyframes lbf{0%,100%{transform:translate(0,0) scale(1);}40%{transform:translate(24px,-28px) scale(1.07);}70%{transform:translate(-14px,16px) scale(.94);}}
+
+/* grid overlay texture */
+#login-overlay::before{
+  content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+
+/* content wrapper */
+.l-wrap{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:340px;
+  padding:max(env(safe-area-inset-top,16px),16px) 20px max(env(safe-area-inset-bottom,16px),16px);
+  margin:auto 0;
+}
+
+/* top badge */
+.l-badge{
+  font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--jade);background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.3);
+  border-radius:99px;padding:4px 14px;margin-bottom:14px;
+}
+
+/* app icon */
+.l-icon{
+  width:76px;height:76px;border-radius:24px;margin-bottom:10px;
+  background:linear-gradient(135deg,#00C896 0%,#0EA5E9 100%);
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  box-shadow:0 0 0 0 rgba(0,200,150,.5);
+  animation:iconGlow 3s ease-in-out infinite;
+}
+@keyframes iconGlow{0%,100%{box-shadow:0 8px 32px rgba(0,200,150,.35);}50%{box-shadow:0 8px 48px rgba(0,200,150,.6),0 0 0 8px rgba(0,200,150,.08);}}
+
+.l-appname{font-family:var(--fd);font-size:28px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:4px;}
+.l-tagline{font-size:12px;color:rgba(255,255,255,.35);letter-spacing:.3px;margin-bottom:16px;}
+
+/* divider line */
+.l-divider{width:40px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);border-radius:99px;margin-bottom:16px;}
+
+.l-subtitle{
+  font-size:15px;font-weight:600;color:rgba(255,255,255,.88);
+  margin-bottom:14px;min-height:22px;letter-spacing:.1px;
+  transition:opacity .2s;
+}
+
+/* PIN dots */
+.pin-dots{display:flex;gap:18px;justify-content:center;margin-bottom:6px;}
+.pin-dot{
+  width:15px;height:15px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.18);background:transparent;
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.pin-dot.filled{
+  background:#00C896;border-color:#00C896;
+  box-shadow:0 0 0 4px rgba(0,200,150,.18),0 0 18px rgba(0,200,150,.5);
+  transform:scale(1.2);
+}
+.pin-dot.error{
+  background:#FF5B5B;border-color:#FF5B5B;
+  box-shadow:0 0 18px rgba(255,91,91,.5);
+}
+@keyframes pinShake{
+  0%,100%{transform:translateX(0);}
+  20%,60%{transform:translateX(-10px);}
+  40%,80%{transform:translateX(10px);}
+}
+.pin-dots.shaking{animation:pinShake .35s ease;}
+
+.pin-error{font-size:11px;color:#FF8080;height:18px;margin-bottom:12px;text-align:center;font-weight:500;}
+
+/* numpad — circular buttons */
+.numpad{
+  display:grid;grid-template-columns:repeat(3,72px);
+  gap:12px;justify-content:center;margin-bottom:14px;
+}
+.numpad-btn{
+  width:72px;height:72px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);
+  color:#fff;cursor:pointer;user-select:none;
+  transition:all .12s ease;
+  backdrop-filter:blur(8px);
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.numpad-btn:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.15);}
+.numpad-btn:active{background:rgba(0,200,150,.22);border-color:rgba(0,200,150,.5);transform:scale(.91);}
+.nb-num{font-family:var(--fd);font-size:24px;font-weight:600;line-height:1;}
+.nb-sub{font-size:7.5px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.28);}
+.numpad-btn.special{background:transparent;border-color:transparent;}
+.numpad-btn.special:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);}
+.numpad-btn.special .nb-num{font-size:18px;color:rgba(255,255,255,.45);}
+.numpad-empty{width:72px;height:72px;}
+
+/* connecting indicator */
+.l-connecting{
+  display:none;align-items:center;gap:8px;
+  font-size:12px;font-weight:600;color:#00C896;
+  padding:8px 18px;border-radius:99px;margin-bottom:10px;
+  background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);
+}
+.l-spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(0,200,150,.3);border-top-color:#00C896;animation:lspin .7s linear infinite;}
+@keyframes lspin{to{transform:rotate(360deg);}}
+
+/* footer */
+.l-footer{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.login-link{font-size:11px;color:rgba(255,255,255,.22);border:none;background:none;cursor:pointer;padding:8px 16px;font-family:var(--ff);transition:color .15s;}
+.login-link:hover{color:rgba(255,255,255,.5);}
+
+/* version tag */
+.l-version{font-size:10px;color:rgba(255,255,255,.12);margin-top:8px;letter-spacing:.5px;font-family:var(--fm);}
+
+/* ── SN LOGIN FORM ── */
+.sn-login-panel{width:100%;display:none;flex-direction:column;gap:0;}
+.sn-login-panel.active{display:flex;}
+.sn-login-input{
+  width:100%;padding:11px 14px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  color:#fff;font-size:14px;font-family:var(--ff);outline:none;
+  transition:border-color .15s,background .15s;margin-bottom:10px;
+}
+.sn-login-input::placeholder{color:rgba(255,255,255,.28);}
+.sn-login-input:focus{border-color:rgba(0,200,150,.6);background:rgba(255,255,255,.1);}
+.sn-login-btn{
+  width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;
+  font-size:14px;font-weight:700;font-family:var(--ff);
+  background:var(--jade);color:white;transition:all .15s;margin-bottom:8px;
+}
+.sn-login-btn:hover{background:var(--jade-d);}
+.sn-login-btn:disabled{opacity:.5;cursor:not-allowed;}
+.sn-login-btn.secondary{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);}
+.sn-login-btn.secondary:hover{background:rgba(255,255,255,.12);}
+.sn-login-err{font-size:12px;color:#FF8080;text-align:center;min-height:18px;margin-bottom:8px;font-weight:500;}
+.sn-login-toggle{font-size:12px;color:rgba(255,255,255,.4);text-align:center;cursor:pointer;border:none;background:none;font-family:var(--ff);padding:6px;}
+.sn-login-toggle span{color:var(--jade);font-weight:600;}
+.sn-login-toggle:hover span{text-decoration:underline;}
+
+/* ── PROFILE VIEW ── */
+.profile-hero{background:linear-gradient(135deg,var(--ink) 0%,#1a2744 100%);border-radius:20px;padding:28px 32px;color:white;margin-bottom:20px;display:flex;align-items:center;gap:20px;}
+.profile-avatar{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;font-family:var(--fd);color:white;flex-shrink:0;}
+.profile-name{font-family:var(--fd);font-size:22px;font-weight:700;color:white;margin-bottom:4px;}
+.profile-username{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:4px;}
+.profile-email{font-size:12px;color:rgba(255,255,255,.35);}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.profile-stat{background:white;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;}
+.profile-stat-val{font-family:var(--fd);font-size:24px;font-weight:700;margin-bottom:4px;}
+.profile-stat-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.profile-section{background:white;border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;}
+.profile-section h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:16px;}
+.profile-field{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.profile-field:last-child{border-bottom:none;padding-bottom:0;}
+.profile-field-lbl{font-size:13px;font-weight:500;color:var(--muted);}
+.profile-field-val{font-size:13px;font-weight:600;color:var(--ink);}
+.profile-edit-btn{font-size:11px;color:var(--sky);font-weight:600;border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.profile-edit-btn:hover{background:var(--sky-s);}
+.profile-signout{width:100%;padding:13px;background:var(--coral-s);color:var(--coral);border:1px solid rgba(255,91,91,.25);border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;}
+.profile-signout:hover{background:var(--coral);color:white;}
+
+@media(max-width:380px){
+  .numpad{grid-template-columns:repeat(3,64px);gap:10px;}
+  .numpad-btn,.numpad-empty{width:64px;height:64px;}
+  .nb-num{font-size:20px;}
+  .l-icon{width:64px;height:64px;font-size:28px;}
+  .l-appname{font-size:24px;}
+}
+@media(max-height:700px){
+  .l-badge{display:none;}
+  .l-divider{display:none;}
+  .l-icon{width:60px;height:60px;font-size:26px;border-radius:18px;margin-bottom:8px;}
+  .l-appname{font-size:22px;margin-bottom:2px;}
+  .l-tagline{margin-bottom:10px;}
+  .l-subtitle{font-size:14px;margin-bottom:10px;}
+  .pin-dots{margin-bottom:4px;}
+  .pin-error{margin-bottom:8px;}
+  .numpad{grid-template-columns:repeat(3,64px);gap:10px;margin-bottom:10px;}
+  .numpad-btn,.numpad-empty{width:64px;height:64px;}
+  .nb-num{font-size:20px;}
+  .l-footer{gap:4px;}
+}
 </style>
 </head>
 <body>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- LOGIN OVERLAY — Modern Fintech              -->
+<!-- ════════════════════════════════════════════ -->
+<div id="login-overlay">
+  <!-- animated background -->
+  <div class="l-blob l-blob-1"></div>
+  <div class="l-blob l-blob-2"></div>
+  <div class="l-blob l-blob-3"></div>
+
+  <div class="l-wrap">
+    <!-- branding -->
+    <div class="l-badge" id="login-badge">PERSONAL FINANCE</div>
+    <div class="l-icon">💰</div>
+    <div class="l-appname">PFMT</div>
+    <div class="l-tagline">Money Tracker · ServiceNow PDI</div>
+    <div class="l-divider"></div>
+
+    <!-- ── Panel A: SN Login ── -->
+    <div class="sn-login-panel active" id="panel-login">
+      <input class="sn-login-input" id="sn-li-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
+      <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password"/>
+      <div class="sn-login-err" id="sn-li-err"></div>
+      <button class="sn-login-btn" id="sn-li-btn" onclick="doSNLogin()">Sign In</button>
+      <button class="sn-login-toggle" onclick="showAuthPanel('register')">No account? <span>Create one</span></button>
+    </div>
+
+    <!-- ── Panel B: SN Register ── -->
+    <div class="sn-login-panel" id="panel-register">
+      <input class="sn-login-input" id="sn-reg-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name"/>
+      <input class="sn-login-input" id="sn-reg-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
+      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email (optional)" autocomplete="email"/>
+      <input class="sn-login-input" id="sn-reg-password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password"/>
+      <input class="sn-login-input" id="sn-reg-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/>
+      <div class="sn-login-err" id="sn-reg-err"></div>
+      <button class="sn-login-btn" id="sn-reg-btn" onclick="doSNRegister()">Create Account</button>
+      <button class="sn-login-toggle" onclick="showAuthPanel('login')">Already have an account? <span>Sign in</span></button>
+    </div>
+
+    <!-- ── Panel C: PIN unlock (quick-lock only) ── -->
+    <div class="sn-login-panel" id="panel-pin">
+      <div class="l-subtitle" id="login-subtitle" style="margin-bottom:14px;">Enter your PIN</div>
+      <div class="pin-dots" id="pin-dots-wrap" style="margin-bottom:6px;">
+        <span class="pin-dot" id="pd0"></span>
+        <span class="pin-dot" id="pd1"></span>
+        <span class="pin-dot" id="pd2"></span>
+        <span class="pin-dot" id="pd3"></span>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="numpad">
+        <button class="numpad-btn" onclick="pinInput('1')"><span class="nb-num">1</span></button>
+        <button class="numpad-btn" onclick="pinInput('2')"><span class="nb-num">2</span><span class="nb-sub">ABC</span></button>
+        <button class="numpad-btn" onclick="pinInput('3')"><span class="nb-num">3</span><span class="nb-sub">DEF</span></button>
+        <button class="numpad-btn" onclick="pinInput('4')"><span class="nb-num">4</span><span class="nb-sub">GHI</span></button>
+        <button class="numpad-btn" onclick="pinInput('5')"><span class="nb-num">5</span><span class="nb-sub">JKL</span></button>
+        <button class="numpad-btn" onclick="pinInput('6')"><span class="nb-num">6</span><span class="nb-sub">MNO</span></button>
+        <button class="numpad-btn" onclick="pinInput('7')"><span class="nb-num">7</span><span class="nb-sub">PQRS</span></button>
+        <button class="numpad-btn" onclick="pinInput('8')"><span class="nb-num">8</span><span class="nb-sub">TUV</span></button>
+        <button class="numpad-btn" onclick="pinInput('9')"><span class="nb-num">9</span><span class="nb-sub">WXYZ</span></button>
+        <div class="numpad-empty"></div>
+        <button class="numpad-btn" onclick="pinInput('0')"><span class="nb-num">0</span></button>
+        <button class="numpad-btn special" onclick="pinBackspace()"><span class="nb-num">⌫</span></button>
+      </div>
+      <button class="sn-login-toggle" onclick="snLogout()">Sign out completely <span>→</span></button>
+    </div>
+
+    <!-- footer -->
+    <div class="l-footer">
+      <div class="l-connecting" id="login-connecting">
+        <div class="l-spinner"></div>
+        <span id="login-connecting-msg">Connecting…</span>
+      </div>
+      <button class="login-link" id="forgot-btn" onclick="pinForgot()" style="display:none;">Forgot PIN? Reset all data</button>
+      <div class="l-version">PFMT v2.0 · PDI</div>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
 
 <!-- ── SIDEBAR ── -->
@@ -302,7 +579,9 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   <button class="nav-item" onclick="showView('analytics',this)"><span class="icon">📈</span> Analytics</button>
   <div class="nav-section">Manage</div>
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
+  <button class="nav-item" id="nav-profile" onclick="showView('profile',this)"><span class="icon">👤</span> Profile</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
+  <button class="nav-item" onclick="lockApp()" style="color:rgba(255,120,120,.7);margin-top:4px;"><span class="icon">🔒</span> Lock</button>
   <div class="sidebar-bottom">
     <div id="sn-conn-status" class="sn-status" onclick="showView('settings',document.querySelectorAll('.nav-item')[6])">
       <span class="dot" id="sn-dot" style="background:#6B7280;animation:none;"></span>
@@ -395,6 +674,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <select class="form-input" id="filter-cat" onchange="renderTransactions()">
             <option value="">All Categories</option>
           </select>
+          <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral);border-color:var(--coral);">✕ Clear</button>
         </div>
         <div id="all-txns"><div class="empty"><div class="icon">📭</div><p>No transactions found.</p></div></div>
       </div>
@@ -532,8 +812,13 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button onclick="pushAllToSN()" class="btn btn-sky" style="font-size:12px;padding:7px 14px;">↑ Push Local to SN</button>
           </div>
-          <div style="padding:10px 14px;background:var(--amber-s);border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#78350F;">
-            ⚠️ CORS blocks browser-to-PDI calls from file://. Deploy inside Service Portal for live sync, or use the <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/api_explorer.do" target="_blank" style="color:#78350F;font-weight:700;">REST API Explorer ↗</a>
+          <div style="padding:12px 14px;background:var(--amber-s);border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#78350F;line-height:1.7;">
+            <strong>⚠️ If Test Connection fails with CORS error:</strong><br>
+            1. Open your PDI → search <strong>sys_cors_rule</strong> → CORS Rules → <strong>New</strong><br>
+            2. Domain: <code style="background:#fef3c7;padding:1px 4px;border-radius:3px;">https://yapseng98.github.io</code><br>
+            3. Headers: <code style="background:#fef3c7;padding:1px 4px;border-radius:3px;">Content-Type,Authorization,Accept</code><br>
+            4. Methods: GET, POST, PUT, DELETE → Submit<br>
+            5. Enter your PDI password above → Test Connection again
           </div>
         </div>
         <div class="settings-section">
@@ -550,20 +835,32 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <div class="settings-section">
           <h3>AI Configuration</h3>
           <div class="form-group">
-            <label class="form-label">Anthropic API Key</label>
+            <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
             <div style="display:flex;gap:8px;">
-              <input class="form-input" type="password" id="anthropic-key-input" placeholder="sk-ant-api03-…">
+              <input class="form-input" type="password" id="gemini-key-input" placeholder="gsk_…">
               <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Required for Now Assist AI insights. Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--sky);">console.anthropic.com ↗</a></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky);">console.groq.com ↗</a></div>
           </div>
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
         <div class="settings-section">
           <h3>Preferences</h3>
-          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+        <div class="settings-section">
+          <h3>App Security</h3>
+          <div class="setting-row">
+            <div><div class="setting-label">App PIN</div><div class="setting-sub">4-digit PIN required to open the app</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="changePin()">Change PIN</button>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Lock Now</div><div class="setting-sub">Requires PIN to re-enter</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="lockApp()">🔒 Lock</button>
+          </div>
         </div>
         <div class="settings-section">
           <h3>Data</h3>
@@ -572,6 +869,113 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         </div>
       </div>
     </div>
+
+    <!-- ── PROFILE VIEW ── -->
+    <div class="view" id="view-profile">
+
+      <!-- Hero -->
+      <div class="profile-hero">
+        <div class="profile-avatar" id="prof-avatar" style="background:#8B5CF6;">YC</div>
+        <div>
+          <div class="profile-name" id="prof-display-name">—</div>
+          <div class="profile-username" id="prof-username">@—</div>
+          <div class="profile-email" id="prof-email"></div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="prof-stat-txn">—</div>
+          <div class="profile-stat-lbl">Transactions</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="prof-stat-acc">—</div>
+          <div class="profile-stat-lbl">Accounts</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="prof-stat-goals">—</div>
+          <div class="profile-stat-lbl">Active Goals</div>
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div class="profile-section">
+        <h3>Account Details</h3>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Display Name</span>
+          <span class="profile-field-val" id="prof-detail-name">—</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Username</span>
+          <span class="profile-field-val" id="prof-detail-username">—</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Email</span>
+          <span class="profile-field-val" id="prof-detail-email">—</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Currency</span>
+          <span class="profile-field-val" id="prof-detail-currency">SGD</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">Language</span>
+          <span class="profile-field-val" id="prof-detail-language">English</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-lbl">ServiceNow Instance</span>
+          <span class="profile-field-val" id="prof-detail-instance" style="font-size:11px;color:var(--muted);">—</span>
+        </div>
+        <div class="profile-field" style="border-bottom:none;padding-bottom:0;">
+          <span class="profile-field-lbl">Member Since</span>
+          <span class="profile-field-val" id="prof-detail-since">—</span>
+        </div>
+      </div>
+
+      <!-- Edit section -->
+      <div class="profile-section">
+        <h3>Edit Profile</h3>
+        <div style="display:grid;gap:10px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Display Name</label>
+            <input class="form-input" id="prof-edit-name" type="text" placeholder="Your display name"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Email</label>
+            <input class="form-input" id="prof-edit-email" type="email" placeholder="your@email.com"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Monthly Income Target</label>
+            <input class="form-input" id="prof-edit-income" type="number" placeholder="0.00"/>
+          </div>
+          <button class="btn btn-jade" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Change password -->
+      <div class="profile-section">
+        <h3>Change Password</h3>
+        <div style="display:grid;gap:10px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Current Password</label>
+            <input class="form-input" id="prof-pw-current" type="password" placeholder="••••••••"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">New Password</label>
+            <input class="form-input" id="prof-pw-new" type="password" placeholder="Min 6 characters"/>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Confirm New Password</label>
+            <input class="form-input" id="prof-pw-confirm" type="password" placeholder="Confirm new password"/>
+          </div>
+          <button class="btn btn-ghost" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
+        </div>
+      </div>
+
+      <!-- Sign out -->
+      <button class="profile-signout" onclick="snLogout()">Sign Out</button>
+
+    </div><!-- end view-profile -->
 
   </div><!-- .content -->
 </main>
@@ -758,7 +1162,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 <div class="modal-backdrop" id="account-modal">
   <div class="modal modal-sm">
     <div class="modal-header">
-      <div class="modal-title">Add Account</div>
+      <div class="modal-title" id="acc-modal-title">Add Account</div>
       <button class="modal-close" onclick="document.getElementById('account-modal').classList.remove('open')">✕</button>
     </div>
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
@@ -769,7 +1173,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="form-group"><label class="form-label">Institution</label><select class="form-input" id="acc-institution"><option>DBS</option><option>OCBC</option><option>UOB</option><option>Standard Chartered</option><option>Grab Financial</option><option>Other</option></select></div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-jade" onclick="saveAccount()">Add Account</button>
+      <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
     </div>
   </div>
 </div>
@@ -793,6 +1197,219 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
 <script>
 // ═══════════════════════════════════════════════
+// TRANSLATIONS
+// ═══════════════════════════════════════════════
+const TRANSLATIONS = {
+  en: {
+    nav_main:'Main', nav_manage:'Manage', nav_dashboard:'Dashboard', nav_transactions:'Transactions',
+    nav_budgets:'Budgets', nav_goals:'Goals', nav_analytics:'Analytics', nav_accounts:'Accounts',
+    nav_settings:'Settings', nav_lock:'Lock',
+    topbar_dashboard:'Dashboard', topbar_transactions:'All Transactions', topbar_budgets:'Budgets',
+    topbar_goals:'Savings Goals', topbar_analytics:'Analytics', topbar_accounts:'Accounts', topbar_settings:'Settings',
+    btn_csv:'⬇ CSV', btn_snjson:'⬇ SN JSON', btn_ai:'✨ AI Insights', btn_add_txn:'+ Add Transaction',
+    lbl_net_balance:'Net Balance', lbl_income:'Income', lbl_expenses:'Expenses',
+    kpi_transactions:'Transactions', kpi_this_month:'This month', kpi_avg_daily:'Avg Daily Spend',
+    kpi_based_expenses:'Based on expenses', kpi_savings_rate:'Savings Rate', kpi_of_income:'of income saved',
+    kpi_budgets_over:'Budgets Over', kpi_exceeded:'categories exceeded',
+    panel_recent_txns:'Recent Transactions', panel_view_all:'View all →', panel_spend_cat:'Spend by Category',
+    ai_title_insights:'AI Financial Insights', ai_btn_insights:'✨ Generate Insights',
+    ai_placeholder_insights:'Click "AI Insights" to get a personalised spend analysis.',
+    empty_no_txns_month:'No transactions in', empty_add_first:'Add your first one!',
+    empty_add_expenses_chart:'Add expenses to see chart',
+    panel_all_txns:'All Transactions', btn_add:'+ Add',
+    search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
+    filter_expenses:'Expenses', filter_income:'Income', filter_transfers:'Transfers',
+    filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
+    panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
+    panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
+    ai_placeholder_budget:'Click below for AI budget recommendations.', ai_btn_budget:'🎯 Analyse My Budgets',
+    empty_no_budgets:'No budgets yet. Add one!', empty_no_budgets_overview:'Add budgets to see overview',
+    budget_total:'Total Monthly Budget', budget_remaining:'Remaining', budget_over_lbl:'Over Budget',
+    budget_used:'used', budget_spent_of:'spent of', budget_left:'left',
+    badge_over:'OVER', badge_near:'NEAR', budget_cats:'cats',
+    panel_savings_goals:'Savings Goals', btn_new_goal:'+ New Goal',
+    panel_goals_summary:'Goals Summary', ai_title_goals:'Goal Coach',
+    ai_placeholder_goals:'Get AI guidance on reaching your savings goals faster.',
+    ai_btn_goals:'🎯 Coach My Goals', empty_no_goals:'No goals yet. Create one!',
+    empty_no_goals_summary:'Add goals to see summary',
+    goals_total_saved:'Total Saved', goals_across:'across', goals_lbl:'goals',
+    goals_active:'Active', goals_achieved:'Achieved', goal_achieved_badge:'✓ ACHIEVED',
+    goal_to_go:'to go', goal_done:'🎉 Done!', goal_of:'of', goal_mo_left:'mo left',
+    stat_total_income:'Total Income', stat_total_expenses:'Total Expenses',
+    stat_largest_expense:'Largest Expense', stat_savings_rate:'Savings Rate', stat_all_time:'All time',
+    panel_cat_breakdown:'Category Breakdown', ai_title_analytics:'Spend Analysis Report',
+    ai_placeholder_analytics:'Generate a full AI-powered analysis of your financial data.',
+    ai_btn_analytics:'📊 Generate Full Report', empty_add_txns_breakdown:'Add transactions to see breakdown',
+    panel_my_accounts:'My Accounts', panel_acc_insights:'Account Insights',
+    ai_title_accounts:'Wealth Coach',
+    ai_placeholder_accounts:'Get AI advice on optimising your account balances and savings strategy.',
+    ai_btn_accounts:'💰 Analyse My Accounts', empty_add_accounts:'Add accounts to see insights',
+    acc_total_assets:'Total Assets', acc_total_debt:'Total Debt', acc_net_worth:'Net Worth',
+    acc_asset_allocation:'Asset Allocation', acc_debt_ratio:'Debt Ratio', acc_accounts:'Accounts',
+    acc_no_pos_bal:'No positive balances',
+    acc_risk_high:'High', acc_risk_moderate:'Moderate', acc_risk_low:'Low', acc_risk_suffix:'risk',
+    settings_sn_conn:'ServiceNow PDI Connection', settings_quick_links:'Quick Links',
+    settings_ai_config:'AI Configuration', settings_preferences:'Preferences',
+    settings_currency:'Currency', settings_budget_alerts:'Budget Alerts',
+    settings_budget_alerts_sub:'Notify when budget > threshold',
+    settings_now_assist:'Now Assist', settings_now_assist_sub:'AI-powered spend analysis',
+    settings_language:'Language', settings_app_security:'App Security',
+    settings_app_pin:'App PIN', settings_app_pin_sub:'4-digit PIN required to open the app',
+    settings_lock_now:'Lock Now', settings_lock_now_sub:'Requires PIN to re-enter',
+    settings_data:'Data', settings_load_samples:'Load Sample Data', settings_clear_data:'Clear All Data',
+    btn_change_pin:'Change PIN', btn_lock:'🔒 Lock', btn_load_samples:'Load Samples', btn_clear_data:'Clear Data',
+    modal_add_txn:'Add Transaction', modal_edit_txn:'Edit Transaction',
+    modal_editing_txn:'✏️ Editing transaction',
+    modal_add_budget:'Add Budget', modal_edit_budget:'Edit Budget',
+    modal_add_goal:'New Savings Goal', modal_edit_goal:'Edit Goal',
+    modal_add_account:'Add Account', modal_edit_account:'Edit Account',
+    modal_cancel:'Cancel', modal_save_txn:'Save Transaction', modal_update_txn:'Update Transaction',
+    modal_save_goal:'Save Goal', modal_save_budget:'Save Budget', modal_save_account:'Add Account',
+    modal_save_changes:'Save Changes',
+    tab_expense:'Expense', tab_income:'Income', tab_transfer:'Transfer',
+    lbl_amount:'Amount', lbl_description:'Description', lbl_category:'Category',
+    lbl_account:'Account', lbl_date:'Date', lbl_notes:'Notes (optional)',
+    notes_placeholder:'Any additional notes…', desc_placeholder:'e.g. Grab Coffee, NTUC FairPrice',
+    lbl_budget_limit:'Monthly Limit', lbl_alert_pct:'Alert at (%)',
+    lbl_goal_name:'Goal Name', lbl_goal_icon:'Icon', lbl_goal_target:'Target Amount',
+    lbl_goal_current:'Current Saved', lbl_goal_monthly:'Monthly Contribution',
+    lbl_acc_name:'Account Name', lbl_acc_type:'Account Type',
+    lbl_acc_balance:'Current Balance', lbl_acc_institution:'Institution',
+    login_badge:'PERSONAL FINANCE', login_enter_pin:'Enter your PIN',
+    login_setup_pin:'Create a 4-digit PIN to protect your data',
+    login_new_pin:'Enter your new PIN', login_confirm_pin:'Confirm your PIN',
+    login_forgot:'Forgot PIN? Reset all data',
+    confirm_clear_title:'Clear all data?',
+    confirm_clear_msg:'This removes all transactions, budgets, goals and accounts.',
+    confirm_clear_ok:'Clear All',
+    confirm_delete:'Delete',
+    confirm_del_txn:'Delete transaction?', confirm_del_budget:'Delete budget?',
+    confirm_del_goal:'Delete goal?', confirm_del_account:'Delete account?',
+    confirm_del_account_msg:'This will remove the account from your records.',
+    toast_txn_saved:'Transaction saved', toast_txn_updated:'Transaction updated ✓',
+    toast_txn_deleted:'Transaction deleted', toast_no_txns_export:'No transactions to export',
+    toast_csv_downloaded:'CSV downloaded', toast_sn_exported:'SN JSON exported',
+    toast_budget_saved:'Budget saved', toast_budget_updated:'Budget updated ✓',
+    toast_budget_deleted:'Budget deleted', toast_budget_exists:'Budget for this category already exists',
+    toast_goal_saved:'Goal saved', toast_goal_updated:'Goal updated ✓',
+    toast_goal_deleted:'Goal deleted',
+    toast_account_saved:'Account saved', toast_account_deleted:'Account deleted',
+    toast_data_cleared:'All data cleared', toast_pin_updated:'PIN updated successfully',
+    toast_groq_saved:'✓ Groq key saved', toast_groq_toast:'Groq API key saved',
+    toast_enter_amount:'Enter a valid amount', toast_enter_desc:'Enter a description',
+    toast_enter_date:'Select a date', toast_enter_budget_amt:'Enter a valid budget amount',
+    toast_enter_goal_name:'Enter a goal name', toast_enter_goal_target:'Enter a valid target amount',
+    toast_enter_account_name:'Enter an account name', toast_enter_api_key:'Enter an API key',
+    ai_no_key:'⚠️ Add your free Groq API key in <strong>Settings → AI Configuration</strong> to enable insights.',
+    sn_not_connected:'Not connected',
+  },
+  zh: {
+    nav_main:'主要', nav_manage:'管理', nav_dashboard:'仪表盘', nav_transactions:'交易记录',
+    nav_budgets:'预算', nav_goals:'目标', nav_analytics:'分析', nav_accounts:'账户',
+    nav_settings:'设置', nav_lock:'锁定',
+    topbar_dashboard:'仪表盘', topbar_transactions:'全部交易', topbar_budgets:'预算',
+    topbar_goals:'储蓄目标', topbar_analytics:'分析', topbar_accounts:'账户', topbar_settings:'设置',
+    btn_csv:'⬇ CSV', btn_snjson:'⬇ SN JSON', btn_ai:'✨ AI 洞察', btn_add_txn:'+ 添加交易',
+    lbl_net_balance:'净余额', lbl_income:'收入', lbl_expenses:'支出',
+    kpi_transactions:'交易次数', kpi_this_month:'本月', kpi_avg_daily:'日均支出',
+    kpi_based_expenses:'按支出计算', kpi_savings_rate:'储蓄率', kpi_of_income:'收入已储蓄',
+    kpi_budgets_over:'超支预算', kpi_exceeded:'个类别超支',
+    panel_recent_txns:'最近交易', panel_view_all:'查看全部 →', panel_spend_cat:'按类别支出',
+    ai_title_insights:'AI 财务洞察', ai_btn_insights:'✨ 生成洞察',
+    ai_placeholder_insights:'点击「AI 洞察」获取个性化支出分析。',
+    empty_no_txns_month:'本月暂无交易', empty_add_first:'添加您的第一笔！',
+    empty_add_expenses_chart:'添加支出以查看图表',
+    panel_all_txns:'全部交易', btn_add:'+ 添加',
+    search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
+    filter_expenses:'支出', filter_income:'收入', filter_transfers:'转账',
+    filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
+    panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
+    panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
+    ai_placeholder_budget:'点击下方获取 AI 预算建议。', ai_btn_budget:'🎯 分析我的预算',
+    empty_no_budgets:'暂无预算，请添加！', empty_no_budgets_overview:'添加预算以查看概览',
+    budget_total:'月度预算总额', budget_remaining:'剩余', budget_over_lbl:'超支',
+    budget_used:'已使用', budget_spent_of:'已花费，共', budget_left:'剩余',
+    badge_over:'超支', badge_near:'接近', budget_cats:'个类别',
+    panel_savings_goals:'储蓄目标', btn_new_goal:'+ 新建目标',
+    panel_goals_summary:'目标摘要', ai_title_goals:'目标顾问',
+    ai_placeholder_goals:'获取 AI 指导，更快达成储蓄目标。',
+    ai_btn_goals:'🎯 辅导我的目标', empty_no_goals:'暂无目标，请创建！',
+    empty_no_goals_summary:'添加目标以查看摘要',
+    goals_total_saved:'总储蓄', goals_across:'共', goals_lbl:'个目标',
+    goals_active:'进行中', goals_achieved:'已达成', goal_achieved_badge:'✓ 已达成',
+    goal_to_go:'还需', goal_done:'🎉 完成！', goal_of:'/', goal_mo_left:'个月剩余',
+    stat_total_income:'总收入', stat_total_expenses:'总支出',
+    stat_largest_expense:'最大支出', stat_savings_rate:'储蓄率', stat_all_time:'历史总计',
+    panel_cat_breakdown:'类别分析', ai_title_analytics:'支出分析报告',
+    ai_placeholder_analytics:'生成完整的 AI 财务数据分析。',
+    ai_btn_analytics:'📊 生成完整报告', empty_add_txns_breakdown:'添加交易以查看分析',
+    panel_my_accounts:'我的账户', panel_acc_insights:'账户洞察',
+    ai_title_accounts:'财富顾问',
+    ai_placeholder_accounts:'获取 AI 建议，优化账户余额和储蓄策略。',
+    ai_btn_accounts:'💰 分析我的账户', empty_add_accounts:'添加账户以查看洞察',
+    acc_total_assets:'总资产', acc_total_debt:'总负债', acc_net_worth:'净资产',
+    acc_asset_allocation:'资产配置', acc_debt_ratio:'负债比率', acc_accounts:'账户数',
+    acc_no_pos_bal:'无正余额',
+    acc_risk_high:'高', acc_risk_moderate:'中', acc_risk_low:'低', acc_risk_suffix:'风险',
+    settings_sn_conn:'ServiceNow PDI 连接', settings_quick_links:'快速链接',
+    settings_ai_config:'AI 配置', settings_preferences:'偏好设置',
+    settings_currency:'货币', settings_budget_alerts:'预算提醒',
+    settings_budget_alerts_sub:'超过阈值时通知',
+    settings_now_assist:'Now Assist', settings_now_assist_sub:'AI 驱动的支出分析',
+    settings_language:'语言', settings_app_security:'应用安全',
+    settings_app_pin:'应用 PIN', settings_app_pin_sub:'打开应用需要 4 位 PIN',
+    settings_lock_now:'立即锁定', settings_lock_now_sub:'重新进入需要 PIN',
+    settings_data:'数据', settings_load_samples:'加载示例数据', settings_clear_data:'清除全部数据',
+    btn_change_pin:'修改 PIN', btn_lock:'🔒 锁定', btn_load_samples:'加载示例', btn_clear_data:'清除数据',
+    modal_add_txn:'添加交易', modal_edit_txn:'编辑交易',
+    modal_editing_txn:'✏️ 正在编辑交易',
+    modal_add_budget:'添加预算', modal_edit_budget:'编辑预算',
+    modal_add_goal:'新建储蓄目标', modal_edit_goal:'编辑目标',
+    modal_add_account:'添加账户', modal_edit_account:'编辑账户',
+    modal_cancel:'取消', modal_save_txn:'保存交易', modal_update_txn:'更新交易',
+    modal_save_goal:'保存目标', modal_save_budget:'保存预算', modal_save_account:'添加账户',
+    modal_save_changes:'保存更改',
+    tab_expense:'支出', tab_income:'收入', tab_transfer:'转账',
+    lbl_amount:'金额', lbl_description:'描述', lbl_category:'类别',
+    lbl_account:'账户', lbl_date:'日期', lbl_notes:'备注（可选）',
+    notes_placeholder:'任何附加备注…', desc_placeholder:'例如：Grab 咖啡、NTUC',
+    lbl_budget_limit:'月度限额', lbl_alert_pct:'提醒百分比 (%)',
+    lbl_goal_name:'目标名称', lbl_goal_icon:'图标', lbl_goal_target:'目标金额',
+    lbl_goal_current:'当前储蓄', lbl_goal_monthly:'每月存入',
+    lbl_acc_name:'账户名称', lbl_acc_type:'账户类型',
+    lbl_acc_balance:'当前余额', lbl_acc_institution:'银行 / 机构',
+    login_badge:'个人财务', login_enter_pin:'输入您的 PIN',
+    login_setup_pin:'创建 4 位 PIN 以保护您的数据',
+    login_new_pin:'输入新的 PIN', login_confirm_pin:'确认您的 PIN',
+    login_forgot:'忘记 PIN？重置全部数据',
+    confirm_clear_title:'清除全部数据？',
+    confirm_clear_msg:'这将删除所有交易、预算、目标和账户。',
+    confirm_clear_ok:'全部清除',
+    confirm_delete:'删除',
+    confirm_del_txn:'删除交易？', confirm_del_budget:'删除预算？',
+    confirm_del_goal:'删除目标？', confirm_del_account:'删除账户？',
+    confirm_del_account_msg:'这将从记录中删除该账户。',
+    toast_txn_saved:'交易已保存', toast_txn_updated:'交易已更新 ✓',
+    toast_txn_deleted:'交易已删除', toast_no_txns_export:'没有可导出的交易',
+    toast_csv_downloaded:'CSV 已下载', toast_sn_exported:'SN JSON 已导出',
+    toast_budget_saved:'预算已保存', toast_budget_updated:'预算已更新 ✓',
+    toast_budget_deleted:'预算已删除', toast_budget_exists:'该类别的预算已存在',
+    toast_goal_saved:'目标已保存', toast_goal_updated:'目标已更新 ✓',
+    toast_goal_deleted:'目标已删除',
+    toast_account_saved:'账户已保存', toast_account_deleted:'账户已删除',
+    toast_data_cleared:'全部数据已清除', toast_pin_updated:'PIN 更新成功',
+    toast_groq_saved:'✓ Groq 密钥已保存', toast_groq_toast:'Groq API 密钥已保存',
+    toast_enter_amount:'请输入有效金额', toast_enter_desc:'请输入描述',
+    toast_enter_date:'请选择日期', toast_enter_budget_amt:'请输入有效预算金额',
+    toast_enter_goal_name:'请输入目标名称', toast_enter_goal_target:'请输入有效目标金额',
+    toast_enter_account_name:'请输入账户名称', toast_enter_api_key:'请输入 API 密钥',
+    ai_no_key:'⚠️ 请在 <strong>设置 → AI 配置</strong> 中添加免费 Groq API 密钥以启用洞察。',
+    sn_not_connected:'未连接',
+  }
+};
+function t(key) { return (TRANSLATIONS[state.language] || TRANSLATIONS.en)[key] || TRANSLATIONS.en[key] || key; }
+
+// ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
 const DEFAULT_ACCOUNTS = [
@@ -805,14 +1422,21 @@ let state = {
   transactions: [],
   budgets: [],
   goals: [],
-  accounts: JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS)),
+  accounts: [],
   currentType: 'expense',
   nextId: 100,
-  filterMonth: new Date().toISOString().substring(0, 7), // 'YYYY-MM'
-  anthropicKey: '',
+  filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
+  geminiKey: '',
   snInstance: 'dev275144.service-now.com',
+  snUsername: 'admin',
+  snPassword: '',
   lastSync: null,
-  currency: 'SGD'
+  currency: 'SGD',
+  language: 'en',
+  // SN custom auth
+  snToken: null,
+  snProfileSysId: null,
+  snUserProfile: {}  // {username, display_name, email, currency, language, avatar_color, stats}
 };
 
 // ═══════════════════════════════════════════════
@@ -828,10 +1452,17 @@ function saveState() {
       accounts: state.accounts,
       nextId: state.nextId,
       filterMonth: state.filterMonth,
-      anthropicKey: state.anthropicKey,
+      geminiKey: state.geminiKey,
       snInstance: state.snInstance,
+      snUsername: state.snUsername,
+      snPassword: state.snPassword,
       lastSync: state.lastSync,
-      currency: state.currency
+      currency: state.currency,
+      language: state.language,
+      snToken: state.snToken,
+      snProfileSysId: state.snProfileSysId,
+      snUserProfile: state.snUserProfile,
+      snInstance: state.snInstance
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -841,6 +1472,9 @@ function loadState() {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return false;
     const saved = JSON.parse(raw);
+    // migrate old anthropicKey → geminiKey if present
+    if (saved.anthropicKey && !saved.geminiKey) saved.geminiKey = saved.anthropicKey;
+    delete saved.anthropicKey;
     Object.assign(state, saved);
     return true;
   } catch(e) { return false; }
@@ -888,15 +1522,17 @@ function showView(name, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = {
-    dashboard:'Dashboard', transactions:'All Transactions', budgets:'Budgets',
-    goals:'Savings Goals', analytics:'Analytics', accounts:'Accounts', settings:'Settings'
+  const titleKeys = {
+    dashboard:'topbar_dashboard', transactions:'topbar_transactions', budgets:'topbar_budgets',
+    goals:'topbar_goals', analytics:'topbar_analytics', accounts:'topbar_accounts',
+    settings:'topbar_settings', profile:'Profile'
   };
-  document.getElementById('topbar-title').textContent = titles[name] || name;
+  document.getElementById('topbar-title').textContent = titleKeys[name] ? t(titleKeys[name]) : name;
   // show month nav only on views where it's relevant
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) monthBar.style.display = ['dashboard','budgets','transactions'].includes(name) ? 'flex' : 'none';
   if (name === 'transactions') populateCategoryFilter();
+  if (name === 'profile') { _renderProfileView(); refreshProfileView(); }
   closeSidebar();
   renderAll();
 }
@@ -906,10 +1542,11 @@ function showView(name, el) {
 // ═══════════════════════════════════════════════
 function openTxnModal(id = null) {
   const editing = id !== null;
-  document.getElementById('txn-modal-title').textContent  = editing ? 'Edit Transaction' : 'Add Transaction';
+  document.getElementById('txn-modal-title').textContent  = editing ? t('modal_edit_txn') : t('modal_add_txn');
+  document.getElementById('txn-edit-badge').textContent   = t('modal_editing_txn');
   document.getElementById('txn-edit-badge').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('txn-edit-id').value            = id !== null ? id : '';
-  document.getElementById('txn-date').value               = new Date().toISOString().split('T')[0];
+  document.getElementById('txn-date').value               = localDateStr();
   document.getElementById('txn-amount').value             = '';
   document.getElementById('txn-desc').value               = '';
   document.getElementById('txn-notes').value              = '';
@@ -924,11 +1561,11 @@ function openTxnModal(id = null) {
     document.getElementById('txn-notes').value   = t.notes || '';
     setSelectVal('txn-cat',     t.category);
     setSelectVal('txn-account', t.account);
-    document.getElementById('save-txn-btn').textContent = 'Update Transaction';
+    document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
     setType('expense', document.getElementById('tab-expense'));
-    document.getElementById('save-txn-btn').textContent = 'Save Transaction';
+    document.getElementById('save-txn-btn').textContent = t('modal_save_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-jade';
   }
   document.getElementById('txn-modal').classList.add('open');
@@ -971,21 +1608,21 @@ function saveTransaction() {
   const notes = document.getElementById('txn-notes').value.trim();
   const editId = document.getElementById('txn-edit-id').value;
 
-  if (!amt || amt <= 0) { showToast('Enter a valid amount', 'error'); return; }
-  if (!desc)             { showToast('Enter a description', 'error'); return; }
-  if (!date)             { showToast('Select a date', 'error'); return; }
+  if (!amt || amt <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
+  if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
+  if (!date)             { showToast(t('toast_enter_date'), 'error'); return; }
 
   if (editId !== '') {
     const idx = state.transactions.findIndex(t => t.id == editId);
     if (idx >= 0) {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt, description: desc, category: cat, account: acct, date, notes };
-      showToast('Transaction updated ✓', 'success');
+      showToast(t('toast_txn_updated'), 'success');
     }
   } else {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt, description: desc, category: cat, account: acct, date, notes };
     state.transactions.unshift(txn);
-    showToast(`Saved → x_pfmt_transaction`, 'success');
+    showToast(t('toast_txn_saved') + ' → x_pfmt_transaction', 'success');
   }
 
   closeTxnModal();
@@ -995,11 +1632,11 @@ function saveTransaction() {
 async function deleteTransaction(id) {
   const t = state.transactions.find(x => x.id == id);
   if (!t) return;
-  const ok = await showConfirm('Delete transaction?', `"${t.description}" — $${t.amount.toFixed(2)}`);
+  const ok = await showConfirm(t('confirm_del_txn'), `"${t.description}" — $${t.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
   renderAll();
-  showToast('Transaction deleted', 'info');
+  showToast(t('toast_txn_deleted'), 'info');
 }
 
 
@@ -1008,7 +1645,7 @@ async function deleteTransaction(id) {
 // ═══════════════════════════════════════════════
 function openBudgetModal(id = null) {
   const editing = id !== null;
-  document.getElementById('budget-modal-title').textContent  = editing ? 'Edit Budget' : 'Add Budget';
+  document.getElementById('budget-modal-title').textContent  = editing ? t('modal_edit_budget') : t('modal_add_budget');
   document.getElementById('budget-edit-badge').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('budget-edit-id').value            = id !== null ? id : '';
   document.getElementById('budget-amount').value             = '';
@@ -1040,18 +1677,18 @@ function saveBudget() {
   const alert  = parseInt(document.getElementById('budget-alert').value)   || 80;
   const editId = document.getElementById('budget-edit-id').value;
 
-  if (!amt || amt <= 0) { showToast('Enter a valid budget amount', 'error'); return; }
+  if (!amt || amt <= 0) { showToast(t('toast_enter_budget_amt'), 'error'); return; }
 
   if (editId !== '') {
     const idx = state.budgets.findIndex(b => b.id == editId);
     if (idx >= 0) {
       state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert };
-      showToast('Budget updated ✓', 'success');
+      showToast(t('toast_budget_updated'), 'success');
     }
   } else {
-    if (state.budgets.find(b => b.category === cat)) { showToast('Budget for this category already exists', 'error'); return; }
+    if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
     state.budgets.push({ id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert });
-    showToast(`Budget saved → x_pfmt_budget`, 'success');
+    showToast(t('toast_budget_saved') + ' → x_pfmt_budget', 'success');
   }
 
   closeBudgetModal();
@@ -1061,11 +1698,11 @@ function saveBudget() {
 async function deleteBudget(id) {
   const b = state.budgets.find(x => x.id == id);
   if (!b) return;
-  const ok = await showConfirm('Delete budget?', `${b.category} — $${b.amount.toFixed(2)} limit`);
+  const ok = await showConfirm(t('confirm_del_budget'), `${b.category} — $${b.amount.toFixed(2)} limit`);
   if (!ok) return;
   state.budgets = state.budgets.filter(x => x.id != id);
   renderAll();
-  showToast('Budget deleted', 'info');
+  showToast(t('toast_budget_deleted'), 'info');
 }
 
 // ═══════════════════════════════════════════════
@@ -1073,7 +1710,7 @@ async function deleteBudget(id) {
 // ═══════════════════════════════════════════════
 function openGoalModal(id = null) {
   const editing = id !== null;
-  document.getElementById('goal-modal-title').textContent    = editing ? 'Edit Goal' : 'New Savings Goal';
+  document.getElementById('goal-modal-title').textContent    = editing ? t('modal_edit_goal') : t('modal_add_goal');
   document.getElementById('goal-edit-badge').style.display   = editing ? 'inline-flex' : 'none';
   document.getElementById('goal-contrib-section').style.display = editing ? 'block' : 'none';
   document.getElementById('goal-edit-id').value              = id !== null ? id : '';
@@ -1083,7 +1720,7 @@ function openGoalModal(id = null) {
   document.getElementById('goal-monthly').value = '';
 
   const d = new Date(); d.setFullYear(d.getFullYear() + 1);
-  document.getElementById('goal-date').value = d.toISOString().split('T')[0];
+  document.getElementById('goal-date').value = localDateStr(d);
 
   if (editing) {
     const g = state.goals.find(x => x.id == id);
@@ -1114,18 +1751,18 @@ function saveGoal() {
   const date    = document.getElementById('goal-date').value;
   const editId  = document.getElementById('goal-edit-id').value;
 
-  if (!name)                { showToast('Enter a goal name', 'error');          return; }
-  if (!target || target<=0) { showToast('Enter a valid target amount', 'error'); return; }
+  if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
+  if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
   if (editId !== '') {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
       state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date };
-      showToast('Goal updated ✓', 'success');
+      showToast(t('toast_goal_updated'), 'success');
     }
   } else {
     state.goals.push({ id: state.nextId++, name, icon, target, current, monthly, date });
-    showToast(`Goal saved → x_pfmt_savings_goal`, 'success');
+    showToast(t('toast_goal_saved') + ' → x_pfmt_savings_goal', 'success');
   }
 
   closeGoalModal();
@@ -1135,25 +1772,64 @@ function saveGoal() {
 async function deleteGoal(id) {
   const g = state.goals.find(x => x.id == id);
   if (!g) return;
-  const ok = await showConfirm('Delete goal?', `"${g.name}" — $${g.target.toFixed(2)} target`);
+  const ok = await showConfirm(t('confirm_del_goal'), `"${g.name}" — $${g.target.toFixed(2)} target`);
   if (!ok) return;
   state.goals = state.goals.filter(x => x.id != id);
   renderAll();
-  showToast('Goal deleted', 'info');
+  showToast(t('toast_goal_deleted'), 'info');
 }
 
 // Account
-function openAccountModal() { document.getElementById('account-modal').classList.add('open'); }
+let _editingAccountId = null;
+
+function openAccountModal(id = null) {
+  _editingAccountId = id;
+  const isEdit = id !== null;
+  document.getElementById('acc-modal-title').textContent = isEdit ? t('modal_edit_account') : t('modal_add_account');
+  document.getElementById('acc-save-btn').textContent    = isEdit ? t('modal_save_changes') : t('modal_save_account');
+  if (isEdit) {
+    const acc = state.accounts.find(a => a.id === id);
+    if (!acc) return;
+    document.getElementById('acc-name').value        = acc.name;
+    document.getElementById('acc-type').value        = acc.type;
+    document.getElementById('acc-balance').value     = acc.balance;
+    document.getElementById('acc-institution').value = acc.institution;
+  } else {
+    document.getElementById('acc-name').value        = '';
+    document.getElementById('acc-type').value        = 'Checking';
+    document.getElementById('acc-balance').value     = '';
+    document.getElementById('acc-institution').value = 'DBS';
+  }
+  document.getElementById('account-modal').classList.add('open');
+}
+
 function saveAccount() {
-  const name = document.getElementById('acc-name').value.trim();
-  const type = document.getElementById('acc-type').value;
-  const balance = parseFloat(document.getElementById('acc-balance').value) || 0;
+  const name        = document.getElementById('acc-name').value.trim();
+  const type        = document.getElementById('acc-type').value;
+  const balance     = parseFloat(document.getElementById('acc-balance').value) || 0;
   const institution = document.getElementById('acc-institution').value;
-  if (!name) { showToast('Enter an account name', 'error'); return; }
-  state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon: type === 'Credit Card' ? '💳' : '🏦' });
+  if (!name) { showToast(t('toast_enter_account_name'), 'error'); return; }
+  const icon = type === 'Credit Card' ? '💳' : '🏦';
+  if (_editingAccountId !== null) {
+    const idx = state.accounts.findIndex(a => a.id === _editingAccountId);
+    if (idx !== -1) state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
+  } else {
+    state.accounts.push({ id: state.nextId++, name, type, institution, balance, icon });
+  }
+  _editingAccountId = null;
   document.getElementById('account-modal').classList.remove('open');
+  saveState();
   renderAll();
-  showToast(`Account saved → x_pfmt_account`, 'success');
+  showToast(t('toast_account_saved'), 'success');
+}
+
+async function deleteAccount(id) {
+  const ok = await showConfirm(t('confirm_del_account'), t('confirm_del_account_msg'), t('confirm_delete')||'Delete', 'btn-coral');
+  if (!ok) return;
+  state.accounts = state.accounts.filter(a => a.id !== id);
+  saveState();
+  renderAll();
+  showToast(t('toast_account_deleted'), 'info');
 }
 
 // ═══════════════════════════════════════════════
@@ -1168,16 +1844,24 @@ function getMonthLabel(ym) {
   const [y, m] = ym.split('-');
   return new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
 }
+function localYM(d) {
+  const dt = d || new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+}
+function localDateStr(d) {
+  const dt = d || new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
 function changeMonth(delta) {
   const [y, m] = state.filterMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
-  state.filterMonth = d.toISOString().substring(0, 7);
+  state.filterMonth = localYM(d);
   saveState();
   renderAll();
   updateMonthUI();
 }
 function resetMonth() {
-  state.filterMonth = new Date().toISOString().substring(0, 7);
+  state.filterMonth = localYM();
   saveState();
   renderAll();
   updateMonthUI();
@@ -1185,9 +1869,8 @@ function resetMonth() {
 function updateMonthUI() {
   const el = document.getElementById('month-label');
   if (el) el.textContent = getMonthLabel(state.filterMonth);
-  const cur = new Date().toISOString().substring(0, 7);
   const todayBtn = document.getElementById('month-today-btn');
-  if (todayBtn) todayBtn.style.display = state.filterMonth === cur ? 'none' : 'inline-flex';
+  if (todayBtn) todayBtn.style.display = state.filterMonth === localYM() ? 'none' : 'inline-flex';
 }
 function getMonthTxns(month) {
   return state.transactions.filter(t => t.date.startsWith(month || state.filterMonth));
@@ -1217,7 +1900,96 @@ function getCategorySpend() {
   return Object.entries(map).sort((a,b)=>b[1]-a[1]);
 }
 
+function applyLanguage() {
+  // Sidebar nav
+  const navSections = document.querySelectorAll('.nav-section');
+  if (navSections[0]) navSections[0].textContent = t('nav_main');
+  if (navSections[1]) navSections[1].textContent = t('nav_manage');
+  const navItems = document.querySelectorAll('.nav-item');
+  const navKeys = ['nav_dashboard','nav_transactions','nav_budgets','nav_goals','nav_analytics','nav_accounts','nav_settings','nav_lock'];
+  navItems.forEach((btn, i) => {
+    if (i >= navKeys.length) return;
+    const icon = btn.querySelector('.icon');
+    btn.textContent = '';
+    if (icon) btn.appendChild(icon);
+    btn.appendChild(document.createTextNode(' ' + t(navKeys[i])));
+  });
+  // Topbar buttons
+  const desktopAI = document.querySelector('.btn.btn-ghost.desktop-only[onclick="openAI()"]');
+  if (desktopAI) desktopAI.textContent = t('btn_ai');
+  const addTxnDesktop = document.querySelector('.btn.btn-jade .desktop-only');
+  if (addTxnDesktop) addTxnDesktop.textContent = t('btn_add_txn');
+  // Dashboard static
+  const balLabel = document.querySelector('.balance-main-label');
+  if (balLabel) balLabel.textContent = t('lbl_net_balance') + ' (' + (state.currency||'SGD') + ')';
+  const incLabel = document.querySelector('.balance-sub label:first-child');
+  if (incLabel) incLabel.textContent = t('lbl_income');
+  const kpiLabels = document.querySelectorAll('.kpi-label');
+  const kpiSubs   = document.querySelectorAll('.kpi-sub');
+  const kpiLabelKeys = ['kpi_transactions','kpi_avg_daily','kpi_savings_rate','kpi_budgets_over'];
+  const kpiSubKeys   = ['kpi_this_month','kpi_based_expenses','kpi_of_income','kpi_exceeded'];
+  kpiLabels.forEach((el,i) => { if (kpiLabelKeys[i]) el.textContent = t(kpiLabelKeys[i]); });
+  kpiSubs.forEach((el,i)   => { if (kpiSubKeys[i])   el.textContent = t(kpiSubKeys[i]); });
+  const recentPanel = document.querySelector('#view-dashboard .panel .panel-title');
+  if (recentPanel) recentPanel.textContent = t('panel_recent_txns');
+  const viewAll = document.querySelector('#view-dashboard .panel span[onclick]');
+  if (viewAll) viewAll.textContent = t('panel_view_all');
+  const spendTitle = document.querySelector('#view-dashboard .panel:last-of-type .panel-title');
+  // AI panel dashboard
+  const aiTitle = document.querySelector('#ai-panel .ai-title');
+  if (aiTitle) aiTitle.textContent = t('ai_title_insights');
+  const aiBtn = document.querySelector('#ai-panel .ai-btn');
+  if (aiBtn) aiBtn.textContent = t('ai_btn_insights');
+  // AI panels (budgets, goals, analytics, accounts)
+  const budgetAiTitle = document.querySelector('#view-budgets .ai-title');
+  if (budgetAiTitle) budgetAiTitle.textContent = t('ai_title_budget');
+  const budgetAiBtn = document.querySelector('#view-budgets .ai-btn');
+  if (budgetAiBtn) budgetAiBtn.textContent = t('ai_btn_budget');
+  const goalsAiTitle = document.querySelector('#view-goals .ai-title');
+  if (goalsAiTitle) goalsAiTitle.textContent = t('ai_title_goals');
+  const goalsAiBtn = document.querySelector('#view-goals .ai-btn');
+  if (goalsAiBtn) goalsAiBtn.textContent = t('ai_btn_goals');
+  const analyticsAiTitle = document.querySelector('#view-analytics .ai-title');
+  if (analyticsAiTitle) analyticsAiTitle.textContent = t('ai_title_analytics');
+  const analyticsAiBtn = document.querySelector('#view-analytics .ai-btn');
+  if (analyticsAiBtn) analyticsAiBtn.textContent = t('ai_btn_analytics');
+  const accountsAiTitle = document.querySelector('#view-accounts .ai-title');
+  if (accountsAiTitle) accountsAiTitle.textContent = t('ai_title_accounts');
+  const accountsAiBtn = document.querySelector('#view-accounts .ai-btn');
+  if (accountsAiBtn) accountsAiBtn.textContent = t('ai_btn_accounts');
+  // Login
+  const lBadge = document.getElementById('login-badge');
+  if (lBadge) lBadge.textContent = t('login_badge');
+  const forgotBtn = document.getElementById('forgot-btn');
+  if (forgotBtn) forgotBtn.textContent = t('login_forgot');
+  // Settings headings
+  const settingsH3 = document.querySelectorAll('.settings-section h3');
+  const h3Keys = ['settings_sn_conn','settings_quick_links','settings_ai_config','settings_preferences','settings_app_security','settings_data'];
+  settingsH3.forEach((el,i) => { if (h3Keys[i]) el.textContent = t(h3Keys[i]); });
+  // Settings labels
+  const langSel = document.getElementById('language-select');
+  if (langSel) langSel.value = state.language;
+  // Transaction filter options
+  const filterType = document.getElementById('filter-type');
+  if (filterType) {
+    const opts = filterType.querySelectorAll('option');
+    const filterKeys = ['filter_all_types','filter_expenses','filter_income','filter_transfers'];
+    opts.forEach((o,i) => { if (filterKeys[i]) o.textContent = t(filterKeys[i]); });
+  }
+  // Transaction modal tabs
+  const tabExpense = document.getElementById('tab-expense');
+  const tabIncome  = document.getElementById('tab-income');
+  const tabTransfer= document.getElementById('tab-transfer');
+  if (tabExpense)  tabExpense.textContent  = t('tab_expense');
+  if (tabIncome)   tabIncome.textContent   = t('tab_income');
+  if (tabTransfer) tabTransfer.textContent = t('tab_transfer');
+  // Search placeholder
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) searchInput.placeholder = t('search_placeholder');
+}
+
 function renderAll() {
+  applyLanguage();
   renderDashboard();
   renderTransactions();
   renderBudgets();
@@ -1233,7 +2005,7 @@ function renderDashboard() {
   document.getElementById('hero-balance').textContent  = fmt(s.balance);
   document.getElementById('hero-income').textContent   = '+' + fmt(s.income);
   document.getElementById('hero-expense').textContent  = '-' + fmt(s.expense);
-  document.getElementById('kpi-txn-count').textContent = state.transactions.length;
+  document.getElementById('kpi-txn-count').textContent = getMonthTxns().length;
   document.getElementById('kpi-avg-daily').textContent = fmt(s.avgDaily);
   const srEl = document.getElementById('kpi-savings-rate');
   srEl.textContent  = s.savingsRate.toFixed(1) + '%';
@@ -1243,11 +2015,11 @@ function renderDashboard() {
   const recent = getMonthTxns().slice(0,8);
   document.getElementById('recent-txns').innerHTML = recent.length
     ? recent.map(txnRowHTML).join('')
-    : `<div class="empty"><div class="icon">📭</div><p>No transactions in ${getMonthLabel(state.filterMonth)}.<br>Add your first one!</p></div>`;
+    : `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_month')} ${getMonthLabel(state.filterMonth)}.<br>${t('empty_add_first')}</p></div>`;
 
   const cs = getCategorySpend();
   if (!cs.length) {
-    document.getElementById('category-chart').innerHTML = '<div class="empty"><div class="icon">📊</div><p>Add expenses to see chart</p></div>';
+    document.getElementById('category-chart').innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_expenses_chart')}</p></div>`;
   } else {
     const max = cs[0][1];
     document.getElementById('category-chart').innerHTML = cs.slice(0,7).map(([cat,amt]) =>
@@ -1284,19 +2056,32 @@ function populateCategoryFilter() {
   sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${catIcon(c)} ${c}</option>`).join('');
 }
 
+function clearFilters() {
+  const si = document.getElementById('search-input');
+  const ft = document.getElementById('filter-type');
+  const fc = document.getElementById('filter-cat');
+  if (si) si.value = '';
+  if (ft) ft.value = '';
+  if (fc) fc.value = '';
+  renderTransactions();
+}
+
 function renderTransactions() {
   const typeF   = document.getElementById('filter-type')?.value || '';
   const catF    = document.getElementById('filter-cat')?.value  || '';
   const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const clearBtn = document.getElementById('clear-filters-btn');
+  if (clearBtn) clearBtn.style.display = (typeF || catF || searchF) ? 'inline-flex' : 'none';
 
   let txns = state.transactions.filter(t => {
+    if (!t.date.startsWith(state.filterMonth))               return false;
     if (typeF   && t.type !== typeF)                         return false;
     if (catF    && t.category !== catF)                      return false;
     if (searchF && !t.description.toLowerCase().includes(searchF)) return false;
     return true;
   });
 
-  if (!txns.length) { document.getElementById('all-txns').innerHTML = '<div class="empty"><div class="icon">📭</div><p>No transactions match your filters.</p></div>'; return; }
+  if (!txns.length) { document.getElementById('all-txns').innerHTML = `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
 
   const byDate = {};
   txns.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
@@ -1309,8 +2094,8 @@ function renderTransactions() {
 /* ── BUDGETS VIEW ── */
 function renderBudgets() {
   if (!state.budgets.length) {
-    document.getElementById('budget-list').innerHTML    = '<div class="empty"><div class="icon">📊</div><p>No budgets yet. Add one!</p></div>';
-    document.getElementById('budget-overview').innerHTML = '<div class="empty"><div class="icon">📋</div><p>Add budgets to see overview</p></div>';
+    document.getElementById('budget-list').innerHTML    = `<div class="empty"><div class="icon">📊</div><p>${t('empty_no_budgets')}</p></div>`;
+    document.getElementById('budget-overview').innerHTML = `<div class="empty"><div class="icon">📋</div><p>${t('empty_no_budgets_overview')}</p></div>`;
     return;
   }
 
@@ -1324,8 +2109,8 @@ function renderBudgets() {
       <div class="budget-header">
         <div class="budget-name">
           ${catIcon(b.category)} ${b.category}
-          ${over ? '<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">OVER</span>' : ''}
-          ${near ? '<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">NEAR</span>' : ''}
+          ${over ? `<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
+          ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
         </div>
         <div class="budget-actions">
           <button class="icon-btn edit" onclick="openBudgetModal(${b.id})" title="Edit budget">✏️</button>
@@ -1334,8 +2119,8 @@ function renderBudgets() {
       </div>
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <div class="budget-stats">
-        <span>${fmt(spent)} spent of ${fmt(b.amount)}</span>
-        <span class="budget-pct" style="color:${color}">${pct.toFixed(0)}%${over ? ' (−'+fmt(spent-b.amount)+' over)' : ' ('+fmt(b.amount-spent)+' left)'}</span>
+        <span>${fmt(spent)} ${t('budget_spent_of')} ${fmt(b.amount)}</span>
+        <span class="budget-pct" style="color:${color}">${pct.toFixed(0)}%${over ? ' (−'+fmt(spent-b.amount)+' over)' : ' ('+fmt(b.amount-spent)+' '+t('budget_left')+')'}</span>
       </div>
     </div>`;
   }).join('');
@@ -1347,21 +2132,21 @@ function renderBudgets() {
   document.getElementById('budget-overview').innerHTML = `
     <div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:600;">
-        <span>Total Monthly Budget</span><span style="font-family:var(--fm);">${fmt(totalBudget)}</span>
+        <span>${t('budget_total')}</span><span style="font-family:var(--fm);">${fmt(totalBudget)}</span>
       </div>
       <div style="background:var(--surface);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;">
         <div style="background:${oc};width:${Math.min(overallPct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
       </div>
-      <div style="font-size:11px;color:${oc};font-weight:700;">${overallPct.toFixed(1)}% used · ${fmt(totalSpent)} spent</div>
+      <div style="font-size:11px;color:${oc};font-weight:700;">${overallPct.toFixed(1)}% ${t('budget_used')} · ${fmt(totalSpent)}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Remaining</div>
+        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_remaining')}</div>
         <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--jade-d)">${fmt(Math.max(0,totalBudget-totalSpent))}</div>
       </div>
       <div style="background:var(--coral-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--coral);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Over Budget</div>
-        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral)">${state.budgets.filter(b=>getBudgetSpent(b.category)>b.amount).length} cats</div>
+        <div style="font-size:10px;color:var(--coral);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_over_lbl')}</div>
+        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral)">${state.budgets.filter(b=>getBudgetSpent(b.category)>b.amount).length} ${t('budget_cats')}</div>
       </div>
     </div>`;
 }
@@ -1369,33 +2154,33 @@ function renderBudgets() {
 /* ── GOALS VIEW ── */
 function renderGoals() {
   if (!state.goals.length) {
-    document.getElementById('goals-list').innerHTML    = '<div class="empty"><div class="icon">🎯</div><p>No goals yet. Create one!</p></div>';
-    document.getElementById('goals-summary').innerHTML = '<div class="empty"><div class="icon">📈</div><p>Add goals to see summary</p></div>';
+    document.getElementById('goals-list').innerHTML    = `<div class="empty"><div class="icon">🎯</div><p>${t('empty_no_goals')}</p></div>`;
+    document.getElementById('goals-summary').innerHTML = `<div class="empty"><div class="icon">📈</div><p>${t('empty_no_goals_summary')}</p></div>`;
     return;
   }
 
   document.getElementById('goals-list').innerHTML = state.goals.map(g => {
     const pct      = Math.min((g.current/g.target)*100, 100);
     const achieved = g.current >= g.target;
-    const color    = achieved ? 'var(--jade)' : pct > 50 ? 'var(--sky)' : 'var(--violet)';
+    const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
     const monthsLeft = g.monthly > 0 ? Math.ceil(remaining/g.monthly) : null;
     return `<div class="goal-card">
       <div class="goal-header">
         <div class="goal-title">
           ${g.icon} ${g.name}
-          ${achieved ? '<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">✓ ACHIEVED</span>' : ''}
+          ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
         </div>
         <div class="goal-right">
           <div class="goal-current">${fmt(g.current)}</div>
-          <div class="goal-target">of ${fmt(g.target)}</div>
+          <div class="goal-target">${t('goal_of')} ${fmt(g.target)}</div>
         </div>
       </div>
       <div class="goal-track"><div class="goal-fill" style="width:${pct.toFixed(1)}%;background:linear-gradient(90deg,${color},${color}bb);"></div></div>
       <div class="goal-footer">
-        <span>${pct.toFixed(0)}% · ${achieved ? '🎉 Done!' : fmt(remaining)+' to go'}</span>
+        <span>${pct.toFixed(0)}% · ${achieved ? t('goal_done') : fmt(remaining)+' '+t('goal_to_go')}</span>
         <div style="display:flex;align-items:center;gap:8px;">
-          ${monthsLeft ? `<span style="font-size:11px;color:var(--sky);">~${monthsLeft}mo left</span>` : ''}
+          ${monthsLeft ? `<span style="font-size:11px;color:var(--sky);">~${monthsLeft}${t('goal_mo_left')}</span>` : ''}
           <div class="goal-actions">
             <button class="icon-btn edit" onclick="openGoalModal(${g.id})" title="Edit / Add contribution">✏️</button>
             <button class="icon-btn del"  onclick="deleteGoal(${g.id})"    title="Delete goal">🗑️</button>
@@ -1410,17 +2195,17 @@ function renderGoals() {
   const achieved     = state.goals.filter(g=>g.current>=g.target).length;
   document.getElementById('goals-summary').innerHTML = `
     <div style="background:var(--jade-s);border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">Total Saved</div>
+      <div style="font-size:11px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${t('goals_total_saved')}</div>
       <div style="font-family:var(--fd);font-size:28px;font-weight:700;color:var(--jade-d)">${fmt(totalCurrent)}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px;">of ${fmt(totalTarget)} across ${state.goals.length} goals</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">${t('goal_of')} ${fmt(totalTarget)} ${t('goals_across')} ${state.goals.length} ${t('goals_lbl')}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--sky-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--sky);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Active</div>
+        <div style="font-size:10px;color:var(--sky);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_active')}</div>
         <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--sky)">${state.goals.length-achieved}</div>
       </div>
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Achieved</div>
+        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_achieved')}</div>
         <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--jade-d)">${achieved}</div>
       </div>
     </div>`;
@@ -1442,7 +2227,7 @@ function renderAnalytics() {
     document.getElementById('an-largest-desc').textContent = '—';
   }
   const cs = getCategorySpend();
-  if (!cs.length) { document.getElementById('analytics-chart').innerHTML='<div class="empty"><div class="icon">📊</div><p>Add transactions to see breakdown</p></div>'; return; }
+  if (!cs.length) { document.getElementById('analytics-chart').innerHTML=`<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`; return; }
   const max2 = cs[0][1];
   document.getElementById('analytics-chart').innerHTML = cs.map(([cat,amt]) =>
     `<div class="chart-bar-row">
@@ -1459,19 +2244,26 @@ function renderAccounts() {
   const netWorth    = totalAssets - totalDebt;
   document.getElementById('accounts-list').innerHTML = `
     <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;">
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Assets</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmt(totalAssets)}</div></div>
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Debt</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmt(totalDebt)}</div></div>
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Net Worth</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmt(netWorth)}</div></div>
+      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmt(totalAssets)}</div></div>
+      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmt(totalDebt)}</div></div>
+      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmt(netWorth)}</div></div>
     </div>
     ${state.accounts.map(a=>`
     <div class="account-row">
       <div class="account-ico" style="background:${a.balance<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon}</div>
       <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
       <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(Math.abs(a.balance))}</div>
+      <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
+        <button onclick="openAccountModal(${a.id})" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
+        <button onclick="deleteAccount(${a.id})" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
+      </div>
     </div>`).join('')}`;
 
   // ── Account Insights panel ──
-  if (!state.accounts.length) return;
+  if (!state.accounts.length) {
+    document.getElementById('account-insights-body').innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_accounts')}</p></div>`;
+    return;
+  }
   const typeColors = {Checking:'var(--sky)',Savings:'var(--jade)',Investment:'var(--violet)','Credit Card':'var(--coral)',Cash:'var(--amber)',Other:'var(--muted)'};
   const byType = {};
   state.accounts.forEach(a => {
@@ -1497,17 +2289,17 @@ function renderAccounts() {
 
   document.getElementById('account-insights-body').innerHTML = `
     <div style="margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;">Asset Allocation</div>
-      ${allocationRows || '<div class="empty" style="padding:10px 0"><p>No positive balances</p></div>'}
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;">${t('acc_asset_allocation')}</div>
+      ${allocationRows || `<div class="empty" style="padding:10px 0"><p>${t('acc_no_pos_bal')}</p></div>`}
     </div>
     <div style="background:var(--surface);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div>
-        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Debt Ratio</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_debt_ratio')}</div>
         <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:${drColor}">${debtRatio.toFixed(1)}%</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${debtRatio>30?'High':debtRatio>10?'Moderate':'Low'} risk</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${debtRatio>30?t('acc_risk_high'):debtRatio>10?t('acc_risk_moderate'):t('acc_risk_low')} ${t('acc_risk_suffix')}</div>
       </div>
       <div>
-        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">Accounts</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_accounts')}</div>
         <div style="font-family:var(--fd);font-size:18px;font-weight:700;">${state.accounts.length}</div>
         <div style="font-size:10px;color:var(--muted);margin-top:2px;">${state.accounts.filter(a=>a.balance<0).length} with debt</div>
       </div>
@@ -1526,25 +2318,20 @@ async function getAccountsAI() {
 // ═══════════════════════════════════════════════
 async function callAI(prompt, targetId) {
   const el = document.getElementById(targetId);
-  if (!state.anthropicKey) {
-    el.innerHTML = '<span style="color:#F59E0B;">⚠️ Add your Anthropic API key in <strong>Settings → AI Configuration</strong> to enable insights.</span>';
+  if (!state.geminiKey) {
+    el.innerHTML = `<span style="color:#F59E0B;">${t('ai_no_key')}</span>`;
     return;
   }
   el.innerHTML = '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': state.anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, messages:[{role:'user',content:prompt}] })
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.geminiKey}` },
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.status); }
     const data = await res.json();
-    const text = data.content?.find(c=>c.type==='text')?.text || 'No insights generated.';
+    const text = data.choices?.[0]?.message?.content || 'No insights generated.';
     el.innerHTML = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   } catch (e) {
     el.innerHTML = `<span style="color:#FF8080;">Error: ${e.message}</span>`;
@@ -1561,7 +2348,7 @@ function buildSummary() {
 // EXPORT
 // ═══════════════════════════════════════════════
 function exportCSV() {
-  if (!state.transactions.length) { showToast('No transactions to export', 'info'); return; }
+  if (!state.transactions.length) { showToast(t('toast_no_txns_export'), 'info'); return; }
   const hdr = ['Date','Type','Description','Category','Account','Amount','Notes'];
   const rows = state.transactions.map(t =>
     [t.date, t.type, `"${t.description.replace(/"/g,'""')}"`, t.category, t.account, t.amount.toFixed(2), `"${(t.notes||'').replace(/"/g,'""')}"`]
@@ -1572,7 +2359,7 @@ function exportCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = `pfmt_transactions_${state.filterMonth}.csv`;
   a.click();
-  showToast('CSV downloaded', 'success');
+  showToast(t('toast_csv_downloaded'), 'success');
 }
 
 function exportSNJSON() {
@@ -1595,7 +2382,7 @@ function exportSNJSON() {
   a.href = URL.createObjectURL(blob);
   a.download = `pfmt_sn_export_${state.filterMonth}.json`;
   a.click();
-  showToast('SN JSON exported', 'success');
+  showToast(t('toast_sn_exported'), 'success');
 }
 
 // ═══════════════════════════════════════════════
@@ -1609,7 +2396,7 @@ async function pushAllToSN() {
   let ok = 0, fail = 0;
   for (const t of localTxns) {
     try {
-      const rec = await SN.post('x_pfmt_transaction', {
+      const rec = await SN.post('x_1472763_person_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
         category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
       });
@@ -1651,8 +2438,8 @@ const SN = {
   get base() { return `https://${state.snInstance}/api/now/table`; },
   connected: false,
   authHeader() {
-    const u = document.getElementById('sn-username')?.value || 'admin';
-    const p = document.getElementById('sn-password')?.value || '';
+    const u = state.snUsername || document.getElementById('sn-username')?.value || 'admin';
+    const p = state.snPassword || document.getElementById('sn-password')?.value || '';
     return 'Basic ' + btoa(u + ':' + p);
   },
   async get(table, params={}) {
@@ -1668,11 +2455,19 @@ const SN = {
   }
 };
 
+function saveSNCredentials() {
+  const u = document.getElementById('sn-username')?.value.trim();
+  const p = document.getElementById('sn-password')?.value;
+  if (u) state.snUsername = u;
+  if (p !== undefined) state.snPassword = p;
+  saveState();
+}
+
 function saveSNInstance() {
   const val = document.getElementById('sn-instance-input')?.value.trim();
   if (!val) { showToast('Enter an instance URL', 'error'); return; }
   state.snInstance = val.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  saveState();
+  saveSNCredentials();
   showToast(`Instance set to ${state.snInstance}`, 'success');
   // update visible links
   document.querySelectorAll('a[href*="dev275144"]').forEach(a => {
@@ -1680,14 +2475,21 @@ function saveSNInstance() {
   });
 }
 
+function changeLanguage(lang) {
+  state.language = lang;
+  saveState();
+  renderAll();
+  showToast(lang === 'zh' ? '语言已切换为中文 ✓' : 'Language set to English ✓', 'success');
+}
+
 function saveAIKey() {
-  const val = document.getElementById('anthropic-key-input')?.value.trim();
-  if (!val) { showToast('Enter an API key', 'error'); return; }
-  state.anthropicKey = val;
+  const val = document.getElementById('gemini-key-input')?.value.trim();
+  if (!val) { showToast(t('toast_enter_api_key'), 'error'); return; }
+  state.geminiKey = val;
   saveState();
   const el = document.getElementById('ai-key-status');
-  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = '✓ Key saved'; }
-  showToast('API key saved', 'success');
+  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = t('toast_groq_saved'); }
+  showToast(t('toast_groq_toast'), 'success');
 }
 
 function setConnStatus(status) {
@@ -1702,32 +2504,54 @@ function setConnStatus(status) {
 }
 
 async function testConnection() {
+  saveSNCredentials();
+  const p = state.snPassword;
+  if (!p) { showToast('Enter your PDI password first', 'error'); return; }
   setConnStatus('connecting');
   try {
-    await SN.get('x_pfmt_transaction', { sysparm_limit:1 });
-    setConnStatus('connected');
-    showToast('✅ Connected to dev275144!', 'success');
+    // Step 1: verify credentials with a built-in table
+    await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
   } catch(e) {
     setConnStatus('error');
-    showToast('CORS blocked from file:// — use REST API Explorer inside PDI', 'error');
+    const msg = e.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      showToast('CORS blocked — add a CORS rule in your PDI (see Settings tip)', 'error');
+    } else if (msg.includes('401')) {
+      showToast('Wrong username or password', 'error');
+    } else if (msg.includes('403')) {
+      showToast('Access denied — check admin role in PDI', 'error');
+    } else {
+      showToast('Connection failed: ' + msg, 'error');
+    }
+    return;
+  }
+  // Step 2: check if PFMT tables exist
+  try {
+    await SN.get('x_1472763_person_0_transaction', { sysparm_limit:1 });
+    setConnStatus('connected');
+    showToast('✅ Connected — PFMT tables found!', 'success');
+  } catch(e) {
+    // Credentials OK but app not installed — still mark connected so export works
+    setConnStatus('connected');
+    showToast('✅ Connected — but PFMT tables not found. Install the scoped app first.', 'info');
   }
 }
 
 async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
-    const [txns,budgets,goals,accounts] = await Promise.all([
-      SN.get('x_pfmt_transaction',{sysparm_query:'state=2'}),
-      SN.get('x_pfmt_budget'),
-      SN.get('x_pfmt_savings_goal'),
-      SN.get('x_pfmt_account',{sysparm_query:'is_active=true'})
+    const [txns, accounts] = await Promise.all([
+      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
+      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
     ]);
-    state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    state.budgets      = budgets.map(r=>({ id:r.sys_id, category:r.category?.display_value||r.category||'', amount:parseFloat(r.budget_amount?.value||r.budget_amount)||0, spent:parseFloat(r.spent_amount?.value||r.spent_amount)||0, alertPct:parseInt(r.alert_threshold_pct?.value||r.alert_threshold_pct)||80 }));
-    state.goals        = goals.map(r=>({ id:r.sys_id, name:r.goal_name||'', icon:r.icon_emoji||'🎯', target:parseFloat(r.target_amount?.value||r.target_amount)||0, current:parseFloat(r.current_amount?.value||r.current_amount)||0, monthly:parseFloat(r.monthly_contribution?.value||r.monthly_contribution)||0, date:(r.target_date?.value||r.target_date||'').substring(0,10) }));
-    if (accounts.length) state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    if (txns.length) {
+      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
+    }
+    if (accounts.length) {
+      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+    }
     renderAll();
-    showToast(`Synced: ${txns.length} transactions, ${budgets.length} budgets, ${goals.length} goals`, 'success');
+    showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
   } catch(e) {
     showToast('Sync failed: ' + e.message, 'error');
   }
@@ -1737,7 +2561,7 @@ async function syncFromSN() {
 // SAMPLE DATA + UTILS
 // ═══════════════════════════════════════════════
 function loadSampleData() {
-  const d = n => { const dt = new Date(); dt.setDate(dt.getDate()-n); return dt.toISOString().split('T')[0]; };
+  const d = n => { const dt = new Date(); dt.setDate(dt.getDate()-n); return localDateStr(dt); };
   state.transactions = [
     {id:1,type:'income', amount:6200,   description:'Monthly Salary',      category:'Salary',       account:'DBS Checking', date:d(10),notes:''},
     {id:2,type:'expense',amount:84.30,  description:'NTUC FairPrice',       category:'Groceries',    account:'DBS Checking', date:d(0), notes:''},
@@ -1770,11 +2594,12 @@ function loadSampleData() {
 }
 
 function clearData() {
-  showConfirm('Clear all data?', 'This removes all transactions, budgets and goals.', 'Clear All', 'btn-coral').then(ok => {
+  showConfirm(t('confirm_clear_title'), t('confirm_clear_msg'), t('confirm_clear_ok'), 'btn-coral').then(ok => {
     if (!ok) return;
-    state.transactions = []; state.budgets = []; state.goals = [];
+    state.transactions = []; state.budgets = []; state.goals = []; state.accounts = []; state.nextId = 100;
+    saveState();
     renderAll();
-    showToast('All data cleared', 'info');
+    showToast(t('toast_data_cleared'), 'info');
   });
 }
 
@@ -1812,6 +2637,505 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
 });
 
 // ═══════════════════════════════════════════════
+// PIN / LOCK
+// ═══════════════════════════════════════════════
+const PIN_KEY = 'pfmt_pin';
+let _pinBuf = '';
+let _pinMode = 'unlock'; // unlock | setup | setup-confirm | change | change-confirm
+let _pinConfirm = '';
+
+async function _hashPin(pin) {
+  const enc = new TextEncoder().encode('pfmt:' + pin);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function _updateDots() {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById(`pd${i}`);
+    if (!d) return;
+    d.classList.toggle('filled', i < _pinBuf.length);
+    d.classList.remove('error');
+  }
+}
+
+function pinInput(digit) {
+  if (_pinBuf.length >= 4) return;
+  _pinBuf += digit;
+  _updateDots();
+  document.getElementById('pin-error').textContent = '';
+  if (_pinBuf.length === 4) setTimeout(_submitPin, 140);
+}
+
+function pinBackspace() {
+  _pinBuf = _pinBuf.slice(0, -1);
+  _updateDots();
+}
+
+function pinClear() {
+  _pinBuf = '';
+  _updateDots();
+}
+
+function _pinShake(msg) {
+  _pinBuf = '';
+  const wrap = document.getElementById('pin-dots-wrap');
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById(`pd${i}`);
+    if (d) { d.classList.add('error'); d.classList.remove('filled'); }
+  }
+  document.getElementById('pin-error').textContent = msg;
+  if (wrap) {
+    wrap.classList.add('shaking');
+    setTimeout(() => wrap.classList.remove('shaking'), 400);
+  }
+  setTimeout(() => {
+    for (let i = 0; i < 4; i++) {
+      const d = document.getElementById(`pd${i}`);
+      if (d) d.classList.remove('error');
+    }
+  }, 700);
+}
+
+async function _submitPin() {
+  const hash = await _hashPin(_pinBuf);
+  const stored = localStorage.getItem(PIN_KEY);
+
+  if (_pinMode === 'unlock') {
+    if (hash === stored) {
+      _doUnlock();
+    } else {
+      _pinShake('Wrong PIN. Try again.');
+    }
+
+  } else if (_pinMode === 'setup') {
+    _pinConfirm = _pinBuf;
+    _pinBuf = '';
+    _pinMode = 'setup-confirm';
+    document.getElementById('login-subtitle').textContent = 'Confirm your PIN';
+    _updateDots();
+
+  } else if (_pinMode === 'setup-confirm') {
+    const ch = await _hashPin(_pinConfirm);
+    if (hash === ch) {
+      localStorage.setItem(PIN_KEY, hash);
+      _doUnlock();
+    } else {
+      _pinConfirm = '';
+      _pinMode = 'setup';
+      _pinShake('PINs don\'t match. Start again.');
+      document.getElementById('login-subtitle').textContent = 'Set up your PIN';
+    }
+
+  } else if (_pinMode === 'change') {
+    _pinConfirm = _pinBuf;
+    _pinBuf = '';
+    _pinMode = 'change-confirm';
+    document.getElementById('login-subtitle').textContent = 'Confirm new PIN';
+    _updateDots();
+
+  } else if (_pinMode === 'change-confirm') {
+    const ch = await _hashPin(_pinConfirm);
+    if (hash === ch) {
+      localStorage.setItem(PIN_KEY, hash);
+      _hidePinOverlay();
+      showToast(t('toast_pin_updated'), 'success');
+    } else {
+      _pinConfirm = '';
+      _pinMode = 'change';
+      _pinShake('PINs don\'t match. Try again.');
+      document.getElementById('login-subtitle').textContent = 'Enter new PIN';
+    }
+  }
+}
+
+function _showPinOverlay(mode, subtitle) {
+  _pinMode = mode;
+  _pinBuf = '';
+  _pinConfirm = '';
+  _updateDots();
+  document.getElementById('login-subtitle').textContent = subtitle;
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('forgot-btn').style.display = mode === 'unlock' ? 'inline-block' : 'none';
+  const lc = document.getElementById('login-connecting');
+  if (lc) lc.style.display = 'none';
+  document.getElementById('login-overlay').style.display = 'flex';
+}
+
+function _hidePinOverlay() {
+  document.getElementById('login-overlay').style.display = 'none';
+}
+
+async function _doUnlock() {
+  if (state.snPassword && state.snInstance) {
+    const lc = document.getElementById('login-connecting');
+    if (lc) lc.style.display = 'flex';
+    try {
+      setConnStatus('connecting');
+      await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
+      setConnStatus('connected');
+    } catch(e) {
+      setConnStatus('disconnected');
+    }
+  }
+  _hidePinOverlay();
+}
+
+function lockApp() {
+  const stored = localStorage.getItem(PIN_KEY);
+  if (!stored) { showToast('Set a PIN first in Settings → App Security', 'info'); return; }
+  _showPinOverlay('unlock', t('login_enter_pin'));
+}
+
+function changePin() {
+  _showPinOverlay('change', t('login_new_pin'));
+}
+
+function pinForgot() {
+  if (!confirm('This will erase ALL your data and remove the PIN. Are you sure?')) return;
+  localStorage.clear();
+  location.reload();
+}
+
+document.addEventListener('keydown', e => {
+  const ov = document.getElementById('login-overlay');
+  if (!ov || ov.style.display === 'none') return;
+  // Don't intercept keys when credential form is active
+  const credPanel = document.getElementById('cred-panel');
+  if (credPanel && credPanel.style.display !== 'none') return;
+  if (e.key >= '0' && e.key <= '9') pinInput(e.key);
+  else if (e.key === 'Backspace') pinBackspace();
+  else if (e.key === 'Escape') pinClear();
+});
+
+// ═══════════════════════════════════════════════
+// SN CUSTOM AUTH — login / register / sync
+// ═══════════════════════════════════════════════
+
+const snAPI = {
+  base() {
+    const inst = (state.snInstance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `https://${inst}/api/x_1472763_person_0/pfmt`;
+  },
+  headers() {
+    const h = { 'Content-Type': 'application/json' };
+    if (state.snToken) h['X-PFMT-Token'] = state.snToken;
+    return h;
+  },
+  async call(path, method = 'GET', body = null) {
+    const h = this.headers();
+    h['X-HTTP-Method'] = method;
+    const opts = { method, headers: h };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(this.base() + path, opts);
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); }
+    catch (e) { throw new Error(`SN HTTP ${res.status}: ${text.substring(0, 300)}`); }
+    if (!res.ok) {
+      const msg = (typeof json.error === 'object')
+        ? (json.error.message || JSON.stringify(json.error))
+        : (json.error || `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
+    return json.result;
+  }
+};
+
+function showAuthPanel(panel) {
+  ['panel-login','panel-register','panel-pin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === 'panel-' + panel);
+  });
+  document.getElementById('forgot-btn').style.display = panel === 'pin' ? '' : 'none';
+  // Clear errors
+  ['sn-li-err','sn-reg-err'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+}
+
+function _setLoginLoading(on, msg) {
+  const c = document.getElementById('login-connecting');
+  const m = document.getElementById('login-connecting-msg');
+  if (c) c.style.display = on ? 'flex' : 'none';
+  if (m && msg) m.textContent = msg;
+}
+
+async function doSNLogin() {
+  const instance = (document.getElementById('sn-li-instance')?.value || '').trim();
+  const username = (document.getElementById('sn-li-username')?.value || '').trim();
+  const password = document.getElementById('sn-li-password')?.value || '';
+  const errEl    = document.getElementById('sn-li-err');
+  const btn      = document.getElementById('sn-li-btn');
+
+  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
+  if (!username) { errEl.textContent = 'Enter your username'; return; }
+  if (!password) { errEl.textContent = 'Enter your password'; return; }
+
+  state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  errEl.textContent = '';
+  btn.disabled = true;
+  _setLoginLoading(true, 'Signing in…');
+
+  try {
+    const result = await snAPI.call('/auth/login', 'POST', { username, password });
+    _onSNAuthSuccess(result);
+  } catch(e) {
+    errEl.textContent = e.message || 'Login failed. Check your details.';
+    _setLoginLoading(false);
+    btn.disabled = false;
+  }
+}
+
+async function doSNRegister() {
+  const instance     = (document.getElementById('sn-reg-instance')?.value || '').trim();
+  const displayName  = (document.getElementById('sn-reg-displayname')?.value || '').trim();
+  const username     = (document.getElementById('sn-reg-username')?.value || '').trim();
+  const email        = (document.getElementById('sn-reg-email')?.value || '').trim();
+  const password     = document.getElementById('sn-reg-password')?.value || '';
+  const confirm      = document.getElementById('sn-reg-confirm')?.value || '';
+  const errEl        = document.getElementById('sn-reg-err');
+  const btn          = document.getElementById('sn-reg-btn');
+
+  if (!instance)    { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
+  if (!displayName) { errEl.textContent = 'Enter your display name'; return; }
+  if (!username)    { errEl.textContent = 'Enter a username'; return; }
+  if (!password)    { errEl.textContent = 'Enter a password'; return; }
+  if (password !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
+
+  state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  errEl.textContent = '';
+  btn.disabled = true;
+  _setLoginLoading(true, 'Creating account…');
+
+  try {
+    const result = await snAPI.call('/auth/register', 'POST', {
+      username, password, display_name: displayName, email,
+      currency: state.currency, language: state.language
+    });
+    _onSNAuthSuccess(result);
+  } catch(e) {
+    errEl.textContent = e.message || 'Registration failed.';
+    _setLoginLoading(false);
+    btn.disabled = false;
+  }
+}
+
+async function _onSNAuthSuccess(result) {
+  state.snToken        = result.token;
+  state.snProfileSysId = result.user_profile_sys_id;
+  state.snUserProfile  = {
+    username    : result.username,
+    display_name: result.display_name,
+    email       : result.email       || '',
+    currency    : result.currency    || 'SGD',
+    language    : result.language    || 'en',
+    avatar_color: result.avatar_color || '#8B5CF6'
+  };
+  // Apply profile preferences
+  state.currency = state.snUserProfile.currency;
+  state.language = state.snUserProfile.language;
+  saveState();
+
+  _setLoginLoading(true, 'Loading your data…');
+  await snLoadAll();
+  _setLoginLoading(false);
+  _hideSNLogin();
+  renderAll();
+  showToast(`Welcome, ${state.snUserProfile.display_name} 👋`, 'success');
+}
+
+async function snLogout() {
+  if (state.snToken) {
+    try { await snAPI.call('/auth/logout', 'POST'); } catch(_) {}
+  }
+  state.snToken        = null;
+  state.snProfileSysId = null;
+  state.snUserProfile  = {};
+  state.transactions   = [];
+  state.budgets        = [];
+  state.goals          = [];
+  state.accounts       = [];
+  saveState();
+  _showSNLogin();
+  showToast('Signed out', 'info');
+}
+
+function _showSNLogin() {
+  const ol = document.getElementById('login-overlay');
+  if (ol) ol.style.display = 'flex';
+  showAuthPanel('login');
+  // Pre-fill instance if remembered
+  const inst = document.getElementById('sn-li-instance');
+  const reg  = document.getElementById('sn-reg-instance');
+  if (inst && state.snInstance && state.snInstance !== 'dev275144.service-now.com')
+    inst.value = state.snInstance;
+  if (reg && state.snInstance && state.snInstance !== 'dev275144.service-now.com')
+    reg.value = state.snInstance;
+}
+
+function _hideSNLogin() {
+  const ol = document.getElementById('login-overlay');
+  if (ol) ol.style.display = 'none';
+}
+
+// ── Load all data from SN ────────────────────────────────────
+async function snLoadAll() {
+  try {
+    const [txns, budgets, goals, accounts] = await Promise.all([
+      snAPI.call('/transactions?limit=500'),
+      snAPI.call('/budgets'),
+      snAPI.call('/goals'),
+      snAPI.call('/accounts')
+    ]);
+    state.transactions = (txns  || []).map(t => ({
+      id         : t.sys_id,
+      type       : t.type,
+      amount     : t.amount,
+      description: t.description,
+      category   : t.category,
+      account    : t.account,
+      date       : t.date,
+      notes      : t.notes || ''
+    }));
+    state.budgets = (budgets || []).map(b => ({
+      id         : b.sys_id,
+      category   : b.category,
+      icon       : b.category_icon  || '📦',
+      color      : b.category_color || '#6B7280',
+      limit      : b.budget_amount,
+      spent      : b.spent_amount,
+      alertAt    : b.alert_threshold || 80
+    }));
+    state.goals = (goals || []).map(g => ({
+      id          : g.sys_id,
+      name        : g.goal_name,
+      icon        : g.goal_icon || '🎯',
+      target      : g.target_amount,
+      saved       : g.current_amount,
+      monthly     : g.monthly_contribution || 0,
+      targetDate  : g.target_date || '',
+      status      : g.goal_status
+    }));
+    state.accounts = (accounts || []).map(a => ({
+      id         : a.sys_id,
+      name       : a.account_name,
+      type       : a.account_type,
+      institution: a.institution_name || '',
+      balance    : a.current_balance,
+      currency   : a.currency || 'SGD'
+    }));
+    state.lastSync = new Date().toISOString();
+    saveState();
+    updateLastSync();
+  } catch(e) {
+    console.warn('snLoadAll failed:', e.message);
+    showToast('Could not load data from ServiceNow: ' + e.message, 'error');
+  }
+}
+
+// ── Refresh profile stats on profile view ───────────────────
+async function refreshProfileView() {
+  if (!state.snToken) return;
+  try {
+    const prof = await snAPI.call('/profile');
+    if (!prof) return;
+    state.snUserProfile = {
+      ...state.snUserProfile,
+      display_name: prof.display_name,
+      email       : prof.email,
+      currency    : prof.currency,
+      language    : prof.language,
+      avatar_color: prof.avatar_color,
+      stats       : prof.stats,
+      since       : prof.sys_created_on
+    };
+    saveState();
+    _renderProfileView();
+  } catch(e) { /* offline or token expired */ }
+}
+
+function _renderProfileView() {
+  const p = state.snUserProfile;
+  if (!p || !p.username) return;
+
+  const initials = (p.display_name || p.username || '?')
+    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+
+  const el = id => document.getElementById(id);
+  const set = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+
+  const av = el('prof-avatar');
+  if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
+
+  set('prof-display-name', p.display_name || p.username);
+  set('prof-username', '@' + p.username);
+  set('prof-email', p.email || '');
+  set('prof-detail-name', p.display_name || '—');
+  set('prof-detail-username', p.username);
+  set('prof-detail-email', p.email || '—');
+  set('prof-detail-currency', p.currency || state.currency || 'SGD');
+  set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
+  set('prof-detail-instance', state.snInstance || '—');
+  set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+
+  // Stats
+  const stats = p.stats || {};
+  set('prof-stat-txn',   stats.transaction_count  ?? state.transactions.length);
+  set('prof-stat-acc',   stats.account_count       ?? state.accounts.length);
+  set('prof-stat-goals', stats.active_goal_count   ?? state.goals.filter(g => g.status !== 'achieved').length);
+
+  // Pre-fill edit fields
+  const editName = el('prof-edit-name');
+  const editEmail = el('prof-edit-email');
+  const editIncome = el('prof-edit-income');
+  if (editName)  editName.value  = p.display_name || '';
+  if (editEmail) editEmail.value = p.email || '';
+  if (editIncome) editIncome.value = p.monthly_income_target || '';
+}
+
+async function saveProfile() {
+  const display_name = document.getElementById('prof-edit-name')?.value.trim();
+  const email        = document.getElementById('prof-edit-email')?.value.trim();
+  const monthly      = parseFloat(document.getElementById('prof-edit-income')?.value) || 0;
+
+  if (!display_name) { showToast('Enter a display name', 'error'); return; }
+
+  try {
+    await snAPI.call('/profile', 'PUT', { display_name, email, monthly_income_target: monthly });
+    state.snUserProfile.display_name = display_name;
+    state.snUserProfile.email = email;
+    state.snUserProfile.monthly_income_target = monthly;
+    saveState();
+    _renderProfileView();
+    showToast('Profile updated ✓', 'success');
+  } catch(e) {
+    showToast('Update failed: ' + e.message, 'error');
+  }
+}
+
+async function changePassword() {
+  const current = document.getElementById('prof-pw-current')?.value || '';
+  const newPw   = document.getElementById('prof-pw-new')?.value    || '';
+  const confirm = document.getElementById('prof-pw-confirm')?.value || '';
+
+  if (!current) { showToast('Enter your current password', 'error'); return; }
+  if (!newPw)   { showToast('Enter a new password', 'error'); return; }
+  if (newPw !== confirm) { showToast('Passwords do not match', 'error'); return; }
+
+  try {
+    await snAPI.call('/profile', 'PUT', { current_password: current, new_password: newPw });
+    document.getElementById('prof-pw-current').value = '';
+    document.getElementById('prof-pw-new').value     = '';
+    document.getElementById('prof-pw-confirm').value = '';
+    showToast('Password updated ✓', 'success');
+  } catch(e) {
+    showToast(e.message || 'Password update failed', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
 (function init() {
@@ -1822,20 +3146,55 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
   // Populate settings fields from persisted state
   const snIn = document.getElementById('sn-instance-input');
   if (snIn) snIn.value = state.snInstance;
-  const aiIn = document.getElementById('anthropic-key-input');
-  if (aiIn && state.anthropicKey) aiIn.value = state.anthropicKey;
+  const snUser = document.getElementById('sn-username');
+  if (snUser && state.snUsername) snUser.value = state.snUsername;
+  const snPass = document.getElementById('sn-password');
+  if (snPass && state.snPassword) snPass.value = state.snPassword;
+  if (snPass) snPass.addEventListener('change', saveSNCredentials);
+  if (snUser) snUser.addEventListener('change', saveSNCredentials);
+  const aiIn = document.getElementById('gemini-key-input');
+  if (aiIn && state.geminiKey) aiIn.value = state.geminiKey;
   const aiStatus = document.getElementById('ai-key-status');
-  if (aiStatus && state.anthropicKey) {
+  if (aiStatus && state.geminiKey) {
     aiStatus.style.display = 'block';
     aiStatus.style.background = 'var(--jade-s)';
     aiStatus.style.color = 'var(--jade-d)';
-    aiStatus.textContent = '✓ Key saved';
+    aiStatus.textContent = t('toast_groq_saved');
   }
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = state.currency || 'SGD';
+  const langSel = document.getElementById('language-select');
+  if (langSel) langSel.value = state.language || 'en';
+  applyLanguage();
 
   updateMonthUI();
   updateLastSync();
+
+  // SN Auth flow: check for saved session token
+  if (state.snToken && state.snProfileSysId) {
+    // Token found — validate and load data
+    _hideSNLogin();
+    renderAll();
+    _setLoginLoading(true, 'Verifying session…');
+    snAPI.call('/profile').then(prof => {
+      _setLoginLoading(false);
+      if (prof) {
+        state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
+        saveState();
+        snLoadAll().then(() => renderAll());
+      }
+    }).catch(() => {
+      // Token invalid/expired — force re-login
+      _setLoginLoading(false);
+      state.snToken = null;
+      state.snProfileSysId = null;
+      saveState();
+      _showSNLogin();
+    });
+  } else {
+    // No saved session — show SN login screen
+    _showSNLogin();
+  }
 })();
 </script>
 </body>
