@@ -47,7 +47,7 @@
     profileGR.query();
 
     if (!profileGR.next()) {
-      helper.errorResponse(response, 401, 'Invalid username or password');
+      helper.errorResponse(response, 401, 'DEBUG: No user found with username="' + username + '"');
       return;
     }
 
@@ -55,7 +55,7 @@
     var inputHash  = helper.hashPassword(password);
 
     if (storedHash !== inputHash) {
-      helper.errorResponse(response, 401, 'Invalid username or password');
+      helper.errorResponse(response, 401, 'DEBUG: Password mismatch for "' + username + '" (stored hash len=' + storedHash.length + ')');
       return;
     }
 
