@@ -1574,7 +1574,7 @@ function setSelectVal(id, val) {
 // ═══════════════════════════════════════════════
 // SAVE TRANSACTION (add + update)
 // ═══════════════════════════════════════════════
-function saveTransaction() {
+async function saveTransaction() {
   const amt   = parseFloat(document.getElementById('txn-amount').value);
   const desc  = document.getElementById('txn-desc').value.trim();
   const cat   = document.getElementById('txn-cat').value;
@@ -1587,17 +1587,31 @@ function saveTransaction() {
   if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
   if (!date)             { showToast(t('toast_enter_date'), 'error'); return; }
 
+  const snPayload = { type: state.currentType, amount: amt, description: desc,
+    category_name: cat, account_name: acct, date, notes };
+
   if (editId !== '') {
-    const idx = state.transactions.findIndex(t => t.id == editId);
+    const idx = state.transactions.findIndex(tx => tx.id == editId);
     if (idx >= 0) {
       const old = state.transactions[idx];
-      state.transactions[idx] = { ...old, type: state.currentType, amount: amt, description: desc, category: cat, account: acct, date, notes };
+      state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
+        description: desc, category: cat, account: acct, date, notes };
+      if (state.snToken && old.sys_id) {
+        snAPI.call('/transactions', 'PUT', { sys_id: old.sys_id, ...snPayload })
+          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      }
       showToast(t('toast_txn_updated'), 'success');
     }
   } else {
-    const txn = { id: state.nextId++, type: state.currentType, amount: amt, description: desc, category: cat, account: acct, date, notes };
+    const txn = { id: state.nextId++, type: state.currentType, amount: amt,
+      description: desc, category: cat, account: acct, date, notes };
     state.transactions.unshift(txn);
-    showToast(t('toast_txn_saved') + ' → x_pfmt_transaction', 'success');
+    if (state.snToken) {
+      snAPI.call('/transactions', 'POST', snPayload)
+        .then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
+        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    }
+    showToast(t('toast_txn_saved'), 'success');
   }
 
   closeTxnModal();
@@ -1605,13 +1619,17 @@ function saveTransaction() {
 }
 
 async function deleteTransaction(id) {
-  const t = state.transactions.find(x => x.id == id);
-  if (!t) return;
-  const ok = await showConfirm(t('confirm_del_txn'), `"${t.description}" — $${t.amount.toFixed(2)}`);
+  const txn = state.transactions.find(x => x.id == id);
+  if (!txn) return;
+  const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
+  if (state.snToken && txn.sys_id) {
+    snAPI.call('/transactions', 'DELETE', { sys_id: txn.sys_id })
+      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+  }
 }
 
 
