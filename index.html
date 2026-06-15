@@ -790,8 +790,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
               Signed in as <span id="sn-conn-username" style="color:#fff;font-weight:600;"></span>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button id="sn-conn-auth-btn" onclick="_showSNLogin()" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">🔑 Sign In</button>
-              <button onclick="testSNAPIConnection()" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">⚡ Test Connection</button>
+              <button onclick="testSNAPIConnection()" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">⚡ Test Connection</button>
               <button onclick="snLoadAll().then(()=>showToast('Synced from ServiceNow','success')).catch(e=>showToast(e.message,'error'))" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">🔄 Sync Data</button>
             </div>
           </div>
@@ -1430,6 +1429,7 @@ function saveState() {
       geminiKey: state.geminiKey,
       snInstance: state.snInstance,
       snUsername: state.snUsername,
+      snPassword: state.snPassword,
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
@@ -2581,7 +2581,6 @@ function _updateSNConnCard() {
   const inst = document.getElementById('sn-conn-instance');
   const userRow = document.getElementById('sn-conn-user');
   const uname = document.getElementById('sn-conn-username');
-  const authBtn = document.getElementById('sn-conn-auth-btn');
   if (!dot) return;
   if (state.snToken) {
     dot.style.background = '#00C896';
@@ -2590,14 +2589,12 @@ function _updateSNConnCard() {
     inst.textContent = state.snInstance || '—';
     userRow.style.display = 'block';
     uname.textContent = state.snUserProfile?.display_name || state.snUserProfile?.username || '';
-    if (authBtn) { authBtn.textContent = '🚪 Sign Out'; authBtn.setAttribute('onclick', 'snLogout()'); }
   } else {
     dot.style.background = '#6B7280';
     lbl.style.color = 'rgba(255,255,255,.5)';
     lbl.textContent = 'Not signed in';
     inst.textContent = state.snInstance || '—';
     userRow.style.display = 'none';
-    if (authBtn) { authBtn.textContent = '🔑 Sign In'; authBtn.setAttribute('onclick', '_showSNLogin()'); }
   }
 }
 
@@ -2938,6 +2935,8 @@ async function doSNLogin() {
   if (!password) { errEl.textContent = 'Enter your password'; return; }
 
   state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  state.snUsername = username;
+  state.snPassword = password;
   errEl.textContent = '';
   btn.disabled = true;
   _setLoginLoading(true, 'Signing in…');
@@ -2950,6 +2949,28 @@ async function doSNLogin() {
     _setLoginLoading(false);
     btn.disabled = false;
   }
+}
+
+// Attempt a silent login using saved credentials. Falls back to the login screen on failure.
+async function _tryAutoLogin() {
+  if (state.snInstance && state.snUsername && state.snPassword) {
+    _setLoginLoading(true, 'Connecting…');
+    try {
+      const result = await snAPI.call('/auth/login', 'POST', {
+        username: state.snUsername, password: state.snPassword
+      });
+      await _onSNAuthSuccess(result);
+      return true;
+    } catch(e) {
+      _setLoginLoading(false);
+      _showSNLogin();
+      const errEl = document.getElementById('sn-li-err');
+      if (errEl) errEl.textContent = 'Auto sign-in failed — please sign in again.';
+      return false;
+    }
+  }
+  _showSNLogin();
+  return false;
 }
 
 async function doSNRegister() {
@@ -3250,16 +3271,16 @@ async function changePassword() {
         snLoadAll().then(() => renderAll());
       }
     }).catch(() => {
-      // Token invalid/expired — force re-login
+      // Token invalid/expired — try saved credentials, else show login
       _setLoginLoading(false);
       state.snToken = null;
       state.snProfileSysId = null;
       saveState();
-      _showSNLogin();
+      _tryAutoLogin();
     });
   } else {
-    // No saved session — show SN login screen
-    _showSNLogin();
+    // No saved session — auto-connect with saved credentials if available
+    _tryAutoLogin();
   }
 })();
 </script>
