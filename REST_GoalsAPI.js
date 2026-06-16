@@ -39,20 +39,21 @@
 
     var results = [];
     while (gr.next()) {
-      var target  = parseFloat(gr.target_amount.toString())  || 0;
-      var current = parseFloat(gr.current_amount.toString()) || 0;
+      var target  = parseFloat(gr.getValue('target_amount'))  || 0;
+      var current = parseFloat(gr.getValue('current_amount')) || 0;
+      var accSysId = gr.getValue('account') || '';
       results.push({
-        sys_id              : gr.sys_id.toString(),
-        goal_name           : gr.goal_name.toString(),
-        goal_icon           : gr.goal_icon.toString(),
+        sys_id              : gr.getValue('sys_id')               || '',
+        goal_name           : gr.getValue('goal_name')            || '',
+        goal_icon           : gr.getValue('goal_icon')            || '🎯',
         target_amount       : target,
         current_amount      : current,
-        monthly_contribution: parseFloat(gr.monthly_contribution.toString()) || 0,
-        target_date         : gr.target_date.toString(),
-        goal_status         : gr.goal_status.toString(),
+        monthly_contribution: parseFloat(gr.getValue('monthly_contribution')) || 0,
+        target_date         : gr.getValue('target_date')          || '',
+        goal_status         : gr.getValue('goal_status')          || 'in_progress',
         progress_pct        : target > 0 ? Math.min((current / target) * 100, 100) : 0,
-        account_sys_id      : gr.account.toString(),
-        account_name        : gr.account.account_name.toString()
+        account_sys_id      : accSysId,
+        account_name        : accSysId ? gr.getDisplayValue('account') || '' : ''
       });
     }
 
