@@ -1618,7 +1618,9 @@ async function saveTransaction() {
     if (state.snToken) {
       snAPI.call('/transactions', 'POST', snPayload)
         .then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    } else {
+      showToast('Not signed in — transaction saved locally only. Please sign in to sync.', 'error');
     }
     showToast(t('toast_txn_saved'), 'success');
   }
@@ -1800,7 +1802,9 @@ async function saveGoal() {
     if (state.snToken) {
       snAPI.call('/goals', 'POST', snPayload)
         .then(res => { if (res?.sys_id) goal.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    } else {
+      showToast('Not signed in — goal saved locally only. Please sign in to sync.', 'error');
     }
     showToast(t('toast_goal_saved'), 'success');
   }
@@ -1875,7 +1879,9 @@ async function saveAccount() {
     if (state.snToken) {
       snAPI.call('/accounts', 'POST', snPayload)
         .then(res => { if (res?.sys_id) acc.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    } else {
+      showToast('Not signed in — account saved locally only. Please sign in to sync.', 'error');
     }
   }
   _editingAccountId = null;
@@ -3235,7 +3241,7 @@ function _renderProfileView() {
     set('prof-detail-currency', p.currency || state.currency || 'SGD');
     set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
     set('prof-detail-instance', state.snInstance || '—');
-    set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+    set('prof-detail-since', (p.sys_created_on || p.since || '').substring(0, 10) || '—');
 
     const editName = el('prof-edit-name');
     const editEmail = el('prof-edit-email');
@@ -3245,11 +3251,14 @@ function _renderProfileView() {
     if (editIncome) editIncome.value = p.monthly_income_target || '';
   }
 
-  // Stats — always render from local data as fallback
-  const stats = p.stats || {};
-  set('prof-stat-txn',   stats.transaction_count  ?? state.transactions.length);
-  set('prof-stat-acc',   stats.account_count       ?? state.accounts.length);
-  set('prof-stat-goals', stats.active_goal_count   ?? state.goals.filter(g => g.status !== 'achieved').length);
+  // Stats — use SN counts when connected, local counts when offline
+  const stats      = p.stats || {};
+  const localTxns  = state.transactions.length;
+  const localAccs  = state.accounts.length;
+  const localGoals = state.goals.filter(g => g.status !== 'achieved').length;
+  set('prof-stat-txn',   !state.snToken ? localTxns  : (stats.transaction_count  ?? localTxns));
+  set('prof-stat-acc',   !state.snToken ? localAccs  : (stats.account_count      ?? localAccs));
+  set('prof-stat-goals', !state.snToken ? localGoals : (stats.active_goal_count  ?? localGoals));
 }
 
 async function saveProfile() {
@@ -3341,10 +3350,15 @@ async function changePassword() {
         snLoadAll().then(() => renderAll());
       }
     }).catch(() => {
-      // Token invalid/expired — try saved credentials, else show login
+      // Token invalid/expired — clear stale user data, try saved credentials, else show login
       _setLoginLoading(false);
-      state.snToken = null;
+      state.snToken        = null;
       state.snProfileSysId = null;
+      state.snUserProfile  = {};
+      state.transactions   = [];
+      state.budgets        = [];
+      state.goals          = [];
+      state.accounts       = [];
       saveState();
       _tryAutoLogin();
     });
