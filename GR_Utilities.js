@@ -17,7 +17,7 @@ function getMonthlyTransactions(userProfileSysID) {
   endGDT.addMonthsUTC(1);
   endGDT.addDaysUTC(-1);
 
-  var gr = new GlideRecord('x_1472763_person_0_transaction');
+  var gr = new GlideRecord('x_887486_0_transaction');
   gr.addQuery('account.user_profile', userProfileSysID); // dot-walk
   gr.addQuery('transaction_date', '>=', startGDT.getDate());
   gr.addQuery('transaction_date', '<=', endGDT.getDate());
@@ -46,7 +46,7 @@ function getCategorySpendTotals(userProfileSysID) {
   var year  = now.getYearUTC();
   var month = gs.zeroPad(now.getMonthUTC(), 2);
 
-  var ga = new GlideAggregate('x_1472763_person_0_transaction');
+  var ga = new GlideAggregate('x_887486_0_transaction');
   ga.addQuery('transaction_type',        'expense');
   ga.addQuery('account.user_profile',    userProfileSysID);
   ga.addQuery('transaction_date', '>=',  year + '-' + month + '-01');
@@ -66,13 +66,13 @@ function getCategorySpendTotals(userProfileSysID) {
 
 // ── 3. Update savings goal progress ───────────────────────
 // Use inside Flow Designer Action script step.
-// inputs.goalSysID  - sys_id of x_1472763_person_0_savings_goal
+// inputs.goalSysID  - sys_id of x_887486_0_savings_goal
 // inputs.addAmount  - amount to add to current_amount
 function updateGoalProgress() {
   var goalID    = inputs.goalSysID;
   var addAmount = parseFloat(inputs.addAmount) || 0;
 
-  var goalGR = new GlideRecord('x_1472763_person_0_savings_goal');
+  var goalGR = new GlideRecord('x_887486_0_savings_goal');
   if (!goalGR.get(goalID)) {
     outputs.status  = 'error';
     outputs.message = 'Goal not found';
@@ -125,7 +125,7 @@ function seedCategories() {
   ];
 
   categories.forEach(function(cat) {
-    var gr = new GlideRecord('x_1472763_person_0_category');
+    var gr = new GlideRecord('x_887486_0_category');
     gr.initialize();
     gr.category_name    = cat.name;
     gr.category_type    = cat.type;

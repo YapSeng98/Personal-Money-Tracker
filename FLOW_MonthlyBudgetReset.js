@@ -18,7 +18,7 @@
   var newEnd    = nextMonth.getYearUTC() + '-' +
                   gs.zeroPad(nextMonth.getMonthUTC(), 2) + '-01';
 
-  var budgetGR = new GlideRecord('x_1472763_person_0_budget');
+  var budgetGR = new GlideRecord('x_887486_0_budget');
   budgetGR.addQuery('period_type', 'monthly');
   budgetGR.query();
 

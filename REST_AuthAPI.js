@@ -41,7 +41,7 @@
       return;
     }
 
-    var profileGR = new GlideRecord('x_1472763_person_0_user_profile');
+    var profileGR = new GlideRecord('x_887486_0_user_profile');
     profileGR.addQuery('username', username);
     profileGR.setLimit(1);
     profileGR.query();
@@ -96,7 +96,7 @@
     }
 
     // Check username not already taken
-    var checkGR = new GlideRecord('x_1472763_person_0_user_profile');
+    var checkGR = new GlideRecord('x_887486_0_user_profile');
     checkGR.addQuery('username', regUsername);
     checkGR.setLimit(1);
     checkGR.query();
@@ -105,7 +105,7 @@
       return;
     }
 
-    var newGR = new GlideRecord('x_1472763_person_0_user_profile');
+    var newGR = new GlideRecord('x_887486_0_user_profile');
     newGR.initialize();
     newGR.username            = regUsername;
     newGR.password_hash       = helper.hashPassword(regPassword);

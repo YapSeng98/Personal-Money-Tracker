@@ -507,6 +507,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <!-- ── Panel A: SN Login ── -->
     <div class="sn-login-panel active" id="panel-login">
       <input class="sn-login-input" id="sn-li-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <div id="sn-li-instance-badge" style="display:none;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);border-radius:10px;font-size:12px;color:rgba(255,255,255,.7);">
+        <span>🔗 <span id="sn-li-instance-text"></span></span>
+        <button onclick="_toggleInstanceInput()" style="background:none;border:none;color:var(--jade);font-size:11px;cursor:pointer;padding:0;font-family:var(--ff);">Change</button>
+      </div>
       <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
       <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password"/>
       <div class="sn-login-err" id="sn-li-err"></div>
@@ -801,7 +805,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
             <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/studio" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🏗️ Studio</div></div><span class="sn-field-name">Open ↗</span></a>
             <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/%24flow-designer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">⚡ Flow Designer</div></div><span class="sn-field-name">Open ↗</span></a>
             <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🌐 Service Portal</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_1472763_person_0" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_887486_0" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
             <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/api_explorer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🔌 REST API Explorer</div></div><span class="sn-field-name">Open ↗</span></a>
             <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_update_set_list.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">📦 Update Sets</div></div><span class="sn-field-name">Open ↗</span></a>
           </div>
@@ -1401,7 +1405,7 @@ let state = {
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   geminiKey: '',
-  snInstance: 'dev275144.service-now.com',
+  snInstance: 'dev405150.service-now.com',
   snUsername: 'admin',
   snPassword: '',
   lastSync: null,
@@ -2465,7 +2469,7 @@ async function pushAllToSN() {
   let ok = 0, fail = 0;
   for (const t of localTxns) {
     try {
-      const rec = await SN.post('x_1472763_person_0_transaction', {
+      const rec = await SN.post('x_887486_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
         category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
       });
@@ -2620,8 +2624,8 @@ async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
     const [txns, accounts] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
+      SN.get('x_887486_0_transaction', {}).catch(()=>[]),
+      SN.get('x_887486_0_account', {}).catch(()=>[])
     ]);
     if (txns.length) {
       state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
@@ -2894,7 +2898,7 @@ document.addEventListener('keydown', e => {
 const snAPI = {
   base() {
     const inst = (state.snInstance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return `https://${inst}/api/x_1472763_person_0/pfmt`;
+    return `https://${inst}/api/x_887486_0/pfmt`;
   },
   headers() {
     const h = { 'Content-Type': 'application/json' };
@@ -2942,13 +2946,15 @@ function _setLoginLoading(on, msg) {
 }
 
 async function doSNLogin() {
-  const instance = (document.getElementById('sn-li-instance')?.value || '').trim();
-  const username = (document.getElementById('sn-li-username')?.value || '').trim();
-  const password = document.getElementById('sn-li-password')?.value || '';
-  const errEl    = document.getElementById('sn-li-err');
-  const btn      = document.getElementById('sn-li-btn');
+  const instInput = document.getElementById('sn-li-instance');
+  const rawInst   = (instInput?.style.display !== 'none' ? instInput?.value : '') || state.snInstance || '';
+  const instance  = rawInst.trim();
+  const username  = (document.getElementById('sn-li-username')?.value || '').trim();
+  const password  = document.getElementById('sn-li-password')?.value || '';
+  const errEl     = document.getElementById('sn-li-err');
+  const btn       = document.getElementById('sn-li-btn');
 
-  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
+  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; _toggleInstanceInput(); return; }
   if (!username) { errEl.textContent = 'Enter your username'; return; }
   if (!password) { errEl.textContent = 'Enter your password'; return; }
 
@@ -3079,11 +3085,34 @@ function _showSNLogin() {
   const ol = document.getElementById('login-overlay');
   if (ol) ol.style.display = 'flex';
   showAuthPanel('login');
-  // Pre-fill instance from saved state
-  const inst = document.getElementById('sn-li-instance');
-  const reg  = document.getElementById('sn-reg-instance');
-  if (inst && state.snInstance) inst.value = state.snInstance;
-  if (reg  && state.snInstance) reg.value  = state.snInstance;
+  _applyInstanceUI();
+  const reg = document.getElementById('sn-reg-instance');
+  if (reg && state.snInstance) reg.value = state.snInstance;
+}
+
+function _applyInstanceUI() {
+  const instInput = document.getElementById('sn-li-instance');
+  const instBadge = document.getElementById('sn-li-instance-badge');
+  const instText  = document.getElementById('sn-li-instance-text');
+  if (!instInput || !instBadge) return;
+  if (state.snInstance) {
+    instInput.style.display = 'none';
+    instBadge.style.display = 'flex';
+    if (instText) instText.textContent = state.snInstance;
+  } else {
+    instInput.style.display = '';
+    instBadge.style.display = 'none';
+  }
+}
+
+function _toggleInstanceInput() {
+  const instInput = document.getElementById('sn-li-instance');
+  const instBadge = document.getElementById('sn-li-instance-badge');
+  if (!instInput) return;
+  instInput.style.display = '';
+  instInput.value = state.snInstance || '';
+  instBadge.style.display = 'none';
+  instInput.focus();
 }
 
 function _hideSNLogin() {

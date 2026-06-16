@@ -15,7 +15,7 @@ PFMTAuthHelper.prototype = {
   validateToken: function(token) {
     if (!token) return null;
 
-    var gr = new GlideRecord('x_1472763_person_0_session');
+    var gr = new GlideRecord('x_887486_0_session');
     gr.addQuery('token', token);
     gr.addQuery('expires_at', '>', new GlideDateTime());
     gr.setLimit(1);
@@ -25,7 +25,7 @@ PFMTAuthHelper.prototype = {
 
     // Bump last-seen on the user profile
     var profileSysId = gr.user_profile.toString();
-    var profileGR = new GlideRecord('x_1472763_person_0_user_profile');
+    var profileGR = new GlideRecord('x_887486_0_user_profile');
     if (profileGR.get(profileSysId)) {
       profileGR.last_login = new GlideDateTime();
       profileGR.update();
@@ -51,7 +51,7 @@ PFMTAuthHelper.prototype = {
     var expires = new GlideDateTime();
     expires.addDaysUTC(7);
 
-    var gr = new GlideRecord('x_1472763_person_0_session');
+    var gr = new GlideRecord('x_887486_0_session');
     gr.initialize();
     gr.user_profile = userProfileSysId;
     gr.token        = token;
@@ -64,7 +64,7 @@ PFMTAuthHelper.prototype = {
 
   // ── Delete a session by token (logout) ───────────────────
   deleteSession: function(token) {
-    var gr = new GlideRecord('x_1472763_person_0_session');
+    var gr = new GlideRecord('x_887486_0_session');
     gr.addQuery('token', token);
     gr.query();
     while (gr.next()) gr.deleteRecord();
@@ -72,7 +72,7 @@ PFMTAuthHelper.prototype = {
 
   // ── Clean up expired sessions (run periodically) ─────────
   pruneExpiredSessions: function() {
-    var gr = new GlideRecord('x_1472763_person_0_session');
+    var gr = new GlideRecord('x_887486_0_session');
     gr.addQuery('expires_at', '<', new GlideDateTime());
     gr.query();
     var count = 0;

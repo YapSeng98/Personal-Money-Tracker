@@ -507,6 +507,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <!-- ── Panel A: SN Login ── -->
     <div class="sn-login-panel active" id="panel-login">
       <input class="sn-login-input" id="sn-li-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <div id="sn-li-instance-badge" style="display:none;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);border-radius:10px;font-size:12px;color:rgba(255,255,255,.7);">
+        <span>🔗 <span id="sn-li-instance-text"></span></span>
+        <button onclick="_toggleInstanceInput()" style="background:none;border:none;color:var(--jade);font-size:11px;cursor:pointer;padding:0;font-family:var(--ff);">Change</button>
+      </div>
       <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
       <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password"/>
       <div class="sn-login-err" id="sn-li-err"></div>
@@ -587,7 +591,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <span class="dot" id="sn-dot" style="background:#6B7280;animation:none;"></span>
       <span id="sn-status-text">Not connected</span>
     </div>
-    <a href="https://dev275144.service-now.com" target="_blank"
+    <a class="sn-quick-link" data-sn-path="" href="#" target="_blank"
        style="display:block;background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.25);border-radius:10px;padding:9px 12px;text-decoration:none;text-align:center;font-size:11px;font-weight:700;color:#00C896;">
       🔗 Open PDI ↗
     </a>
@@ -798,12 +802,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <div class="settings-section">
           <h3>Quick Links</h3>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            <a href="https://dev275144.service-now.com/now/studio" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🏗️ Studio</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/%24flow-designer.do" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">⚡ Flow Designer</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🌐 Service Portal</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_pfmt" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/api_explorer.do" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">🔌 REST API Explorer</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a href="https://dev275144.service-now.com/now/nav/ui/classic/params/target/sys_update_set_list.do" target="_blank" class="sn-mapping-row" style="text-decoration:none;"><div><div class="setting-label">📦 Update Sets</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/studio" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🏗️ Studio</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/%24flow-designer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">⚡ Flow Designer</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🌐 Service Portal</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_887486_0" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/api_explorer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🔌 REST API Explorer</div></div><span class="sn-field-name">Open ↗</span></a>
+            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_update_set_list.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">📦 Update Sets</div></div><span class="sn-field-name">Open ↗</span></a>
           </div>
         </div>
         <div class="settings-section">
@@ -1401,7 +1405,7 @@ let state = {
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   geminiKey: '',
-  snInstance: 'dev275144.service-now.com',
+  snInstance: 'dev405150.service-now.com',
   snUsername: 'admin',
   snPassword: '',
   lastSync: null,
@@ -1429,6 +1433,7 @@ function saveState() {
       geminiKey: state.geminiKey,
       snInstance: state.snInstance,
       snUsername: state.snUsername,
+      snPassword: state.snPassword,
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
@@ -1618,6 +1623,7 @@ async function saveTransaction() {
     showToast(t('toast_txn_saved'), 'success');
   }
 
+  saveState();
   closeTxnModal();
   renderAll();
 }
@@ -1628,6 +1634,7 @@ async function deleteTransaction(id) {
   const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
   const snIdDel = _snId(txn);
@@ -1681,6 +1688,7 @@ async function saveBudget() {
     const idx = state.budgets.findIndex(b => b.id == editId);
     if (idx >= 0) {
       state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert };
+      saveState();
       const sysId = _snId(state.budgets[idx]);
       if (state.snToken && sysId) {
         snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amt, alert_threshold: alert })
@@ -1692,6 +1700,7 @@ async function saveBudget() {
     if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
     const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert };
     state.budgets.push(bgt);
+    saveState();
     if (state.snToken) {
       snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amt, alert_threshold: alert })
         .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
@@ -1710,6 +1719,7 @@ async function deleteBudget(id) {
   const ok = await showConfirm(t('confirm_del_budget'), `${b.category} — $${b.amount.toFixed(2)} limit`);
   if (!ok) return;
   state.budgets = state.budgets.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_budget_deleted'), 'info');
   const sysId = _snId(b);
@@ -1775,6 +1785,7 @@ async function saveGoal() {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
       state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date };
+      saveState();
       const sysId = _snId(state.goals[idx]);
       if (state.snToken && sysId) {
         snAPI.call('/goals', 'PUT', { sys_id: sysId, ...snPayload })
@@ -1785,6 +1796,7 @@ async function saveGoal() {
   } else {
     const goal = { id: state.nextId++, name, icon, target, current, monthly, date };
     state.goals.push(goal);
+    saveState();
     if (state.snToken) {
       snAPI.call('/goals', 'POST', snPayload)
         .then(res => { if (res?.sys_id) goal.sys_id = res.sys_id; })
@@ -1803,6 +1815,7 @@ async function deleteGoal(id) {
   const ok = await showConfirm(t('confirm_del_goal'), `"${g.name}" — $${g.target.toFixed(2)} target`);
   if (!ok) return;
   state.goals = state.goals.filter(x => x.id != id);
+  saveState();
   renderAll();
   showToast(t('toast_goal_deleted'), 'info');
   const sysId = _snId(g);
@@ -2053,6 +2066,9 @@ function renderAll() {
   renderGoals();
   renderAnalytics();
   renderAccounts();
+  _renderProfileView();
+  _updateSNLinks();
+  _updateSNConnCard();
   saveState();
 }
 
@@ -2453,7 +2469,7 @@ async function pushAllToSN() {
   let ok = 0, fail = 0;
   for (const t of localTxns) {
     try {
-      const rec = await SN.post('x_1472763_person_0_transaction', {
+      const rec = await SN.post('x_887486_0_transaction', {
         transaction_type: t.type, amount: t.amount, description: t.description,
         category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
       });
@@ -2520,16 +2536,22 @@ function saveSNCredentials() {
   saveState();
 }
 
+function _updateSNLinks() {
+  if (!state.snInstance) return;
+  const base = 'https://' + state.snInstance;
+  document.querySelectorAll('.sn-quick-link').forEach(a => {
+    const path = a.dataset.snPath;
+    a.href = base + (path || '');
+  });
+}
+
 function saveSNInstance() {
   const val = document.getElementById('sn-instance-input')?.value.trim();
   if (!val) { showToast('Enter an instance URL', 'error'); return; }
   state.snInstance = val.replace(/^https?:\/\//, '').replace(/\/$/, '');
   saveSNCredentials();
   showToast(`Instance set to ${state.snInstance}`, 'success');
-  // update visible links
-  document.querySelectorAll('a[href*="dev275144"]').forEach(a => {
-    a.href = a.href.replace('dev275144.service-now.com', state.snInstance);
-  });
+  _updateSNLinks();
 }
 
 function changeLanguage(lang) {
@@ -2550,7 +2572,8 @@ function saveAIKey() {
 }
 
 function setConnStatus(status) {
-  const cfg = { connected:{color:'#00C896',text:'dev275144 · Live',ctext:'Connected'}, connecting:{color:'#F59E0B',text:'Connecting…',ctext:'Connecting…'}, disconnected:{color:'#6B7280',text:'Not connected',ctext:'Not connected'}, error:{color:'#FF5B5B',text:'Connection error',ctext:'Error'} }[status];
+  const inst = state.snInstance || 'Not connected';
+  const cfg = { connected:{color:'#00C896',text:inst+' · Live',ctext:'Connected'}, connecting:{color:'#F59E0B',text:'Connecting…',ctext:'Connecting…'}, disconnected:{color:'#6B7280',text:'Not connected',ctext:'Not connected'}, error:{color:'#FF5B5B',text:'Connection error',ctext:'Error'} }[status];
   document.getElementById('sn-dot').style.background  = cfg.color;
   document.getElementById('sn-status-text').textContent = cfg.text;
   document.getElementById('conn-dot').style.background  = cfg.color;
@@ -2601,8 +2624,8 @@ async function syncFromSN() {
   if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
   try {
     const [txns, accounts] = await Promise.all([
-      SN.get('x_1472763_person_0_transaction', {}).catch(()=>[]),
-      SN.get('x_1472763_person_0_account', {}).catch(()=>[])
+      SN.get('x_887486_0_transaction', {}).catch(()=>[]),
+      SN.get('x_887486_0_account', {}).catch(()=>[])
     ]);
     if (txns.length) {
       state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
@@ -2875,7 +2898,7 @@ document.addEventListener('keydown', e => {
 const snAPI = {
   base() {
     const inst = (state.snInstance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return `https://${inst}/api/x_1472763_person_0/pfmt`;
+    return `https://${inst}/api/x_887486_0/pfmt`;
   },
   headers() {
     const h = { 'Content-Type': 'application/json' };
@@ -2923,17 +2946,21 @@ function _setLoginLoading(on, msg) {
 }
 
 async function doSNLogin() {
-  const instance = (document.getElementById('sn-li-instance')?.value || '').trim();
-  const username = (document.getElementById('sn-li-username')?.value || '').trim();
-  const password = document.getElementById('sn-li-password')?.value || '';
-  const errEl    = document.getElementById('sn-li-err');
-  const btn      = document.getElementById('sn-li-btn');
+  const instInput = document.getElementById('sn-li-instance');
+  const rawInst   = (instInput?.style.display !== 'none' ? instInput?.value : '') || state.snInstance || '';
+  const instance  = rawInst.trim();
+  const username  = (document.getElementById('sn-li-username')?.value || '').trim();
+  const password  = document.getElementById('sn-li-password')?.value || '';
+  const errEl     = document.getElementById('sn-li-err');
+  const btn       = document.getElementById('sn-li-btn');
 
-  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
+  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; _toggleInstanceInput(); return; }
   if (!username) { errEl.textContent = 'Enter your username'; return; }
   if (!password) { errEl.textContent = 'Enter your password'; return; }
 
   state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  state.snUsername = username;
+  state.snPassword = password;
   errEl.textContent = '';
   btn.disabled = true;
   _setLoginLoading(true, 'Signing in…');
@@ -2946,6 +2973,28 @@ async function doSNLogin() {
     _setLoginLoading(false);
     btn.disabled = false;
   }
+}
+
+// Attempt a silent login using saved credentials. Falls back to the login screen on failure.
+async function _tryAutoLogin() {
+  if (state.snInstance && state.snUsername && state.snPassword) {
+    _setLoginLoading(true, 'Connecting…');
+    try {
+      const result = await snAPI.call('/auth/login', 'POST', {
+        username: state.snUsername, password: state.snPassword
+      });
+      await _onSNAuthSuccess(result);
+      return true;
+    } catch(e) {
+      _setLoginLoading(false);
+      _showSNLogin();
+      const errEl = document.getElementById('sn-li-err');
+      if (errEl) errEl.textContent = 'Auto sign-in failed — please sign in again.';
+      return false;
+    }
+  }
+  _showSNLogin();
+  return false;
 }
 
 async function doSNRegister() {
@@ -3000,10 +3049,18 @@ async function _onSNAuthSuccess(result) {
 
   _setLoginLoading(true, 'Loading your data…');
   await snLoadAll();
+  // Fetch fresh profile so display_name/email/currency reflect current SN values
+  try {
+    const prof = await snAPI.call('/profile');
+    if (prof) {
+      state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
+      saveState();
+    }
+  } catch(_) {}
   _setLoginLoading(false);
   _hideSNLogin();
   renderAll();
-  showToast(`Welcome, ${state.snUserProfile.display_name} 👋`, 'success');
+  showToast(`Welcome, ${state.snUserProfile.display_name || state.snUserProfile.username} 👋`, 'success');
 }
 
 async function snLogout() {
@@ -3013,6 +3070,8 @@ async function snLogout() {
   state.snToken        = null;
   state.snProfileSysId = null;
   state.snUserProfile  = {};
+  state.snUsername     = null;
+  state.snPassword     = null;
   state.transactions   = [];
   state.budgets        = [];
   state.goals          = [];
@@ -3026,11 +3085,34 @@ function _showSNLogin() {
   const ol = document.getElementById('login-overlay');
   if (ol) ol.style.display = 'flex';
   showAuthPanel('login');
-  // Pre-fill instance from saved state
-  const inst = document.getElementById('sn-li-instance');
-  const reg  = document.getElementById('sn-reg-instance');
-  if (inst && state.snInstance) inst.value = state.snInstance;
-  if (reg  && state.snInstance) reg.value  = state.snInstance;
+  _applyInstanceUI();
+  const reg = document.getElementById('sn-reg-instance');
+  if (reg && state.snInstance) reg.value = state.snInstance;
+}
+
+function _applyInstanceUI() {
+  const instInput = document.getElementById('sn-li-instance');
+  const instBadge = document.getElementById('sn-li-instance-badge');
+  const instText  = document.getElementById('sn-li-instance-text');
+  if (!instInput || !instBadge) return;
+  if (state.snInstance) {
+    instInput.style.display = 'none';
+    instBadge.style.display = 'flex';
+    if (instText) instText.textContent = state.snInstance;
+  } else {
+    instInput.style.display = '';
+    instBadge.style.display = 'none';
+  }
+}
+
+function _toggleInstanceInput() {
+  const instInput = document.getElementById('sn-li-instance');
+  const instBadge = document.getElementById('sn-li-instance-badge');
+  if (!instInput) return;
+  instInput.style.display = '';
+  instInput.value = state.snInstance || '';
+  instBadge.style.display = 'none';
+  instInput.focus();
 }
 
 function _hideSNLogin() {
@@ -3101,11 +3183,13 @@ async function refreshProfileView() {
     if (!prof) return;
     state.snUserProfile = {
       ...state.snUserProfile,
+      username    : prof.username,
       display_name: prof.display_name,
       email       : prof.email,
       currency    : prof.currency,
       language    : prof.language,
       avatar_color: prof.avatar_color,
+      monthly_income_target: prof.monthly_income_target,
       stats       : prof.stats,
       since       : prof.sys_created_on
     };
@@ -3115,42 +3199,44 @@ async function refreshProfileView() {
 }
 
 function _renderProfileView() {
-  const p = state.snUserProfile;
-  if (!p || !p.username) return;
-
-  const initials = (p.display_name || p.username || '?')
-    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+  const p = state.snUserProfile || {};
 
   const el = id => document.getElementById(id);
   const set = (id, val) => { const e = el(id); if (e) e.textContent = val; };
 
-  const av = el('prof-avatar');
-  if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
+  const username = p.username || state.snUsername || '';
+  const displayName = p.display_name || username || '';
 
-  set('prof-display-name', p.display_name || p.username);
-  set('prof-username', '@' + p.username);
-  set('prof-email', p.email || '');
-  set('prof-detail-name', p.display_name || '—');
-  set('prof-detail-username', p.username);
-  set('prof-detail-email', p.email || '—');
-  set('prof-detail-currency', p.currency || state.currency || 'SGD');
-  set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
-  set('prof-detail-instance', state.snInstance || '—');
-  set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+  if (username || displayName) {
+    const initials = (displayName || username || '?')
+      .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+    const av = el('prof-avatar');
+    if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
 
-  // Stats
+    set('prof-display-name', displayName);
+    set('prof-username', username ? '@' + username : '');
+    set('prof-email', p.email || '');
+    set('prof-detail-name', displayName || '—');
+    set('prof-detail-username', username || '—');
+    set('prof-detail-email', p.email || '—');
+    set('prof-detail-currency', p.currency || state.currency || 'SGD');
+    set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
+    set('prof-detail-instance', state.snInstance || '—');
+    set('prof-detail-since', p.since ? p.since.substring(0, 10) : '—');
+
+    const editName = el('prof-edit-name');
+    const editEmail = el('prof-edit-email');
+    const editIncome = el('prof-edit-income');
+    if (editName)  editName.value  = displayName;
+    if (editEmail) editEmail.value = p.email || '';
+    if (editIncome) editIncome.value = p.monthly_income_target || '';
+  }
+
+  // Stats — always render from local data as fallback
   const stats = p.stats || {};
   set('prof-stat-txn',   stats.transaction_count  ?? state.transactions.length);
   set('prof-stat-acc',   stats.account_count       ?? state.accounts.length);
   set('prof-stat-goals', stats.active_goal_count   ?? state.goals.filter(g => g.status !== 'achieved').length);
-
-  // Pre-fill edit fields
-  const editName = el('prof-edit-name');
-  const editEmail = el('prof-edit-email');
-  const editIncome = el('prof-edit-income');
-  if (editName)  editName.value  = p.display_name || '';
-  if (editEmail) editEmail.value = p.email || '';
-  if (editIncome) editIncome.value = p.monthly_income_target || '';
 }
 
 async function saveProfile() {
@@ -3242,16 +3328,16 @@ async function changePassword() {
         snLoadAll().then(() => renderAll());
       }
     }).catch(() => {
-      // Token invalid/expired — force re-login
+      // Token invalid/expired — try saved credentials, else show login
       _setLoginLoading(false);
       state.snToken = null;
       state.snProfileSysId = null;
       saveState();
-      _showSNLogin();
+      _tryAutoLogin();
     });
   } else {
-    // No saved session — show SN login screen
-    _showSNLogin();
+    // No saved session — auto-connect with saved credentials if available
+    _tryAutoLogin();
   }
 })();
 </script>

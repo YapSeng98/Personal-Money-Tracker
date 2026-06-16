@@ -10,7 +10,7 @@
   var mon  = gs.zeroPad(now.getMonthUTC(), 2);
 
   // ── Aggregate: income and expenses this month ─────────────
-  var ga = new GlideAggregate('x_1472763_person_0_transaction');
+  var ga = new GlideAggregate('x_887486_0_transaction');
   ga.addQuery('sys_created_by',  gs.getUserName());
   ga.addQuery('transaction_date', 'STARTSWITH', year + '-' + mon);
   ga.addQuery('state', '2'); // Confirmed only
@@ -27,7 +27,7 @@
 
   // ── Recent 10 transactions ────────────────────────────────
   var txns = [];
-  var txnGR = new GlideRecord('x_1472763_person_0_transaction');
+  var txnGR = new GlideRecord('x_887486_0_transaction');
   txnGR.addQuery('sys_created_by', gs.getUserName());
   txnGR.addQuery('state', '2');
   txnGR.orderByDesc('transaction_date');

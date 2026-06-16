@@ -1,6 +1,6 @@
 // ============================================================
 // PFMT Business Rule 2 — Update Budget Spent Amount
-// Table    : x_1472763_person_0_transaction
+// Table    : x_887486_0_transaction
 // When     : After · Insert
 // Condition: current.transaction_type == 'expense'
 // ============================================================
@@ -12,7 +12,7 @@
   var today      = new GlideDateTime();
 
   // Find active budget for this category in the current period
-  var budgetGR = new GlideRecord('x_1472763_person_0_budget');
+  var budgetGR = new GlideRecord('x_887486_0_budget');
   budgetGR.addQuery('category', categoryID);
   budgetGR.addQuery('period_start', '<=', today);
   budgetGR.addQuery('period_end',   '>=', today);

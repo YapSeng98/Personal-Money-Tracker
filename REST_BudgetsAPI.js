@@ -33,7 +33,7 @@
   // ── GET /budgets ─────────────────────────────────────────
   // Returns all budgets for the user with current spend
   if (method === 'GET') {
-    var gr = new GlideRecord('x_1472763_person_0_budget');
+    var gr = new GlideRecord('x_887486_0_budget');
     gr.addQuery('user_profile', profileSysId);
     gr.orderBy('category.category_name');
     gr.query();
@@ -71,12 +71,12 @@
     }
 
     // Resolve category — auto-create if missing
-    var catGR = new GlideRecord('x_1472763_person_0_category');
+    var catGR = new GlideRecord('x_887486_0_category');
     catGR.addQuery('category_name', body.category_name);
     catGR.setLimit(1);
     catGR.query();
     if (!catGR.next()) {
-      catGR = new GlideRecord('x_1472763_person_0_category');
+      catGR = new GlideRecord('x_887486_0_category');
       catGR.initialize();
       catGR.category_name = body.category_name;
       catGR.icon_emoji    = body.category_icon  || '📦';
@@ -85,7 +85,7 @@
     }
 
     // Check no duplicate budget for same category this period
-    var dupGR = new GlideRecord('x_1472763_person_0_budget');
+    var dupGR = new GlideRecord('x_887486_0_budget');
     dupGR.addQuery('user_profile', profileSysId);
     dupGR.addQuery('category', catGR.sys_id);
     dupGR.query();
@@ -107,7 +107,7 @@
     nextMonth.addDaysUTC(-1);
     var periodEnd = nextMonth.getDate().getValue();
 
-    var newGR = new GlideRecord('x_1472763_person_0_budget');
+    var newGR = new GlideRecord('x_887486_0_budget');
     newGR.initialize();
     newGR.user_profile     = profileSysId;
     newGR.category         = catGR.sys_id;
@@ -133,7 +133,7 @@
       return;
     }
 
-    var editGR = new GlideRecord('x_1472763_person_0_budget');
+    var editGR = new GlideRecord('x_887486_0_budget');
     if (!editGR.get(putBody.sys_id) || editGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 404, 'Budget not found');
       return;
@@ -163,7 +163,7 @@
       return;
     }
 
-    var delGR = new GlideRecord('x_1472763_person_0_budget');
+    var delGR = new GlideRecord('x_887486_0_budget');
     if (!delGR.get(delId) || delGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 404, 'Budget not found');
       return;

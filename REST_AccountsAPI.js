@@ -32,7 +32,7 @@
 
   // ── GET /accounts ─────────────────────────────────────────
   if (method === 'GET') {
-    var gr = new GlideRecord('x_1472763_person_0_account');
+    var gr = new GlideRecord('x_887486_0_account');
     gr.addQuery('user_profile', profileSysId);
     gr.orderBy('account_name');
     gr.query();
@@ -65,7 +65,7 @@
     }
 
     // Check for duplicate account name for this user
-    var dupGR = new GlideRecord('x_1472763_person_0_account');
+    var dupGR = new GlideRecord('x_887486_0_account');
     dupGR.addQuery('user_profile', profileSysId);
     dupGR.addQuery('account_name', body.account_name);
     dupGR.setLimit(1);
@@ -75,7 +75,7 @@
       return;
     }
 
-    var newGR = new GlideRecord('x_1472763_person_0_account');
+    var newGR = new GlideRecord('x_887486_0_account');
     newGR.initialize();
     newGR.user_profile     = profileSysId;
     newGR.account_name     = body.account_name;
@@ -99,7 +99,7 @@
       return;
     }
 
-    var editGR = new GlideRecord('x_1472763_person_0_account');
+    var editGR = new GlideRecord('x_887486_0_account');
     if (!editGR.get(putBody.sys_id) || editGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 404, 'Account not found');
       return;
@@ -126,7 +126,7 @@
       return;
     }
 
-    var delGR = new GlideRecord('x_1472763_person_0_account');
+    var delGR = new GlideRecord('x_887486_0_account');
     if (!delGR.get(delId) || delGR.user_profile.toString() !== profileSysId) {
       helper.errorResponse(response, 404, 'Account not found');
       return;

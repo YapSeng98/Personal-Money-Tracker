@@ -1,13 +1,13 @@
 // ============================================================
 // PFMT Business Rule 1 — Update Account Balance
-// Table    : x_1472763_person_0_transaction
+// Table    : x_887486_0_transaction
 // When     : After · Insert + Update
 // Condition: current.state == '2' (Confirmed)
 // ============================================================
 
 (function executeRule(current, previous) {
 
-  var accountGR = new GlideRecord('x_1472763_person_0_account');
+  var accountGR = new GlideRecord('x_887486_0_account');
   if (!accountGR.get(current.account.toString())) {
     gs.error('PFMT BR1: Account not found - ' + current.account);
     return;
