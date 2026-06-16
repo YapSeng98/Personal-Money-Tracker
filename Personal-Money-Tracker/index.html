@@ -1509,7 +1509,37 @@ function showView(name, el) {
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) monthBar.style.display = ['dashboard','budgets','transactions'].includes(name) ? 'flex' : 'none';
   if (name === 'transactions') populateCategoryFilter();
-  if (name === 'settings') _updateSNConnCard();
+  if (name === 'settings') {
+    _updateSNConnCard();
+    // Auto-test real connection every time Settings opens
+    if (state.snToken) {
+      setConnStatus('connecting');
+      snAPI.call('/profile')
+        .then(prof => {
+          if (prof) {
+            state.snUserProfile = {
+              ...state.snUserProfile,
+              username    : prof.username,
+              display_name: prof.display_name,
+              email       : prof.email,
+              currency    : prof.currency,
+              language    : prof.language,
+              avatar_color: prof.avatar_color,
+              monthly_income_target: prof.monthly_income_target,
+              stats       : prof.stats,
+              since       : prof.sys_created_on
+            };
+            saveState();
+            _updateSNConnCard();
+          }
+          setConnStatus('connected');
+        })
+        .catch(() => {
+          setConnStatus('error');
+          showToast('ServiceNow is sleeping — visit dev405150.service-now.com to wake it up, then retry.', 'warning');
+        });
+    }
+  }
   if (name === 'profile') { _renderProfileView(); refreshProfileView(); }
   closeSidebar();
   renderAll();
@@ -3196,7 +3226,10 @@ async function snLoadAll() {
 
 // ── Refresh profile stats on profile view ───────────────────
 async function refreshProfileView() {
-  if (!state.snToken) return;
+  if (!state.snToken) {
+    showToast('Not signed in — sign in to load your profile from ServiceNow.', 'warning');
+    return;
+  }
   try {
     const prof = await snAPI.call('/profile');
     if (!prof) return;
@@ -3214,7 +3247,11 @@ async function refreshProfileView() {
     };
     saveState();
     _renderProfileView();
-  } catch(e) { /* offline or token expired */ }
+    setConnStatus('connected');
+    _updateSNConnCard();
+  } catch(e) {
+    showToast('Profile sync failed — ServiceNow may be sleeping. Visit dev405150.service-now.com first, then reopen Profile.', 'warning');
+  }
 }
 
 function _renderProfileView() {
