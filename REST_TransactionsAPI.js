@@ -126,7 +126,7 @@
       helper.errorResponse(response, 404, 'Transaction not found');
       return;
     }
-    if (editGR.user_profile.toString() !== profileSysId) {
+    if (editGR.getValue('user_profile') !== profileSysId) {
       helper.errorResponse(response, 403, 'Access denied');
       return;
     }
@@ -160,9 +160,10 @@
   }
 
   // ── DELETE /transactions ──────────────────────────────────
-  // Query param: ?sys_id=  (SN blocks body access on DELETE)
+  // Tunneled as HTTP POST + X-HTTP-Method: DELETE so body is accessible
   if (method === 'DELETE') {
-    var delId = request.queryParams.sys_id;
+    var delBody = request.body ? request.body.data : {};
+    var delId = delBody.sys_id || '';
     if (!delId) {
       helper.errorResponse(response, 400, 'sys_id is required');
       return;
@@ -173,7 +174,7 @@
       helper.errorResponse(response, 404, 'Transaction not found');
       return;
     }
-    if (delGR.user_profile.toString() !== profileSysId) {
+    if (delGR.getValue('user_profile') !== profileSysId) {
       helper.errorResponse(response, 403, 'Access denied');
       return;
     }

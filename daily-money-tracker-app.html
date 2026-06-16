@@ -2908,11 +2908,14 @@ const snAPI = {
   async call(path, method = 'GET', body = null) {
     const h = this.headers();
     h['X-HTTP-Method'] = method;
-    const opts = { method, headers: h };
+    // DELETE is sent as HTTP POST to avoid SN blocking body access on HTTP DELETE;
+    // X-HTTP-Method: DELETE tells the server script which handler to run.
+    // GET uses query params (SN also blocks body on GET).
+    const httpVerb = method === 'DELETE' ? 'POST' : method;
+    const opts = { method: httpVerb, headers: h };
     let url = this.base() + path;
     if (body) {
-      if (method === 'DELETE' || method === 'GET') {
-        // SN rejects body on GET/DELETE — send params as query string instead
+      if (method === 'GET') {
         const qs = Object.entries(body).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
         if (qs) url += (url.includes('?') ? '&' : '?') + qs;
       } else {

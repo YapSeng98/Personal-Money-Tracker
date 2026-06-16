@@ -40,12 +40,12 @@
     var results = [];
     while (gr.next()) {
       results.push({
-        sys_id           : gr.sys_id.toString(),
-        account_name     : gr.account_name.toString(),
-        account_type     : gr.account_type.toString(),
-        institution_name : gr.institution_name.toString(),
-        current_balance  : parseFloat(gr.current_balance.toString()) || 0,
-        currency         : gr.currency.toString() || 'SGD'
+        sys_id           : gr.getValue('sys_id')           || '',
+        account_name     : gr.getValue('account_name')     || '',
+        account_type     : gr.getValue('account_type')     || gr.getValue('type') || 'checking',
+        institution_name : gr.getValue('institution_name') || gr.getValue('bank_name') || '',
+        current_balance  : parseFloat(gr.getValue('current_balance') || gr.getValue('balance') || '0') || 0,
+        currency         : gr.getValue('currency')         || 'SGD'
       });
     }
 
@@ -100,7 +100,7 @@
     }
 
     var editGR = new GlideRecord('x_887486_0_account');
-    if (!editGR.get(putBody.sys_id) || editGR.user_profile.toString() !== profileSysId) {
+    if (!editGR.get(putBody.sys_id) || editGR.getValue('user_profile') !== profileSysId) {
       helper.errorResponse(response, 404, 'Account not found');
       return;
     }
@@ -118,16 +118,17 @@
   }
 
   // ── DELETE /accounts ──────────────────────────────────────
-  // Query param: ?sys_id=  (SN blocks body access on DELETE)
+  // Tunneled as HTTP POST + X-HTTP-Method: DELETE so body is accessible
   if (method === 'DELETE') {
-    var delId = request.queryParams.sys_id;
+    var delBody = request.body ? request.body.data : {};
+    var delId = delBody.sys_id || '';
     if (!delId) {
       helper.errorResponse(response, 400, 'sys_id is required');
       return;
     }
 
     var delGR = new GlideRecord('x_887486_0_account');
-    if (!delGR.get(delId) || delGR.user_profile.toString() !== profileSysId) {
+    if (!delGR.get(delId) || delGR.getValue('user_profile') !== profileSysId) {
       helper.errorResponse(response, 404, 'Account not found');
       return;
     }

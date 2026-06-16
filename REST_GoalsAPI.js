@@ -109,7 +109,7 @@
     }
 
     var editGR = new GlideRecord('x_887486_0_savings_goal');
-    if (!editGR.get(putBody.sys_id) || editGR.user_profile.toString() !== profileSysId) {
+    if (!editGR.get(putBody.sys_id) || editGR.getValue('user_profile') !== profileSysId) {
       helper.errorResponse(response, 404, 'Goal not found');
       return;
     }
@@ -133,16 +133,17 @@
   }
 
   // ── DELETE /goals ─────────────────────────────────────────
-  // Query param: ?sys_id=  (SN blocks body access on DELETE)
+  // Tunneled as HTTP POST + X-HTTP-Method: DELETE so body is accessible
   if (method === 'DELETE') {
-    var delId = request.queryParams.sys_id;
+    var delBody = request.body ? request.body.data : {};
+    var delId = delBody.sys_id || '';
     if (!delId) {
       helper.errorResponse(response, 400, 'sys_id is required');
       return;
     }
 
     var delGR = new GlideRecord('x_887486_0_savings_goal');
-    if (!delGR.get(delId) || delGR.user_profile.toString() !== profileSysId) {
+    if (!delGR.get(delId) || delGR.getValue('user_profile') !== profileSysId) {
       helper.errorResponse(response, 404, 'Goal not found');
       return;
     }
