@@ -62,12 +62,17 @@ PFMTAuthHelper.prototype = {
     return token;
   },
 
-  // ── Delete a session by token (logout) ───────────────────
+  // ── Invalidate a session by token (logout) ───────────────
+  // Sets expires_at to now so validateToken's expires_at > now check fails.
+  // More reliable than deleteRecord() which can be blocked by table ACLs.
   deleteSession: function(token) {
     var gr = new GlideRecord('x_887486_0_session');
     gr.addQuery('token', token);
     gr.query();
-    while (gr.next()) gr.deleteRecord();
+    if (gr.next()) {
+      gr.setValue('expires_at', new GlideDateTime());
+      gr.update();
+    }
   },
 
   // ── Clean up expired sessions (run periodically) ─────────
