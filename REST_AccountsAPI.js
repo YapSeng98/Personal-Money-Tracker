@@ -118,9 +118,9 @@
   }
 
   // ── DELETE /accounts ──────────────────────────────────────
+  // Query param: ?sys_id=  (SN blocks body access on DELETE)
   if (method === 'DELETE') {
-    var delBody = request.body ? request.body.data : {};
-    var delId   = delBody.sys_id || request.queryParams.sys_id;
+    var delId = request.queryParams.sys_id;
     if (!delId) {
       helper.errorResponse(response, 400, 'sys_id is required');
       return;

@@ -2909,8 +2909,18 @@ const snAPI = {
     const h = this.headers();
     h['X-HTTP-Method'] = method;
     const opts = { method, headers: h };
-    if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(this.base() + path, opts);
+    let url = this.base() + path;
+    if (body) {
+      if (method === 'DELETE' || method === 'GET') {
+        // SN rejects body on GET/DELETE — send params as query string instead
+        const qs = Object.entries(body).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+        if (qs) url += (url.includes('?') ? '&' : '?') + qs;
+      } else {
+        h['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+    }
+    const res = await fetch(url, opts);
     const text = await res.text();
     let json;
     try { json = JSON.parse(text); }
