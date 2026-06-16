@@ -95,12 +95,11 @@
     }
 
     // Default period = current calendar month
-    var now        = new GlideDateTime();
-    var year       = now.getYearUTC();
-    var month      = gs.zeroPad(now.getMonthUTC(), 2);
+    var now         = new GlideDateTime();
+    var year        = now.getYearUTC();
+    var rawMonth    = now.getMonthUTC();
+    var month       = (rawMonth < 10 ? '0' : '') + rawMonth;
     var periodStart = year + '-' + month + '-01';
-    var lastDay     = new GlideDate();
-    lastDay.setValue(periodStart);
     // Move to first of next month then subtract 1 day
     var nextMonth = new GlideDateTime(periodStart + ' 00:00:00');
     nextMonth.addMonthsUTC(1);
