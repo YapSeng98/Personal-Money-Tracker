@@ -1513,6 +1513,7 @@ function showView(name, el) {
     _updateSNConnCard();
     // Auto-test real connection every time Settings opens
     if (state.snToken) {
+      // Already have a token — verify it's still valid
       setConnStatus('connecting');
       snAPI.call('/profile')
         .then(prof => {
@@ -1537,6 +1538,15 @@ function showView(name, el) {
         .catch(() => {
           setConnStatus('error');
           showToast('ServiceNow is sleeping — visit dev405150.service-now.com to wake it up, then retry.', 'warning');
+        });
+    } else if (state.snInstance && state.snUsername && state.snPassword) {
+      // No token but credentials saved — try to reconnect silently
+      setConnStatus('connecting');
+      snAPI.call('/auth/login', 'POST', { username: state.snUsername, password: state.snPassword })
+        .then(result => _onSNAuthSuccess(result))
+        .catch(() => {
+          setConnStatus('error');
+          showToast('Auto-reconnect failed — ServiceNow may be sleeping. Visit dev405150.service-now.com to wake it up.', 'warning');
         });
     }
   }
@@ -3063,6 +3073,8 @@ async function doSNRegister() {
   if (password !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
 
   state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  state.snUsername = username;
+  state.snPassword = password;
   errEl.textContent = '';
   btn.disabled = true;
   _setLoginLoading(true, 'Creating account…');
@@ -3375,19 +3387,19 @@ async function changePassword() {
 
   // SN Auth flow: check for saved session token
   if (state.snToken && state.snProfileSysId) {
-    // Token found — validate and load data
-    _hideSNLogin();
-    renderAll();
+    // Token found — keep login overlay visible until validation completes
     _setLoginLoading(true, 'Verifying session…');
     snAPI.call('/profile').then(prof => {
       _setLoginLoading(false);
+      _hideSNLogin();
       if (prof) {
         state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
         saveState();
-        snLoadAll().then(() => renderAll());
       }
+      renderAll();
+      if (prof) snLoadAll().then(() => renderAll());
     }).catch(() => {
-      // Token invalid/expired — clear stale profile identity, keep local data
+      // Token invalid/expired — clear stale profile identity, try auto-login
       _setLoginLoading(false);
       state.snToken        = null;
       state.snProfileSysId = null;
