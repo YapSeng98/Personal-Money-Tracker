@@ -3350,15 +3350,11 @@ async function changePassword() {
         snLoadAll().then(() => renderAll());
       }
     }).catch(() => {
-      // Token invalid/expired — clear stale user data, try saved credentials, else show login
+      // Token invalid/expired — clear stale profile identity, keep local data
       _setLoginLoading(false);
       state.snToken        = null;
       state.snProfileSysId = null;
       state.snUserProfile  = {};
-      state.transactions   = [];
-      state.budgets        = [];
-      state.goals          = [];
-      state.accounts       = [];
       saveState();
       _tryAutoLogin();
     });

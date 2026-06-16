@@ -62,15 +62,15 @@
     response.setBody({
       result: {
         sys_id                : profileSysId,
-        username              : profileGR.username.toString(),
-        display_name          : profileGR.display_name.toString(),
-        email                 : profileGR.email.toString(),
-        currency              : profileGR.currency_preference.toString() || 'SGD',
-        language              : profileGR.language_preference.toString() || 'en',
-        avatar_color          : profileGR.avatar_color.toString()        || '#8B5CF6',
-        monthly_income_target : parseFloat(profileGR.monthly_income_target.toString()) || 0,
-        last_login            : profileGR.last_login.toString(),
-        sys_created_on        : profileGR.sys_created_on.toString(),
+        username              : profileGR.getValue('username')            || '',
+        display_name          : profileGR.getValue('display_name')        || '',
+        email                 : profileGR.getValue('email')               || '',
+        currency              : profileGR.getValue('currency_preference') || 'SGD',
+        language              : profileGR.getValue('language_preference') || 'en',
+        avatar_color          : profileGR.getValue('avatar_color')        || '#8B5CF6',
+        monthly_income_target : parseFloat(profileGR.getValue('monthly_income_target')) || 0,
+        last_login            : profileGR.getValue('last_login')          || '',
+        sys_created_on        : profileGR.getValue('sys_created_on')      || '',
         stats: {
           transaction_count : txnCount,
           account_count     : accCount,
@@ -127,12 +127,12 @@
     response.setBody({
       result: {
         status       : 'updated',
-        display_name : profileGR.display_name.toString(),
-        email        : profileGR.email.toString(),
-        currency     : profileGR.currency_preference.toString(),
-        language     : profileGR.language_preference.toString(),
-        avatar_color : profileGR.avatar_color.toString(),
-        monthly_income_target: parseFloat(profileGR.monthly_income_target.toString()) || 0
+        display_name : profileGR.getValue('display_name')        || '',
+        email        : profileGR.getValue('email')               || '',
+        currency     : profileGR.getValue('currency_preference') || 'SGD',
+        language     : profileGR.getValue('language_preference') || 'en',
+        avatar_color : profileGR.getValue('avatar_color')        || '#8B5CF6',
+        monthly_income_target: parseFloat(profileGR.getValue('monthly_income_target')) || 0
       }
     });
     return;

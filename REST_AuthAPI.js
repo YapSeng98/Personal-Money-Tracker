@@ -131,11 +131,11 @@
         token              : regToken,
         user_profile_sys_id: newSysId,
         username           : regUsername,
-        display_name       : newGR.display_name.toString(),
+        display_name       : regDisplayName || regUsername,
         email              : regEmail,
-        currency           : newGR.currency_preference.toString(),
-        language           : newGR.language_preference.toString(),
-        avatar_color       : newGR.avatar_color.toString()
+        currency           : body.currency   || 'SGD',
+        language           : body.language   || 'en',
+        avatar_color       : body.avatar_color || '#8B5CF6'
       }
     });
     return;
