@@ -1496,15 +1496,6 @@ async function saveTransaction() {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
         description: desc, category: cat, account: acct, date, notes };
-      // Reverse old balance effect, apply new
-      const oldDelta = old.type === 'income' ? old.amount : -old.amount;
-      const newDelta = state.currentType === 'income' ? amt : -amt;
-      if (old.account === acct) {
-        adjustAccountBalance(acct, newDelta - oldDelta);
-      } else {
-        adjustAccountBalance(old.account, -oldDelta);
-        adjustAccountBalance(acct, newDelta);
-      }
       const snIdTxn = _snId(old);
       if (state.snToken && snIdTxn) {
         snAPI.call('/transactions', 'PUT', { sys_id: snIdTxn, ...snPayload })
@@ -1516,7 +1507,6 @@ async function saveTransaction() {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt,
       description: desc, category: cat, account: acct, date, notes };
     state.transactions.unshift(txn);
-    adjustAccountBalance(acct, state.currentType === 'income' ? amt : -amt);
     if (state.snToken) {
       snAPI.call('/transactions', 'POST', snPayload)
         .then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
@@ -1538,7 +1528,6 @@ async function deleteTransaction(id) {
   const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
-  adjustAccountBalance(txn.account, txn.type === 'income' ? -txn.amount : txn.amount);
   saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
@@ -1549,19 +1538,6 @@ async function deleteTransaction(id) {
   }
 }
 
-
-// Adjust an account's balance when a transaction is added/edited/deleted
-function adjustAccountBalance(accountName, delta) {
-  if (!accountName || !delta) return;
-  const acc = state.accounts.find(a => a.name === accountName);
-  if (!acc) return;
-  acc.balance = Math.round((acc.balance + delta) * 100) / 100;
-  const snId = _snId(acc);
-  if (state.snToken && snId) {
-    snAPI.call('/accounts', 'PUT', { sys_id: snId, current_balance: acc.balance })
-      .catch(e => console.warn('Balance sync:', e.message));
-  }
-}
 
 // ═══════════════════════════════════════════════
 // BUDGET MODAL — open / close / edit
@@ -2242,9 +2218,17 @@ function renderAnalytics() {
 }
 
 /* ── ACCOUNTS ── */
+// Effective balance = stored starting balance ± all linked transactions
+function effectiveBal(acc) {
+  const linked  = state.transactions.filter(t => t.account === acc.name);
+  const income  = linked.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expense = linked.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  return Math.round((acc.balance + income - expense) * 100) / 100;
+}
+
 function renderAccounts() {
-  const totalAssets = state.accounts.filter(a=>a.balance>0).reduce((s,a)=>s+a.balance,0);
-  const totalDebt   = state.accounts.filter(a=>a.balance<0).reduce((s,a)=>s+Math.abs(a.balance),0);
+  const totalAssets = state.accounts.reduce((s,a)=>{ const b=effectiveBal(a); return b>0?s+b:s; }, 0);
+  const totalDebt   = state.accounts.reduce((s,a)=>{ const b=effectiveBal(a); return b<0?s+Math.abs(b):s; }, 0);
   const netWorth    = totalAssets - totalDebt;
   document.getElementById('accounts-list').innerHTML = `
     <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;">
@@ -2254,9 +2238,9 @@ function renderAccounts() {
     </div>
     ${state.accounts.map(a=>`
     <div class="account-row">
-      <div class="account-ico" style="background:${a.balance<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
+      <div class="account-ico" style="background:${effectiveBal(a)<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
       <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
-      <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(Math.abs(a.balance))}</div>
+      <div class="account-bal" style="color:${effectiveBal(a)<0?'var(--coral)':'var(--ink)'}">${effectiveBal(a)<0?'-':''}${fmt(Math.abs(effectiveBal(a)))}</div>
       <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
         <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
         <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
@@ -2272,7 +2256,7 @@ function renderAccounts() {
   const byType = {};
   state.accounts.forEach(a => {
     if (!byType[a.type]) byType[a.type] = 0;
-    byType[a.type] += Math.max(0, a.balance);
+    byType[a.type] += Math.max(0, effectiveBal(a));
   });
   const debtRatio = totalAssets > 0 ? (totalDebt/totalAssets*100) : 0;
   const drColor   = debtRatio > 30 ? 'var(--coral)' : debtRatio > 10 ? 'var(--amber)' : 'var(--jade)';
@@ -2305,7 +2289,7 @@ function renderAccounts() {
       <div>
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_accounts')}</div>
         <div style="font-family:var(--fd);font-size:18px;font-weight:700;">${state.accounts.length}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${state.accounts.filter(a=>a.balance<0).length} with debt</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${state.accounts.filter(a=>effectiveBal(a)<0).length} with debt</div>
       </div>
     </div>`;
 }
