@@ -1986,7 +1986,7 @@ function renderDashboard() {
 
   const recent = getMonthTxns().slice(0,8);
   document.getElementById('recent-txns').innerHTML = recent.length
-    ? recent.map(txnRowHTML).join('')
+    ? recent.map(txn => txnRowHTML(txn)).join('')
     : `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_month')} ${getMonthLabel(state.filterMonth)}.<br>${t('empty_add_first')}</p></div>`;
 
   const cs = getCategorySpend();
