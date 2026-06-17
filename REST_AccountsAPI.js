@@ -42,7 +42,7 @@
       results.push({
         sys_id           : gr.getValue('sys_id')           || '',
         account_name     : gr.getValue('account_name')     || '',
-        account_type     : gr.getValue('account_type')     || gr.getValue('type') || 'checking',
+        account_type     : gr.getValue('acount_type')     || gr.getValue('type') || 'checking',
         institution_name : gr.getValue('institution_name') || gr.getValue('bank_name') || '',
         current_balance  : parseFloat(gr.getValue('current_balance') || gr.getValue('balance') || '0') || 0,
         currency         : gr.getValue('currency')         || 'SGD'
@@ -79,7 +79,7 @@
     newGR.initialize();
     newGR.user_profile     = profileSysId;
     newGR.account_name     = body.account_name;
-    newGR.account_type     = body.account_type     || 'checking';
+    newGR.acount_type      = body.account_type     || 'checking';
     newGR.institution_name = body.institution_name || '';
     newGR.current_balance  = parseFloat(body.current_balance) || 0;
     newGR.currency         = body.currency         || 'SGD';
@@ -106,7 +106,7 @@
     }
 
     if (putBody.account_name     !== undefined) editGR.account_name     = putBody.account_name;
-    if (putBody.account_type     !== undefined) editGR.account_type     = putBody.account_type;
+    if (putBody.account_type     !== undefined) editGR.acount_type      = putBody.account_type;
     if (putBody.institution_name !== undefined) editGR.institution_name = putBody.institution_name;
     if (putBody.current_balance  !== undefined) editGR.current_balance  = parseFloat(putBody.current_balance);
     if (putBody.currency         !== undefined) editGR.currency         = putBody.currency;

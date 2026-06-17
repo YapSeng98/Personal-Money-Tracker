@@ -97,13 +97,21 @@
       if (accGR.next()) newGR.setValue('account', accGR.getUniqueValue());
     }
 
-    // Resolve category by name
+    // Resolve category by name, auto-create if not found
     if (body.category_name) {
       var catGR = new GlideRecord('x_887486_0_category');
       catGR.addQuery('category_name', body.category_name);
       catGR.setLimit(1);
       catGR.query();
-      if (catGR.next()) newGR.setValue('category', catGR.getUniqueValue());
+      if (!catGR.next()) {
+        catGR = new GlideRecord('x_887486_0_category');
+        catGR.initialize();
+        catGR.category_name = body.category_name;
+        catGR.icon_emoji    = body.category_icon  || '💰';
+        catGR.color_hex     = body.category_color || '#6B7280';
+        catGR.insert();
+      }
+      newGR.setValue('category', catGR.getUniqueValue());
     }
 
     var newSysId = newGR.insert();
@@ -150,7 +158,15 @@
       putCatGR.addQuery('category_name', putBody.category_name);
       putCatGR.setLimit(1);
       putCatGR.query();
-      if (putCatGR.next()) editGR.setValue('category', putCatGR.getUniqueValue());
+      if (!putCatGR.next()) {
+        putCatGR = new GlideRecord('x_887486_0_category');
+        putCatGR.initialize();
+        putCatGR.category_name = putBody.category_name;
+        putCatGR.icon_emoji    = '💰';
+        putCatGR.color_hex     = '#6B7280';
+        putCatGR.insert();
+      }
+      editGR.setValue('category', putCatGR.getUniqueValue());
     }
 
     editGR.update();

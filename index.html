@@ -2008,7 +2008,7 @@ function txnRowHTML(txn, showActions = true) {
     <div class="txn-ico" style="background:${CAT_BG[txn.category]||'#F7F9FC'}">${catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${txn.description}</div>
-      <div class="txn-meta">${txn.category} · ${txn.account} · ${fmtDate(txn.date)}</div>
+      <div class="txn-meta">${[txn.category, txn.account, fmtDate(txn.date)].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmt(txn.amount)}</div>
     ${showActions ? `<div class="txn-actions">
