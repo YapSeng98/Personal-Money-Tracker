@@ -1028,7 +1028,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
       <div class="form-group"><label class="form-label">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
     </div>
-    <div class="form-group"><label class="form-label">Institution</label><input class="form-input" type="text" id="acc-institution" list="institution-list" placeholder="e.g. DBS, OCBC, UOB…"><datalist id="institution-list"><option value="DBS"><option value="OCBC"><option value="UOB"><option value="Standard Chartered"><option value="Citibank"><option value="HSBC"><option value="Maybank"><option value="Grab Financial"><option value="GXS Bank"><option value="Trust Bank"><option value="Other"></datalist></div>
+    <div class="form-group"><label class="form-label">Institution</label><input class="form-input" type="text" id="acc-institution" placeholder="e.g. DBS, OCBC, UOB…"></div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
