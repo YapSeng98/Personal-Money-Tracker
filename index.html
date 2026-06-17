@@ -972,8 +972,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group">
         <label class="form-label">Icon</label>
         <select class="form-input" id="goal-icon">
-          <option>✈️</option><option>🏠</option><option>🚗</option><option>🎓</option>
-          <option>🚨</option><option>💍</option><option>🖥️</option><option>🏖️</option><option>🎯</option>
+          <option value="✈️">✈️</option><option value="🏠">🏠</option><option value="🚗">🚗</option><option value="🎓">🎓</option>
+          <option value="🚨">🚨</option><option value="💍">💍</option><option value="🖥️">🖥️</option><option value="🏖️">🏖️</option><option value="🎯">🎯</option>
         </select>
       </div>
     </div>
@@ -1470,6 +1470,13 @@ function setSelectVal(id, val) {
 // SAVE TRANSACTION (add + update)
 // ═══════════════════════════════════════════════
 // Returns the SN sys_id for an item regardless of whether it came from SN (id=sys_id) or was created locally (sys_id set after POST)
+// Strip base64 artifacts SN sometimes appends to emoji fields (e.g. "🏠8J+PoA==" → "🏠")
+function sanitizeIcon(val, fallback) {
+  if (!val) return fallback || '🎯';
+  const match = val.match(/^[^\x00-\x7F]+/);
+  return (match ? match[0] : val).trim() || fallback || '🎯';
+}
+
 function _snId(item) {
   return item.sys_id || (typeof item.id === 'string' && item.id.length > 20 ? item.id : null);
 }
@@ -2878,7 +2885,7 @@ async function snLoadAll() {
     state.budgets = (budgets || []).map(b => ({
       id       : b.sys_id,
       category : b.category,
-      icon     : b.category_icon  || '📦',
+      icon     : sanitizeIcon(b.category_icon, '📦'),
       color    : b.category_color || '#6B7280',
       amount   : b.budget_amount,
       spent    : b.spent_amount,
@@ -2887,7 +2894,7 @@ async function snLoadAll() {
     state.goals = (goals || []).map(g => ({
       id      : g.sys_id,
       name    : g.goal_name,
-      icon    : g.goal_icon || '🎯',
+      icon    : sanitizeIcon(g.goal_icon, '🎯'),
       target  : g.target_amount,
       current : g.current_amount,
       monthly : g.monthly_contribution || 0,
