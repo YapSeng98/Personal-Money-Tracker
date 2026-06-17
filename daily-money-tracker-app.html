@@ -1496,6 +1496,15 @@ async function saveTransaction() {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
         description: desc, category: cat, account: acct, date, notes };
+      // Reverse old balance effect, apply new
+      const oldDelta = old.type === 'income' ? old.amount : -old.amount;
+      const newDelta = state.currentType === 'income' ? amt : -amt;
+      if (old.account === acct) {
+        adjustAccountBalance(acct, newDelta - oldDelta);
+      } else {
+        adjustAccountBalance(old.account, -oldDelta);
+        adjustAccountBalance(acct, newDelta);
+      }
       const snIdTxn = _snId(old);
       if (state.snToken && snIdTxn) {
         snAPI.call('/transactions', 'PUT', { sys_id: snIdTxn, ...snPayload })
@@ -1507,6 +1516,7 @@ async function saveTransaction() {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt,
       description: desc, category: cat, account: acct, date, notes };
     state.transactions.unshift(txn);
+    adjustAccountBalance(acct, state.currentType === 'income' ? amt : -amt);
     if (state.snToken) {
       snAPI.call('/transactions', 'POST', snPayload)
         .then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
@@ -1528,6 +1538,7 @@ async function deleteTransaction(id) {
   const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
   if (!ok) return;
   state.transactions = state.transactions.filter(x => x.id != id);
+  adjustAccountBalance(txn.account, txn.type === 'income' ? -txn.amount : txn.amount);
   saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
@@ -1538,6 +1549,19 @@ async function deleteTransaction(id) {
   }
 }
 
+
+// Adjust an account's balance when a transaction is added/edited/deleted
+function adjustAccountBalance(accountName, delta) {
+  if (!accountName || !delta) return;
+  const acc = state.accounts.find(a => a.name === accountName);
+  if (!acc) return;
+  acc.balance = Math.round((acc.balance + delta) * 100) / 100;
+  const snId = _snId(acc);
+  if (state.snToken && snId) {
+    snAPI.call('/accounts', 'PUT', { sys_id: snId, current_balance: acc.balance })
+      .catch(e => console.warn('Balance sync:', e.message));
+  }
+}
 
 // ═══════════════════════════════════════════════
 // BUDGET MODAL — open / close / edit
@@ -2230,7 +2254,7 @@ function renderAccounts() {
     </div>
     ${state.accounts.map(a=>`
     <div class="account-row">
-      <div class="account-ico" style="background:${a.balance<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon}</div>
+      <div class="account-ico" style="background:${a.balance<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
       <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
       <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(Math.abs(a.balance))}</div>
       <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
@@ -2538,7 +2562,7 @@ async function syncFromSN() {
       state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     }
     if (accounts.length) {
-      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type?.value||'')==='credit_card'?'💳':'🏦' }));
+      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type||'').toLowerCase().includes('credit')?'💳':(r.account_type||'').toLowerCase().includes('cash')?'💵':'🏦' }));
     }
     renderAll();
     showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
