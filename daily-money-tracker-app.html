@@ -496,16 +496,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
   <button class="nav-item" id="nav-profile" onclick="showView('profile',this)"><span class="icon">👤</span> Profile</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
-  <div class="sidebar-bottom">
-    <div id="sn-conn-status" class="sn-status" onclick="showView('settings',document.querySelectorAll('.nav-item')[6])">
-      <span class="dot" id="sn-dot" style="background:#6B7280;animation:none;"></span>
-      <span id="sn-status-text">Not connected</span>
-    </div>
-    <a class="sn-quick-link" data-sn-path="" href="#" target="_blank"
-       style="display:block;background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.25);border-radius:10px;padding:9px 12px;text-decoration:none;text-align:center;font-size:11px;font-weight:700;color:#00C896;">
-      🔗 Open PDI ↗
-    </a>
-  </div>
 </aside>
 
 <!-- ── MAIN ── -->
@@ -798,10 +788,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <div class="profile-field">
           <span class="profile-field-lbl">Language</span>
           <span class="profile-field-val" id="prof-detail-language">English</span>
-        </div>
-        <div class="profile-field">
-          <span class="profile-field-lbl">ServiceNow Instance</span>
-          <span class="profile-field-val" id="prof-detail-instance" style="font-size:11px;color:var(--muted);">—</span>
         </div>
         <div class="profile-field" style="border-bottom:none;padding-bottom:0;">
           <span class="profile-field-lbl">Member Since</span>
