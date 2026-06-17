@@ -1730,7 +1730,7 @@ function openAccountModal(id = null) {
   document.getElementById('acc-modal-title').textContent = isEdit ? t('modal_edit_account') : t('modal_add_account');
   document.getElementById('acc-save-btn').textContent    = isEdit ? t('modal_save_changes') : t('modal_save_account');
   if (isEdit) {
-    const acc = state.accounts.find(a => a.id === id);
+    const acc = state.accounts.find(a => a.id == id);
     if (!acc) return;
     document.getElementById('acc-name').value        = acc.name;
     document.getElementById('acc-type').value        = acc.type;
@@ -1756,7 +1756,7 @@ async function saveAccount() {
     current_balance: balance, currency: state.snUserProfile?.currency || state.currency || 'SGD' };
 
   if (_editingAccountId !== null) {
-    const idx = state.accounts.findIndex(a => a.id === _editingAccountId);
+    const idx = state.accounts.findIndex(a => a.id == _editingAccountId);
     if (idx !== -1) {
       state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
       const sysId = _snId(state.accounts[idx]);
@@ -1784,7 +1784,7 @@ async function saveAccount() {
 }
 
 async function deleteAccount(id) {
-  const acc = state.accounts.find(a => a.id === id);
+  const acc = state.accounts.find(a => a.id == id);
   const ok = await showConfirm(t('confirm_del_account'), t('confirm_del_account_msg'), t('confirm_delete')||'Delete', 'btn-coral');
   if (!ok) return;
   state.accounts = state.accounts.filter(a => a.id !== id);
