@@ -1396,44 +1396,6 @@ function showView(name, el) {
   if (name === 'transactions') populateCategoryFilter();
   if (name === 'settings') {
     _updateSNConnCard();
-    // Auto-test real connection every time Settings opens
-    if (state.snToken) {
-      // Already have a token — verify it's still valid
-      setConnStatus('connecting');
-      snAPI.call('/profile')
-        .then(prof => {
-          if (prof) {
-            state.snUserProfile = {
-              ...state.snUserProfile,
-              username    : prof.username,
-              display_name: prof.display_name,
-              email       : prof.email,
-              currency    : prof.currency,
-              language    : prof.language,
-              avatar_color: prof.avatar_color,
-              monthly_income_target: prof.monthly_income_target,
-              stats       : prof.stats,
-              since       : prof.sys_created_on
-            };
-            saveState();
-            _updateSNConnCard();
-          }
-          setConnStatus('connected');
-        })
-        .catch(() => {
-          setConnStatus('error');
-          showToast('ServiceNow is sleeping — visit dev405150.service-now.com to wake it up, then retry.', 'warning');
-        });
-    } else if (state.snInstance && state.snUsername && state.snPassword) {
-      // No token but credentials saved — try to reconnect silently
-      setConnStatus('connecting');
-      snAPI.call('/auth/login', 'POST', { username: state.snUsername, password: state.snPassword })
-        .then(result => _onSNAuthSuccess(result))
-        .catch(() => {
-          setConnStatus('error');
-          showToast('Auto-reconnect failed — ServiceNow may be sleeping. Visit dev405150.service-now.com to wake it up.', 'warning');
-        });
-    }
   }
   if (name === 'profile') { _renderProfileView(); refreshProfileView(); }
   closeSidebar();
@@ -2950,7 +2912,7 @@ async function refreshProfileView() {
     setConnStatus('connected');
     _updateSNConnCard();
   } catch(e) {
-    showToast('Profile sync failed — ServiceNow may be sleeping. Visit dev405150.service-now.com first, then reopen Profile.', 'warning');
+    // silently ignore — cached profile data is already rendered
   }
 }
 
