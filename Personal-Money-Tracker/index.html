@@ -637,10 +637,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <!-- ════ ANALYTICS ════ -->
     <div class="view" id="view-analytics">
       <div class="analytics-grid" style="margin-bottom:20px;">
-        <div class="stat-card"><div class="stat-card-label">Total Income</div><div class="stat-card-val" id="an-income" style="color:var(--jade-d)">$0</div><div class="stat-card-sub">All time</div><div class="sn-field">x_pfmt_transaction [income]</div></div>
-        <div class="stat-card"><div class="stat-card-label">Total Expenses</div><div class="stat-card-val" id="an-expense" style="color:var(--coral)">$0</div><div class="stat-card-sub">All time</div><div class="sn-field">x_pfmt_transaction [expense]</div></div>
-        <div class="stat-card"><div class="stat-card-label">Largest Expense</div><div class="stat-card-val" id="an-largest">—</div><div class="stat-card-sub" id="an-largest-desc">—</div><div class="sn-field">GlideAggregate MAX</div></div>
-        <div class="stat-card"><div class="stat-card-label">Savings Rate</div><div class="stat-card-val" id="an-savings" style="color:var(--sky)">0%</div><div class="stat-card-sub">(Income − Expenses) / Income</div><div class="sn-field">Platform Analytics KPI</div></div>
+        <div class="stat-card"><div class="stat-card-label">Total Income</div><div class="stat-card-val" id="an-income" style="color:var(--jade-d)">$0</div><div class="stat-card-sub">All time</div></div>
+        <div class="stat-card"><div class="stat-card-label">Total Expenses</div><div class="stat-card-val" id="an-expense" style="color:var(--coral)">$0</div><div class="stat-card-sub">All time</div></div>
+        <div class="stat-card"><div class="stat-card-label">Largest Expense</div><div class="stat-card-val" id="an-largest">—</div><div class="stat-card-sub" id="an-largest-desc">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Savings Rate</div><div class="stat-card-val" id="an-savings" style="color:var(--sky)">—</div><div class="stat-card-sub">(Income − Expenses) / Income</div></div>
       </div>
       <div class="panel" style="margin-bottom:20px;">
         <div class="panel-header"><div class="panel-title">Category Breakdown</div></div>
@@ -2183,10 +2183,20 @@ function renderGoals() {
 
 /* ── ANALYTICS ── */
 function renderAnalytics() {
-  const s = calcStats();
-  document.getElementById('an-income').textContent  = '+'+fmt(s.income);
-  document.getElementById('an-expense').textContent = '-'+fmt(s.expense);
-  document.getElementById('an-savings').textContent = s.savingsRate.toFixed(1)+'%';
+  // All-time totals (not month-filtered)
+  const allIncome  = state.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const allExpense = state.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const savingsEl  = document.getElementById('an-savings');
+  document.getElementById('an-income').textContent  = '+'+fmt(allIncome);
+  document.getElementById('an-expense').textContent = '-'+fmt(allExpense);
+  if (allIncome > 0) {
+    const rate = ((allIncome - allExpense) / allIncome * 100);
+    savingsEl.textContent = rate.toFixed(1) + '%';
+    savingsEl.style.color = rate >= 20 ? 'var(--jade-d)' : rate >= 0 ? 'var(--amber)' : 'var(--coral)';
+  } else {
+    savingsEl.textContent = allExpense > 0 ? 'N/A' : '—';
+    savingsEl.style.color = 'var(--muted)';
+  }
   const exps = state.transactions.filter(t=>t.type==='expense'); // all-time for largest
   if (exps.length) {
     const max = exps.reduce((m,t)=>t.amount>m.amount?t:m,exps[0]);
