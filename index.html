@@ -2007,8 +2007,8 @@ function txnRowHTML(txn, showActions = true) {
     </div>
     <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmt(txn.amount)}</div>
     ${showActions ? `<div class="txn-actions">
-      <button class="icon-btn edit" onclick="openTxnModal(${txn.id})" title="Edit">✏️</button>
-      <button class="icon-btn del"  onclick="deleteTransaction(${txn.id})" title="Delete">🗑️</button>
+      <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit">✏️</button>
+      <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete">🗑️</button>
     </div>` : ''}
   </div>`;
 }
@@ -2078,8 +2078,8 @@ function renderBudgets() {
           ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
         </div>
         <div class="budget-actions">
-          <button class="icon-btn edit" onclick="openBudgetModal(${b.id})" title="Edit budget">✏️</button>
-          <button class="icon-btn del"  onclick="deleteBudget(${b.id})"    title="Delete budget">🗑️</button>
+          <button class="icon-btn edit" onclick="openBudgetModal('${b.id}')" title="Edit budget">✏️</button>
+          <button class="icon-btn del"  onclick="deleteBudget('${b.id}')"    title="Delete budget">🗑️</button>
         </div>
       </div>
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
@@ -2147,8 +2147,8 @@ function renderGoals() {
         <div style="display:flex;align-items:center;gap:8px;">
           ${monthsLeft ? `<span style="font-size:11px;color:var(--sky);">~${monthsLeft}${t('goal_mo_left')}</span>` : ''}
           <div class="goal-actions">
-            <button class="icon-btn edit" onclick="openGoalModal(${g.id})" title="Edit / Add contribution">✏️</button>
-            <button class="icon-btn del"  onclick="deleteGoal(${g.id})"    title="Delete goal">🗑️</button>
+            <button class="icon-btn edit" onclick="openGoalModal('${g.id}')" title="Edit / Add contribution">✏️</button>
+            <button class="icon-btn del"  onclick="deleteGoal('${g.id}')"    title="Delete goal">🗑️</button>
           </div>
         </div>
       </div>
@@ -2219,8 +2219,8 @@ function renderAccounts() {
       <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
       <div class="account-bal" style="color:${a.balance<0?'var(--coral)':'var(--ink)'}">${a.balance<0?'-':''}${fmt(Math.abs(a.balance))}</div>
       <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
-        <button onclick="openAccountModal(${a.id})" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
-        <button onclick="deleteAccount(${a.id})" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
+        <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
+        <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
       </div>
     </div>`).join('')}`;
 
