@@ -1953,6 +1953,8 @@ function applyLanguage() {
   // Settings labels
   const langSel = document.getElementById('language-select');
   if (langSel) langSel.value = state.language;
+  const curSel = document.getElementById('currency-select');
+  if (curSel) curSel.value = state.currency || 'SGD';
   // Transaction filter options
   const filterType = document.getElementById('filter-type');
   if (filterType) {
@@ -3099,6 +3101,8 @@ async function changePassword() {
       _hideSNLogin();
       if (prof) {
         state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
+        if (prof.currency) state.currency = prof.currency;
+        if (prof.language) state.language = prof.language;
         saveState();
       }
       renderAll();
