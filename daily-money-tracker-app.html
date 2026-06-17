@@ -955,6 +955,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <label class="form-label">Target Date</label>
       <input class="form-input" type="date" id="goal-date">
     </div>
+    <div class="form-group">
+      <label class="form-label">Remarks</label>
+      <textarea class="form-input" id="goal-remarks" rows="2" placeholder="Optional notes about this goal" style="resize:vertical;min-height:64px;"></textarea>
+    </div>
     <!-- Quick contribution buttons (shown in edit mode) -->
     <div id="goal-contrib-section" style="display:none;">
       <hr class="form-divider">
@@ -1652,6 +1656,7 @@ function openGoalModal(id = null) {
   document.getElementById('goal-target').value  = '';
   document.getElementById('goal-current').value = '0';
   document.getElementById('goal-monthly').value = '';
+  document.getElementById('goal-remarks').value = '';
 
   const d = new Date(); d.setFullYear(d.getFullYear() + 1);
   document.getElementById('goal-date').value = localDateStr(d);
@@ -1665,6 +1670,7 @@ function openGoalModal(id = null) {
     document.getElementById('goal-current').value = g.current;
     document.getElementById('goal-monthly').value = g.monthly || '';
     document.getElementById('goal-date').value    = g.date;
+    document.getElementById('goal-remarks').value = g.remarks || '';
   }
   document.getElementById('goal-modal').classList.add('open');
 }
@@ -1681,20 +1687,21 @@ async function saveGoal() {
   const icon    = document.getElementById('goal-icon').value;
   const target  = parseFloat(document.getElementById('goal-target').value);
   const current = parseFloat(document.getElementById('goal-current').value) || 0;
-  const monthly = parseFloat(document.getElementById('goal-monthly').value) || 0;
-  const date    = document.getElementById('goal-date').value;
-  const editId  = document.getElementById('goal-edit-id').value;
+  const monthly  = parseFloat(document.getElementById('goal-monthly').value) || 0;
+  const date     = document.getElementById('goal-date').value;
+  const remarks  = document.getElementById('goal-remarks').value.trim();
+  const editId   = document.getElementById('goal-edit-id').value;
 
   if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
   if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
   const snPayload = { goal_name: name, goal_icon: icon, target_amount: target,
-    current_amount: current, monthly_contribution: monthly, target_date: date };
+    current_amount: current, monthly_contribution: monthly, target_date: date, remarks };
 
   if (editId !== '') {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
-      state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date };
+      state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date, remarks };
       saveState();
       const sysId = _snId(state.goals[idx]);
       if (state.snToken && sysId) {
@@ -1704,7 +1711,7 @@ async function saveGoal() {
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    const goal = { id: state.nextId++, name, icon, target, current, monthly, date };
+    const goal = { id: state.nextId++, name, icon, target, current, monthly, date, remarks };
     state.goals.push(goal);
     saveState();
     if (state.snToken) {
@@ -2938,7 +2945,8 @@ async function snLoadAll() {
       current : g.current_amount,
       monthly : g.monthly_contribution || 0,
       date    : g.target_date || '',
-      status  : g.goal_status
+      status  : g.goal_status,
+      remarks : g.remarks || ''
     }));
     state.accounts = (accounts || []).map(a => ({
       id         : a.sys_id,
