@@ -30,31 +30,100 @@
     return;
   }
 
-  // SN cannot store supplementary-plane emoji (U+1F000+) in String fields.
-  // We percent-encode on write ("%F0%9F%8F%A0") and decode on read.
-  // Old records may have garbled bytes — decode best-effort, else fall back.
+  // SN's goal_icon field is 10 chars wide, so encoding must fit.
+  // Supplementary emoji (4 UTF-8 bytes) → 'b' + base64 = 9 chars (fits ✓).
+  // BMP emoji (e.g. ✈️, no surrogates) are stored directly.
+  // Pure-JS base64 encode/decode avoids any Java package dependency.
+
+  function base64Encode(bytes) {
+    var t = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    var s = '';
+    for (var i = 0; i < bytes.length; i += 3) {
+      var b0 = bytes[i], b1 = i+1 < bytes.length ? bytes[i+1] : 0, b2 = i+2 < bytes.length ? bytes[i+2] : 0;
+      s += t[b0 >> 2] + t[((b0 & 3) << 4) | (b1 >> 4)]
+        + (i+1 < bytes.length ? t[((b1 & 15) << 2) | (b2 >> 6)] : '=')
+        + (i+2 < bytes.length ? t[b2 & 63] : '=');
+    }
+    return s;
+  }
+  function base64DecodeUTF8(b64) {
+    var t = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    b64 = b64.replace(/=+$/, '');
+    var bytes = [];
+    for (var i = 0; i < b64.length; i += 4) {
+      var b0 = t.indexOf(b64[i]), b1 = t.indexOf(b64[i+1] || 'A'),
+          b2 = t.indexOf(b64[i+2] || 'A'), b3 = t.indexOf(b64[i+3] || 'A');
+      bytes.push((b0 << 2) | (b1 >> 4));
+      if (b64[i+2]) bytes.push(((b1 & 15) << 4) | (b2 >> 2));
+      if (b64[i+3]) bytes.push(((b2 & 3) << 6) | b3);
+    }
+    // Decode UTF-8 bytes → JS string (4-byte sequences become surrogate pairs)
+    var s = '';
+    for (var i = 0; i < bytes.length; ) {
+      var b = bytes[i++];
+      if (b < 0x80) { s += String.fromCharCode(b); }
+      else if (b < 0xE0) { var b2 = bytes[i++]; s += String.fromCharCode(((b & 0x1F) << 6) | (b2 & 0x3F)); }
+      else if (b < 0xF0) { var b2 = bytes[i++], b3 = bytes[i++]; s += String.fromCharCode(((b & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F)); }
+      else {
+        var b2 = bytes[i++], b3 = bytes[i++], b4 = bytes[i++];
+        var cp = ((b & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F);
+        cp -= 0x10000;
+        s += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+      }
+    }
+    return s;
+  }
+
   function safeIconWrite(icon) {
-    try { return encodeURIComponent(icon || '%F0%9F%8E%AF'); } // %F0%9F%8E%AF = 🎯
-    catch(e) { return icon || ''; }
+    if (!icon) return 'b8J+Orw=='; // 🎯 encoded, 9 chars
+    // Detect surrogate pairs (supplementary-plane emoji)
+    var hasSurrogate = false;
+    for (var i = 0; i < icon.length; i++) {
+      var cc = icon.charCodeAt(i);
+      if (cc >= 0xD800 && cc <= 0xDFFF) { hasSurrogate = true; break; }
+    }
+    if (!hasSurrogate) return icon; // BMP emoji: store directly (e.g. ✈️ = 2 chars)
+    // Supplementary: encode as UTF-8 bytes → base64 with 'b' prefix (≤ 9 chars for 1 emoji)
+    var bytes = [];
+    for (var i = 0; i < icon.length; i++) {
+      var cc = icon.charCodeAt(i);
+      if (cc >= 0xD800 && cc <= 0xDBFF && i + 1 < icon.length) {
+        var cc2 = icon.charCodeAt(i + 1);
+        if (cc2 >= 0xDC00 && cc2 <= 0xDFFF) {
+          var cp = 0x10000 + (cc - 0xD800) * 0x400 + (cc2 - 0xDC00);
+          bytes.push(0xF0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3F), 0x80 | ((cp >> 6) & 0x3F), 0x80 | (cp & 0x3F));
+          i++;
+          continue;
+        }
+      }
+      if (cc < 0x80) bytes.push(cc);
+      else if (cc < 0x800) { bytes.push(0xC0 | (cc >> 6), 0x80 | (cc & 0x3F)); }
+      else { bytes.push(0xE0 | (cc >> 12), 0x80 | ((cc >> 6) & 0x3F), 0x80 | (cc & 0x3F)); }
+    }
+    return 'b' + base64Encode(bytes);
   }
   function safeIconRead(raw) {
     if (!raw) return '🎯';
-    // New format: starts with %
+    // New format: 'b' + base64 of UTF-8 bytes (e.g. 'b8J+PoA==' → 🏠)
+    if (raw.charAt(0) === 'b' && raw.length >= 5) {
+      try { var d = base64DecodeUTF8(raw.slice(1)); if (d) return d; } catch(e) {}
+    }
+    // Old garbled format: U+FDD0-U+FDEF nonchar prefix + base64
+    var firstCp = raw.charCodeAt(0);
+    if (firstCp >= 0xFDD0 && firstCp <= 0xFDEF) {
+      try {
+        var b64 = raw.replace(/[^A-Za-z0-9+\/=]/g, '');
+        if (b64.length >= 4) { var d = base64DecodeUTF8(b64); if (d) return d; }
+      } catch(e) {}
+      return '🎯';
+    }
+    // Old percent-encoded format (may be truncated — try anyway)
     if (raw.charAt(0) === '%') {
       try { return decodeURIComponent(raw); } catch(e) {}
     }
-    // BMP emoji stored directly (e.g. ✈️) — return as-is
-    var cp = raw.charCodeAt(0);
-    if (cp >= 0x2000 && cp <= 0xFFFF) return raw;
-    // Fallback for old garbled data — extract base64 portion and decode
-    var b64 = raw.replace(/[^A-Za-z0-9+\/=]/g, '');
-    if (b64.length >= 4) {
-      try {
-        var bytes = GlideStringUtil.base64Decode(b64);
-        if (bytes) return bytes;
-      } catch(e) {}
-    }
-    return '🎯';
+    // BMP emoji stored directly (charCode >= 0x0100)
+    if (firstCp >= 0x0100) return raw;
+    return raw || '🎯';
   }
 
   // ── GET /goals ────────────────────────────────────────────
