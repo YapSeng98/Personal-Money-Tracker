@@ -74,7 +74,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .balance-hero{background:linear-gradient(135deg,var(--ink) 0%,#1a2744 100%);border-radius:20px;padding:28px 32px;color:white;margin-bottom:24px;position:relative;overflow:hidden;}
 .balance-hero::before{content:'';position:absolute;right:-40px;top:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,150,.18) 0%,transparent 70%);}
 .balance-grid{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;position:relative;z-index:1;}
-.balance-main-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px;}
+.balance-main-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
 .balance-main-val{font-family:var(--fd);font-size:48px;font-weight:700;letter-spacing:-1.5px;}
 .balance-side{display:flex;gap:28px;}
 .balance-sub{text-align:center;}
@@ -163,7 +163,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
 /* form */
 .form-group{margin-bottom:16px;}
-.form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;display:block;}
+.form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.currency-unit{font-size:10px;font-weight:600;color:var(--sky);background:rgba(59,130,246,.1);padding:1px 7px;border-radius:99px;letter-spacing:0;text-transform:none;font-family:var(--fm);white-space:nowrap;}
 .form-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:var(--ff);font-size:14px;color:var(--ink);background:white;transition:border-color .15s;outline:none;}
 .form-input:focus{border-color:var(--sky);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -527,7 +528,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="balance-hero">
         <div class="balance-grid">
           <div>
-            <div class="balance-main-label">Net Balance <span class="currency-unit">(SGD)</span></div>
+            <div class="balance-main-label">Net Balance <span class="currency-unit" style="color:rgba(255,255,255,.6);background:rgba(255,255,255,.12);">(SGD)</span></div>
             <div class="balance-main-val" id="hero-balance">$0.00</div>
           </div>
           <div class="balance-side">
@@ -895,7 +896,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Current Spent <span class="currency-unit">(SGD)</span> — optional override</label>
+      <label class="form-label">Current Spent <span class="currency-unit">(SGD)</span><span style="font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);opacity:.7;">— optional override</span></label>
       <div class="amount-input-wrap">
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-spent" placeholder="0.00" step="0.01" value="0">
@@ -1904,7 +1905,7 @@ function applyLanguage() {
   if (addTxnDesktop) addTxnDesktop.textContent = t('btn_add_txn');
   // Dashboard static
   const balLabel = document.querySelector('.balance-main-label');
-  if (balLabel) balLabel.innerHTML = t('lbl_net_balance') + ' <span class="currency-unit">(' + (state.currency||'SGD') + ')</span>';
+  if (balLabel) balLabel.innerHTML = t('lbl_net_balance') + ' <span class="currency-unit" style="color:rgba(255,255,255,.6);background:rgba(255,255,255,.12);">(' + (state.currency||'SGD') + ')</span>';
   document.querySelectorAll('.currency-unit').forEach(el => { el.textContent = '(' + (state.currency||'SGD') + ')'; });
   const incLabel = document.getElementById('hero-income-label');
   if (incLabel) incLabel.textContent = t('lbl_income');
