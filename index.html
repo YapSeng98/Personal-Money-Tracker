@@ -891,12 +891,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       </div>
       <div class="form-group">
         <label class="form-label">Account</label>
-        <select class="form-input" id="txn-account">
-          <option value="DBS Checking">🏦 DBS Checking</option>
-          <option value="OCBC Savings">🏦 OCBC Savings</option>
-          <option value="Grab PayLater">💳 Grab PayLater</option>
-          <option value="Cash">💵 Cash</option>
-        </select>
+        <select class="form-input" id="txn-account"></select>
       </div>
     </div>
     <div class="form-group">
@@ -1033,7 +1028,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
       <div class="form-group"><label class="form-label">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
     </div>
-    <div class="form-group"><label class="form-label">Institution</label><select class="form-input" id="acc-institution"><option>DBS</option><option>OCBC</option><option>UOB</option><option>Standard Chartered</option><option>Grab Financial</option><option>Other</option></select></div>
+    <div class="form-group"><label class="form-label">Institution</label><input class="form-input" type="text" id="acc-institution" list="institution-list" placeholder="e.g. DBS, OCBC, UOB…"><datalist id="institution-list"><option value="DBS"><option value="OCBC"><option value="UOB"><option value="Standard Chartered"><option value="Citibank"><option value="HSBC"><option value="Maybank"><option value="Grab Financial"><option value="GXS Bank"><option value="Trust Bank"><option value="Other"></datalist></div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
@@ -1415,6 +1410,16 @@ function openTxnModal(id = null) {
   document.getElementById('txn-amount').value             = '';
   document.getElementById('txn-desc').value               = '';
   document.getElementById('txn-notes').value              = '';
+
+  // Populate account dropdown from user's saved accounts
+  const accSel = document.getElementById('txn-account');
+  if (state.accounts.length) {
+    accSel.innerHTML = state.accounts.map(a =>
+      `<option value="${a.name}">${a.icon || '🏦'} ${a.name}</option>`
+    ).join('');
+  } else {
+    accSel.innerHTML = '<option value="" disabled>No accounts — add one in Accounts tab</option>';
+  }
 
   if (editing) {
     const txn = state.transactions.find(x => x.id == id);
