@@ -1473,8 +1473,28 @@ function setSelectVal(id, val) {
 // Strip base64 artifacts SN sometimes appends to emoji fields (e.g. "🏠8J+PoA==" → "🏠")
 function sanitizeIcon(val, fallback) {
   if (!val) return fallback || '🎯';
-  const match = val.match(/^[^\x00-\x7F]+/);
-  return (match ? match[0] : val).trim() || fallback || '🎯';
+  const chars = [...val];
+  const firstCp = chars[0]?.codePointAt(0) ?? 0;
+
+  // Case 1: starts with a proper Unicode emoji (code point > U+00FF)
+  // Strip any trailing ASCII base64 artifact SN sometimes appends
+  if (firstCp > 0xFF) {
+    const match = val.match(/^[^\x00-\x7F]+/);
+    return (match ? match[0] : val) || fallback || '🎯';
+  }
+
+  // Case 2: SN returned 4-byte emoji UTF-8 bytes decoded as Latin-1
+  // (only affects supplementary-plane emoji like 🏠 U+1F3E0;
+  //  BMP emoji like ✈️ U+2708 come through fine)
+  if (firstCp >= 0x80 && firstCp <= 0xFF) {
+    try {
+      const bytes = new Uint8Array(chars.map(c => c.codePointAt(0)));
+      const decoded = new TextDecoder('utf-8').decode(bytes);
+      if ((decoded.codePointAt(0) ?? 0) > 0xFF) return decoded;
+    } catch(e) {}
+  }
+
+  return fallback || '🎯';
 }
 
 function _snId(item) {
@@ -1650,7 +1670,7 @@ function openGoalModal(id = null) {
   if (editing) {
     const g = state.goals.find(x => x.id == id);
     if (!g) return;
-    setSelectVal('goal-icon', g.icon);
+    setSelectVal('goal-icon', sanitizeIcon(g.icon, '🎯'));
     document.getElementById('goal-name').value    = g.name;
     document.getElementById('goal-target').value  = g.target;
     document.getElementById('goal-current').value = g.current;
