@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFMT — Personal Finance Money Tracker · Technical Documentation</title>
+<style>
+  :root {
+    --primary: #8B5CF6;
+    --primary-light: #EDE9FE;
+    --green: #00C896;
+    --green-light: #E6FBF5;
+    --blue: #3B82F6;
+    --blue-light: #EFF6FF;
+    --red: #FF5B5B;
+    --amber: #F59E0B;
+    --dark: #0D1117;
+    --dark2: #161B22;
+    --dark3: #21262D;
+    --border: #30363D;
+    --text: #1F2937;
+    --text-light: #6B7280;
+    --bg: #F8FAFC;
+    --white: #FFFFFF;
+    --code-bg: #1E1E2E;
+    --sidebar-w: 260px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ─────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--dark);
+    color: #C9D1D9;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #30363D transparent;
+  }
+  .sidebar-logo {
+    padding: 20px 18px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sidebar-logo .logo-icon {
+    font-size: 22px;
+    background: linear-gradient(135deg, var(--primary), var(--green));
+    border-radius: 8px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sidebar-logo .logo-text { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; }
+  .sidebar-logo .logo-sub  { font-size: 11px; color: #8B949E; }
+  .sidebar-section { padding: 12px 10px 4px; }
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #484F58;
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+  .sidebar-section a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #8B949E;
+    text-decoration: none;
+    transition: all .15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidebar-section a:hover { background: #21262D; color: #C9D1D9; }
+  .sidebar-section a.sub { padding-left: 22px; font-size: 12px; }
+
+  /* ── Main ────────────────────── */
+  #main {
+    flex: 1;
+    min-width: 0;
+    padding: 40px 48px 80px;
+    max-width: 960px;
+  }
+
+  /* ── Typography ──────────────── */
+  h1 { font-size: 32px; font-weight: 800; color: var(--dark); margin-bottom: 8px; }
+  h2 {
+    font-size: 22px; font-weight: 700; color: var(--dark);
+    margin: 52px 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--primary);
+    display: flex; align-items: center; gap: 10px;
+  }
+  h3 { font-size: 17px; font-weight: 700; color: var(--dark); margin: 32px 0 12px; }
+  h4 { font-size: 14px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: .8px; margin: 24px 0 8px; }
+  p  { margin-bottom: 14px; }
+  ul, ol { padding-left: 22px; margin-bottom: 14px; }
+  li { margin-bottom: 4px; }
+  a  { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+
+  /* ── Hero banner ─────────────── */
+  .hero {
+    background: linear-gradient(135deg, #0D1117 0%, #1a2744 100%);
+    border-radius: 16px;
+    padding: 36px 40px;
+    margin-bottom: 36px;
+    color: #fff;
+  }
+  .hero h1 { color: #fff; font-size: 28px; }
+  .hero p  { color: rgba(255,255,255,.65); margin-bottom: 0; font-size: 15px; }
+  .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+    letter-spacing: .5px;
+  }
+  .badge-green  { background: rgba(0,200,150,.15); color: var(--green); border: 1px solid rgba(0,200,150,.3); }
+  .badge-purple { background: rgba(139,92,246,.15); color: var(--primary); border: 1px solid rgba(139,92,246,.3); }
+  .badge-blue   { background: rgba(59,130,246,.15); color: var(--blue); border: 1px solid rgba(59,130,246,.3); }
+  .badge-amber  { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid rgba(245,158,11,.3); }
+
+  /* ── Cards ───────────────────── */
+  .card {
+    background: var(--white);
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--white);
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .stat-card .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-light); margin-bottom: 6px; }
+  .stat-card .stat-value { font-size: 22px; font-weight: 800; color: var(--dark); }
+  .stat-card .stat-desc  { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+  /* ── Tables ──────────────────── */
+  .table-wrap { overflow-x: auto; margin-bottom: 20px; border-radius: 10px; border: 1px solid #E5E7EB; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    background: var(--dark);
+    color: #C9D1D9;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #F9FAFB; }
+  .field-name { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; color: var(--primary); font-weight: 600; }
+  .field-type { font-size: 12px; color: var(--blue); font-weight: 600; }
+  .field-note { font-size: 12px; color: var(--text-light); }
+  .required-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--red); margin-right: 4px; vertical-align: middle; }
+
+  /* ── Code blocks ─────────────── */
+  pre {
+    background: var(--code-bg);
+    border-radius: 10px;
+    padding: 20px 22px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    border: 1px solid #313244;
+  }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+    font-size: 12.5px;
+  }
+  pre code { color: #CDD6F4; }
+  .inline-code {
+    background: #F3F4F6;
+    border: 1px solid #E5E7EB;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--primary);
+  }
+
+  /* ── Syntax colouring (manual) ─ */
+  .kw { color: #CBA6F7; }   /* keyword / type */
+  .fn { color: #89B4FA; }   /* function name */
+  .str{ color: #A6E3A1; }   /* string */
+  .cm { color: #6C7086; font-style: italic; }  /* comment */
+  .num{ color: #FAB387; }   /* number */
+  .op { color: #89DCEB; }   /* operator/key */
+
+  /* ── Method badges ───────────── */
+  .method {
+    display: inline-block;
+    font-size: 11px; font-weight: 800;
+    padding: 3px 9px; border-radius: 5px;
+    margin-right: 6px; font-family: monospace;
+    letter-spacing: .5px;
+  }
+  .GET    { background: #DCFCE7; color: #15803D; }
+  .POST   { background: #FEF9C3; color: #854D0E; }
+  .PUT    { background: #DBEAFE; color: #1D4ED8; }
+  .DELETE { background: #FFE4E6; color: #BE123C; }
+
+  /* ── Endpoint block ──────────── */
+  .endpoint {
+    background: var(--white);
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .endpoint-header {
+    background: var(--dark2);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .endpoint-path {
+    font-family: monospace;
+    font-size: 14px;
+    color: #79C0FF;
+    font-weight: 700;
+  }
+  .endpoint-desc { font-size: 13px; color: #8B949E; margin-left: auto; }
+  .endpoint-body { padding: 20px; }
+  .endpoint-body h4 { margin-top: 16px; }
+  .endpoint-body h4:first-child { margin-top: 0; }
+
+  /* ── Auth flow diagram ────────── */
+  .flow {
+    background: var(--dark);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 20px 0;
+    font-family: monospace;
+    font-size: 13px;
+    color: #C9D1D9;
+    line-height: 2;
+  }
+  .flow .step-num  { color: var(--green); font-weight: 700; }
+  .flow .arrow     { color: #484F58; }
+  .flow .component { color: #79C0FF; }
+  .flow .action    { color: #FAB387; }
+  .flow .data      { color: #A6E3A1; }
+
+  /* ── Alert boxes ─────────────── */
+  .alert {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 13.5px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-info    { background: var(--blue-light);  border-left: 4px solid var(--blue);    color: #1E40AF; }
+  .alert-warning { background: #FFFBEB;            border-left: 4px solid var(--amber);   color: #92400E; }
+  .alert-danger  { background: #FFF1F2;            border-left: 4px solid var(--red);     color: #9F1239; }
+  .alert-success { background: var(--green-light); border-left: 4px solid var(--green);   color: #064E3B; }
+
+  /* ── Step list ───────────────── */
+  .steps { counter-reset: step; list-style: none; padding-left: 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step);
+    background: var(--primary);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .steps li .step-content h4 { margin: 0 0 4px; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--dark); }
+  .steps li .step-content p  { margin: 0; font-size: 13.5px; color: var(--text-light); }
+
+  /* ── Category chips ──────────── */
+  .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px; margin: 16px 0; }
+  .cat-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--white); border: 1px solid #E5E7EB;
+    border-radius: 8px; padding: 8px 12px;
+    font-size: 13px;
+  }
+  .cat-chip .cat-icon { font-size: 18px; }
+  .cat-chip .cat-name { font-weight: 600; color: var(--dark); }
+  .cat-chip .cat-type { font-size: 11px; color: var(--text-light); }
+
+  /* ── TOC ─────────────────────── */
+  .toc {
+    background: var(--white);
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 36px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 24px;
+  }
+  .toc a { font-size: 13.5px; color: var(--text); text-decoration: none; }
+  .toc a:hover { color: var(--primary); }
+
+  /* ── Print ───────────────────── */
+  @media print {
+    #sidebar { display: none; }
+    #main { padding: 20px; max-width: 100%; }
+    pre { font-size: 11px; }
+    .endpoint { break-inside: avoid; }
+    h2 { break-before: page; }
+  }
+
+  /* ── Divider ─────────────────── */
+  hr { border: none; border-top: 1px solid #E5E7EB; margin: 40px 0; }
+
+  /* ── Scroll margin for anchors ─ */
+  [id] { scroll-margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ SIDEBAR ════════════════════ -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">💰</div>
+    <div>
+      <div class="logo-text">PFMT Docs</div>
+      <div class="logo-sub">v1.0 · June 2026</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Overview</div>
+    <a href="#overview">Introduction</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#tech-stack">Tech Stack</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Data Model</div>
+    <a href="#data-model">All Tables</a>
+    <a href="#tbl-user-profile" class="sub">user_profile</a>
+    <a href="#tbl-session" class="sub">session</a>
+    <a href="#tbl-account" class="sub">account</a>
+    <a href="#tbl-transaction" class="sub">transaction</a>
+    <a href="#tbl-category" class="sub">category</a>
+    <a href="#tbl-budget" class="sub">budget</a>
+    <a href="#tbl-goal" class="sub">savings_goal</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">REST APIs</div>
+    <a href="#api-overview">Overview & Headers</a>
+    <a href="#api-auth" class="sub">/auth</a>
+    <a href="#api-accounts" class="sub">/accounts</a>
+    <a href="#api-transactions" class="sub">/transactions</a>
+    <a href="#api-budgets" class="sub">/budgets</a>
+    <a href="#api-goals" class="sub">/goals</a>
+    <a href="#api-profile" class="sub">/profile</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Auth & Security</div>
+    <a href="#auth-flow">Session Flow</a>
+    <a href="#auth-helper">PFMTAuthHelper</a>
+    <a href="#auth-security">Security Notes</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Frontend</div>
+    <a href="#frontend-features">App Features</a>
+    <a href="#frontend-state">State Structure</a>
+    <a href="#frontend-sync">Data Sync Model</a>
+    <a href="#frontend-lock">PIN Lock</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">SN Components</div>
+    <a href="#sn-business-rules">Business Rules</a>
+    <a href="#sn-client-scripts">Client Scripts</a>
+    <a href="#sn-flows">Scheduled Flows</a>
+    <a href="#sn-utilities">Utilities</a>
+    <a href="#sn-categories">Default Categories</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Deployment</div>
+    <a href="#deploy">Step-by-Step Guide</a>
+    <a href="#errors">Error Reference</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════ MAIN ════════════════════════ -->
+<main id="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>💰 Personal Finance Money Tracker</h1>
+    <p>Full technical documentation — ServiceNow backend, REST APIs, frontend app, and deployment guide.</p>
+    <div class="hero-badges">
+      <span class="badge badge-green">ServiceNow PDI</span>
+      <span class="badge badge-purple">GitHub Pages</span>
+      <span class="badge badge-blue">Token Auth</span>
+      <span class="badge badge-amber">Offline-first</span>
+    </div>
+  </div>
+
+  <!-- ══ OVERVIEW ══════════════════════════════════════════ -->
+  <h2 id="overview">📋 Overview</h2>
+
+  <p>PFMT is a personal finance management single-page application that uses <strong>ServiceNow as a cloud database backend</strong>. Users track income and expenses, set monthly budgets, create savings goals, and view spending analytics — all synced in real time to a ServiceNow PDI via custom Scripted REST APIs.</p>
+
+  <div class="card-grid">
+    <div class="stat-card">
+      <div class="stat-label">REST Resources</div>
+      <div class="stat-value">6</div>
+      <div class="stat-desc">auth, accounts, txn, budgets, goals, profile</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">SN Tables</div>
+      <div class="stat-value">7</div>
+      <div class="stat-desc">custom tables, prefix x_887486_0_</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Business Rules</div>
+      <div class="stat-value">4</div>
+      <div class="stat-desc">auto-balance, budget spend, validation</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Session Duration</div>
+      <div class="stat-value">7 days</div>
+      <div class="stat-desc">auto-renews with saved credentials</div>
+    </div>
+  </div>
+
+  <!-- ══ ARCHITECTURE ══════════════════════════════════════ -->
+  <h2 id="architecture">🏗️ Architecture</h2>
+
+  <div class="flow">
+<span class="component">GitHub Pages</span>  (index.html — Single Page App)
+     │
+     │   On page load:
+<span class="step-num">①</span>  <span class="arrow">──</span> loadState() from <span class="data">localStorage[pfmt_state_v2]</span>
+<span class="step-num">②</span>  <span class="arrow">──</span> if saved token → GET /profile to validate
+         <span class="arrow">└─</span> if expired → _tryAutoLogin() with saved credentials
+<span class="step-num">③</span>  <span class="arrow">──</span> if valid → snLoadAll() pulls fresh data from SN
+     │
+     │   On user action (add/edit/delete):
+<span class="step-num">④</span>  <span class="arrow">──</span> update local state + saveState() <span class="data">[optimistic]</span>
+<span class="step-num">⑤</span>  <span class="arrow">──</span> fire-and-forget POST/PUT/DELETE to SN API
+     │
+     │   <span class="component">ServiceNow PDI</span>  (Scripted REST APIs)
+         <span class="arrow">├─</span> /auth/{action}     → login, register, logout
+         <span class="arrow">├─</span> /accounts          → CRUD
+         <span class="arrow">├─</span> /transactions      → CRUD + filters
+         <span class="arrow">├─</span> /budgets           → CRUD + auto period
+         <span class="arrow">├─</span> /goals             → CRUD + progress %
+         <span class="arrow">└─</span> /profile           → GET stats, PUT preferences
+  </div>
+
+  <p>The app is <strong>offline-first</strong>: all data is always readable from <span class="inline-code">localStorage</span>. ServiceNow is the source of truth and is synced asynchronously in the background.</p>
+
+  <!-- ══ TECH STACK ════════════════════════════════════════ -->
+  <h2 id="tech-stack">⚙️ Tech Stack</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Technology</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Frontend</strong></td><td>Vanilla JS + HTML5 + CSS3</td><td>Single self-contained <span class="inline-code">index.html</span> file, no build step, no frameworks</td></tr>
+        <tr><td><strong>Hosting</strong></td><td>GitHub Pages</td><td>Free static hosting from <span class="inline-code">main</span> branch root</td></tr>
+        <tr><td><strong>Backend</strong></td><td>ServiceNow PDI</td><td>Scripted REST APIs, Business Rules, Flows — all server-side JavaScript</td></tr>
+        <tr><td><strong>Database</strong></td><td>ServiceNow GlideRecord</td><td>7 custom tables with prefix <span class="inline-code">x_887486_0_</span></td></tr>
+        <tr><td><strong>Auth</strong></td><td>Custom token-based</td><td>32-char hex token, 7-day sessions stored in <span class="inline-code">x_887486_0_session</span></td></tr>
+        <tr><td><strong>Local Storage</strong></td><td>Browser localStorage</td><td>Key: <span class="inline-code">pfmt_state_v2</span> — full state snapshot</td></tr>
+        <tr><td><strong>AI (optional)</strong></td><td>Groq API</td><td>Spending insights; free tier — 14,400 requests/day</td></tr>
+        <tr><td><strong>Passwords</strong></td><td>SHA-256 (GlideDigest)</td><td>Hashed server-side before storage; no plaintext persisted in SN</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ DATA MODEL ════════════════════════════════════════ -->
+  <h2 id="data-model">🗄️ Data Model</h2>
+  <p>All tables use the scope prefix <strong><span class="inline-code">x_887486_0_</span></strong>. Each table is accessed via <span class="inline-code">GlideRecord</span> in the server-side scripts.</p>
+
+  <!-- user_profile -->
+  <h3 id="tbl-user-profile">user_profile</h3>
+  <p>One record per registered user. Stores credentials, preferences, and profile display data.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">username</td><td class="field-type">String</td><td>✅</td><td>Unique; stored lowercase</td></tr>
+        <tr><td class="field-name">password_hash</td><td class="field-type">String</td><td>✅</td><td>SHA-256 hex of plaintext password</td></tr>
+        <tr><td class="field-name">display_name</td><td class="field-type">String</td><td>✅</td><td>Shown in UI and welcome toast</td></tr>
+        <tr><td class="field-name">email</td><td class="field-type">String</td><td></td><td>Optional; shown on profile page</td></tr>
+        <tr><td class="field-name">currency_preference</td><td class="field-type">String</td><td></td><td>Default: <span class="inline-code">SGD</span></td></tr>
+        <tr><td class="field-name">language_preference</td><td class="field-type">String</td><td></td><td>Default: <span class="inline-code">en</span>; also supports <span class="inline-code">zh</span></td></tr>
+        <tr><td class="field-name">avatar_color</td><td class="field-type">String</td><td></td><td>Hex colour for avatar initials. Default: <span class="inline-code">#8B5CF6</span></td></tr>
+        <tr><td class="field-name">monthly_income_target</td><td class="field-type">Decimal</td><td></td><td>Used to compute savings rate on dashboard</td></tr>
+        <tr><td class="field-name">last_login</td><td class="field-type">DateTime</td><td></td><td>Bumped automatically on every valid token validation</td></tr>
+        <tr><td class="field-name">sys_created_on</td><td class="field-type">DateTime</td><td></td><td>System field; shown as "Member since" on profile page</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- session -->
+  <h3 id="tbl-session">session</h3>
+  <p>One record per active login session. Tokens are invalidated by setting <span class="inline-code">expires_at</span> to now on logout, or by the weekly prune job.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">user_profile</td><td class="field-type">Reference</td><td>✅</td><td>Links to <span class="inline-code">x_887486_0_user_profile</span></td></tr>
+        <tr><td class="field-name">token</td><td class="field-type">String(40)</td><td>✅</td><td>32-char random hex — must fit in a String(40) field</td></tr>
+        <tr><td class="field-name">expires_at</td><td class="field-type">DateTime</td><td>✅</td><td>Set to 7 days from creation. Logout sets this to NOW.</td></tr>
+        <tr><td class="field-name">device_hint</td><td class="field-type">String</td><td></td><td>First 100 chars of User-Agent header at login time</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="alert alert-warning">
+    <span class="alert-icon">⚠️</span>
+    <div>The <strong>token field must be at least String(40)</strong>. The generated token is 32 chars. If the field is shorter, the token gets truncated on INSERT and every subsequent validateToken() query returns null → 401 on all API calls.</div>
+  </div>
+
+  <!-- account -->
+  <h3 id="tbl-account">account</h3>
+  <p>Bank or wallet accounts owned by a user. Balances are updated automatically by BR_UpdateAccountBalance when a transaction is confirmed.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">user_profile</td><td class="field-type">Reference</td><td>Owner of this account</td></tr>
+        <tr><td class="field-name">account_name</td><td class="field-type">String</td><td>Display name (e.g. "DBS Savings")</td></tr>
+        <tr><td class="field-name">acount_type</td><td class="field-type">String</td><td>Note: field name has a typo — <span class="inline-code">acount_type</span> (one 'c'). Values: checking, savings, credit_card</td></tr>
+        <tr><td class="field-name">institution_name</td><td class="field-type">String</td><td>Bank or provider name (e.g. "DBS", "OCBC")</td></tr>
+        <tr><td class="field-name">current_balance</td><td class="field-type">Decimal</td><td>Updated automatically by BR_UpdateAccountBalance</td></tr>
+        <tr><td class="field-name">currency</td><td class="field-type">String</td><td>Default: <span class="inline-code">SGD</span></td></tr>
+        <tr><td class="field-name">is_active</td><td class="field-type">Boolean</td><td>Inactive accounts cannot receive transactions (validated by BR_ValidateTransaction)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- transaction -->
+  <h3 id="tbl-transaction">transaction</h3>
+  <p>Every income or expense entry. Confirmed transactions (state=2) trigger account balance and budget updates via Business Rules.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">user_profile</td><td class="field-type">Reference</td><td>Direct link to user_profile (used for auth ownership checks)</td></tr>
+        <tr><td class="field-name">account</td><td class="field-type">Reference</td><td>Which account this transaction belongs to</td></tr>
+        <tr><td class="field-name">category</td><td class="field-type">Reference</td><td>Spending category — auto-created by REST API if name not found</td></tr>
+        <tr><td class="field-name">transaction_type</td><td class="field-type">String</td><td>Values: <span class="inline-code">expense</span>, <span class="inline-code">income</span>, <span class="inline-code">transfer</span></td></tr>
+        <tr><td class="field-name">amount</td><td class="field-type">Decimal</td><td>Always positive. Must be &gt; 0 (validated by BR_ValidateTransaction)</td></tr>
+        <tr><td class="field-name">description</td><td class="field-type">String</td><td>Required. Short label shown in transaction list</td></tr>
+        <tr><td class="field-name">transaction_date</td><td class="field-type">Date</td><td>Future-dated transactions are forced to Draft state</td></tr>
+        <tr><td class="field-name">notes</td><td class="field-type">String</td><td>Optional free-text notes</td></tr>
+        <tr><td class="field-name">state</td><td class="field-type">String</td><td><span class="inline-code">1</span>=Draft (not counted), <span class="inline-code">2</span>=Confirmed (triggers BR). API always creates as Confirmed.</td></tr>
+        <tr><td class="field-name">is_recurring</td><td class="field-type">Boolean</td><td>If true, acts as a template. FLOW_RecurringTransactions clones it daily.</td></tr>
+        <tr><td class="field-name">recurring_frequency</td><td class="field-type">String</td><td>Values: <span class="inline-code">daily</span>, <span class="inline-code">weekly</span>, <span class="inline-code">monthly</span></td></tr>
+        <tr><td class="field-name">next_run_date</td><td class="field-type">Date</td><td>Set by BR_ValidateTransaction on insert; advanced by flow after each run</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- category -->
+  <h3 id="tbl-category">category</h3>
+  <p>Shared lookup table. System defaults are seeded once. If a category name from the REST API is not found, it is auto-created with a default icon and colour.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">category_name</td><td class="field-type">String</td><td>Unique. Used as the match key from the REST API.</td></tr>
+        <tr><td class="field-name">category_type</td><td class="field-type">String</td><td><span class="inline-code">expense</span> or <span class="inline-code">income</span></td></tr>
+        <tr><td class="field-name">icon_emoji</td><td class="field-type">String</td><td>Emoji shown in UI. Supplementary-plane emoji (4-byte) are base64-encoded with a "b" prefix by the goals API due to the 10-char field limit.</td></tr>
+        <tr><td class="field-name">color_hex</td><td class="field-type">String</td><td>CSS hex colour used for category chips and charts</td></tr>
+        <tr><td class="field-name">is_system_default</td><td class="field-type">Boolean</td><td>True for the 13 seeded categories</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- budget -->
+  <h3 id="tbl-budget">budget</h3>
+  <p>Monthly spending limits per category. Only one active budget per category per user. <span class="inline-code">spent_amount</span> and <span class="inline-code">remaining_amount</span> are maintained automatically.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">user_profile</td><td class="field-type">Reference</td><td>Owner</td></tr>
+        <tr><td class="field-name">category</td><td class="field-type">Reference</td><td>Unique per user — POST returns 409 if duplicate</td></tr>
+        <tr><td class="field-name">budget_amount</td><td class="field-type">Decimal</td><td>Monthly spending limit</td></tr>
+        <tr><td class="field-name">spent_amount</td><td class="field-type">Decimal</td><td>Auto-incremented by BR_UpdateBudgetSpent on each expense transaction</td></tr>
+        <tr><td class="field-name">remaining_amount</td><td class="field-type">Decimal</td><td>Calculated: budget_amount − spent_amount</td></tr>
+        <tr><td class="field-name">alert_threshold</td><td class="field-type">Integer</td><td>Percent. Default: 80. Event fired when spent/budget &gt;= this value.</td></tr>
+        <tr><td class="field-name">period_start</td><td class="field-type">Date</td><td>Auto-set to 1st of current month if not provided</td></tr>
+        <tr><td class="field-name">period_end</td><td class="field-type">Date</td><td>Auto-set to last day of current month if not provided</td></tr>
+        <tr><td class="field-name">rollover_enabled</td><td class="field-type">Boolean</td><td>If true, unspent balance carries forward on monthly reset</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- savings_goal -->
+  <h3 id="tbl-goal">savings_goal</h3>
+  <p>Target-based savings tracking. Status is auto-managed: <span class="inline-code">achieved</span> when <span class="inline-code">current_amount ≥ target_amount</span>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field Name</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">user_profile</td><td class="field-type">Reference</td><td>Owner</td></tr>
+        <tr><td class="field-name">goal_name</td><td class="field-type">String</td><td>Required. Display name (e.g. "Japan Trip")</td></tr>
+        <tr><td class="field-name">goal_icon</td><td class="field-type">String(10)</td><td>Emoji. BMP emoji stored directly. Supplementary emoji base64-encoded with "b" prefix to fit 10-char limit.</td></tr>
+        <tr><td class="field-name">target_amount</td><td class="field-type">Decimal</td><td>Required. Total savings target.</td></tr>
+        <tr><td class="field-name">current_amount</td><td class="field-type">Decimal</td><td>Current saved amount</td></tr>
+        <tr><td class="field-name">monthly_contribution</td><td class="field-type">Decimal</td><td>Used to estimate months remaining</td></tr>
+        <tr><td class="field-name">target_date</td><td class="field-type">Date</td><td>Optional deadline</td></tr>
+        <tr><td class="field-name">goal_status</td><td class="field-type">String</td><td>Auto-managed: <span class="inline-code">in_progress</span> or <span class="inline-code">achieved</span></td></tr>
+        <tr><td class="field-name">account</td><td class="field-type">Reference</td><td>Optional linked savings account</td></tr>
+        <tr><td class="field-name">remarks</td><td class="field-type">String</td><td>Optional free-text notes</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ REST API ══════════════════════════════════════════ -->
+  <h2 id="api-overview">🔌 REST API Reference</h2>
+
+  <div class="card">
+    <h4 style="margin-top:0">Base URL</h4>
+    <pre><code>https://&lt;your-instance&gt;.service-now.com/api/x_887486_0/pfmt/v1</code></pre>
+
+    <h4>Required Headers (all endpoints except /auth/*)</h4>
+    <div class="table-wrap" style="margin-bottom:0">
+      <table>
+        <thead><tr><th>Header</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td class="field-name">X-PFMT-Token</td><td>32-char hex token from login response</td></tr>
+          <tr><td class="field-name">X-HTTP-Method</td><td>GET | POST | PUT | DELETE — method override for CORS</td></tr>
+          <tr><td class="field-name">Content-Type</td><td>application/json</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>CORS note:</strong> All resources must have <strong>"Requires authentication" = false</strong> in SN. Authentication is handled entirely through the <span class="inline-code">X-PFMT-Token</span> header, not SN's native auth. The <span class="inline-code">X-HTTP-Method</span> header is used so that all requests can be sent as POST to avoid browser CORS preflight issues on DELETE.</div>
+  </div>
+
+  <!-- AUTH -->
+  <h3 id="api-auth">Authentication — <span class="inline-code">/auth/{action}</span></h3>
+  <p>No <span class="inline-code">X-PFMT-Token</span> required. The action is a path parameter: <span class="inline-code">login</span>, <span class="inline-code">register</span>, or <span class="inline-code">logout</span>.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/auth/login</span>
+      <span class="endpoint-desc">Validate credentials and get a session token</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Request Body</h4>
+      <pre><code>{
+  <span class="str">"username"</span>: <span class="str">"john"</span>,
+  <span class="str">"password"</span>: <span class="str">"mypassword"</span>
+}</code></pre>
+      <h4>Response 200</h4>
+      <pre><code>{
+  <span class="str">"result"</span>: {
+    <span class="str">"token"</span>              : <span class="str">"a1b2c3d4e5f6..."</span>,         <span class="cm">// 32-char hex — store this</span>
+    <span class="str">"user_profile_sys_id"</span>: <span class="str">"abc123..."</span>,
+    <span class="str">"username"</span>           : <span class="str">"john"</span>,
+    <span class="str">"display_name"</span>       : <span class="str">"John Doe"</span>,
+    <span class="str">"email"</span>              : <span class="str">"john@example.com"</span>,
+    <span class="str">"currency"</span>           : <span class="str">"SGD"</span>,
+    <span class="str">"language"</span>           : <span class="str">"en"</span>,
+    <span class="str">"avatar_color"</span>       : <span class="str">"#8B5CF6"</span>,
+    <span class="str">"monthly_income_target"</span>: <span class="num">5000</span>
+  }
+}</code></pre>
+      <h4>Error Responses</h4>
+      <div class="table-wrap" style="margin-bottom:0">
+        <table>
+          <thead><tr><th>Status</th><th>Condition</th></tr></thead>
+          <tbody>
+            <tr><td>400</td><td>Missing username or password</td></tr>
+            <tr><td>401</td><td>Username not found, or password hash mismatch</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/auth/register</span>
+      <span class="endpoint-desc">Create a new user account</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Request Body</h4>
+      <pre><code>{
+  <span class="str">"username"</span>    : <span class="str">"john"</span>,              <span class="cm">// required, must be unique</span>
+  <span class="str">"password"</span>    : <span class="str">"mypassword"</span>,       <span class="cm">// required, min 6 chars</span>
+  <span class="str">"display_name"</span>: <span class="str">"John Doe"</span>,
+  <span class="str">"email"</span>       : <span class="str">"john@example.com"</span>,
+  <span class="str">"currency"</span>    : <span class="str">"SGD"</span>,
+  <span class="str">"language"</span>    : <span class="str">"en"</span>,
+  <span class="str">"avatar_color"</span>: <span class="str">"#8B5CF6"</span>
+}</code></pre>
+      <h4>Response 201</h4>
+      <pre><code>{
+  <span class="str">"result"</span>: {
+    <span class="str">"token"</span>              : <span class="str">"..."</span>,
+    <span class="str">"user_profile_sys_id"</span>: <span class="str">"..."</span>,
+    <span class="str">"username"</span>           : <span class="str">"john"</span>,
+    <span class="str">"display_name"</span>       : <span class="str">"John Doe"</span>,
+    ...
+  }
+}</code></pre>
+      <h4>Error Responses</h4>
+      <div class="table-wrap" style="margin-bottom:0">
+        <table>
+          <thead><tr><th>Status</th><th>Condition</th></tr></thead>
+          <tbody>
+            <tr><td>400</td><td>Missing username/password, or password &lt; 6 chars</td></tr>
+            <tr><td>409</td><td>Username already taken</td></tr>
+            <tr><td>500</td><td>GlideRecord insert failed</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/auth/logout</span>
+      <span class="endpoint-desc">Invalidate the current session token</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Send the token in the <span class="inline-code">X-PFMT-Token</span> header. The server sets <span class="inline-code">expires_at</span> to now, making the token immediately invalid for future calls.</p>
+      <h4>Response 200</h4>
+      <pre><code>{ <span class="str">"result"</span>: { <span class="str">"status"</span>: <span class="str">"logged_out"</span> } }</code></pre>
+    </div>
+  </div>
+
+  <!-- ACCOUNTS -->
+  <h3 id="api-accounts">Accounts — <span class="inline-code">/accounts</span></h3>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/accounts</span>
+      <span class="endpoint-desc">List all accounts for the authenticated user</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Response 200</h4>
+      <pre><code>{
+  <span class="str">"result"</span>: [
+    {
+      <span class="str">"sys_id"</span>          : <span class="str">"abc123..."</span>,
+      <span class="str">"account_name"</span>    : <span class="str">"DBS Savings"</span>,
+      <span class="str">"account_type"</span>    : <span class="str">"savings"</span>,
+      <span class="str">"institution_name"</span>: <span class="str">"DBS"</span>,
+      <span class="str">"current_balance"</span> : <span class="num">12500.00</span>,
+      <span class="str">"currency"</span>        : <span class="str">"SGD"</span>
+    }
+  ],
+  <span class="str">"count"</span>: <span class="num">1</span>
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/accounts</span>
+      <span class="endpoint-desc">Create a new account</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Request Body</h4>
+      <pre><code>{
+  <span class="str">"account_name"</span>    : <span class="str">"DBS Savings"</span>,    <span class="cm">// required</span>
+  <span class="str">"account_type"</span>    : <span class="str">"savings"</span>,
+  <span class="str">"institution_name"</span>: <span class="str">"DBS"</span>,
+  <span class="str">"current_balance"</span> : <span class="num">12500.00</span>,
+  <span class="str">"currency"</span>        : <span class="str">"SGD"</span>
+}</code></pre>
+      <h4>Response 201</h4>
+      <pre><code>{ <span class="str">"result"</span>: { <span class="str">"sys_id"</span>: <span class="str">"..."</span>, <span class="str">"status"</span>: <span class="str">"created"</span> } }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/accounts</span>
+      <span class="endpoint-desc">Update an existing account</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{ <span class="str">"sys_id"</span>: <span class="str">"..."</span>, <span class="str">"current_balance"</span>: <span class="num">13000.00</span> }</code></pre>
+      <p style="color:var(--text-light);font-size:13px">All fields except <span class="inline-code">sys_id</span> are optional — send only what changed.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/accounts</span>
+      <span class="endpoint-desc">Delete an account</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{ <span class="str">"sys_id"</span>: <span class="str">"..."</span> }</code></pre>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <h3 id="api-transactions">Transactions — <span class="inline-code">/transactions</span></h3>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/transactions</span>
+      <span class="endpoint-desc">List transactions with optional filters</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Query Parameters</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="field-name">limit</td><td>Integer</td><td>500</td><td>Max number of records to return</td></tr>
+            <tr><td class="field-name">type</td><td>String</td><td>(all)</td><td>Filter by: <span class="inline-code">expense</span>, <span class="inline-code">income</span>, <span class="inline-code">transfer</span></td></tr>
+            <tr><td class="field-name">month</td><td>String</td><td>(all)</td><td>Filter by month prefix: <span class="inline-code">YYYY-MM</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h4>Response 200</h4>
+      <pre><code>{
+  <span class="str">"result"</span>: [
+    {
+      <span class="str">"sys_id"</span>     : <span class="str">"abc123..."</span>,
+      <span class="str">"type"</span>       : <span class="str">"expense"</span>,
+      <span class="str">"amount"</span>     : <span class="num">12.50</span>,
+      <span class="str">"description"</span>: <span class="str">"Kopi at Ya Kun"</span>,
+      <span class="str">"category"</span>   : <span class="str">"Food &amp; Drink"</span>,
+      <span class="str">"account"</span>    : <span class="str">"DBS Checking"</span>,
+      <span class="str">"date"</span>       : <span class="str">"2024-06-15"</span>,
+      <span class="str">"notes"</span>      : <span class="str">""</span>
+    }
+  ],
+  <span class="str">"count"</span>: <span class="num">1</span>
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/transactions</span>
+      <span class="endpoint-desc">Create a confirmed transaction</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"type"</span>         : <span class="str">"expense"</span>,           <span class="cm">// expense | income | transfer</span>
+  <span class="str">"amount"</span>       : <span class="num">12.50</span>,               <span class="cm">// required, must be &gt; 0</span>
+  <span class="str">"description"</span>  : <span class="str">"Kopi at Ya Kun"</span>,    <span class="cm">// required</span>
+  <span class="str">"date"</span>         : <span class="str">"2024-06-15"</span>,         <span class="cm">// YYYY-MM-DD; defaults to today</span>
+  <span class="str">"account_name"</span> : <span class="str">"DBS Checking"</span>,      <span class="cm">// resolved by name</span>
+  <span class="str">"category_name"</span>: <span class="str">"Food &amp; Drink"</span>,      <span class="cm">// auto-created if not found</span>
+  <span class="str">"notes"</span>        : <span class="str">""</span>
+}</code></pre>
+      <h4>Response 201</h4>
+      <pre><code>{ <span class="str">"result"</span>: { <span class="str">"sys_id"</span>: <span class="str">"..."</span>, <span class="str">"status"</span>: <span class="str">"created"</span> } }</code></pre>
+      <p style="font-size:13px;color:var(--text-light)">After POST succeeds, the frontend stores the returned <span class="inline-code">sys_id</span> as the local item's ID so future PUT/DELETE use the correct SN sys_id.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/transactions</span>
+      <span class="endpoint-desc">Update a transaction</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{ <span class="str">"sys_id"</span>: <span class="str">"..."</span>, <span class="str">"amount"</span>: <span class="num">15.00</span>, <span class="str">"description"</span>: <span class="str">"Updated desc"</span> }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/transactions</span>
+      <span class="endpoint-desc">Delete a transaction</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{ <span class="str">"sys_id"</span>: <span class="str">"..."</span> }</code></pre>
+    </div>
+  </div>
+
+  <!-- BUDGETS -->
+  <h3 id="api-budgets">Budgets — <span class="inline-code">/budgets</span></h3>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/budgets</span>
+      <span class="endpoint-desc">List all budgets with live spend data</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"result"</span>: [
+    {
+      <span class="str">"sys_id"</span>          : <span class="str">"..."</span>,
+      <span class="str">"category"</span>        : <span class="str">"Food &amp; Drink"</span>,
+      <span class="str">"category_icon"</span>   : <span class="str">"🍜"</span>,
+      <span class="str">"category_color"</span>  : <span class="str">"#8B5CF6"</span>,
+      <span class="str">"budget_amount"</span>   : <span class="num">500.00</span>,
+      <span class="str">"spent_amount"</span>    : <span class="num">325.00</span>,
+      <span class="str">"remaining_amount"</span>: <span class="num">175.00</span>,
+      <span class="str">"alert_threshold"</span> : <span class="num">80</span>,
+      <span class="str">"period_start"</span>    : <span class="str">"2024-06-01"</span>,
+      <span class="str">"period_end"</span>      : <span class="str">"2024-06-30"</span>
+    }
+  ],
+  <span class="str">"count"</span>: <span class="num">1</span>
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/budgets</span>
+      <span class="endpoint-desc">Create a budget for a category</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"category_name"</span>  : <span class="str">"Food &amp; Drink"</span>,  <span class="cm">// required; auto-created if missing</span>
+  <span class="str">"budget_amount"</span>  : <span class="num">500.00</span>,          <span class="cm">// required</span>
+  <span class="str">"alert_threshold"</span>: <span class="num">80</span>,               <span class="cm">// optional, default 80%</span>
+  <span class="str">"period_start"</span>   : <span class="str">"2024-06-01"</span>,     <span class="cm">// optional; defaults to 1st of this month</span>
+  <span class="str">"period_end"</span>     : <span class="str">"2024-06-30"</span>      <span class="cm">// optional; defaults to last day of this month</span>
+}</code></pre>
+      <div class="alert alert-warning" style="margin-top:12px">
+        <span class="alert-icon">⚠️</span>
+        <div>Returns <strong>409 Conflict</strong> if a budget for this category already exists for this user. One budget per category per user.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOALS -->
+  <h3 id="api-goals">Goals — <span class="inline-code">/goals</span></h3>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/goals</span>
+      <span class="endpoint-desc">List all savings goals with progress</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"result"</span>: [
+    {
+      <span class="str">"sys_id"</span>              : <span class="str">"..."</span>,
+      <span class="str">"goal_name"</span>           : <span class="str">"Japan Trip"</span>,
+      <span class="str">"goal_icon"</span>           : <span class="str">"✈️"</span>,
+      <span class="str">"target_amount"</span>       : <span class="num">5000.00</span>,
+      <span class="str">"current_amount"</span>      : <span class="num">2500.00</span>,
+      <span class="str">"monthly_contribution"</span>: <span class="num">500.00</span>,
+      <span class="str">"target_date"</span>         : <span class="str">"2024-12-31"</span>,
+      <span class="str">"goal_status"</span>         : <span class="str">"in_progress"</span>,    <span class="cm">// or "achieved"</span>
+      <span class="str">"progress_pct"</span>        : <span class="num">50.0</span>,             <span class="cm">// server-calculated, max 100</span>
+      <span class="str">"account_sys_id"</span>      : <span class="str">"..."</span>,
+      <span class="str">"account_name"</span>        : <span class="str">"Savings"</span>,
+      <span class="str">"remarks"</span>             : <span class="str">""</span>
+    }
+  ]
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/goals</span>
+      <span class="endpoint-desc">Create a savings goal</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"goal_name"</span>           : <span class="str">"Japan Trip"</span>,    <span class="cm">// required</span>
+  <span class="str">"goal_icon"</span>           : <span class="str">"✈️"</span>,
+  <span class="str">"target_amount"</span>       : <span class="num">5000.00</span>,         <span class="cm">// required</span>
+  <span class="str">"current_amount"</span>      : <span class="num">0</span>,
+  <span class="str">"monthly_contribution"</span>: <span class="num">500.00</span>,
+  <span class="str">"target_date"</span>         : <span class="str">"2024-12-31"</span>,
+  <span class="str">"account_name"</span>        : <span class="str">"Savings"</span>,        <span class="cm">// optional linked account</span>
+  <span class="str">"remarks"</span>             : <span class="str">""</span>
+}</code></pre>
+      <p style="font-size:13px;color:var(--text-light)"><span class="inline-code">goal_status</span> is auto-set: <span class="inline-code">"achieved"</span> if <span class="inline-code">current_amount ≥ target_amount</span>, otherwise <span class="inline-code">"in_progress"</span>.</p>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <h3 id="api-profile">Profile — <span class="inline-code">/profile</span></h3>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/profile</span>
+      <span class="endpoint-desc">Get profile info + live stats</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"result"</span>: {
+    <span class="str">"sys_id"</span>                : <span class="str">"..."</span>,
+    <span class="str">"username"</span>              : <span class="str">"john"</span>,
+    <span class="str">"display_name"</span>          : <span class="str">"John Doe"</span>,
+    <span class="str">"email"</span>                 : <span class="str">"john@example.com"</span>,
+    <span class="str">"currency"</span>              : <span class="str">"SGD"</span>,
+    <span class="str">"language"</span>              : <span class="str">"en"</span>,
+    <span class="str">"avatar_color"</span>          : <span class="str">"#8B5CF6"</span>,
+    <span class="str">"monthly_income_target"</span>  : <span class="num">5000</span>,
+    <span class="str">"last_login"</span>            : <span class="str">"2024-06-15 10:30:00"</span>,
+    <span class="str">"sys_created_on"</span>        : <span class="str">"2024-01-01 08:00:00"</span>,
+    <span class="str">"stats"</span>: {
+      <span class="str">"transaction_count"</span> : <span class="num">45</span>,
+      <span class="str">"account_count"</span>     : <span class="num">3</span>,
+      <span class="str">"active_goal_count"</span> : <span class="num">2</span>
+    }
+  }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/profile</span>
+      <span class="endpoint-desc">Update preferences or change password</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  <span class="str">"display_name"</span>         : <span class="str">"John Doe"</span>,      <span class="cm">// all optional</span>
+  <span class="str">"email"</span>                : <span class="str">"john@example.com"</span>,
+  <span class="str">"currency"</span>             : <span class="str">"SGD"</span>,
+  <span class="str">"language"</span>             : <span class="str">"en"</span>,
+  <span class="str">"avatar_color"</span>         : <span class="str">"#00C896"</span>,
+  <span class="str">"monthly_income_target"</span>: <span class="num">6000</span>,
+
+  <span class="cm">// To change password, both fields are required:</span>
+  <span class="str">"current_password"</span>     : <span class="str">"oldpass"</span>,
+  <span class="str">"new_password"</span>         : <span class="str">"newpass123"</span>    <span class="cm">// min 6 chars</span>
+}</code></pre>
+    </div>
+  </div>
+
+  <!-- ══ AUTH FLOW ══════════════════════════════════════════ -->
+  <h2 id="auth-flow">🔐 Authentication & Sessions</h2>
+
+  <h3>Login Flow</h3>
+  <div class="flow">
+<span class="step-num">1</span>  User enters <span class="data">instance + username + password</span>
+<span class="step-num">2</span>  App POSTs to <span class="action">POST /auth/login</span>
+<span class="step-num">3</span>  SN: <span class="component">PFMTAuthHelper.hashPassword(password)</span>
+       → compare against stored <span class="data">password_hash</span> in user_profile
+<span class="step-num">4</span>  SN: <span class="component">createSession()</span> inserts record in <span class="data">x_887486_0_session</span>
+       → token = <span class="data">gs.generateGUID().replace(/-/g, '')</span>  (32 hex chars)
+       → expires_at = NOW + 7 days
+<span class="step-num">5</span>  Response: 200 with <span class="data">{ token, user_profile_sys_id, username, ... }</span>
+<span class="step-num">6</span>  App stores <span class="data">state.snToken = token</span> → saved in localStorage
+<span class="step-num">7</span>  All subsequent requests include <span class="data">X-PFMT-Token: &lt;token&gt;</span>
+<span class="step-num">8</span>  SN: <span class="component">validateToken()</span> queries session table
+       → WHERE token = ? AND expires_at &gt; NOW
+       → returns user_profile sys_id (or null → 401)
+  </div>
+
+  <h3>Auto-connect on Page Load</h3>
+  <div class="flow">
+Page loads
+  <span class="arrow">├─</span> loadState() from localStorage
+  <span class="arrow">│</span>
+  <span class="arrow">├─ [Has saved token]</span>  GET /profile to validate
+  <span class="arrow">│    ├─ Valid</span>   → snLoadAll(), render app
+  <span class="arrow">│    └─ Expired</span> → <span class="action">_tryAutoLogin()</span>
+  <span class="arrow">│</span>
+  <span class="arrow">└─ [No token]</span>  <span class="action">_tryAutoLogin()</span>
+       <span class="arrow">├─ Has saved credentials</span> → silent POST /auth/login
+       <span class="arrow">│    ├─ OK</span>  → snLoadAll(), render app (no login screen shown)
+       <span class="arrow">│    └─ Fail</span> → show login screen with error
+       <span class="arrow">└─ No credentials</span> → show login screen (pre-filled instance)
+  </div>
+
+  <h3 id="auth-helper">PFMTAuthHelper — Method Reference</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">validateToken(token)</td><td>String|null</td><td>Queries session table. Returns user_profile sys_id if valid and not expired, otherwise null.</td></tr>
+        <tr><td class="field-name">hashPassword(plaintext)</td><td>String</td><td>SHA-256 hex via GlideDigest. Called on login (compare) and register (store).</td></tr>
+        <tr><td class="field-name">generateToken()</td><td>String</td><td>One GUID with hyphens removed → 32 hex chars. Fits in String(40) field.</td></tr>
+        <tr><td class="field-name">createSession(sysId, hint)</td><td>String</td><td>Inserts session record with 7-day expiry. Returns the token.</td></tr>
+        <tr><td class="field-name">deleteSession(token)</td><td>void</td><td>Sets expires_at = NOW (more reliable than deleteRecord which ACLs may block).</td></tr>
+        <tr><td class="field-name">pruneExpiredSessions()</td><td>void</td><td>Hard-deletes all records where expires_at &lt; NOW. Run as a weekly scheduled job.</td></tr>
+        <tr><td class="field-name">errorResponse(res,status,msg)</td><td>void</td><td>Standardised error: sets HTTP status and body <span class="inline-code">{ error: "msg" }</span>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="auth-security">Security Notes</h3>
+  <div class="alert alert-warning">
+    <span class="alert-icon">⚠️</span>
+    <div><strong>Password hashing is SHA-256 without salt.</strong> This is adequate for a personal-use PDI but would need bcrypt/PBKDF2 + salt for a production multi-tenant system.</div>
+  </div>
+  <div class="alert alert-warning">
+    <span class="alert-icon">⚠️</span>
+    <div><strong>Credentials stored in localStorage.</strong> The auto-connect feature saves username and password to the browser's localStorage for seamless reconnection. Do not use the auto-connect feature on shared or public computers.</div>
+  </div>
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>PIN lock</strong> is a separate app-level guard. The 4-digit PIN hash is stored under a separate localStorage key. It prevents casual access to the app but does not protect the saved SN credentials — these are still in localStorage.</div>
+  </div>
+
+  <!-- ══ FRONTEND ══════════════════════════════════════════ -->
+  <h2 id="frontend-features">🖥️ Frontend App</h2>
+
+  <h3>Navigation Pages</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Page</th><th>Icon</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Dashboard</strong></td><td>🏠</td><td>Monthly net balance card, quick stats (transaction count, avg daily spend, savings rate), recent transactions list, spend-by-category breakdown</td></tr>
+        <tr><td><strong>Transactions</strong></td><td>💳</td><td>Full list filterable by month and type (expense/income). Add/edit/delete modal. Each save/delete syncs to SN async.</td></tr>
+        <tr><td><strong>Budgets</strong></td><td>📊</td><td>Category budgets with spent/remaining progress rings. Alert threshold shown in amber/red when nearing limit.</td></tr>
+        <tr><td><strong>Goals</strong></td><td>🎯</td><td>Savings goals with progress bars and estimated months-to-target. Quick Contribute buttons (+$50, +$100, +$500).</td></tr>
+        <tr><td><strong>Analytics</strong></td><td>📈</td><td>Monthly trend chart, category spend breakdown, income vs expense comparison. Optional Groq AI spending insights.</td></tr>
+        <tr><td><strong>Accounts</strong></td><td>🏦</td><td>Bank/wallet account list with balances. Add/edit/delete. Balance updates sync to SN.</td></tr>
+        <tr><td><strong>Profile</strong></td><td>👤</td><td>Avatar initials, display name, email, stats (transactions/accounts/goals). Edit display name, email, income target. Change password.</td></tr>
+        <tr><td><strong>Settings</strong></td><td>⚙️</td><td>SN connection status card, Test Connection, Sync Data buttons. PIN setup. Currency, language. Groq API key. Quick links to SN Studio/Tables.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="frontend-state">State Object</h3>
+  <p>The entire app state lives in a single JavaScript object, persisted to <span class="inline-code">localStorage['pfmt_state_v2']</span>.</p>
+  <pre><code><span class="kw">let</span> state = {
+  <span class="cm">// ── Data ────────────────────────────────────────────────────</span>
+  transactions: [],  <span class="cm">// [{id, sys_id, type, amount, description, category, account, date, notes}]</span>
+  budgets:      [],  <span class="cm">// [{id, sys_id, category, amount, spent, alertPct}]</span>
+  goals:        [],  <span class="cm">// [{id, sys_id, name, icon, target, current, monthly, date}]</span>
+  accounts:     [],  <span class="cm">// [{id, sys_id, name, type, institution, balance}]</span>
+
+  <span class="cm">// ── UI State ─────────────────────────────────────────────────</span>
+  currentType: <span class="str">'expense'</span>,   <span class="cm">// active tab in txn modal</span>
+  nextId:      <span class="num">100</span>,           <span class="cm">// local ID counter (incremented for each new local item)</span>
+  filterMonth: <span class="str">'YYYY-MM'</span>,    <span class="cm">// selected month filter on transactions page</span>
+
+  <span class="cm">// ── ServiceNow Auth ──────────────────────────────────────────</span>
+  snToken:         <span class="kw">null</span>,      <span class="cm">// 32-char session token; null = not connected</span>
+  snProfileSysId:  <span class="kw">null</span>,      <span class="cm">// user_profile sys_id for the active session</span>
+  snUserProfile:   {},         <span class="cm">// {username, display_name, email, currency, language, avatar_color, stats}</span>
+  snInstance:      <span class="str">'dev...'</span>, <span class="cm">// instance hostname (no https://, no trailing slash)</span>
+  snUsername:      <span class="str">''</span>,        <span class="cm">// saved for auto-connect</span>
+  snPassword:      <span class="str">''</span>,        <span class="cm">// saved for auto-connect (stored in localStorage)</span>
+
+  <span class="cm">// ── Preferences ──────────────────────────────────────────────</span>
+  currency:  <span class="str">'SGD'</span>,
+  language:  <span class="str">'en'</span>,
+  geminiKey: <span class="str">''</span>,            <span class="cm">// Groq API key (labelled geminiKey for legacy reasons)</span>
+  lastSync:  <span class="kw">null</span>            <span class="cm">// ISO timestamp of last successful snLoadAll()</span>
+};</code></pre>
+
+  <h3 id="frontend-sync">Data Sync Model</h3>
+  <p>PFMT uses an <strong>optimistic local-first</strong> sync pattern:</p>
+  <ol>
+    <li>Every CRUD action updates local <span class="inline-code">state</span> immediately and calls <span class="inline-code">saveState()</span> to persist to localStorage.</li>
+    <li>The UI re-renders from local state instantly — no waiting for the server.</li>
+    <li>If <span class="inline-code">state.snToken</span> is set, an async SN API call fires in the background (fire-and-forget).</li>
+    <li>After a successful POST, the returned <span class="inline-code">sys_id</span> replaces the local numeric ID so future PUT/DELETE use the SN identifier.</li>
+    <li>Sync errors are shown as non-blocking warning toasts; local data is never rolled back.</li>
+    <li>On page load, <span class="inline-code">snLoadAll()</span> fetches fresh data from all 4 endpoints and overwrites local state.</li>
+  </ol>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>ID strategy:</strong> New items get a local integer ID (<span class="inline-code">state.nextId++</span>). After SN POST responds with a sys_id, the item's <span class="inline-code">id</span> is updated to the sys_id string. <span class="inline-code">_snId(item)</span> returns <span class="inline-code">item.sys_id || (item.id if it's a 32-char string)</span> for safe PUT/DELETE targeting.</div>
+  </div>
+
+  <h3 id="frontend-lock">PIN Lock Feature</h3>
+  <ul>
+    <li>Set a 4-digit PIN in <strong>Settings → App Security</strong>.</li>
+    <li>The SHA-256 hash of the PIN is stored in <span class="inline-code">localStorage</span> under a separate key (<span class="inline-code">PIN_KEY</span>).</li>
+    <li>The <strong>Lock</strong> sidebar item hides the app behind a numpad overlay immediately.</li>
+    <li><strong>Forgot PIN</strong>: Clears all localStorage (including the PIN hash and app state) and reloads — data is re-fetched from SN on next login.</li>
+  </ul>
+
+  <!-- ══ SN COMPONENTS ══════════════════════════════════════ -->
+  <h2 id="sn-business-rules">⚡ Business Rules</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0">BR_UpdateAccountBalance</h3>
+    <p><strong>Table:</strong> <span class="inline-code">x_887486_0_transaction</span> &nbsp;|&nbsp; <strong>When:</strong> After · Insert + Update &nbsp;|&nbsp; <strong>Condition:</strong> state = '2' (Confirmed)</p>
+    <p>Keeps <span class="inline-code">current_balance</span> on the linked account in sync. On <strong>update</strong>, it reverses the previous transaction first (debits/credits the old amount back) then applies the new one. This ensures balance is always correct even if amount or type changes.</p>
+    <pre><code><span class="cm">// Pseudo-logic:</span>
+<span class="kw">if</span> (isUpdate &amp;&amp; previous.state === <span class="str">'2'</span>) {
+  balance += (prevType === <span class="str">'income'</span>) ? -prevAmt : +prevAmt;  <span class="cm">// reverse</span>
+}
+balance += (txnType === <span class="str">'income'</span>) ? +amount : -amount;        <span class="cm">// apply</span>
+accountGR.current_balance = balance;</code></pre>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">BR_UpdateBudgetSpent</h3>
+    <p><strong>Table:</strong> <span class="inline-code">x_887486_0_transaction</span> &nbsp;|&nbsp; <strong>When:</strong> After · Insert &nbsp;|&nbsp; <strong>Condition:</strong> transaction_type = 'expense'</p>
+    <p>Finds the active budget for the transaction's category (where <span class="inline-code">period_start ≤ today ≤ period_end</span>). Increments <span class="inline-code">spent_amount</span>, recalculates <span class="inline-code">remaining_amount</span>. Fires the event <span class="inline-code">x_pfmt.budget.threshold_reached</span> when spending % ≥ <span class="inline-code">alert_threshold</span>.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">BR_ValidateTransaction</h3>
+    <p><strong>Table:</strong> <span class="inline-code">x_887486_0_transaction</span> &nbsp;|&nbsp; <strong>When:</strong> Before · Insert + Update</p>
+    <ul>
+      <li>Aborts if <strong>amount ≤ 0</strong> or linked <strong>account is inactive</strong></li>
+      <li>Forces <strong>future-dated transactions to Draft</strong> state (state = '1') with an info message</li>
+      <li>On insert of a recurring template: sets <strong>next_run_date</strong> based on recurring_frequency</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">BR_BudgetCalculatedFields</h3>
+    <p><strong>Table:</strong> <span class="inline-code">x_887486_0_budget</span> &nbsp;|&nbsp; <strong>When:</strong> Before · Insert + Update</p>
+    <ul>
+      <li>Calculates <span class="inline-code">remaining_amount = budget_amount − spent_amount</span></li>
+      <li>If <span class="inline-code">period_start</span> is empty, auto-sets period dates based on <span class="inline-code">period_type</span> (monthly / weekly / yearly)</li>
+    </ul>
+  </div>
+
+  <!-- Client Scripts -->
+  <h2 id="sn-client-scripts">📝 Client Scripts</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>Field</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>CS_DefaultTransactionDate</strong></td>
+          <td>onLoad</td>
+          <td>—</td>
+          <td>Pre-fills <span class="inline-code">transaction_date</span> with today. Sets state to Confirmed. Hides recurring_frequency and next_run_date fields initially.</td>
+        </tr>
+        <tr>
+          <td><strong>CS_FilterCategoriesByType</strong></td>
+          <td>onChange</td>
+          <td>transaction_type</td>
+          <td>Filters the category reference dropdown: expense/transfer → expense-type categories only; income → income-type categories only. Clears previous selection.</td>
+        </tr>
+        <tr>
+          <td><strong>CS_RecurringToggleAndBudgetHint</strong></td>
+          <td>onChange</td>
+          <td>is_recurring, category</td>
+          <td>Shows/hides recurring_frequency and next_run_date when is_recurring is toggled. On category change: calls PFMTBudgetHelper via GlideAjax and displays live budget status (spent/limit %) as a field message.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Flows -->
+  <h2 id="sn-flows">🔄 Scheduled Flows</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0">FLOW_MonthlyBudgetReset</h3>
+    <p><strong>Schedule:</strong> 1st of every month, 00:01 SGT</p>
+    <p>Iterates all budgets where <span class="inline-code">period_type = 'monthly'</span>:</p>
+    <ol>
+      <li>Logs the previous period's spent amount to <span class="inline-code">gs.info</span></li>
+      <li>If <span class="inline-code">rollover_enabled = true</span>: adds unspent balance to next month's budget amount</li>
+      <li>Resets <span class="inline-code">spent_amount = 0</span> and recalculates <span class="inline-code">remaining_amount</span></li>
+      <li>Updates <span class="inline-code">period_start</span> and <span class="inline-code">period_end</span> to the new month</li>
+    </ol>
+    <p>Outputs: <span class="inline-code">budgets_reset</span>, <span class="inline-code">rollovers_applied</span>, <span class="inline-code">new_period</span></p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">FLOW_RecurringTransactions</h3>
+    <p><strong>Schedule:</strong> Daily, 08:00 SGT</p>
+    <p>Finds all confirmed transactions where <span class="inline-code">is_recurring = true</span> and <span class="inline-code">next_run_date ≤ today</span>:</p>
+    <ol>
+      <li>Clones each as a new confirmed transaction (one-off instance — <span class="inline-code">is_recurring = false</span>)</li>
+      <li>Sets <span class="inline-code">notes</span> to reference the template sys_id for traceability</li>
+      <li>Advances the template's <span class="inline-code">next_run_date</span> by the frequency (daily +1d, weekly +7d, monthly +1m)</li>
+    </ol>
+    <p>Output: <span class="inline-code">transactions_created</span></p>
+  </div>
+
+  <!-- Utilities -->
+  <h2 id="sn-utilities">🛠️ Utility Scripts</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0">PFMTBudgetHelper (Client-callable Script Include)</h3>
+    <p>Called by <span class="inline-code">CS_RecurringToggleAndBudgetHint</span> via <span class="inline-code">GlideAjax</span> to fetch live budget data without a full page reload.</p>
+    <pre><code><span class="cm">// GlideAjax call from client script:</span>
+<span class="kw">var</span> ga = <span class="kw">new</span> <span class="fn">GlideAjax</span>(<span class="str">'PFMTBudgetHelper'</span>);
+ga.addParam(<span class="str">'sysparm_name'</span>,     <span class="str">'getBudgetStatus'</span>);
+ga.addParam(<span class="str">'sysparm_category'</span>, categoryId);
+ga.getXMLAnswer(<span class="kw">function</span>(answer) {
+  <span class="cm">// answer: JSON string { found, spent, limit, remaining }</span>
+});</code></pre>
+    <div class="alert alert-warning" style="margin-top:12px;margin-bottom:0">
+      <span class="alert-icon">⚠️</span>
+      <div>Must have <strong>"Client callable" checkbox ticked</strong> in Studio for GlideAjax to work.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">GR_Utilities — Helper Functions</h3>
+    <div class="table-wrap" style="margin-bottom:0">
+      <table>
+        <thead><tr><th>Function</th><th>Usage</th></tr></thead>
+        <tbody>
+          <tr><td class="field-name">getMonthlyTransactions(userSysId)</td><td>Returns array of current-month confirmed transactions for a user. Uses dot-walk: <span class="inline-code">account.user_profile</span>.</td></tr>
+          <tr><td class="field-name">getCategorySpendTotals(userSysId)</td><td>Returns <span class="inline-code">{ categoryName: totalAmount }</span> using GlideAggregate SUM grouped by category.</td></tr>
+          <tr><td class="field-name">updateGoalProgress()</td><td>Flow action step script. Adds <span class="inline-code">inputs.addAmount</span> to a goal's current_amount, auto-marks as achieved, returns progress %.</td></tr>
+          <tr><td class="field-name">seedCategories()</td><td>Run once in <strong>Scripts – Background</strong>. Inserts 13 default categories.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Default Categories -->
+  <h2 id="sn-categories">🏷️ Default Categories</h2>
+  <p>Run <span class="inline-code">new GR_Utilities().seedCategories()</span> once in Scripts – Background to create these:</p>
+
+  <h4>Expense Categories</h4>
+  <div class="category-grid">
+    <div class="cat-chip"><span class="cat-icon">🍜</span><div><div class="cat-name">Food &amp; Drink</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">🚇</span><div><div class="cat-name">Transport</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">🛒</span><div><div class="cat-name">Groceries</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">🛍️</span><div><div class="cat-name">Shopping</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">🏠</span><div><div class="cat-name">Bills &amp; Utilities</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">🏥</span><div><div class="cat-name">Health</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">🎬</span><div><div class="cat-name">Entertainment</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">📚</span><div><div class="cat-name">Education</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">✈️</span><div><div class="cat-name">Travel</div><div class="cat-type">expense</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">💰</span><div><div class="cat-name">Other</div><div class="cat-type">expense</div></div></div>
+  </div>
+
+  <h4>Income Categories</h4>
+  <div class="category-grid">
+    <div class="cat-chip"><span class="cat-icon">💼</span><div><div class="cat-name">Salary</div><div class="cat-type">income</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">💻</span><div><div class="cat-name">Freelance</div><div class="cat-type">income</div></div></div>
+    <div class="cat-chip"><span class="cat-icon">📈</span><div><div class="cat-name">Investment</div><div class="cat-type">income</div></div></div>
+  </div>
+
+  <!-- ══ DEPLOYMENT ════════════════════════════════════════ -->
+  <h2 id="deploy">🚀 Deployment Guide</h2>
+
+  <ol class="steps">
+    <li>
+      <div class="step-content">
+        <h4>Create ServiceNow Tables</h4>
+        <p>In SN Studio, create 7 tables with prefix <span class="inline-code">x_887486_0_</span>: <span class="inline-code">user_profile</span>, <span class="inline-code">session</span>, <span class="inline-code">account</span>, <span class="inline-code">transaction</span>, <span class="inline-code">category</span>, <span class="inline-code">budget</span>, <span class="inline-code">savings_goal</span>. Add all fields from the Data Model section. Ensure <span class="inline-code">session.token</span> is at least String(40).</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Create Script Include — PFMTAuthHelper</h4>
+        <p>Studio → Create File → Script Include. Name: <span class="inline-code">PFMTAuthHelper</span>. Client callable: <strong>No</strong>. Paste <span class="inline-code">SI_PFMTAuthHelper.js</span>.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Create Script Include — PFMTBudgetHelper</h4>
+        <p>Name: <span class="inline-code">PFMTBudgetHelper</span>. Client callable: <strong>Yes</strong> (required for GlideAjax). Paste <span class="inline-code">SI_PFMTBudgetHelper.js</span>.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Create Scripted REST APIs</h4>
+        <p>Studio → Create File → Scripted REST API. API Name: <strong>PFMT API</strong>, Base path: <strong>pfmt/v1</strong>. Add 6 resources, setting <strong>"Requires authentication" = false</strong> on each:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Resource Path</th><th>Methods</th><th>File</th></tr></thead>
+            <tbody>
+              <tr><td class="field-name">/auth/{action}</td><td>POST</td><td>REST_AuthAPI.js</td></tr>
+              <tr><td class="field-name">/accounts</td><td>GET, POST, PUT, DELETE</td><td>REST_AccountsAPI.js</td></tr>
+              <tr><td class="field-name">/transactions</td><td>GET, POST, PUT, DELETE</td><td>REST_TransactionsAPI.js</td></tr>
+              <tr><td class="field-name">/budgets</td><td>GET, POST, PUT, DELETE</td><td>REST_BudgetsAPI.js</td></tr>
+              <tr><td class="field-name">/goals</td><td>GET, POST, PUT, DELETE</td><td>REST_GoalsAPI.js</td></tr>
+              <tr><td class="field-name">/profile</td><td>GET, PUT</td><td>REST_ProfileAPI.js</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Create Business Rules</h4>
+        <p>Studio → Create File → Business Rule. Create 4 rules as described in the Business Rules section. Ensure correct table, timing (Before/After), and operations (Insert/Update).</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Create Client Scripts</h4>
+        <p>Studio → Create File → Client Script. Create 3 scripts (CS_DefaultTransactionDate, CS_FilterCategoriesByType, CS_RecurringToggleAndBudgetHint) on the transaction table.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Create Scheduled Flows</h4>
+        <p>Flow Designer → New → Scheduled Flow. Create FLOW_MonthlyBudgetReset (1st of month, 00:01 SGT) and FLOW_RecurringTransactions (daily, 08:00 SGT). Add a Script step in each and paste the corresponding flow JS file content.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Seed Categories</h4>
+        <p>SN Navigator → Scripts – Background. Run:</p>
+        <pre><code><span class="kw">var</span> util = <span class="kw">new</span> <span class="fn">GR_Utilities</span>();
+util.seedCategories();</code></pre>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>Deploy Frontend to GitHub Pages</h4>
+        <p>Push <span class="inline-code">index.html</span> to the <span class="inline-code">main</span> branch root. Enable GitHub Pages: Repo → Settings → Pages → Source: <strong>main / root</strong>. App is live at <span class="inline-code">https://&lt;username&gt;.github.io/&lt;repo&gt;/</span>.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-content">
+        <h4>First Login</h4>
+        <p>Open the GitHub Pages URL. Enter your SN instance URL (e.g. <span class="inline-code">dev275144.service-now.com</span>), username, and password. Click <strong>Sign In</strong>. Credentials are saved — future visits connect automatically.</p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- ══ ERROR REFERENCE ═══════════════════════════════════ -->
+  <h2 id="errors">❌ Error Reference</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>HTTP Status</th><th>Meaning</th><th>Common Cause</th></tr></thead>
+      <tbody>
+        <tr><td><strong>200</strong></td><td>Success</td><td>—</td></tr>
+        <tr><td><strong>201</strong></td><td>Created</td><td>Record inserted successfully</td></tr>
+        <tr><td><strong>400</strong></td><td>Bad Request</td><td>Missing required field (e.g. amount, description, sys_id)</td></tr>
+        <tr><td><strong>401</strong></td><td>Unauthorised</td><td>No token, invalid token, or expired token. Most common if session.token field is too short (truncated token never matches).</td></tr>
+        <tr><td><strong>403</strong></td><td>Forbidden</td><td>Token is valid but the requested record belongs to a different user</td></tr>
+        <tr><td><strong>404</strong></td><td>Not Found</td><td>Record sys_id not found, or unknown /auth/{action} path</td></tr>
+        <tr><td><strong>405</strong></td><td>Method Not Allowed</td><td>X-HTTP-Method header missing or has an unsupported value</td></tr>
+        <tr><td><strong>409</strong></td><td>Conflict</td><td>Duplicate budget for same category, or duplicate account name</td></tr>
+        <tr><td><strong>500</strong></td><td>Server Error</td><td>GlideRecord insert failed (check SN system logs)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>All error responses use this format:</p>
+  <pre><code>{ <span class="str">"error"</span>: <span class="str">"Human-readable message describing what went wrong"</span> }</code></pre>
+
+  <hr>
+  <p style="text-align:center;color:var(--text-light);font-size:13px">
+    PFMT — Personal Finance Money Tracker &nbsp;·&nbsp; Technical Documentation &nbsp;·&nbsp; June 2026
+  </p>
+
+</main>
+
+<script>
+  // Highlight active sidebar link on scroll
+  const headings = document.querySelectorAll('[id]');
+  const links    = document.querySelectorAll('#sidebar a');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.style.color = '');
+        const a = document.querySelector('#sidebar a[href="#' + e.target.id + '"]');
+        if (a) a.style.color = '#00C896';
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  headings.forEach(h => obs.observe(h));
+</script>
+</body>
+</html>
