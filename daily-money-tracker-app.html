@@ -2154,7 +2154,20 @@ function renderGoals() {
     const achieved = g.current >= g.target;
     const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
-    const monthsLeft = g.monthly > 0 ? Math.ceil(remaining/g.monthly) : null;
+    let monthsLeft = null;
+    let monthsLeftLabel = '';
+    if (!achieved) {
+      if (g.date) {
+        const now = new Date();
+        const td  = new Date(g.date);
+        const diff = (td.getFullYear() - now.getFullYear()) * 12 + (td.getMonth() - now.getMonth());
+        monthsLeft = Math.max(diff, 0);
+        monthsLeftLabel = monthsLeft === 0 ? 'Due this month' : `~${monthsLeft}${t('goal_mo_left')}`;
+      } else if (g.monthly > 0) {
+        monthsLeft = Math.ceil(remaining / g.monthly);
+        monthsLeftLabel = `~${monthsLeft}${t('goal_mo_left')}`;
+      }
+    }
     return `<div class="goal-card">
       <div class="goal-header">
         <div class="goal-title">
@@ -2170,7 +2183,7 @@ function renderGoals() {
       <div class="goal-footer">
         <span>${pct.toFixed(0)}% · ${achieved ? t('goal_done') : fmt(remaining)+' '+t('goal_to_go')}</span>
         <div style="display:flex;align-items:center;gap:8px;">
-          ${monthsLeft ? `<span style="font-size:11px;color:var(--sky);">~${monthsLeft}${t('goal_mo_left')}</span>` : ''}
+          ${monthsLeftLabel ? `<span style="font-size:11px;color:var(--sky);">${monthsLeftLabel}</span>` : ''}
           <div class="goal-actions">
             <button class="icon-btn edit" onclick="openGoalModal('${g.id}')" title="Edit / Add contribution">✏️</button>
             <button class="icon-btn del"  onclick="deleteGoal('${g.id}')"    title="Delete goal">🗑️</button>
