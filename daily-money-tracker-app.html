@@ -527,7 +527,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="balance-hero">
         <div class="balance-grid">
           <div>
-            <div class="balance-main-label">Net Balance (SGD)</div>
+            <div class="balance-main-label">Net Balance <span class="currency-unit">(SGD)</span></div>
             <div class="balance-main-val" id="hero-balance">$0.00</div>
           </div>
           <div class="balance-side">
@@ -720,7 +720,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
             <div class="profile-stat"><div class="profile-stat-val" id="prof-stat-goals">—</div><div class="profile-stat-lbl">Active Goals</div></div>
           </div>
           <!-- Editable preferences -->
-          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();syncPreferencesToSN();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" id="toggle-budget-alerts" onclick="toggleSetting('budgetAlerts',this)"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" id="toggle-now-assist" onclick="toggleSetting('nowAssist',this)"></div></div>
@@ -819,7 +819,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <button class="type-tab transfer" id="tab-transfer" onclick="setType('transfer',this)">Transfer</button>
     </div>
     <div class="form-group">
-      <label class="form-label">Amount (SGD)</label>
+      <label class="form-label">Amount <span class="currency-unit">(SGD)</span></label>
       <div class="amount-input-wrap">
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="txn-amount" placeholder="0.00" step="0.01" min="0">
@@ -888,14 +888,14 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Monthly Budget Limit (SGD)</label>
+      <label class="form-label">Monthly Budget Limit <span class="currency-unit">(SGD)</span></label>
       <div class="amount-input-wrap">
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-amount" placeholder="0.00" step="0.01">
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Current Spent (SGD) — optional override</label>
+      <label class="form-label">Current Spent <span class="currency-unit">(SGD)</span> — optional override</label>
       <div class="amount-input-wrap">
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-spent" placeholder="0.00" step="0.01" value="0">
@@ -938,16 +938,16 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Target Amount (SGD)</label>
+        <label class="form-label">Target Amount <span class="currency-unit">(SGD)</span></label>
         <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-target" placeholder="5000"></div>
       </div>
       <div class="form-group">
-        <label class="form-label">Current Saved (SGD)</label>
+        <label class="form-label">Current Saved <span class="currency-unit">(SGD)</span></label>
         <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-current" placeholder="0" value="0"></div>
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Monthly Contribution (SGD)</label>
+      <label class="form-label">Monthly Contribution <span class="currency-unit">(SGD)</span></label>
       <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-monthly" placeholder="e.g. 500"></div>
     </div>
     <div class="form-group">
@@ -985,7 +985,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
-      <div class="form-group"><label class="form-label">Balance (SGD)</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
+      <div class="form-group"><label class="form-label">Balance <span class="currency-unit">(SGD)</span></label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
     </div>
     <div class="form-group"><label class="form-label">Institution</label><input class="form-input" type="text" id="acc-institution" placeholder="e.g. DBS, OCBC, UOB…"></div>
     <div class="form-actions">
@@ -1904,7 +1904,8 @@ function applyLanguage() {
   if (addTxnDesktop) addTxnDesktop.textContent = t('btn_add_txn');
   // Dashboard static
   const balLabel = document.querySelector('.balance-main-label');
-  if (balLabel) balLabel.textContent = t('lbl_net_balance') + ' (' + (state.currency||'SGD') + ')';
+  if (balLabel) balLabel.innerHTML = t('lbl_net_balance') + ' <span class="currency-unit">(' + (state.currency||'SGD') + ')</span>';
+  document.querySelectorAll('.currency-unit').forEach(el => { el.textContent = '(' + (state.currency||'SGD') + ')'; });
   const incLabel = document.getElementById('hero-income-label');
   if (incLabel) incLabel.textContent = t('lbl_income');
   const expLabel = document.getElementById('hero-expense-label');
@@ -2486,10 +2487,19 @@ function saveSNInstance() {
   _updateSNLinks();
 }
 
+async function syncPreferencesToSN() {
+  if (!state.snToken) return;
+  try {
+    await snAPI.call('/profile', 'PUT', { currency: state.currency, language: state.language });
+  } catch(e) {
+    console.warn('Could not sync preferences to SN:', e.message);
+  }
+}
 function changeLanguage(lang) {
   state.language = lang;
   saveState();
   renderAll();
+  syncPreferencesToSN();
   showToast(lang === 'zh' ? '语言已切换为中文 ✓' : 'Language set to English ✓', 'success');
 }
 function toggleSetting(key, el) {
