@@ -63,7 +63,7 @@ A full-featured personal finance web app that syncs with ServiceNow as its cloud
 
 ## ServiceNow Data Model
 
-All tables share the prefix `x_1472763_person_0_`.
+All tables share the prefix `x_887486_0_`.
 
 ### `user_profile`
 
@@ -157,7 +157,7 @@ All tables share the prefix `x_1472763_person_0_`.
 
 ## REST API Reference
 
-**Base URL**: `https://<instance>.service-now.com/api/x_1472763_person_0/pfmt/v1`
+**Base URL**: `https://<instance>.service-now.com/api/x_887486_0/pfmt/v1`
 
 All endpoints except `/auth/*` require:
 ```
@@ -512,7 +512,7 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
 1. User enters instance + username + password
 2. App POSTs to /auth/login
 3. SN validates: username lookup → SHA-256 hash compare
-4. On success: createSession() inserts into x_1472763_person_0_session
+4. On success: createSession() inserts into x_887486_0_session
 5. Token (32-char hex) returned → stored in state.snToken + localStorage
 6. All subsequent API calls include X-PFMT-Token: <token>
 7. validateToken() queries session table (token match + expires_at > NOW)
@@ -658,14 +658,14 @@ Default categories seeded:
 
 ### Step 1 — ServiceNow tables
 
-Create the following tables in Studio (prefix `x_1472763_person_0_`):
-- `user_profile`
-- `session`
-- `account`
-- `transaction`
-- `category`
-- `budget`
-- `savings_goal`
+Create the following tables in Studio (prefix `x_887486_0_`):
+- `x_887486_0_user_profile`
+- `x_887486_0_session`
+- `x_887486_0_account`
+- `x_887486_0_transaction`
+- `x_887486_0_category`
+- `x_887486_0_budget`
+- `x_887486_0_savings_goal`
 
 Add fields as described in the [Data Model](#servicenow-data-model) section. Ensure the `session.token` field is at least **String(40)**.
 
