@@ -349,54 +349,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   transition:opacity .2s;
 }
 
-/* PIN dots */
-.pin-dots{display:flex;gap:18px;justify-content:center;margin-bottom:6px;}
-.pin-dot{
-  width:15px;height:15px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.18);background:transparent;
-  transition:all .25s cubic-bezier(.34,1.56,.64,1);
-}
-.pin-dot.filled{
-  background:#00C896;border-color:#00C896;
-  box-shadow:0 0 0 4px rgba(0,200,150,.18),0 0 18px rgba(0,200,150,.5);
-  transform:scale(1.2);
-}
-.pin-dot.error{
-  background:#FF5B5B;border-color:#FF5B5B;
-  box-shadow:0 0 18px rgba(255,91,91,.5);
-}
-@keyframes pinShake{
-  0%,100%{transform:translateX(0);}
-  20%,60%{transform:translateX(-10px);}
-  40%,80%{transform:translateX(10px);}
-}
-.pin-dots.shaking{animation:pinShake .35s ease;}
-
-.pin-error{font-size:11px;color:#FF8080;height:18px;margin-bottom:12px;text-align:center;font-weight:500;}
-
-/* numpad — circular buttons */
-.numpad{
-  display:grid;grid-template-columns:repeat(3,72px);
-  gap:12px;justify-content:center;margin-bottom:14px;
-}
-.numpad-btn{
-  width:72px;height:72px;border-radius:50%;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);
-  color:#fff;cursor:pointer;user-select:none;
-  transition:all .12s ease;
-  backdrop-filter:blur(8px);
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent;
-}
-.numpad-btn:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.15);}
-.numpad-btn:active{background:rgba(0,200,150,.22);border-color:rgba(0,200,150,.5);transform:scale(.91);}
-.nb-num{font-family:var(--fd);font-size:24px;font-weight:600;line-height:1;}
-.nb-sub{font-size:7.5px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.28);}
-.numpad-btn.special{background:transparent;border-color:transparent;}
-.numpad-btn.special:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);}
-.numpad-btn.special .nb-num{font-size:18px;color:rgba(255,255,255,.45);}
-.numpad-empty{width:72px;height:72px;}
 
 /* connecting indicator */
 .l-connecting{
@@ -463,9 +415,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .profile-signout:hover{background:var(--coral);color:white;}
 
 @media(max-width:380px){
-  .numpad{grid-template-columns:repeat(3,64px);gap:10px;}
-  .numpad-btn,.numpad-empty{width:64px;height:64px;}
-  .nb-num{font-size:20px;}
   .l-icon{width:64px;height:64px;font-size:28px;}
   .l-appname{font-size:24px;}
 }
@@ -476,11 +425,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   .l-appname{font-size:22px;margin-bottom:2px;}
   .l-tagline{margin-bottom:10px;}
   .l-subtitle{font-size:14px;margin-bottom:10px;}
-  .pin-dots{margin-bottom:4px;}
-  .pin-error{margin-bottom:8px;}
-  .numpad{grid-template-columns:repeat(3,64px);gap:10px;margin-bottom:10px;}
-  .numpad-btn,.numpad-empty{width:64px;height:64px;}
-  .nb-num{font-size:20px;}
   .l-footer{gap:4px;}
 }
 </style>
@@ -506,11 +450,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ── Panel A: SN Login ── -->
     <div class="sn-login-panel active" id="panel-login">
-      <input class="sn-login-input" id="sn-li-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
-      <div id="sn-li-instance-badge" style="display:none;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);border-radius:10px;font-size:12px;color:rgba(255,255,255,.7);">
-        <span>🔗 <span id="sn-li-instance-text"></span></span>
-        <button onclick="_toggleInstanceInput()" style="background:none;border:none;color:var(--jade);font-size:11px;cursor:pointer;padding:0;font-family:var(--ff);">Change</button>
-      </div>
       <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
       <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password"/>
       <div class="sn-login-err" id="sn-li-err"></div>
@@ -531,40 +470,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <button class="sn-login-toggle" onclick="showAuthPanel('login')">Already have an account? <span>Sign in</span></button>
     </div>
 
-    <!-- ── Panel C: PIN unlock (quick-lock only) ── -->
-    <div class="sn-login-panel" id="panel-pin">
-      <div class="l-subtitle" id="login-subtitle" style="margin-bottom:14px;">Enter your PIN</div>
-      <div class="pin-dots" id="pin-dots-wrap" style="margin-bottom:6px;">
-        <span class="pin-dot" id="pd0"></span>
-        <span class="pin-dot" id="pd1"></span>
-        <span class="pin-dot" id="pd2"></span>
-        <span class="pin-dot" id="pd3"></span>
-      </div>
-      <div class="pin-error" id="pin-error"></div>
-      <div class="numpad">
-        <button class="numpad-btn" onclick="pinInput('1')"><span class="nb-num">1</span></button>
-        <button class="numpad-btn" onclick="pinInput('2')"><span class="nb-num">2</span><span class="nb-sub">ABC</span></button>
-        <button class="numpad-btn" onclick="pinInput('3')"><span class="nb-num">3</span><span class="nb-sub">DEF</span></button>
-        <button class="numpad-btn" onclick="pinInput('4')"><span class="nb-num">4</span><span class="nb-sub">GHI</span></button>
-        <button class="numpad-btn" onclick="pinInput('5')"><span class="nb-num">5</span><span class="nb-sub">JKL</span></button>
-        <button class="numpad-btn" onclick="pinInput('6')"><span class="nb-num">6</span><span class="nb-sub">MNO</span></button>
-        <button class="numpad-btn" onclick="pinInput('7')"><span class="nb-num">7</span><span class="nb-sub">PQRS</span></button>
-        <button class="numpad-btn" onclick="pinInput('8')"><span class="nb-num">8</span><span class="nb-sub">TUV</span></button>
-        <button class="numpad-btn" onclick="pinInput('9')"><span class="nb-num">9</span><span class="nb-sub">WXYZ</span></button>
-        <div class="numpad-empty"></div>
-        <button class="numpad-btn" onclick="pinInput('0')"><span class="nb-num">0</span></button>
-        <button class="numpad-btn special" onclick="pinBackspace()"><span class="nb-num">⌫</span></button>
-      </div>
-      <button class="sn-login-toggle" onclick="snLogout()">Sign out completely <span>→</span></button>
-    </div>
-
     <!-- footer -->
     <div class="l-footer">
       <div class="l-connecting" id="login-connecting">
         <div class="l-spinner"></div>
         <span id="login-connecting-msg">Connecting…</span>
       </div>
-      <button class="login-link" id="forgot-btn" onclick="pinForgot()" style="display:none;">Forgot PIN? Reset all data</button>
       <div class="l-version">PFMT v2.0 · PDI</div>
     </div>
   </div>
@@ -585,7 +496,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
   <button class="nav-item" id="nav-profile" onclick="showView('profile',this)"><span class="icon">👤</span> Profile</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
-  <button class="nav-item" onclick="lockApp()" style="color:rgba(255,120,120,.7);margin-top:4px;"><span class="icon">🔒</span> Lock</button>
   <div class="sidebar-bottom">
     <div id="sn-conn-status" class="sn-status" onclick="showView('settings',document.querySelectorAll('.nav-item')[6])">
       <span class="dot" id="sn-dot" style="background:#6B7280;animation:none;"></span>
@@ -828,17 +738,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
-        </div>
-        <div class="settings-section">
-          <h3>App Security</h3>
-          <div class="setting-row">
-            <div><div class="setting-label">App PIN</div><div class="setting-sub">4-digit PIN required to open the app</div></div>
-            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="changePin()">Change PIN</button>
-          </div>
-          <div class="setting-row">
-            <div><div class="setting-label">Lock Now</div><div class="setting-sub">Requires PIN to re-enter</div></div>
-            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="lockApp()">🔒 Lock</button>
-          </div>
         </div>
         <div class="settings-section">
           <h3>Data</h3>
@@ -2076,11 +1975,9 @@ function applyLanguage() {
   // Login
   const lBadge = document.getElementById('login-badge');
   if (lBadge) lBadge.textContent = t('login_badge');
-  const forgotBtn = document.getElementById('forgot-btn');
-  if (forgotBtn) forgotBtn.textContent = t('login_forgot');
   // Settings headings
   const settingsH3 = document.querySelectorAll('.settings-section h3');
-  const h3Keys = ['settings_sn_conn','settings_quick_links','settings_ai_config','settings_preferences','settings_app_security','settings_data'];
+  const h3Keys = ['settings_sn_conn','settings_quick_links','settings_ai_config','settings_preferences','settings_data'];
   settingsH3.forEach((el,i) => { if (h3Keys[i]) el.textContent = t(h3Keys[i]); });
   // Settings labels
   const langSel = document.getElementById('language-select');
@@ -2765,177 +2662,6 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
   m.addEventListener('click', e => { if (e.target===m) { closeTxnModal(); closeBudgetModal(); closeGoalModal(); m.classList.remove('open'); } });
 });
 
-// ═══════════════════════════════════════════════
-// PIN / LOCK
-// ═══════════════════════════════════════════════
-const PIN_KEY = 'pfmt_pin';
-let _pinBuf = '';
-let _pinMode = 'unlock'; // unlock | setup | setup-confirm | change | change-confirm
-let _pinConfirm = '';
-
-async function _hashPin(pin) {
-  const enc = new TextEncoder().encode('pfmt:' + pin);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function _updateDots() {
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById(`pd${i}`);
-    if (!d) return;
-    d.classList.toggle('filled', i < _pinBuf.length);
-    d.classList.remove('error');
-  }
-}
-
-function pinInput(digit) {
-  if (_pinBuf.length >= 4) return;
-  _pinBuf += digit;
-  _updateDots();
-  document.getElementById('pin-error').textContent = '';
-  if (_pinBuf.length === 4) setTimeout(_submitPin, 140);
-}
-
-function pinBackspace() {
-  _pinBuf = _pinBuf.slice(0, -1);
-  _updateDots();
-}
-
-function pinClear() {
-  _pinBuf = '';
-  _updateDots();
-}
-
-function _pinShake(msg) {
-  _pinBuf = '';
-  const wrap = document.getElementById('pin-dots-wrap');
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById(`pd${i}`);
-    if (d) { d.classList.add('error'); d.classList.remove('filled'); }
-  }
-  document.getElementById('pin-error').textContent = msg;
-  if (wrap) {
-    wrap.classList.add('shaking');
-    setTimeout(() => wrap.classList.remove('shaking'), 400);
-  }
-  setTimeout(() => {
-    for (let i = 0; i < 4; i++) {
-      const d = document.getElementById(`pd${i}`);
-      if (d) d.classList.remove('error');
-    }
-  }, 700);
-}
-
-async function _submitPin() {
-  const hash = await _hashPin(_pinBuf);
-  const stored = localStorage.getItem(PIN_KEY);
-
-  if (_pinMode === 'unlock') {
-    if (hash === stored) {
-      _doUnlock();
-    } else {
-      _pinShake('Wrong PIN. Try again.');
-    }
-
-  } else if (_pinMode === 'setup') {
-    _pinConfirm = _pinBuf;
-    _pinBuf = '';
-    _pinMode = 'setup-confirm';
-    document.getElementById('login-subtitle').textContent = 'Confirm your PIN';
-    _updateDots();
-
-  } else if (_pinMode === 'setup-confirm') {
-    const ch = await _hashPin(_pinConfirm);
-    if (hash === ch) {
-      localStorage.setItem(PIN_KEY, hash);
-      _doUnlock();
-    } else {
-      _pinConfirm = '';
-      _pinMode = 'setup';
-      _pinShake('PINs don\'t match. Start again.');
-      document.getElementById('login-subtitle').textContent = 'Set up your PIN';
-    }
-
-  } else if (_pinMode === 'change') {
-    _pinConfirm = _pinBuf;
-    _pinBuf = '';
-    _pinMode = 'change-confirm';
-    document.getElementById('login-subtitle').textContent = 'Confirm new PIN';
-    _updateDots();
-
-  } else if (_pinMode === 'change-confirm') {
-    const ch = await _hashPin(_pinConfirm);
-    if (hash === ch) {
-      localStorage.setItem(PIN_KEY, hash);
-      _hidePinOverlay();
-      showToast(t('toast_pin_updated'), 'success');
-    } else {
-      _pinConfirm = '';
-      _pinMode = 'change';
-      _pinShake('PINs don\'t match. Try again.');
-      document.getElementById('login-subtitle').textContent = 'Enter new PIN';
-    }
-  }
-}
-
-function _showPinOverlay(mode, subtitle) {
-  _pinMode = mode;
-  _pinBuf = '';
-  _pinConfirm = '';
-  _updateDots();
-  document.getElementById('login-subtitle').textContent = subtitle;
-  document.getElementById('pin-error').textContent = '';
-  document.getElementById('forgot-btn').style.display = mode === 'unlock' ? 'inline-block' : 'none';
-  const lc = document.getElementById('login-connecting');
-  if (lc) lc.style.display = 'none';
-  document.getElementById('login-overlay').style.display = 'flex';
-}
-
-function _hidePinOverlay() {
-  document.getElementById('login-overlay').style.display = 'none';
-}
-
-async function _doUnlock() {
-  if (state.snPassword && state.snInstance) {
-    const lc = document.getElementById('login-connecting');
-    if (lc) lc.style.display = 'flex';
-    try {
-      setConnStatus('connecting');
-      await SN.get('sys_user', { sysparm_limit:1, sysparm_fields:'sys_id' });
-      setConnStatus('connected');
-    } catch(e) {
-      setConnStatus('disconnected');
-    }
-  }
-  _hidePinOverlay();
-}
-
-function lockApp() {
-  const stored = localStorage.getItem(PIN_KEY);
-  if (!stored) { showToast('Set a PIN first in Settings → App Security', 'info'); return; }
-  _showPinOverlay('unlock', t('login_enter_pin'));
-}
-
-function changePin() {
-  _showPinOverlay('change', t('login_new_pin'));
-}
-
-function pinForgot() {
-  if (!confirm('This will erase ALL your data and remove the PIN. Are you sure?')) return;
-  localStorage.clear();
-  location.reload();
-}
-
-document.addEventListener('keydown', e => {
-  const ov = document.getElementById('login-overlay');
-  if (!ov || ov.style.display === 'none') return;
-  // Don't intercept keys when credential form is active
-  const credPanel = document.getElementById('cred-panel');
-  if (credPanel && credPanel.style.display !== 'none') return;
-  if (e.key >= '0' && e.key <= '9') pinInput(e.key);
-  else if (e.key === 'Backspace') pinBackspace();
-  else if (e.key === 'Escape') pinClear();
-});
 
 // ═══════════════════════════════════════════════
 // SN CUSTOM AUTH — login / register / sync
@@ -2975,22 +2701,24 @@ const snAPI = {
     try { json = JSON.parse(text); }
     catch (e) { throw new Error(`SN HTTP ${res.status}: ${text.substring(0, 300)}`); }
     if (!res.ok) {
-      const msg = (typeof json.error === 'object')
-        ? (json.error.message || JSON.stringify(json.error))
-        : (json.error || `HTTP ${res.status}`);
+      const outer = json.result || {};
+      const msg = (typeof outer.error === 'object')
+        ? (outer.error.message || JSON.stringify(outer.error))
+        : (outer.error || `HTTP ${res.status}`);
       throw new Error(msg);
     }
-    return json.result;
+    // SN Scripted REST auto-wraps setBody() in {"result":...}; our scripts also wrap in {result:{...}},
+    // so success responses are double-nested: {"result":{"result":{...actual data...}}}
+    const r = json.result;
+    return (r && typeof r === 'object' && !Array.isArray(r) && 'result' in r) ? r.result : r;
   }
 };
 
 function showAuthPanel(panel) {
-  ['panel-login','panel-register','panel-pin'].forEach(id => {
+  ['panel-login','panel-register'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', id === 'panel-' + panel);
   });
-  document.getElementById('forgot-btn').style.display = panel === 'pin' ? '' : 'none';
-  // Clear errors
   ['sn-li-err','sn-reg-err'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
@@ -3005,19 +2733,16 @@ function _setLoginLoading(on, msg) {
 }
 
 async function doSNLogin() {
-  const instInput = document.getElementById('sn-li-instance');
-  const rawInst   = (instInput?.style.display !== 'none' ? instInput?.value : '') || state.snInstance || '';
-  const instance  = rawInst.trim();
+  const instance  = state.snInstance || 'dev405150.service-now.com';
   const username  = (document.getElementById('sn-li-username')?.value || '').trim();
   const password  = document.getElementById('sn-li-password')?.value || '';
   const errEl     = document.getElementById('sn-li-err');
   const btn       = document.getElementById('sn-li-btn');
 
-  if (!instance) { errEl.textContent = 'Enter your ServiceNow instance URL'; _toggleInstanceInput(); return; }
   if (!username) { errEl.textContent = 'Enter your username'; return; }
   if (!password) { errEl.textContent = 'Enter your password'; return; }
 
-  state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  state.snInstance = instance;
   state.snUsername = username;
   state.snPassword = password;
   errEl.textContent = '';
@@ -3146,35 +2871,11 @@ function _showSNLogin() {
   const ol = document.getElementById('login-overlay');
   if (ol) ol.style.display = 'flex';
   showAuthPanel('login');
-  _applyInstanceUI();
   const reg = document.getElementById('sn-reg-instance');
   if (reg && state.snInstance) reg.value = state.snInstance;
 }
 
-function _applyInstanceUI() {
-  const instInput = document.getElementById('sn-li-instance');
-  const instBadge = document.getElementById('sn-li-instance-badge');
-  const instText  = document.getElementById('sn-li-instance-text');
-  if (!instInput || !instBadge) return;
-  if (state.snInstance) {
-    instInput.style.display = 'none';
-    instBadge.style.display = 'flex';
-    if (instText) instText.textContent = state.snInstance;
-  } else {
-    instInput.style.display = '';
-    instBadge.style.display = 'none';
-  }
-}
 
-function _toggleInstanceInput() {
-  const instInput = document.getElementById('sn-li-instance');
-  const instBadge = document.getElementById('sn-li-instance-badge');
-  if (!instInput) return;
-  instInput.style.display = '';
-  instInput.value = state.snInstance || '';
-  instBadge.style.display = 'none';
-  instInput.focus();
-}
 
 function _hideSNLogin() {
   const ol = document.getElementById('login-overlay');
