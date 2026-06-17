@@ -494,7 +494,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   <button class="nav-item" onclick="showView('analytics',this)"><span class="icon">📈</span> Analytics</button>
   <div class="nav-section">Manage</div>
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
-  <button class="nav-item" id="nav-profile" onclick="showView('profile',this)"><span class="icon">👤</span> Profile</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
 </aside>
 
@@ -677,6 +676,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <!-- ════ SETTINGS ════ -->
     <div class="view" id="view-settings">
       <div style="max-width:640px;">
+
+        <!-- ServiceNow Connection -->
         <div class="settings-section">
           <h3>ServiceNow Connection</h3>
           <div id="sn-conn-status-card" style="background:linear-gradient(135deg,#0D1117,#1a2744);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
@@ -699,17 +700,36 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
             </div>
           </div>
         </div>
+
+        <!-- Account Details -->
         <div class="settings-section">
-          <h3>Quick Links</h3>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/studio" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🏗️ Studio</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/%24flow-designer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">⚡ Flow Designer</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sp_config%3Fid%3Ddesigner" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🌐 Service Portal</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_db_object_list.do%3Fsysparm_query%3Dname%3DSTARTSWITH%3Dx_887486_0" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🗄️ PFMT Tables</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/api_explorer.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">🔌 REST API Explorer</div></div><span class="sn-field-name">Open ↗</span></a>
-            <a class="sn-quick-link sn-mapping-row" data-sn-path="/now/nav/ui/classic/params/target/sys_update_set_list.do" href="#" target="_blank" style="text-decoration:none;"><div><div class="setting-label">📦 Update Sets</div></div><span class="sn-field-name">Open ↗</span></a>
+          <h3>Account Details</h3>
+          <!-- Mini profile card -->
+          <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,var(--ink) 0%,#1a2744 100%);border-radius:14px;margin-bottom:18px;">
+            <div class="profile-avatar" id="prof-avatar" style="background:#8B5CF6;width:56px;height:56px;font-size:20px;flex-shrink:0;">YC</div>
+            <div style="min-width:0;">
+              <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="prof-display-name">—</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.45);" id="prof-username">@—</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:1px;" id="prof-email"></div>
+            </div>
           </div>
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+            <div class="profile-stat"><div class="profile-stat-val" id="prof-stat-txn">—</div><div class="profile-stat-lbl">Transactions</div></div>
+            <div class="profile-stat"><div class="profile-stat-val" id="prof-stat-acc">—</div><div class="profile-stat-lbl">Accounts</div></div>
+            <div class="profile-stat"><div class="profile-stat-val" id="prof-stat-goals">—</div><div class="profile-stat-lbl">Active Goals</div></div>
+          </div>
+          <!-- Editable preferences -->
+          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" id="toggle-budget-alerts" onclick="toggleSetting('budgetAlerts',this)"></div></div>
+          <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" id="toggle-now-assist" onclick="toggleSetting('nowAssist',this)"></div></div>
+          <!-- Read-only fields -->
+          <div class="profile-field" style="margin-top:12px;"><span class="profile-field-lbl">Username</span><span class="profile-field-val" id="prof-detail-username">—</span></div>
+          <div class="profile-field"><span class="profile-field-lbl">Member Since</span><span class="profile-field-val" id="prof-detail-since">—</span></div>
         </div>
+
+        <!-- AI Configuration -->
         <div class="settings-section">
           <h3>AI Configuration</h3>
           <div class="form-group">
@@ -722,123 +742,62 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           </div>
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
+
+        <!-- Edit Profile -->
         <div class="settings-section">
-          <h3>Preferences</h3>
-          <div class="setting-row"><div><div class="setting-label" data-i18n-setting="settings_currency">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
-          <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
-          <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
-          <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <h3>Edit Profile</h3>
+          <div style="display:grid;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Display Name</label>
+              <input class="form-input" id="prof-edit-name" type="text" placeholder="Your display name"/>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Email</label>
+              <input class="form-input" id="prof-edit-email" type="email" placeholder="your@email.com"/>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Monthly Income Target</label>
+              <input class="form-input" id="prof-edit-income" type="number" placeholder="0.00"/>
+            </div>
+            <button class="btn btn-jade" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
+          </div>
         </div>
+
+        <!-- Change Password -->
+        <div class="settings-section">
+          <h3>Change Password</h3>
+          <div style="display:grid;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Current Password</label>
+              <input class="form-input" id="prof-pw-current" type="password" placeholder="••••••••"/>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">New Password</label>
+              <input class="form-input" id="prof-pw-new" type="password" placeholder="Min 6 characters"/>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Confirm New Password</label>
+              <input class="form-input" id="prof-pw-confirm" type="password" placeholder="Confirm new password"/>
+            </div>
+            <button class="btn btn-ghost" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
+          </div>
+        </div>
+
+        <!-- Data -->
         <div class="settings-section">
           <h3>Data</h3>
           <div class="setting-row"><div><div class="setting-label">Load Sample Data</div></div><button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="loadSampleData()">Load Samples</button></div>
           <div class="setting-row"><div><div class="setting-label">Clear All Data</div></div><button class="btn btn-coral" style="font-size:12px;padding:7px 14px;" onclick="clearData()">Clear Data</button></div>
         </div>
+
+        <!-- Sign Out -->
+        <button class="profile-signout" onclick="snLogout()">Sign Out</button>
+
       </div>
     </div>
 
-    <!-- ── PROFILE VIEW ── -->
-    <div class="view" id="view-profile">
-
-      <!-- Hero -->
-      <div class="profile-hero">
-        <div class="profile-avatar" id="prof-avatar" style="background:#8B5CF6;">YC</div>
-        <div>
-          <div class="profile-name" id="prof-display-name">—</div>
-          <div class="profile-username" id="prof-username">@—</div>
-          <div class="profile-email" id="prof-email"></div>
-        </div>
-      </div>
-
-      <!-- Stats -->
-      <div class="profile-stats">
-        <div class="profile-stat">
-          <div class="profile-stat-val" id="prof-stat-txn">—</div>
-          <div class="profile-stat-lbl">Transactions</div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat-val" id="prof-stat-acc">—</div>
-          <div class="profile-stat-lbl">Accounts</div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat-val" id="prof-stat-goals">—</div>
-          <div class="profile-stat-lbl">Active Goals</div>
-        </div>
-      </div>
-
-      <!-- Details -->
-      <div class="profile-section">
-        <h3>Account Details</h3>
-        <div class="profile-field">
-          <span class="profile-field-lbl">Display Name</span>
-          <span class="profile-field-val" id="prof-detail-name">—</span>
-        </div>
-        <div class="profile-field">
-          <span class="profile-field-lbl">Username</span>
-          <span class="profile-field-val" id="prof-detail-username">—</span>
-        </div>
-        <div class="profile-field">
-          <span class="profile-field-lbl">Email</span>
-          <span class="profile-field-val" id="prof-detail-email">—</span>
-        </div>
-        <div class="profile-field">
-          <span class="profile-field-lbl">Currency</span>
-          <span class="profile-field-val" id="prof-detail-currency">SGD</span>
-        </div>
-        <div class="profile-field">
-          <span class="profile-field-lbl">Language</span>
-          <span class="profile-field-val" id="prof-detail-language">English</span>
-        </div>
-        <div class="profile-field" style="border-bottom:none;padding-bottom:0;">
-          <span class="profile-field-lbl">Member Since</span>
-          <span class="profile-field-val" id="prof-detail-since">—</span>
-        </div>
-      </div>
-
-      <!-- Edit section -->
-      <div class="profile-section">
-        <h3>Edit Profile</h3>
-        <div style="display:grid;gap:10px;">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Display Name</label>
-            <input class="form-input" id="prof-edit-name" type="text" placeholder="Your display name"/>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Email</label>
-            <input class="form-input" id="prof-edit-email" type="email" placeholder="your@email.com"/>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Monthly Income Target</label>
-            <input class="form-input" id="prof-edit-income" type="number" placeholder="0.00"/>
-          </div>
-          <button class="btn btn-jade" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
-        </div>
-      </div>
-
-      <!-- Change password -->
-      <div class="profile-section">
-        <h3>Change Password</h3>
-        <div style="display:grid;gap:10px;">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Current Password</label>
-            <input class="form-input" id="prof-pw-current" type="password" placeholder="••••••••"/>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">New Password</label>
-            <input class="form-input" id="prof-pw-new" type="password" placeholder="Min 6 characters"/>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Confirm New Password</label>
-            <input class="form-input" id="prof-pw-confirm" type="password" placeholder="Confirm new password"/>
-          </div>
-          <button class="btn btn-ghost" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
-        </div>
-      </div>
-
-      <!-- Sign out -->
-      <button class="profile-signout" onclick="snLogout()">Sign Out</button>
-
-    </div><!-- end view-profile -->
+    <!-- view-profile kept for redirect compatibility -->
+    <div class="view" id="view-profile"></div>
 
   </div><!-- .content -->
 </main>
@@ -1061,7 +1020,7 @@ const TRANSLATIONS = {
   en: {
     nav_main:'Main', nav_manage:'Manage', nav_dashboard:'Dashboard', nav_transactions:'Transactions',
     nav_budgets:'Budgets', nav_goals:'Goals', nav_analytics:'Analytics', nav_accounts:'Accounts',
-    nav_settings:'Settings', nav_lock:'Lock',
+    nav_settings:'Settings',
     topbar_dashboard:'Dashboard', topbar_transactions:'All Transactions', topbar_budgets:'Budgets',
     topbar_goals:'Savings Goals', topbar_analytics:'Analytics', topbar_accounts:'Accounts', topbar_settings:'Settings',
     btn_csv:'⬇ CSV', btn_snjson:'⬇ SN JSON', btn_ai:'✨ AI Insights', btn_add_txn:'+ Add Transaction',
@@ -1106,16 +1065,11 @@ const TRANSLATIONS = {
     acc_asset_allocation:'Asset Allocation', acc_debt_ratio:'Debt Ratio', acc_accounts:'Accounts',
     acc_no_pos_bal:'No positive balances',
     acc_risk_high:'High', acc_risk_moderate:'Moderate', acc_risk_low:'Low', acc_risk_suffix:'risk',
-    settings_sn_conn:'ServiceNow PDI Connection', settings_quick_links:'Quick Links',
-    settings_ai_config:'AI Configuration', settings_preferences:'Preferences',
-    settings_currency:'Currency', settings_budget_alerts:'Budget Alerts',
-    settings_budget_alerts_sub:'Notify when budget > threshold',
-    settings_now_assist:'Now Assist', settings_now_assist_sub:'AI-powered spend analysis',
-    settings_language:'Language', settings_app_security:'App Security',
-    settings_app_pin:'App PIN', settings_app_pin_sub:'4-digit PIN required to open the app',
-    settings_lock_now:'Lock Now', settings_lock_now_sub:'Requires PIN to re-enter',
+    settings_sn_conn:'ServiceNow Connection',
+    settings_account_details:'Account Details', settings_ai_config:'AI Configuration',
+    settings_edit_profile:'Edit Profile', settings_change_password:'Change Password',
     settings_data:'Data', settings_load_samples:'Load Sample Data', settings_clear_data:'Clear All Data',
-    btn_change_pin:'Change PIN', btn_lock:'🔒 Lock', btn_load_samples:'Load Samples', btn_clear_data:'Clear Data',
+    btn_load_samples:'Load Samples', btn_clear_data:'Clear Data',
     modal_add_txn:'Add Transaction', modal_edit_txn:'Edit Transaction',
     modal_editing_txn:'✏️ Editing transaction',
     modal_add_budget:'Add Budget', modal_edit_budget:'Edit Budget',
@@ -1164,7 +1118,7 @@ const TRANSLATIONS = {
   zh: {
     nav_main:'主要', nav_manage:'管理', nav_dashboard:'仪表盘', nav_transactions:'交易记录',
     nav_budgets:'预算', nav_goals:'目标', nav_analytics:'分析', nav_accounts:'账户',
-    nav_settings:'设置', nav_lock:'锁定',
+    nav_settings:'设置',
     topbar_dashboard:'仪表盘', topbar_transactions:'全部交易', topbar_budgets:'预算',
     topbar_goals:'储蓄目标', topbar_analytics:'分析', topbar_accounts:'账户', topbar_settings:'设置',
     btn_csv:'⬇ CSV', btn_snjson:'⬇ SN JSON', btn_ai:'✨ AI 洞察', btn_add_txn:'+ 添加交易',
@@ -1209,16 +1163,11 @@ const TRANSLATIONS = {
     acc_asset_allocation:'资产配置', acc_debt_ratio:'负债比率', acc_accounts:'账户数',
     acc_no_pos_bal:'无正余额',
     acc_risk_high:'高', acc_risk_moderate:'中', acc_risk_low:'低', acc_risk_suffix:'风险',
-    settings_sn_conn:'ServiceNow PDI 连接', settings_quick_links:'快速链接',
-    settings_ai_config:'AI 配置', settings_preferences:'偏好设置',
-    settings_currency:'货币', settings_budget_alerts:'预算提醒',
-    settings_budget_alerts_sub:'超过阈值时通知',
-    settings_now_assist:'Now Assist', settings_now_assist_sub:'AI 驱动的支出分析',
-    settings_language:'语言', settings_app_security:'应用安全',
-    settings_app_pin:'应用 PIN', settings_app_pin_sub:'打开应用需要 4 位 PIN',
-    settings_lock_now:'立即锁定', settings_lock_now_sub:'重新进入需要 PIN',
+    settings_sn_conn:'ServiceNow 连接',
+    settings_account_details:'账户详情', settings_ai_config:'AI 配置',
+    settings_edit_profile:'编辑资料', settings_change_password:'修改密码',
     settings_data:'数据', settings_load_samples:'加载示例数据', settings_clear_data:'清除全部数据',
-    btn_change_pin:'修改 PIN', btn_lock:'🔒 锁定', btn_load_samples:'加载示例', btn_clear_data:'清除数据',
+    btn_load_samples:'加载示例', btn_clear_data:'清除数据',
     modal_add_txn:'添加交易', modal_edit_txn:'编辑交易',
     modal_editing_txn:'✏️ 正在编辑交易',
     modal_add_budget:'添加预算', modal_edit_budget:'编辑预算',
@@ -1291,6 +1240,8 @@ let state = {
   lastSync: null,
   currency: 'SGD',
   language: 'en',
+  budgetAlerts: true,
+  nowAssist: true,
   // SN custom auth
   snToken: null,
   snProfileSysId: null,
@@ -1317,6 +1268,8 @@ function saveState() {
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
+      budgetAlerts: state.budgetAlerts,
+      nowAssist: state.nowAssist,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
       snUserProfile: state.snUserProfile
@@ -1375,6 +1328,7 @@ function showConfirm(title, msg, okLabel = 'Delete', okClass = 'btn-coral') {
 // NAV
 // ═══════════════════════════════════════════════
 function showView(name, el) {
+  if (name === 'profile') name = 'settings';
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
@@ -1382,7 +1336,7 @@ function showView(name, el) {
   const titleKeys = {
     dashboard:'topbar_dashboard', transactions:'topbar_transactions', budgets:'topbar_budgets',
     goals:'topbar_goals', analytics:'topbar_analytics', accounts:'topbar_accounts',
-    settings:'topbar_settings', profile:'Profile'
+    settings:'topbar_settings'
   };
   document.getElementById('topbar-title').textContent = titleKeys[name] ? t(titleKeys[name]) : name;
   // show month nav only on views where it's relevant
@@ -1391,8 +1345,13 @@ function showView(name, el) {
   if (name === 'transactions') populateCategoryFilter();
   if (name === 'settings') {
     _updateSNConnCard();
+    _renderProfileView();
+    refreshProfileView();
+    const ba = document.getElementById('toggle-budget-alerts');
+    const na = document.getElementById('toggle-now-assist');
+    if (ba) ba.classList.toggle('on', !!state.budgetAlerts);
+    if (na) na.classList.toggle('on', !!state.nowAssist);
   }
-  if (name === 'profile') { _renderProfileView(); refreshProfileView(); }
   closeSidebar();
   renderAll();
 }
@@ -1930,7 +1889,7 @@ function applyLanguage() {
   if (navSections[0]) navSections[0].textContent = t('nav_main');
   if (navSections[1]) navSections[1].textContent = t('nav_manage');
   const navItems = document.querySelectorAll('.nav-item');
-  const navKeys = ['nav_dashboard','nav_transactions','nav_budgets','nav_goals','nav_analytics','nav_accounts','nav_settings','nav_lock'];
+  const navKeys = ['nav_dashboard','nav_transactions','nav_budgets','nav_goals','nav_analytics','nav_accounts','nav_settings'];
   navItems.forEach((btn, i) => {
     if (i >= navKeys.length) return;
     const icon = btn.querySelector('.icon');
@@ -1988,7 +1947,7 @@ function applyLanguage() {
   if (lBadge) lBadge.textContent = t('login_badge');
   // Settings headings
   const settingsH3 = document.querySelectorAll('.settings-section h3');
-  const h3Keys = ['settings_sn_conn','settings_quick_links','settings_ai_config','settings_preferences','settings_data'];
+  const h3Keys = ['settings_sn_conn','settings_account_details','settings_ai_config','settings_edit_profile','settings_change_password','settings_data'];
   settingsH3.forEach((el,i) => { if (h3Keys[i]) el.textContent = t(h3Keys[i]); });
   // Settings labels
   const langSel = document.getElementById('language-select');
@@ -2532,6 +2491,11 @@ function changeLanguage(lang) {
   saveState();
   renderAll();
   showToast(lang === 'zh' ? '语言已切换为中文 ✓' : 'Language set to English ✓', 'success');
+}
+function toggleSetting(key, el) {
+  state[key] = !state[key];
+  el.classList.toggle('on', state[key]);
+  saveState();
 }
 
 function saveAIKey() {
