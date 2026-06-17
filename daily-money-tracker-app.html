@@ -101,7 +101,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .txn-amt{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
 .txn-amt.pos{color:var(--jade-d);}
 .txn-amt.neg{color:var(--coral);}
-.txn-actions{display:flex;gap:4px;opacity:0;transition:opacity .15s;}
+.txn-actions{display:flex;gap:4px;opacity:.35;transition:opacity .15s;}
 .txn-row:hover .txn-actions{opacity:1;}
 .icon-btn{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-size:13px;transition:all .15s;}
 .icon-btn.edit{background:var(--sky-s);color:var(--sky);}
@@ -532,8 +532,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
             <div class="balance-main-val" id="hero-balance">$0.00</div>
           </div>
           <div class="balance-side">
-            <div class="balance-sub"><label>Income</label><span class="inc-val" id="hero-income">$0.00</span></div>
-            <div class="balance-side"><div class="balance-sub"><label>Expenses</label><span class="exp-val" id="hero-expense">$0.00</span></div></div>
+            <div class="balance-sub"><label id="hero-income-label">Income</label><span class="inc-val" id="hero-income">$0.00</span></div>
+            <div class="balance-sub"><label id="hero-expense-label">Expenses</label><span class="exp-val" id="hero-expense">$0.00</span></div>
           </div>
         </div>
       </div>
@@ -1890,8 +1890,10 @@ function applyLanguage() {
   // Dashboard static
   const balLabel = document.querySelector('.balance-main-label');
   if (balLabel) balLabel.textContent = t('lbl_net_balance') + ' (' + (state.currency||'SGD') + ')';
-  const incLabel = document.querySelector('.balance-sub label:first-child');
+  const incLabel = document.getElementById('hero-income-label');
   if (incLabel) incLabel.textContent = t('lbl_income');
+  const expLabel = document.getElementById('hero-expense-label');
+  if (expLabel) expLabel.textContent = t('lbl_expenses');
   const kpiLabels = document.querySelectorAll('.kpi-label');
   const kpiSubs   = document.querySelectorAll('.kpi-sub');
   const kpiLabelKeys = ['kpi_transactions','kpi_avg_daily','kpi_savings_rate','kpi_budgets_over'];
