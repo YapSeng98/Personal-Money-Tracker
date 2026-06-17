@@ -91,7 +91,7 @@
       accGR.addQuery('account_name', body.account_name);
       accGR.setLimit(1);
       accGR.query();
-      if (accGR.next()) newGR.account = accGR.sys_id;
+      if (accGR.next()) newGR.setValue('account', accGR.getUniqueValue());
     }
 
     var newSysId = newGR.insert();

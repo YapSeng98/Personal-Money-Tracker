@@ -87,7 +87,7 @@
     // Check no duplicate budget for same category this period
     var dupGR = new GlideRecord('x_887486_0_budget');
     dupGR.addQuery('user_profile', profileSysId);
-    dupGR.addQuery('category', catGR.sys_id);
+    dupGR.addQuery('category', catGR.getUniqueValue());
     dupGR.query();
     if (dupGR.next()) {
       helper.errorResponse(response, 409, 'Budget for this category already exists');
@@ -109,7 +109,7 @@
     var newGR = new GlideRecord('x_887486_0_budget');
     newGR.initialize();
     newGR.user_profile     = profileSysId;
-    newGR.category         = catGR.sys_id;
+    newGR.setValue('category', catGR.getUniqueValue());
     newGR.budget_amount    = parseFloat(body.budget_amount);
     newGR.spent_amount     = 0;
     newGR.remaining_amount = parseFloat(body.budget_amount);

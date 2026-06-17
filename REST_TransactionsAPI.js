@@ -94,7 +94,7 @@
       accGR.addQuery('account_name', body.account_name);
       accGR.setLimit(1);
       accGR.query();
-      if (accGR.next()) newGR.account = accGR.sys_id;
+      if (accGR.next()) newGR.setValue('account', accGR.getUniqueValue());
     }
 
     // Resolve category by name
@@ -103,7 +103,7 @@
       catGR.addQuery('category_name', body.category_name);
       catGR.setLimit(1);
       catGR.query();
-      if (catGR.next()) newGR.category = catGR.sys_id;
+      if (catGR.next()) newGR.setValue('category', catGR.getUniqueValue());
     }
 
     var newSysId = newGR.insert();
@@ -143,14 +143,14 @@
       putAccGR.addQuery('account_name', putBody.account_name);
       putAccGR.setLimit(1);
       putAccGR.query();
-      if (putAccGR.next()) editGR.account = putAccGR.sys_id;
+      if (putAccGR.next()) editGR.setValue('account', putAccGR.getUniqueValue());
     }
     if (putBody.category_name) {
       var putCatGR = new GlideRecord('x_887486_0_category');
       putCatGR.addQuery('category_name', putBody.category_name);
       putCatGR.setLimit(1);
       putCatGR.query();
-      if (putCatGR.next()) editGR.category = putCatGR.sys_id;
+      if (putCatGR.next()) editGR.setValue('category', putCatGR.getUniqueValue());
     }
 
     editGR.update();
