@@ -729,20 +729,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
           <div class="profile-field"><span class="profile-field-lbl">Member Since</span><span class="profile-field-val" id="prof-detail-since">—</span></div>
         </div>
 
-        <!-- AI Configuration -->
-        <div class="settings-section">
-          <h3>AI Configuration</h3>
-          <div class="form-group">
-            <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
-            <div style="display:flex;gap:8px;">
-              <input class="form-input" type="password" id="gemini-key-input" placeholder="gsk_…">
-              <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
-            </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky);">console.groq.com ↗</a></div>
-          </div>
-          <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
-        </div>
-
         <!-- Edit Profile -->
         <div class="settings-section">
           <h3>Edit Profile</h3>
@@ -781,6 +767,20 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
             </div>
             <button class="btn btn-ghost" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
           </div>
+        </div>
+
+        <!-- AI Configuration -->
+        <div class="settings-section">
+          <h3>AI Configuration</h3>
+          <div class="form-group">
+            <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
+            <div style="display:flex;gap:8px;">
+              <input class="form-input" type="password" id="gemini-key-input" placeholder="gsk_…">
+              <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky);">console.groq.com ↗</a></div>
+          </div>
+          <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
 
         <!-- Data -->
@@ -1948,7 +1948,7 @@ function applyLanguage() {
   if (lBadge) lBadge.textContent = t('login_badge');
   // Settings headings
   const settingsH3 = document.querySelectorAll('.settings-section h3');
-  const h3Keys = ['settings_sn_conn','settings_account_details','settings_ai_config','settings_edit_profile','settings_change_password','settings_data'];
+  const h3Keys = ['settings_sn_conn','settings_account_details','settings_edit_profile','settings_change_password','settings_ai_config','settings_data'];
   settingsH3.forEach((el,i) => { if (h3Keys[i]) el.textContent = t(h3Keys[i]); });
   // Settings labels
   const langSel = document.getElementById('language-select');
