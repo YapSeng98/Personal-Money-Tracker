@@ -1473,24 +1473,44 @@ function setSelectVal(id, val) {
 // Strip base64 artifacts SN sometimes appends to emoji fields (e.g. "🏠8J+PoA==" → "🏠")
 function sanitizeIcon(val, fallback) {
   if (!val) return fallback || '🎯';
+
+  // New format from updated SN script: percent-encoded "%F0%9F%8F%A0" → 🏠
+  if (val.charAt(0) === '%') {
+    try {
+      const d = decodeURIComponent(val);
+      if ((d.codePointAt(0) ?? 0) > 0x7F) return d;
+    } catch(e) {}
+  }
+
   const chars = [...val];
   const firstCp = chars[0]?.codePointAt(0) ?? 0;
 
-  // Case 1: starts with a proper Unicode emoji (code point > U+00FF)
-  // Strip any trailing ASCII base64 artifact SN sometimes appends
+  // U+FFFD replacement chars = SN mangled a supplementary emoji
+  // Extract base64 suffix (the only recoverable part) and decode it
+  if (firstCp === 0xFFFD) {
+    const b64 = val.replace(/[^A-Za-z0-9+/=]/g, '');
+    if (b64.length >= 4) {
+      try {
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const d = new TextDecoder('utf-8').decode(bytes);
+        if ((d.codePointAt(0) ?? 0) > 0x7F) return d;
+      } catch(e) {}
+    }
+    return fallback || '🎯';
+  }
+
+  // Proper emoji already (code point > U+00FF, not a replacement char)
   if (firstCp > 0xFF) {
     const match = val.match(/^[^\x00-\x7F]+/);
     return (match ? match[0] : val) || fallback || '🎯';
   }
 
-  // Case 2: SN returned 4-byte emoji UTF-8 bytes decoded as Latin-1
-  // (only affects supplementary-plane emoji like 🏠 U+1F3E0;
-  //  BMP emoji like ✈️ U+2708 come through fine)
+  // Latin-1 decoded UTF-8 bytes (SN alternative encoding, 0x80-0xFF range)
   if (firstCp >= 0x80 && firstCp <= 0xFF) {
     try {
       const bytes = new Uint8Array(chars.map(c => c.codePointAt(0)));
-      const decoded = new TextDecoder('utf-8').decode(bytes);
-      if ((decoded.codePointAt(0) ?? 0) > 0xFF) return decoded;
+      const d = new TextDecoder('utf-8').decode(bytes);
+      if ((d.codePointAt(0) ?? 0) > 0xFF) return d;
     } catch(e) {}
   }
 

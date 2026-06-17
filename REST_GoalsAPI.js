@@ -30,6 +30,33 @@
     return;
   }
 
+  // SN cannot store supplementary-plane emoji (U+1F000+) in String fields.
+  // We percent-encode on write ("%F0%9F%8F%A0") and decode on read.
+  // Old records may have garbled bytes — decode best-effort, else fall back.
+  function safeIconWrite(icon) {
+    try { return encodeURIComponent(icon || '%F0%9F%8E%AF'); } // %F0%9F%8E%AF = 🎯
+    catch(e) { return icon || ''; }
+  }
+  function safeIconRead(raw) {
+    if (!raw) return '🎯';
+    // New format: starts with %
+    if (raw.charAt(0) === '%') {
+      try { return decodeURIComponent(raw); } catch(e) {}
+    }
+    // BMP emoji stored directly (e.g. ✈️) — return as-is
+    var cp = raw.charCodeAt(0);
+    if (cp >= 0x2000 && cp <= 0xFFFF) return raw;
+    // Fallback for old garbled data — extract base64 portion and decode
+    var b64 = raw.replace(/[^A-Za-z0-9+\/=]/g, '');
+    if (b64.length >= 4) {
+      try {
+        var bytes = GlideStringUtil.base64Decode(b64);
+        if (bytes) return bytes;
+      } catch(e) {}
+    }
+    return '🎯';
+  }
+
   // ── GET /goals ────────────────────────────────────────────
   if (method === 'GET') {
     var gr = new GlideRecord('x_887486_0_savings_goal');
@@ -45,7 +72,7 @@
       results.push({
         sys_id              : gr.getValue('sys_id')               || '',
         goal_name           : gr.getValue('goal_name')            || '',
-        goal_icon           : gr.getValue('goal_icon')            || '🎯',
+        goal_icon           : safeIconRead(gr.getValue('goal_icon')),
         target_amount       : target,
         current_amount      : current,
         monthly_contribution: parseFloat(gr.getValue('monthly_contribution')) || 0,
@@ -76,7 +103,7 @@
     newGR.initialize();
     newGR.user_profile          = profileSysId;
     newGR.goal_name             = body.goal_name;
-    newGR.goal_icon             = body.goal_icon             || '🎯';
+    newGR.goal_icon             = safeIconWrite(body.goal_icon || '🎯');
     newGR.target_amount         = parseFloat(body.target_amount);
     newGR.current_amount        = parseFloat(body.current_amount)        || 0;
     newGR.monthly_contribution  = parseFloat(body.monthly_contribution)  || 0;
@@ -116,7 +143,7 @@
     }
 
     if (putBody.goal_name            !== undefined) editGR.goal_name            = putBody.goal_name;
-    if (putBody.goal_icon            !== undefined) editGR.goal_icon            = putBody.goal_icon;
+    if (putBody.goal_icon            !== undefined) editGR.goal_icon            = safeIconWrite(putBody.goal_icon);
     if (putBody.target_amount        !== undefined) editGR.target_amount        = parseFloat(putBody.target_amount);
     if (putBody.current_amount       !== undefined) editGR.current_amount       = parseFloat(putBody.current_amount);
     if (putBody.monthly_contribution !== undefined) editGR.monthly_contribution = parseFloat(putBody.monthly_contribution);
