@@ -148,6 +148,7 @@
         target_date         : gr.getValue('target_date')          || '',
         goal_status         : gr.getValue('goal_status')          || 'in_progress',
         remarks             : gr.getValue('remarks')              || '',
+        currency            : gr.getValue('currency')             || 'SGD',
         progress_pct        : target > 0 ? Math.min((current / target) * 100, 100) : 0,
         account_sys_id      : accSysId,
         account_name        : accSysId ? gr.getDisplayValue('account') || '' : ''
@@ -160,7 +161,7 @@
   }
 
   // ── POST /goals ───────────────────────────────────────────
-  // Body: { goal_name, goal_icon, target_amount, current_amount, monthly_contribution, target_date, remarks }
+  // Body: { goal_name, goal_icon, target_amount, current_amount, monthly_contribution, target_date, remarks, currency }
   if (method === 'POST') {
     var body = request.body ? request.body.data : {};
 
@@ -179,6 +180,7 @@
     newGR.monthly_contribution  = parseFloat(body.monthly_contribution)  || 0;
     newGR.target_date           = body.target_date           || '';
     newGR.remarks               = body.remarks               || '';
+    newGR.currency              = body.currency              || 'SGD';
     newGR.goal_status           = parseFloat(body.current_amount) >= parseFloat(body.target_amount)
                                     ? 'achieved' : 'in_progress';
 
@@ -199,7 +201,7 @@
   }
 
   // ── PUT /goals ────────────────────────────────────────────
-  // Body: { sys_id, goal_name, goal_icon, target_amount, current_amount, monthly_contribution, target_date, remarks }
+  // Body: { sys_id, goal_name, goal_icon, target_amount, current_amount, monthly_contribution, target_date, remarks, currency }
   if (method === 'PUT') {
     var putBody = request.body ? request.body.data : {};
     if (!putBody.sys_id) {
@@ -220,6 +222,7 @@
     if (putBody.monthly_contribution !== undefined) editGR.monthly_contribution = parseFloat(putBody.monthly_contribution);
     if (putBody.target_date          !== undefined) editGR.target_date          = putBody.target_date;
     if (putBody.remarks              !== undefined) editGR.remarks              = putBody.remarks;
+    if (putBody.currency             !== undefined) editGR.currency             = putBody.currency;
 
     // Auto-update status
     var updatedCurrent = parseFloat(editGR.current_amount.toString()) || 0;

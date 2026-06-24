@@ -14,7 +14,8 @@ A full-featured personal finance web app that syncs with ServiceNow as its cloud
 6. [Frontend Features](#frontend-features)
 7. [ServiceNow Components](#servicenow-components)
 8. [Deployment Guide](#deployment-guide)
-9. [Error Reference](#error-reference)
+9. [Test Users](#test-users)
+10. [Error Reference](#error-reference)
 
 ---
 
@@ -48,7 +49,7 @@ A full-featured personal finance web app that syncs with ServiceNow as its cloud
         │                 │
         ▼                 ▼
   pfmt_state_v2    ServiceNow PDI
-  (offline cache)  /api/x_1472763_person_0/pfmt/v1
+  (offline cache)  /api/x_887486_0/pfmt/v1
                    ├── /auth/{action}
                    ├── /transactions
                    ├── /budgets
@@ -145,12 +146,14 @@ All tables share the prefix `x_887486_0_`.
 |---|---|---|
 | `user_profile` | Reference | |
 | `goal_name` | String | Required |
-| `goal_icon` | String | Emoji, default `🎯` |
+| `goal_icon` | String(10) | Emoji — supplementary-plane stored as `b`+base64 |
 | `target_amount` | Decimal | Required |
 | `current_amount` | Decimal | |
 | `monthly_contribution` | Decimal | |
 | `target_date` | Date | Optional |
 | `goal_status` | String | `in_progress`, `achieved` — auto-managed |
+| `currency` | String | Per-goal currency (SGD/USD/AUD/MYR), default `SGD` |
+| `remarks` | String(1000) | Optional notes |
 | `account` | Reference | Optional linked account |
 
 ---
@@ -412,6 +415,8 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
       "monthly_contribution": 500.00,
       "target_date": "2024-12-31",
       "goal_status": "in_progress",
+      "currency": "SGD",
+      "remarks": "Save ¥500 per month",
       "progress_pct": 50.0,
       "account_sys_id": "...",
       "account_name": "Savings"
@@ -432,6 +437,8 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
   "current_amount": 0,
   "monthly_contribution": 500.00,
   "target_date": "2024-12-31",
+  "currency": "SGD",
+  "remarks": "Optional notes",
   "account_name": "Savings"
 }
 // Response 201
@@ -442,7 +449,7 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
 #### PUT `/goals`
 
 ```json
-{ "sys_id": "...", "current_amount": 3000.00 }
+{ "sys_id": "...", "current_amount": 3000.00, "currency": "SGD" }
 // Response 200 — goal_status auto-updated
 { "result": { "sys_id": "...", "status": "updated" } }
 ```
@@ -549,7 +556,7 @@ Page load
 | Dashboard | Monthly net balance, quick stats, recent transactions, spend breakdown |
 | Transactions | Full list with month/type filter, add/edit/delete, SN sync |
 | Budgets | Category budgets, spent vs. limit, alert threshold rings |
-| Goals | Savings goals, progress bars, quick contribution buttons |
+| Goals | Savings goals with per-goal currency, progress bars, quick contribution buttons |
 | Analytics | Charts — category breakdown, monthly trends, income vs. expenses |
 | Accounts | Linked accounts, balances, institution |
 | Profile | User info, account stats, edit display name / email / income target |
@@ -561,13 +568,13 @@ Page load
 {
   transactions: [],   // [{id, sys_id, type, amount, description, category, account, date, notes}]
   budgets:      [],   // [{id, sys_id, category, amount, spent, alertPct}]
-  goals:        [],   // [{id, sys_id, name, icon, target, current, monthly, date}]
-  accounts:     [],   // [{id, sys_id, name, type, institution, balance}]
+  goals:        [],   // [{id, sys_id, name, icon, target, current, monthly, date, currency, remarks}]
+  accounts:     [],   // [{id, sys_id, name, type, institution, balance, currency}]
 
   snToken:         null,
   snProfileSysId:  null,
   snUserProfile:   {},
-  snInstance:      'dev275144.service-now.com',
+  snInstance:      'dev405150.service-now.com',
   snUsername:      '',
   snPassword:      '',
 
@@ -732,9 +739,28 @@ new GR_Utilities().seedCategories();
 ### Step 8 — First login
 
 1. Open the GitHub Pages URL
-2. Enter your SN instance URL (e.g. `dev275144.service-now.com`)
+2. Enter your SN instance URL (e.g. `dev405150.service-now.com`)
 3. Enter your PFMT username and password (created via Register if first time)
 4. App auto-saves credentials — future visits connect automatically
+
+---
+
+## Test Users
+
+Seeded with `seed_test_users.py`. All passwords: **`Test1234!`**
+
+| Name | Username | Currency | Notes |
+|---|---|---|---|
+| Alice Tan | `alice_9af4d6` | SGD | 3 accounts, 12 txns, 6 budgets, 3 goals |
+| Ben Lim | `ben_4c71fc` | SGD | 4 accounts, 14 txns, 7 budgets, 4 goals |
+| Chloe Ng | `chloe_b6bb1d` | MYR | 3 accounts, 10 txns, 6 budgets, 3 goals |
+| David Wong | `david_9cbb6f` | AUD | 4 accounts, 12 txns, 7 budgets, 3 goals |
+| Emma Liew | `emma_c110cb` | SGD | 3 accounts, 10 txns, 5 budgets, 3 goals (zh) |
+| Farid Hassan | `farid_55eefb` | SGD | 4 accounts, 12 txns, 7 budgets, 4 goals |
+| Grace Koh | `grace_d04d09` | SGD | 2 accounts, 10 txns, 5 budgets, 3 goals |
+| Harry Teo | `harry_a93580` | SGD | 5 accounts, 12 txns, 8 budgets, 4 goals |
+| Iris Chan | `iris_55fb43` | SGD | 3 accounts, 11 txns, 6 budgets, 4 goals (zh) |
+| Jake Sim | `jake_433bb1` | SGD | 4 accounts, 14 txns, 7 budgets, 4 goals |
 
 ---
 

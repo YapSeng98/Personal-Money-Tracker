@@ -950,9 +950,20 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <label class="form-label">Monthly Contribution</label>
       <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="goal-monthly" placeholder="e.g. 500"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Target Date</label>
-      <input class="form-input" type="date" id="goal-date">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Target Date</label>
+        <input class="form-input" type="date" id="goal-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Currency</label>
+        <select class="form-input" id="goal-currency">
+          <option value="SGD">SGD — S$</option>
+          <option value="USD">USD — $</option>
+          <option value="AUD">AUD — A$</option>
+          <option value="MYR">MYR — RM</option>
+        </select>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Remarks</label>
@@ -1654,8 +1665,9 @@ function openGoalModal(id = null) {
   document.getElementById('goal-name').value    = '';
   document.getElementById('goal-target').value  = '';
   document.getElementById('goal-current').value = '0';
-  document.getElementById('goal-monthly').value = '';
-  document.getElementById('goal-remarks').value = '';
+  document.getElementById('goal-monthly').value  = '';
+  document.getElementById('goal-remarks').value  = '';
+  document.getElementById('goal-currency').value = state.currency;
 
   const d = new Date(); d.setFullYear(d.getFullYear() + 1);
   document.getElementById('goal-date').value = localDateStr(d);
@@ -1664,12 +1676,13 @@ function openGoalModal(id = null) {
     const g = state.goals.find(x => x.id == id);
     if (!g) return;
     setSelectVal('goal-icon', sanitizeIcon(g.icon, '🎯'));
-    document.getElementById('goal-name').value    = g.name;
-    document.getElementById('goal-target').value  = g.target;
-    document.getElementById('goal-current').value = g.current;
-    document.getElementById('goal-monthly').value = g.monthly || '';
-    document.getElementById('goal-date').value    = g.date;
-    document.getElementById('goal-remarks').value = g.remarks || '';
+    document.getElementById('goal-name').value     = g.name;
+    document.getElementById('goal-target').value   = g.target;
+    document.getElementById('goal-current').value  = g.current;
+    document.getElementById('goal-monthly').value  = g.monthly || '';
+    document.getElementById('goal-date').value     = g.date;
+    document.getElementById('goal-remarks').value  = g.remarks || '';
+    document.getElementById('goal-currency').value = g.currency || state.currency;
   }
   document.getElementById('goal-modal').classList.add('open');
 }
@@ -1689,18 +1702,19 @@ async function saveGoal() {
   const monthly  = parseFloat(document.getElementById('goal-monthly').value) || 0;
   const date     = document.getElementById('goal-date').value;
   const remarks  = document.getElementById('goal-remarks').value.trim();
+  const currency = document.getElementById('goal-currency').value;
   const editId   = document.getElementById('goal-edit-id').value;
 
   if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
   if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
   const snPayload = { goal_name: name, goal_icon: icon, target_amount: target,
-    current_amount: current, monthly_contribution: monthly, target_date: date, remarks };
+    current_amount: current, monthly_contribution: monthly, target_date: date, remarks, currency };
 
   if (editId !== '') {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
-      state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date, remarks };
+      state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date, remarks, currency };
       saveState();
       const sysId = _snId(state.goals[idx]);
       if (state.snToken && sysId) {
@@ -1710,7 +1724,7 @@ async function saveGoal() {
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    const goal = { id: state.nextId++, name, icon, target, current, monthly, date, remarks };
+    const goal = { id: state.nextId++, name, icon, target, current, monthly, date, remarks, currency };
     state.goals.push(goal);
     saveState();
     if (state.snToken) {
@@ -1826,6 +1840,8 @@ async function deleteAccount(id) {
 // RENDER ENGINE
 // ═══════════════════════════════════════════════
 const fmt = n => '$' + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const CUR_SYM = { SGD:'S$', USD:'$', AUD:'A$', MYR:'RM' };
+const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cur || '$'); return s + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
 const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Health':'🏥','Entertainment':'🎬','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
 
@@ -2181,13 +2197,16 @@ function renderGoals() {
           ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
         </div>
         <div class="goal-right">
-          <div class="goal-current">${fmt(g.current)}</div>
-          <div class="goal-target">${t('goal_of')} ${fmt(g.target)}</div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:2px;">
+            <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${g.currency || state.currency}</span>
+          </div>
+          <div class="goal-current">${fmtWithCur(g.current, g.currency)}</div>
+          <div class="goal-target">${t('goal_of')} ${fmtWithCur(g.target, g.currency)}</div>
         </div>
       </div>
       <div class="goal-track"><div class="goal-fill" style="width:${pct.toFixed(1)}%;background:linear-gradient(90deg,${color},${color}bb);"></div></div>
       <div class="goal-footer">
-        <span>${pct.toFixed(0)}% · ${achieved ? t('goal_done') : fmt(remaining)+' '+t('goal_to_go')}</span>
+        <span>${pct.toFixed(0)}% · ${achieved ? t('goal_done') : fmtWithCur(remaining, g.currency)+' '+t('goal_to_go')}</span>
         <div style="display:flex;align-items:center;gap:8px;">
           ${monthsLeftLabel ? `<span style="font-size:11px;color:var(--sky);">${monthsLeftLabel}</span>` : ''}
           <div class="goal-actions">
@@ -2199,19 +2218,35 @@ function renderGoals() {
     </div>`;
   }).join('');
 
-  const totalTarget  = state.goals.reduce((s,g)=>s+g.target,0);
-  const totalCurrent = state.goals.reduce((s,g)=>s+g.current,0);
-  const achieved     = state.goals.filter(g=>g.current>=g.target).length;
+  const achieved = state.goals.filter(g => g.current >= g.target).length;
+  const byCur = {};
+  state.goals.forEach(g => {
+    const c = g.currency || state.currency;
+    if (!byCur[c]) byCur[c] = { target: 0, current: 0 };
+    byCur[c].target  += g.target;
+    byCur[c].current += g.current;
+  });
+  const curEntries = Object.entries(byCur);
+  const savingsHTML = curEntries.length === 1
+    ? `<div style="font-family:var(--fd);font-size:28px;font-weight:700;color:var(--jade-d)">${fmtWithCur(curEntries[0][1].current, curEntries[0][0])}</div>
+       <div style="font-size:12px;color:var(--muted);margin-top:4px;">${t('goal_of')} ${fmtWithCur(curEntries[0][1].target, curEntries[0][0])} ${t('goals_across')} ${state.goals.length} ${t('goals_lbl')}</div>`
+    : curEntries.map(([cur, d]) => `
+       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,200,150,.12);">
+         <span style="font-size:11px;font-weight:700;color:var(--jade-d);letter-spacing:.5px;">${cur}</span>
+         <div style="text-align:right;">
+           <span style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--jade-d);">${fmtWithCur(d.current, cur)}</span>
+           <span style="font-size:11px;color:var(--muted);margin-left:4px;">/ ${fmtWithCur(d.target, cur)}</span>
+         </div>
+       </div>`).join('');
   document.getElementById('goals-summary').innerHTML = `
     <div style="background:var(--jade-s);border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${t('goals_total_saved')}</div>
-      <div style="font-family:var(--fd);font-size:28px;font-weight:700;color:var(--jade-d)">${fmt(totalCurrent)}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px;">${t('goal_of')} ${fmt(totalTarget)} ${t('goals_across')} ${state.goals.length} ${t('goals_lbl')}</div>
+      <div style="font-size:11px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">${t('goals_total_saved')}</div>
+      ${savingsHTML}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--sky-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--sky);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_active')}</div>
-        <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--sky)">${state.goals.length-achieved}</div>
+        <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--sky)">${state.goals.length - achieved}</div>
       </div>
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_achieved')}</div>
@@ -2936,15 +2971,16 @@ async function snLoadAll() {
       alertPct : b.alert_threshold || 80
     }));
     state.goals = (goals || []).map(g => ({
-      id      : g.sys_id,
-      name    : g.goal_name,
-      icon    : sanitizeIcon(g.goal_icon, '🎯'),
-      target  : g.target_amount,
-      current : g.current_amount,
-      monthly : g.monthly_contribution || 0,
-      date    : g.target_date || '',
-      status  : g.goal_status,
-      remarks : g.remarks || ''
+      id       : g.sys_id,
+      name     : g.goal_name,
+      icon     : sanitizeIcon(g.goal_icon, '🎯'),
+      target   : g.target_amount,
+      current  : g.current_amount,
+      monthly  : g.monthly_contribution || 0,
+      date     : g.target_date || '',
+      status   : g.goal_status,
+      remarks  : g.remarks || '',
+      currency : g.currency || state.currency
     }));
     state.accounts = (accounts || []).map(a => ({
       id         : a.sys_id,
