@@ -2171,7 +2171,8 @@ function renderGoals() {
     return;
   }
 
-  document.getElementById('goals-list').innerHTML = state.goals.map(g => {
+  const sortedGoals = [...state.goals].sort((a, b) => a.name.localeCompare(b.name));
+  document.getElementById('goals-list').innerHTML = sortedGoals.map(g => {
     const pct      = Math.min((g.current/g.target)*100, 100);
     const achieved = g.current >= g.target;
     const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
