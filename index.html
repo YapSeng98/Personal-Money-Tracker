@@ -853,9 +853,20 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <select class="form-input" id="txn-account"></select>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Date</label>
-      <input class="form-input" type="date" id="txn-date">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="txn-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Currency</label>
+        <select class="form-input" id="txn-currency">
+          <option value="SGD">SGD — S$</option>
+          <option value="USD">USD — $</option>
+          <option value="AUD">AUD — A$</option>
+          <option value="MYR">MYR — RM</option>
+        </select>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
@@ -901,9 +912,20 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
         <input class="form-input" type="number" id="budget-spent" placeholder="0.00" step="0.01" value="0">
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Alert Threshold (%)</label>
-      <input class="form-input" type="number" id="budget-alert" value="80" min="10" max="100">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Alert Threshold (%)</label>
+        <input class="form-input" type="number" id="budget-alert" value="80" min="10" max="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Currency</label>
+        <select class="form-input" id="budget-currency">
+          <option value="SGD">SGD — S$</option>
+          <option value="USD">USD — $</option>
+          <option value="AUD">AUD — A$</option>
+          <option value="MYR">MYR — RM</option>
+        </select>
+      </div>
     </div>
     <input type="hidden" id="budget-edit-id" value="">
     <div class="form-actions">
@@ -1384,6 +1406,7 @@ function openTxnModal(id = null) {
   document.getElementById('txn-amount').value             = '';
   document.getElementById('txn-desc').value               = '';
   document.getElementById('txn-notes').value              = '';
+  document.getElementById('txn-currency').value           = state.currency;
 
   // Populate account dropdown from user's saved accounts
   const accSel = document.getElementById('txn-account');
@@ -1403,8 +1426,9 @@ function openTxnModal(id = null) {
     document.getElementById('txn-desc').value    = txn.description;
     document.getElementById('txn-date').value    = txn.date;
     document.getElementById('txn-notes').value   = txn.notes || '';
-    setSelectVal('txn-cat',     txn.category);
-    setSelectVal('txn-account', txn.account);
+    setSelectVal('txn-cat',      txn.category);
+    setSelectVal('txn-account',  txn.account);
+    document.getElementById('txn-currency').value = txn.currency || state.currency;
     document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
@@ -1510,22 +1534,23 @@ async function saveTransaction() {
   const cat   = document.getElementById('txn-cat').value;
   const acct  = document.getElementById('txn-account').value;
   const date  = document.getElementById('txn-date').value;
-  const notes = document.getElementById('txn-notes').value.trim();
-  const editId = document.getElementById('txn-edit-id').value;
+  const notes    = document.getElementById('txn-notes').value.trim();
+  const currency = document.getElementById('txn-currency').value;
+  const editId   = document.getElementById('txn-edit-id').value;
 
   if (!amt || amt <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
   if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
   if (!date)             { showToast(t('toast_enter_date'), 'error'); return; }
 
   const snPayload = { type: state.currentType, amount: amt, description: desc,
-    category_name: cat, account_name: acct, date, notes };
+    category_name: cat, account_name: acct, date, notes, currency };
 
   if (editId !== '') {
     const idx = state.transactions.findIndex(tx => tx.id == editId);
     if (idx >= 0) {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
-        description: desc, category: cat, account: acct, date, notes };
+        description: desc, category: cat, account: acct, date, notes, currency };
       const snIdTxn = _snId(old);
       if (state.snToken && snIdTxn) {
         snAPI.call('/transactions', 'PUT', { sys_id: snIdTxn, ...snPayload })
@@ -1535,7 +1560,7 @@ async function saveTransaction() {
     }
   } else {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt,
-      description: desc, category: cat, account: acct, date, notes };
+      description: desc, category: cat, account: acct, date, notes, currency };
     state.transactions.unshift(txn);
     if (state.snToken) {
       snAPI.call('/transactions', 'POST', snPayload)
@@ -1580,14 +1605,16 @@ function openBudgetModal(id = null) {
   document.getElementById('budget-amount').value             = '';
   document.getElementById('budget-spent').value              = '0';
   document.getElementById('budget-alert').value              = '80';
+  document.getElementById('budget-currency').value           = state.currency;
 
   if (editing) {
     const b = state.budgets.find(x => x.id == id);
     if (!b) return;
     setSelectVal('budget-cat', b.category);
-    document.getElementById('budget-amount').value = b.amount;
-    document.getElementById('budget-spent').value  = getBudgetSpent(b.category).toFixed(2);
-    document.getElementById('budget-alert').value  = b.alertPct || 80;
+    document.getElementById('budget-amount').value   = b.amount;
+    document.getElementById('budget-spent').value    = getBudgetSpent(b.category).toFixed(2);
+    document.getElementById('budget-alert').value    = b.alertPct || 80;
+    document.getElementById('budget-currency').value = b.currency || state.currency;
     document.getElementById('budget-cat').disabled = true; // can't change category on edit
   } else {
     document.getElementById('budget-cat').disabled = false;
@@ -1600,33 +1627,34 @@ function closeBudgetModal() {
 }
 
 async function saveBudget() {
-  const cat    = document.getElementById('budget-cat').value;
-  const amt    = parseFloat(document.getElementById('budget-amount').value);
-  const spent  = parseFloat(document.getElementById('budget-spent').value) || 0;
-  const alert  = parseInt(document.getElementById('budget-alert').value)   || 80;
-  const editId = document.getElementById('budget-edit-id').value;
+  const cat      = document.getElementById('budget-cat').value;
+  const amt      = parseFloat(document.getElementById('budget-amount').value);
+  const spent    = parseFloat(document.getElementById('budget-spent').value) || 0;
+  const alert    = parseInt(document.getElementById('budget-alert').value)   || 80;
+  const currency = document.getElementById('budget-currency').value;
+  const editId   = document.getElementById('budget-edit-id').value;
 
   if (!amt || amt <= 0) { showToast(t('toast_enter_budget_amt'), 'error'); return; }
 
   if (editId !== '') {
     const idx = state.budgets.findIndex(b => b.id == editId);
     if (idx >= 0) {
-      state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert };
+      state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert, currency };
       saveState();
       const sysId = _snId(state.budgets[idx]);
       if (state.snToken && sysId) {
-        snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amt, alert_threshold: alert })
+        snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amt, alert_threshold: alert, currency })
           .catch(e => showToast('SN sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_budget_updated'), 'success');
     }
   } else {
     if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
-    const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert };
+    const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert, currency };
     state.budgets.push(bgt);
     saveState();
     if (state.snToken) {
-      snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amt, alert_threshold: alert })
+      snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amt, alert_threshold: alert, currency })
         .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
         .catch(e => showToast('SN sync: ' + e.message, 'warning'));
     }
@@ -2050,9 +2078,9 @@ function txnRowHTML(txn, showActions = true) {
     <div class="txn-ico" style="background:${CAT_BG[txn.category]||'#F7F9FC'}">${catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${txn.description}</div>
-      <div class="txn-meta">${[txn.category, txn.account, fmtDate(txn.date)].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[txn.category, txn.account, fmtDate(txn.date), txn.currency && txn.currency !== state.currency ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
-    <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmt(txn.amount)}</div>
+    <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
       <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit">✏️</button>
       <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete">🗑️</button>
@@ -2123,6 +2151,7 @@ function renderBudgets() {
           ${catIcon(b.category)} ${b.category}
           ${over ? `<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
           ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
+          <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>
         </div>
         <div class="budget-actions">
           <button class="icon-btn edit" onclick="openBudgetModal('${b.id}')" title="Edit budget">✏️</button>
@@ -2131,34 +2160,61 @@ function renderBudgets() {
       </div>
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <div class="budget-stats">
-        <span>${fmt(spent)} ${t('budget_spent_of')} ${fmt(b.amount)}</span>
-        <span class="budget-pct" style="color:${color}">${pct.toFixed(0)}%${over ? ' (−'+fmt(spent-b.amount)+' over)' : ' ('+fmt(b.amount-spent)+' '+t('budget_left')+')'}</span>
+        <span>${fmtWithCur(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(b.amount, b.currency)}</span>
+        <span class="budget-pct" style="color:${color}">${pct.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-b.amount, b.currency)+' over)' : ' ('+fmtWithCur(b.amount-spent, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
     </div>`;
   }).join('');
 
-  const totalBudget = state.budgets.reduce((s,b)=>s+b.amount,0);
-  const totalSpent  = state.budgets.reduce((s,b)=>s+getBudgetSpent(b.category),0);
-  const overallPct  = totalBudget > 0 ? (totalSpent/totalBudget*100) : 0;
-  const oc          = overallPct>100?'var(--coral)':overallPct>75?'var(--amber)':'var(--jade)';
+  // Group budgets by currency for overview
+  const budgetByCur = {};
+  state.budgets.forEach(b => {
+    const c = b.currency || state.currency;
+    if (!budgetByCur[c]) budgetByCur[c] = { total: 0, spent: 0 };
+    budgetByCur[c].total += b.amount;
+    budgetByCur[c].spent += getBudgetSpent(b.category);
+  });
+  const budgetCurEntries = Object.entries(budgetByCur);
+  const overBudgetCount  = state.budgets.filter(b => getBudgetSpent(b.category) > b.amount).length;
+
+  const budgetTotalHTML = budgetCurEntries.length === 1
+    ? (() => {
+        const [cur, d] = budgetCurEntries[0];
+        const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
+        const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
+        return `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:600;">
+          <span>${t('budget_total')}</span><span style="font-family:var(--fm);">${fmtWithCur(d.total, cur)}</span>
+        </div>
+        <div style="background:var(--surface);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;">
+          <div style="background:${oc};width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
+        </div>
+        <div style="font-size:11px;color:${oc};font-weight:700;">${pct.toFixed(1)}% ${t('budget_used')} · ${fmtWithCur(d.spent, cur)}</div>`;
+      })()
+    : budgetCurEntries.map(([cur, d]) => {
+        const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
+        const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
+        return `<div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;font-weight:600;">
+            <span style="color:var(--sky);font-size:10px;letter-spacing:.5px;">${cur}</span>
+            <span style="font-family:var(--fm);">${fmtWithCur(d.spent, cur)} / ${fmtWithCur(d.total, cur)}</span>
+          </div>
+          <div style="background:var(--surface);border-radius:99px;height:7px;overflow:hidden;">
+            <div style="background:${oc};width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;"></div>
+          </div>
+          <div style="font-size:10px;color:${oc};font-weight:700;margin-top:2px;">${pct.toFixed(1)}% ${t('budget_used')}</div>
+        </div>`;
+      }).join('');
+
   document.getElementById('budget-overview').innerHTML = `
-    <div style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:600;">
-        <span>${t('budget_total')}</span><span style="font-family:var(--fm);">${fmt(totalBudget)}</span>
-      </div>
-      <div style="background:var(--surface);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;">
-        <div style="background:${oc};width:${Math.min(overallPct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
-      </div>
-      <div style="font-size:11px;color:${oc};font-weight:700;">${overallPct.toFixed(1)}% ${t('budget_used')} · ${fmt(totalSpent)}</div>
-    </div>
+    <div style="margin-bottom:14px;">${budgetTotalHTML}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_remaining')}</div>
-        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--jade-d)">${fmt(Math.max(0,totalBudget-totalSpent))}</div>
+        <div style="font-size:11px;color:var(--jade-d);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.max(0,d.total-d.spent),c)).join('<br>')}</div>
       </div>
       <div style="background:var(--coral-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--coral);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_over_lbl')}</div>
-        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral)">${state.budgets.filter(b=>getBudgetSpent(b.category)>b.amount).length} ${t('budget_cats')}</div>
+        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral)">${overBudgetCount} ${t('budget_cats')}</div>
       </div>
     </div>`;
 }
@@ -2960,7 +3016,8 @@ async function snLoadAll() {
       category   : t.category,
       account    : t.account,
       date       : t.date,
-      notes      : t.notes || ''
+      notes      : t.notes || '',
+      currency   : t.currency || state.currency
     }));
     state.budgets = (budgets || []).map(b => ({
       id       : b.sys_id,
@@ -2969,7 +3026,8 @@ async function snLoadAll() {
       color    : b.category_color || '#6B7280',
       amount   : b.budget_amount,
       spent    : b.spent_amount,
-      alertPct : b.alert_threshold || 80
+      alertPct : b.alert_threshold || 80,
+      currency : b.currency || state.currency
     }));
     state.goals = (goals || []).map(g => ({
       id       : g.sys_id,

@@ -51,7 +51,8 @@
         remaining_amount: parseFloat(gr.remaining_amount.toString())|| 0,
         alert_threshold : parseInt(gr.alert_threshold.toString())   || 80,
         period_start    : gr.period_start.toString(),
-        period_end      : gr.period_end.toString()
+        period_end      : gr.period_end.toString(),
+        currency        : gr.getValue('currency') || 'SGD'
       });
     }
 
@@ -116,6 +117,7 @@
     newGR.alert_threshold  = parseInt(body.alert_threshold) || 80;
     newGR.period_start     = body.period_start || periodStart;
     newGR.period_end       = body.period_end   || periodEnd;
+    newGR.currency         = body.currency     || 'SGD';
 
     var newSysId = newGR.insert();
     response.setStatus(201);
@@ -145,6 +147,8 @@
     }
     if (putBody.alert_threshold !== undefined)
       editGR.alert_threshold = parseInt(putBody.alert_threshold);
+    if (putBody.currency !== undefined)
+      editGR.currency = putBody.currency;
 
     editGR.update();
     response.setStatus(200);

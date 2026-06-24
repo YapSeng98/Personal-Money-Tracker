@@ -54,7 +54,8 @@
         category   : gr.category.category_name.toString(),
         account    : gr.account.account_name.toString(),
         date       : gr.transaction_date.toString(),
-        notes      : gr.notes.toString()
+        notes      : gr.notes.toString(),
+        currency   : gr.getValue('currency') || 'SGD'
       });
     }
 
@@ -64,7 +65,7 @@
   }
 
   // ── POST /transactions ────────────────────────────────────
-  // Body: { type, amount, description, date, account_name, category_name, notes }
+  // Body: { type, amount, description, date, account_name, category_name, notes, currency }
   if (method === 'POST') {
     var body = request.body ? request.body.data : {};
 
@@ -84,7 +85,8 @@
     newGR.amount           = parseFloat(body.amount);
     newGR.description      = body.description;
     newGR.transaction_date = body.date || new GlideDateTime().getDate().getValue();
-    newGR.notes            = body.notes || '';
+    newGR.notes            = body.notes    || '';
+    newGR.currency         = body.currency || 'SGD';
     newGR.state            = '2'; // Confirmed
 
     // Resolve account by name (must belong to this user)
@@ -121,7 +123,7 @@
   }
 
   // ── PUT /transactions ─────────────────────────────────────
-  // Body: { sys_id, type, amount, description, date, account_name, category_name, notes }
+  // Body: { sys_id, type, amount, description, date, account_name, category_name, notes, currency }
   if (method === 'PUT') {
     var putBody = request.body ? request.body.data : {};
     if (!putBody.sys_id) {
@@ -144,6 +146,7 @@
     if (putBody.description !== undefined) editGR.description      = putBody.description;
     if (putBody.date        !== undefined) editGR.transaction_date = putBody.date;
     if (putBody.notes       !== undefined) editGR.notes            = putBody.notes;
+    if (putBody.currency    !== undefined) editGR.currency         = putBody.currency;
 
     if (putBody.account_name) {
       var putAccGR = new GlideRecord('x_887486_0_account');
