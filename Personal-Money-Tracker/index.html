@@ -1030,9 +1030,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
-      <div class="form-group"><label class="form-label">Balance</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
+      <div class="form-group"><label class="form-label">Currency</label><select class="form-input" id="acc-currency"><option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option></select></div>
     </div>
-    <div class="form-group"><label class="form-label">Institution</label><input class="form-input" type="text" id="acc-institution" placeholder="e.g. DBS, OCBC, UOB…"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Balance</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
+      <div class="form-group"><label class="form-label">Institution</label><input class="form-input" type="text" id="acc-institution" placeholder="e.g. DBS, OCBC, UOB…"></div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="document.getElementById('account-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-jade" id="acc-save-btn" onclick="saveAccount()">Add Account</button>
@@ -1808,11 +1811,13 @@ function openAccountModal(id = null) {
     document.getElementById('acc-type').value        = acc.type;
     document.getElementById('acc-balance').value     = acc.balance;
     document.getElementById('acc-institution').value = acc.institution;
+    document.getElementById('acc-currency').value    = acc.currency || state.currency;
   } else {
     document.getElementById('acc-name').value        = '';
     document.getElementById('acc-type').value        = 'Checking';
     document.getElementById('acc-balance').value     = '';
     document.getElementById('acc-institution').value = '';
+    document.getElementById('acc-currency').value    = state.currency;
   }
   document.getElementById('account-modal').classList.add('open');
 }
@@ -1822,15 +1827,16 @@ async function saveAccount() {
   const type        = document.getElementById('acc-type').value;
   const balance     = parseFloat(document.getElementById('acc-balance').value) || 0;
   const institution = document.getElementById('acc-institution').value;
+  const currency    = document.getElementById('acc-currency').value;
   if (!name) { showToast(t('toast_enter_account_name'), 'error'); return; }
-  const icon = type === 'Credit Card' ? '💳' : '🏦';
+  const icon = type === 'Credit Card' ? '💳' : type === 'Cash' ? '💵' : '🏦';
   const snPayload = { account_name: name, account_type: type, institution_name: institution,
-    current_balance: balance, currency: state.snUserProfile?.currency || state.currency || 'SGD' };
+    current_balance: balance, currency };
 
   if (_editingAccountId !== null) {
     const idx = state.accounts.findIndex(a => a.id == _editingAccountId);
     if (idx !== -1) {
-      state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon };
+      state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon, currency };
       const sysId = _snId(state.accounts[idx]);
       if (state.snToken && sysId) {
         snAPI.call('/accounts', 'PUT', { sys_id: sysId, ...snPayload })
@@ -1838,7 +1844,7 @@ async function saveAccount() {
       }
     }
   } else {
-    const acc = { id: state.nextId++, name, type, institution, balance, icon };
+    const acc = { id: state.nextId++, name, type, institution, balance, icon, currency };
     state.accounts.push(acc);
     if (state.snToken) {
       snAPI.call('/accounts', 'POST', snPayload)
@@ -2185,40 +2191,27 @@ function renderBudgets() {
   const budgetCurEntries = Object.entries(budgetByCur);
   const overBudgetCount  = state.budgets.filter(b => getBudgetSpent(b.category) > b.amount).length;
 
-  const budgetTotalHTML = budgetCurEntries.length === 1
-    ? (() => {
-        const [cur, d] = budgetCurEntries[0];
-        const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
-        const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
-        return `<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:600;">
-          <span>${t('budget_total')}</span><span style="font-family:var(--fm);">${fmtWithCur(d.total, cur)}</span>
-        </div>
-        <div style="background:var(--surface);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;">
-          <div style="background:${oc};width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
-        </div>
-        <div style="font-size:11px;color:${oc};font-weight:700;">${pct.toFixed(1)}% ${t('budget_used')} · ${fmtWithCur(d.spent, cur)}</div>`;
-      })()
-    : budgetCurEntries.map(([cur, d]) => {
-        const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
-        const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
-        return `<div style="margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;font-weight:600;">
-            <span style="color:var(--sky);font-size:10px;letter-spacing:.5px;">${cur}</span>
-            <span style="font-family:var(--fm);">${fmtWithCur(d.spent, cur)} / ${fmtWithCur(d.total, cur)}</span>
-          </div>
-          <div style="background:var(--surface);border-radius:99px;height:7px;overflow:hidden;">
-            <div style="background:${oc};width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;"></div>
-          </div>
-          <div style="font-size:10px;color:${oc};font-weight:700;margin-top:2px;">${pct.toFixed(1)}% ${t('budget_used')}</div>
-        </div>`;
-      }).join('');
+  const budgetTotalHTML = budgetCurEntries.map(([cur, d]) => {
+    const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
+    const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
+        <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${fmtWithCur(d.spent, cur)} / ${fmtWithCur(d.total, cur)}</span>
+      </div>
+      <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;">
+        <div style="background:${oc};width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
+      </div>
+      <div style="font-size:10px;color:${oc};font-weight:700;">${pct.toFixed(1)}% ${t('budget_used')}</div>
+    </div>`;
+  }).join('');
 
   document.getElementById('budget-overview').innerHTML = `
     <div style="margin-bottom:14px;">${budgetTotalHTML}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_remaining')}</div>
-        <div style="font-size:11px;color:var(--jade-d);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.max(0,d.total-d.spent),c)).join('<br>')}</div>
+        <div style="font-size:12px;color:var(--jade-d);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.max(0,d.total-d.spent),c)).join('<br>')}</div>
       </div>
       <div style="background:var(--coral-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--coral);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_over_lbl')}</div>
@@ -2366,25 +2359,59 @@ function effectiveBal(acc) {
 }
 
 function renderAccounts() {
-  const totalAssets = state.accounts.reduce((s,a)=>{ const b=effectiveBal(a); return b>0?s+b:s; }, 0);
-  const totalDebt   = state.accounts.reduce((s,a)=>{ const b=effectiveBal(a); return b<0?s+Math.abs(b):s; }, 0);
+  // ── Group by currency for the summary panel ──
+  const byCur = {};
+  state.accounts.forEach(a => {
+    const c = a.currency || state.currency;
+    if (!byCur[c]) byCur[c] = { assets: 0, debt: 0 };
+    const b = effectiveBal(a);
+    if (b > 0) byCur[c].assets += b; else byCur[c].debt += Math.abs(b);
+  });
+  const curEntries  = Object.entries(byCur);
+  const totalAssets = curEntries.reduce((s,[,d])=>s+d.assets,0);
+  const totalDebt   = curEntries.reduce((s,[,d])=>s+d.debt,0);
   const netWorth    = totalAssets - totalDebt;
+
+  // Summary block — per-currency rows like goals summary
+  const summaryHTML = curEntries.length === 1
+    ? (() => {
+        const [cur, d] = curEntries[0];
+        return `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmtWithCur(d.assets-d.debt,cur)}</div></div>
+        </div>`;
+      })()
+    : curEntries.map(([cur, d]) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
+          <div style="display:flex;gap:16px;text-align:right;">
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_assets')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_debt')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${fmtWithCur(d.assets-d.debt,cur)}</div></div>
+          </div>
+        </div>`).join('');
+
   document.getElementById('accounts-list').innerHTML = `
-    <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;">
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmt(totalAssets)}</div></div>
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmt(totalDebt)}</div></div>
-      <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmt(netWorth)}</div></div>
-    </div>
-    ${state.accounts.map(a=>`
-    <div class="account-row">
-      <div class="account-ico" style="background:${effectiveBal(a)<0?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
-      <div class="account-body"><div class="account-name">${a.name}</div><div class="account-type">${a.institution} · ${a.type}</div></div>
-      <div class="account-bal" style="color:${effectiveBal(a)<0?'var(--coral)':'var(--ink)'}">${effectiveBal(a)<0?'-':''}${fmt(Math.abs(effectiveBal(a)))}</div>
-      <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
-        <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
-        <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
-      </div>
-    </div>`).join('')}`;
+    <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;">${summaryHTML}</div>
+    ${state.accounts.map(a=>{
+      const cur = a.currency || state.currency;
+      const bal = effectiveBal(a);
+      const isNeg = bal < 0;
+      const showBadge = cur !== state.currency;
+      return `<div class="account-row">
+        <div class="account-ico" style="background:${isNeg?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
+        <div class="account-body">
+          <div class="account-name">${a.name}${showBadge?` <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.5px;">${cur}</span>`:''}</div>
+          <div class="account-type">${a.institution} · ${a.type}</div>
+        </div>
+        <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${isNeg?'-':''}${fmtWithCur(Math.abs(bal),cur)}</div>
+        <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
+          <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
+          <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
+        </div>
+      </div>`;
+    }).join('')}`;
 
   // ── Account Insights panel ──
   if (!state.accounts.length) {
@@ -2699,7 +2726,7 @@ async function syncFromSN() {
       state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
     }
     if (accounts.length) {
-      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, icon:(r.account_type||'').toLowerCase().includes('credit')?'💳':(r.account_type||'').toLowerCase().includes('cash')?'💵':'🏦' }));
+      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, currency:r.currency||state.currency, icon:(r.account_type||'').toLowerCase().includes('credit')?'💳':(r.account_type||'').toLowerCase().includes('cash')?'💵':'🏦' }));
     }
     renderAll();
     showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
