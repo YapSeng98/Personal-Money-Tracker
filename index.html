@@ -644,10 +644,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
     <!-- ════ ANALYTICS ════ -->
     <div class="view" id="view-analytics">
       <div class="analytics-grid" style="margin-bottom:20px;">
-        <div class="stat-card"><div class="stat-card-label">Total Income</div><div class="stat-card-val" id="an-income" style="color:var(--jade-d)">$0</div><div class="stat-card-sub">All time</div></div>
-        <div class="stat-card"><div class="stat-card-label">Total Expenses</div><div class="stat-card-val" id="an-expense" style="color:var(--coral)">$0</div><div class="stat-card-sub">All time</div></div>
+        <div class="stat-card"><div class="stat-card-label">Total Income</div><div id="an-income">—</div><div class="stat-card-sub">All time</div></div>
+        <div class="stat-card"><div class="stat-card-label">Total Expenses</div><div id="an-expense">—</div><div class="stat-card-sub">All time</div></div>
         <div class="stat-card"><div class="stat-card-label">Largest Expense</div><div class="stat-card-val" id="an-largest">—</div><div class="stat-card-sub" id="an-largest-desc">—</div></div>
-        <div class="stat-card"><div class="stat-card-label">Savings Rate</div><div class="stat-card-val" id="an-savings" style="color:var(--sky)">—</div><div class="stat-card-sub">(Income − Expenses) / Income</div></div>
+        <div class="stat-card"><div class="stat-card-label">Savings Rate</div><div id="an-savings">—</div><div class="stat-card-sub">(Income − Expenses) / Income</div></div>
       </div>
       <div class="panel" style="margin-bottom:20px;">
         <div class="panel-header"><div class="panel-title">Category Breakdown</div></div>
@@ -1623,7 +1623,7 @@ function openBudgetModal(id = null) {
     if (!b) return;
     setSelectVal('budget-cat', b.category);
     document.getElementById('budget-amount').value   = b.amount;
-    document.getElementById('budget-spent').value    = getBudgetSpent(b.category).toFixed(2);
+    document.getElementById('budget-spent').value    = getBudgetSpent(b.category, b.currency).toFixed(2);
     document.getElementById('budget-alert').value    = b.alertPct || 80;
     document.getElementById('budget-currency').value = b.currency || state.currency;
     document.getElementById('budget-cat').disabled = true; // can't change category on edit
@@ -1933,12 +1933,13 @@ function calcStats() {
     balance      : income - expense,
     savingsRate  : income > 0 ? ((income-expense)/income*100) : 0,
     avgDaily     : expense > 0 ? expense/30 : 0,
-    overBudget   : state.budgets.filter(b => getBudgetSpent(b.category) > b.amount).length
+    overBudget   : state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length
   };
 }
 
-function getBudgetSpent(category) {
-  return getMonthTxns().filter(t => t.type==='expense' && t.category===category)
+function getBudgetSpent(category, currency) {
+  const cur = currency || state.currency;
+  return getMonthTxns().filter(t => t.type==='expense' && t.category===category && (t.currency||state.currency) === cur)
     .reduce((s,t)=>s+t.amount, 0);
 }
 
@@ -2086,13 +2087,14 @@ function renderDashboard() {
 }
 
 /* ── TXN ROW HTML ── */
-function txnRowHTML(txn, showActions = true) {
+function txnRowHTML(txn, showActions = true, forceBadge = false) {
   const isPos = txn.type === 'income';
+  const showBadge = forceBadge || (txn.currency && txn.currency !== state.currency);
   return `<div class="txn-row">
     <div class="txn-ico" style="background:${CAT_BG[txn.category]||'#F7F9FC'}">${catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${txn.description}</div>
-      <div class="txn-meta">${[txn.category, txn.account, fmtDate(txn.date), txn.currency && txn.currency !== state.currency ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[txn.category, txn.account, fmtDate(txn.date), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -2140,11 +2142,11 @@ function renderTransactions() {
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))];
   const isMultiCurTxn = currencies.length > 1;
 
-  const groupByDate = arr => {
+  const groupByDate = (arr, forceBadge = false) => {
     const byDate = {};
     arr.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
     return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
-      .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t)).join('')}`)
+      .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
       .join('');
   };
 
@@ -2157,7 +2159,7 @@ function renderTransactions() {
       return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
         <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
         <div style="flex:1;height:1px;background:var(--border);"></div>
-      </div>${groupByDate(curTxns)}`;
+      </div>${groupByDate(curTxns, true)}`;
     }).join('');
   }
 }
@@ -2179,7 +2181,7 @@ function renderBudgets() {
   const isMultiCurBudget = Object.keys(budgetsByCur).length > 1;
 
   const budgetCardHTML = b => {
-    const spent = getBudgetSpent(b.category);
+    const spent = getBudgetSpent(b.category, b.currency);
     const pct   = Math.min((spent/b.amount)*100, 100);
     const over  = spent > b.amount;
     const near  = pct >= b.alertPct && !over;
@@ -2219,10 +2221,10 @@ function renderBudgets() {
     const c = b.currency || state.currency;
     if (!budgetByCur[c]) budgetByCur[c] = { total: 0, spent: 0 };
     budgetByCur[c].total += b.amount;
-    budgetByCur[c].spent += getBudgetSpent(b.category);
+    budgetByCur[c].spent += getBudgetSpent(b.category, b.currency);
   });
   const budgetCurEntries = Object.entries(budgetByCur);
-  const overBudgetCount  = state.budgets.filter(b => getBudgetSpent(b.category) > b.amount).length;
+  const overBudgetCount  = state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length;
 
   const budgetTotalHTML = budgetCurEntries.map(([cur, d]) => {
     const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
@@ -2360,24 +2362,45 @@ function renderGoals() {
 
 /* ── ANALYTICS ── */
 function renderAnalytics() {
-  // All-time totals (not month-filtered)
-  const allIncome  = state.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const allExpense = state.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const savingsEl  = document.getElementById('an-savings');
-  document.getElementById('an-income').textContent  = '+'+fmt(allIncome);
-  document.getElementById('an-expense').textContent = '-'+fmt(allExpense);
-  if (allIncome > 0) {
-    const rate = ((allIncome - allExpense) / allIncome * 100);
-    savingsEl.textContent = rate.toFixed(1) + '%';
-    savingsEl.style.color = rate >= 20 ? 'var(--jade-d)' : rate >= 0 ? 'var(--amber)' : 'var(--coral)';
-  } else {
-    savingsEl.textContent = allExpense > 0 ? 'N/A' : '—';
-    savingsEl.style.color = 'var(--muted)';
-  }
-  const exps = state.transactions.filter(t=>t.type==='expense'); // all-time for largest
+  // All-time per-currency totals
+  const allTxns = state.transactions;
+  const currencies = [...new Set(allTxns.map(t => t.currency || state.currency))];
+  const isMultiCurStat = currencies.length > 1;
+
+  const statRowStyle = `font-family:var(--fm);font-size:${isMultiCurStat?'13px':'22px'};font-weight:700;`;
+  const curStatRows = (field, color, prefix='') => currencies.map(cur => {
+    const amt = allTxns.filter(t=>(t.currency||state.currency)===cur && t.type===field).reduce((s,t)=>s+t.amount,0);
+    return isMultiCurStat
+      ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+           <span style="font-size:10px;color:var(--muted);font-weight:700;">${cur}</span>
+           <span style="${statRowStyle}color:${color};">${prefix}${fmtWithCur(amt,cur)}</span>
+         </div>`
+      : `<div class="stat-card-val" style="color:${color};">${prefix}${fmtWithCur(amt,cur)}</div>`;
+  }).join('');
+
+  document.getElementById('an-income').innerHTML  = curStatRows('income',  'var(--jade-d)', '+');
+  document.getElementById('an-expense').innerHTML = curStatRows('expense', 'var(--coral)',  '−');
+
+  // Savings rate per currency
+  document.getElementById('an-savings').innerHTML = currencies.map(cur => {
+    const inc = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const rate = inc > 0 ? ((inc-exp)/inc*100) : null;
+    const col  = rate===null ? 'var(--muted)' : rate>=20 ? 'var(--jade-d)' : rate>=0 ? 'var(--amber)' : 'var(--coral)';
+    const val  = rate===null ? (exp>0?'N/A':'—') : rate.toFixed(1)+'%';
+    return isMultiCurStat
+      ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+           <span style="font-size:10px;color:var(--muted);font-weight:700;">${cur}</span>
+           <span style="${statRowStyle}color:${col};">${val}</span>
+         </div>`
+      : `<div class="stat-card-val" style="color:${col};">${val}</div>`;
+  }).join('');
+
+  // Largest expense (all-time, show with correct currency)
+  const exps = allTxns.filter(t=>t.type==='expense');
   if (exps.length) {
     const max = exps.reduce((m,t)=>t.amount>m.amount?t:m,exps[0]);
-    document.getElementById('an-largest').textContent      = fmt(max.amount);
+    document.getElementById('an-largest').textContent      = fmtWithCur(max.amount, max.currency);
     document.getElementById('an-largest-desc').textContent = max.description;
   } else {
     document.getElementById('an-largest').textContent      = '—';
@@ -2582,7 +2605,7 @@ async function callAI(prompt, targetId) {
 function buildSummary() {
   const s = calcStats();
   const cs = getCategorySpend();
-  return `${state.currency} data for ${getMonthLabel(state.filterMonth)}: Balance ${fmt(s.balance)}, Income ${fmt(s.income)}, Expenses ${fmt(s.expense)}, Savings rate ${s.savingsRate.toFixed(1)}%, Daily avg ${fmt(s.avgDaily)}. Top categories: ${cs.slice(0,5).map(([c,a])=>`${c} ${fmt(a)}`).join(', ')}. Budgets: ${state.budgets.map(b=>`${b.category} ${fmt(getBudgetSpent(b.category))}/${fmt(b.amount)}`).join('; ')||'none'}. Goals: ${state.goals.map(g=>`${g.name} ${fmt(g.current)}/${fmt(g.target)}`).join('; ')||'none'}. Context: Singapore user, ServiceNow PDI app.`;
+  return `${state.currency} data for ${getMonthLabel(state.filterMonth)}: Balance ${fmt(s.balance)}, Income ${fmt(s.income)}, Expenses ${fmt(s.expense)}, Savings rate ${s.savingsRate.toFixed(1)}%, Daily avg ${fmt(s.avgDaily)}. Top categories: ${cs.slice(0,5).map(([c,a])=>`${c} ${fmt(a)}`).join(', ')}. Budgets: ${state.budgets.map(b=>`${b.category} ${fmtWithCur(getBudgetSpent(b.category, b.currency), b.currency)}/${fmtWithCur(b.amount, b.currency)}`).join('; ')||'none'}. Goals: ${state.goals.map(g=>`${g.name} ${fmtWithCur(g.current, g.currency)}/${fmtWithCur(g.target, g.currency)}`).join('; ')||'none'}. Context: Singapore user, ServiceNow PDI app.`;
 }
 
 // ═══════════════════════════════════════════════
@@ -2611,7 +2634,7 @@ function exportSNJSON() {
     })),
     x_pfmt_budget: state.budgets.map(b => ({
       category: b.category, budget_amount: b.amount,
-      spent_amount: getBudgetSpent(b.category), alert_threshold_pct: b.alertPct || 80
+      spent_amount: getBudgetSpent(b.category, b.currency), alert_threshold_pct: b.alertPct || 80
     })),
     x_pfmt_savings_goal: state.goals.map(g => ({
       goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
