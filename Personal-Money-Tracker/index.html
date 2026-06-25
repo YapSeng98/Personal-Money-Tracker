@@ -2419,27 +2419,53 @@ function renderAccounts() {
     return;
   }
   const typeColors = {Checking:'var(--sky)',Savings:'var(--jade)',Investment:'var(--violet)','Credit Card':'var(--coral)',Cash:'var(--amber)',Other:'var(--muted)'};
-  const byType = {};
+  const isMultiCur = curEntries.length > 1;
+
+  // Group by currency → type for allocation
+  const byTypePerCur = {};
   state.accounts.forEach(a => {
-    if (!byType[a.type]) byType[a.type] = 0;
-    byType[a.type] += Math.max(0, effectiveBal(a));
+    const cur = a.currency || state.currency;
+    const b = Math.max(0, effectiveBal(a));
+    if (!byTypePerCur[cur]) byTypePerCur[cur] = {};
+    if (!byTypePerCur[cur][a.type]) byTypePerCur[cur][a.type] = 0;
+    byTypePerCur[cur][a.type] += b;
   });
-  const debtRatio = totalAssets > 0 ? (totalDebt/totalAssets*100) : 0;
-  const drColor   = debtRatio > 30 ? 'var(--coral)' : debtRatio > 10 ? 'var(--amber)' : 'var(--jade)';
-  const allocationRows = Object.entries(byType)
-    .sort((a,b)=>b[1]-a[1])
-    .map(([type, bal]) => {
-      const pct = totalAssets > 0 ? (bal/totalAssets*100) : 0;
+
+  let allocationRows = '';
+  for (const [cur, byType] of Object.entries(byTypePerCur)) {
+    const curTotal = Object.values(byType).reduce((s,v)=>s+v,0);
+    if (isMultiCur) allocationRows += `<div style="font-size:10px;font-weight:700;color:var(--sky);letter-spacing:.5px;margin:10px 0 6px;padding-top:6px;border-top:1px solid var(--border);">${cur}</div>`;
+    allocationRows += Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type, bal]) => {
+      const pct = curTotal > 0 ? (bal/curTotal*100) : 0;
       const col = typeColors[type] || 'var(--muted)';
-      return `<div style="margin-bottom:12px;">
+      return `<div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
-          <span>${type}</span><span style="font-family:var(--fm);color:var(--muted)">${pct.toFixed(1)}% · ${fmt(bal)}</span>
+          <span>${type}</span><span style="font-family:var(--fm);color:var(--muted)">${pct.toFixed(1)}% · ${fmtWithCur(bal,cur)}</span>
         </div>
         <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;">
           <div style="width:${pct.toFixed(1)}%;height:100%;border-radius:99px;background:${col};transition:width .4s;"></div>
         </div>
       </div>`;
     }).join('');
+  }
+
+  // Debt ratio: per-currency when mixed, single large number when one currency
+  const debtRatioHTML = isMultiCur
+    ? curEntries.map(([cur, d]) => {
+        const dr = d.assets > 0 ? (d.debt/d.assets*100) : 0;
+        const col = dr > 30 ? 'var(--coral)' : dr > 10 ? 'var(--amber)' : 'var(--jade)';
+        return `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
+          <span style="color:var(--muted);font-weight:600;">${cur}</span>
+          <span style="color:${col};font-weight:700;">${dr.toFixed(1)}%</span>
+        </div>`;
+      }).join('')
+    : (() => {
+        const [cur, d] = curEntries[0];
+        const dr = d.assets > 0 ? (d.debt/d.assets*100) : 0;
+        const col = dr > 30 ? 'var(--coral)' : dr > 10 ? 'var(--amber)' : 'var(--jade)';
+        return `<div style="font-family:var(--fd);font-size:18px;font-weight:700;color:${col}">${dr.toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${dr>30?t('acc_risk_high'):dr>10?t('acc_risk_moderate'):t('acc_risk_low')} ${t('acc_risk_suffix')}</div>`;
+      })();
 
   document.getElementById('account-insights-body').innerHTML = `
     <div style="margin-bottom:16px;">
@@ -2449,8 +2475,7 @@ function renderAccounts() {
     <div style="background:var(--surface);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div>
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_debt_ratio')}</div>
-        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:${drColor}">${debtRatio.toFixed(1)}%</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${debtRatio>30?t('acc_risk_high'):debtRatio>10?t('acc_risk_moderate'):t('acc_risk_low')} ${t('acc_risk_suffix')}</div>
+        ${debtRatioHTML}
       </div>
       <div>
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_accounts')}</div>
