@@ -458,8 +458,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ── Panel A: SN Login ── -->
     <div class="sn-login-panel active" id="panel-login">
-      <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
-      <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password"/>
+      <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNLogin()"/>
+      <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSNLogin()"/>
       <div class="sn-login-err" id="sn-li-err"></div>
       <button class="sn-login-btn" id="sn-li-btn" onclick="doSNLogin()">Sign In</button>
       <button class="sn-login-toggle" onclick="showAuthPanel('register')">No account? <span>Create one</span></button>
@@ -467,12 +467,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ── Panel B: SN Register ── -->
     <div class="sn-login-panel" id="panel-register">
-      <input class="sn-login-input" id="sn-reg-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false"/>
-      <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name"/>
-      <input class="sn-login-input" id="sn-reg-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
-      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email (optional)" autocomplete="email"/>
-      <input class="sn-login-input" id="sn-reg-password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password"/>
-      <input class="sn-login-input" id="sn-reg-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/>
+      <input class="sn-login-input" id="sn-reg-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email (optional)" autocomplete="email" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <div class="sn-login-err" id="sn-reg-err"></div>
       <button class="sn-login-btn" id="sn-reg-btn" onclick="doSNRegister()">Create Account</button>
       <button class="sn-login-toggle" onclick="showAuthPanel('login')">Already have an account? <span>Sign in</span></button>
