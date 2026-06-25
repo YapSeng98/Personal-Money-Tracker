@@ -255,6 +255,14 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
   .topbar-actions{gap:6px;}
   .responsive-grid{grid-template-columns:1fr!important;}
   .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  /* Modal form improvements on mobile */
+  .form-row{grid-template-columns:1fr;}
+  .modal{padding:20px 16px;border-radius:16px;}
+  .modal-close{width:40px;height:40px;}
+  /* Bigger touch targets */
+  .btn{min-height:44px;}
+  .form-actions .btn{padding:13px;font-size:15px;}
+  .month-nav{padding:8px 12px;gap:6px;}
 }
 
 /* ── MONTH NAV ── */
@@ -861,10 +869,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group">
         <label class="form-label">Currency</label>
         <select class="form-input" id="txn-currency">
-          <option value="SGD">SGD — S$</option>
-          <option value="USD">USD — $</option>
-          <option value="AUD">AUD — A$</option>
-          <option value="MYR">MYR — RM</option>
+          <option value="SGD">SGD</option>
+          <option value="USD">USD</option>
+          <option value="AUD">AUD</option>
+          <option value="MYR">MYR</option>
         </select>
       </div>
     </div>
@@ -920,10 +928,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group">
         <label class="form-label">Currency</label>
         <select class="form-input" id="budget-currency">
-          <option value="SGD">SGD — S$</option>
-          <option value="USD">USD — $</option>
-          <option value="AUD">AUD — A$</option>
-          <option value="MYR">MYR — RM</option>
+          <option value="SGD">SGD</option>
+          <option value="USD">USD</option>
+          <option value="AUD">AUD</option>
+          <option value="MYR">MYR</option>
         </select>
       </div>
     </div>
@@ -980,10 +988,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
       <div class="form-group">
         <label class="form-label">Currency</label>
         <select class="form-input" id="goal-currency">
-          <option value="SGD">SGD — S$</option>
-          <option value="USD">USD — $</option>
-          <option value="AUD">AUD — A$</option>
-          <option value="MYR">MYR — RM</option>
+          <option value="SGD">SGD</option>
+          <option value="USD">USD</option>
+          <option value="AUD">AUD</option>
+          <option value="MYR">MYR</option>
         </select>
       </div>
     </div>
