@@ -85,13 +85,14 @@
       catGR.insert();
     }
 
-    // Check no duplicate budget for same category this period
+    // Check no duplicate budget for same category + currency this period
     var dupGR = new GlideRecord('x_887486_0_budget');
     dupGR.addQuery('user_profile', profileSysId);
     dupGR.addQuery('category', catGR.getUniqueValue());
+    dupGR.addQuery('currency', body.currency || 'SGD');
     dupGR.query();
     if (dupGR.next()) {
-      helper.errorResponse(response, 409, 'Budget for this category already exists');
+      helper.errorResponse(response, 409, 'Budget for this category and currency already exists');
       return;
     }
 
