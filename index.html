@@ -1660,7 +1660,7 @@ async function saveBudget() {
       showToast(t('toast_budget_updated'), 'success');
     }
   } else {
-    if (state.budgets.find(b => b.category === cat)) { showToast(t('toast_budget_exists'), 'error'); return; }
+    if (state.budgets.find(b => b.category === cat && (b.currency || state.currency) === currency)) { showToast(t('toast_budget_exists'), 'error'); return; }
     const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert, currency };
     state.budgets.push(bgt);
     saveState();
