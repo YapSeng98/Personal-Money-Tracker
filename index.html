@@ -2057,32 +2057,86 @@ function renderAll() {
 /* ── DASHBOARD ── */
 function renderDashboard() {
   const s = calcStats();
-  document.getElementById('hero-balance').textContent  = fmt(s.balance);
-  document.getElementById('hero-income').textContent   = '+' + fmt(s.income);
-  document.getElementById('hero-expense').textContent  = '-' + fmt(s.expense);
-  document.getElementById('kpi-txn-count').textContent = getMonthTxns().length;
-  document.getElementById('kpi-avg-daily').textContent = fmt(s.avgDaily);
-  const srEl = document.getElementById('kpi-savings-rate');
-  srEl.textContent  = s.savingsRate.toFixed(1) + '%';
-  srEl.style.color  = s.savingsRate >= 20 ? 'var(--jade-d)' : s.savingsRate >= 10 ? 'var(--amber)' : 'var(--coral)';
+  const monthTxns = getMonthTxns();
+  const currencies = [...new Set(monthTxns.map(t => t.currency || state.currency))];
+  const isMulti = currencies.length > 1;
+
+  // Per-currency stats helper
+  const curStats = cur => {
+    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    return { inc, exp, bal: inc - exp };
+  };
+
+  if (!isMulti) {
+    const cur = currencies[0] || state.currency;
+    document.getElementById('hero-balance').innerHTML = `<span style="font-family:var(--fd);font-size:clamp(28px,5vw,52px);font-weight:800;">${fmtWithCur(s.balance, cur)}</span>`;
+    document.getElementById('hero-income').textContent  = '+' + fmtWithCur(s.income, cur);
+    document.getElementById('hero-expense').textContent = '−' + fmtWithCur(s.expense, cur);
+    document.getElementById('kpi-avg-daily').textContent = fmtWithCur(s.avgDaily, cur);
+    const srEl = document.getElementById('kpi-savings-rate');
+    srEl.textContent = s.savingsRate.toFixed(1) + '%';
+    srEl.style.color = s.savingsRate >= 20 ? 'var(--jade-d)' : s.savingsRate >= 10 ? 'var(--amber)' : 'var(--coral)';
+  } else {
+    // Multi-currency: stacked per-currency rows in hero
+    const rowStyle = `font-family:var(--fm);font-size:clamp(16px,2.5vw,24px);font-weight:700;line-height:1.5;`;
+    document.getElementById('hero-balance').innerHTML = currencies.map(cur => {
+      const {bal} = curStats(cur);
+      return `<div style="${rowStyle}color:${bal>=0?'white':'var(--coral)'};">${fmtWithCur(bal,cur)}</div>`;
+    }).join('');
+    document.getElementById('hero-income').innerHTML = currencies.map(cur =>
+      `<div style="font-size:11px;font-weight:700;color:var(--jade);">+${fmtWithCur(curStats(cur).inc,cur)}</div>`).join('');
+    document.getElementById('hero-expense').innerHTML = currencies.map(cur =>
+      `<div style="font-size:11px;font-weight:700;color:var(--coral);">−${fmtWithCur(curStats(cur).exp,cur)}</div>`).join('');
+    document.getElementById('kpi-avg-daily').innerHTML = currencies.map(cur => {
+      const exp = curStats(cur).exp;
+      return `<div style="font-size:11px;font-weight:700;">${fmtWithCur(exp/30,cur)}</div>`;
+    }).join('');
+    // Savings rate: best/worst
+    const rates = currencies.map(cur => { const {inc,exp} = curStats(cur); return inc>0?(inc-exp)/inc*100:null; }).filter(r=>r!==null);
+    const avgRate = rates.length ? rates.reduce((a,b)=>a+b,0)/rates.length : 0;
+    const srEl = document.getElementById('kpi-savings-rate');
+    srEl.innerHTML = currencies.map(cur => {
+      const {inc,exp} = curStats(cur);
+      const r = inc > 0 ? ((inc-exp)/inc*100) : null;
+      const col = r===null?'var(--muted)':r>=20?'var(--jade-d)':r>=10?'var(--amber)':'var(--coral)';
+      return `<div style="font-size:11px;font-weight:700;color:${col};">${cur} ${r!==null?r.toFixed(1)+'%':'N/A'}</div>`;
+    }).join('');
+    srEl.style.color = '';
+  }
+
+  document.getElementById('kpi-txn-count').textContent = monthTxns.length;
   document.getElementById('kpi-budgets-over').textContent = s.overBudget;
 
-  const recent = getMonthTxns().slice(0,8);
+  const recent = monthTxns.slice(0,8);
   document.getElementById('recent-txns').innerHTML = recent.length
     ? recent.map(txn => txnRowHTML(txn)).join('')
     : `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_month')} ${getMonthLabel(state.filterMonth)}.<br>${t('empty_add_first')}</p></div>`;
 
-  const cs = getCategorySpend();
-  if (!cs.length) {
+  // Category chart — per-currency sections when mixed
+  const expByCur = {};
+  monthTxns.filter(t=>t.type==='expense').forEach(t => {
+    const c = t.currency || state.currency;
+    if (!expByCur[c]) expByCur[c] = {};
+    expByCur[c][t.category] = (expByCur[c][t.category]||0) + t.amount;
+  });
+  if (!Object.keys(expByCur).length) {
     document.getElementById('category-chart').innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_expenses_chart')}</p></div>`;
   } else {
-    const max = cs[0][1];
-    document.getElementById('category-chart').innerHTML = cs.slice(0,7).map(([cat,amt]) =>
-      `<div class="chart-bar-row">
-        <div class="chart-bar-label">${catIcon(cat)} ${cat}</div>
-        <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
-        <div class="chart-bar-val">${fmt(amt)}</div>
-      </div>`).join('');
+    document.getElementById('category-chart').innerHTML = Object.entries(expByCur).map(([cur, cats], i) => {
+      const cs = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,7);
+      const max = cs[0][1];
+      const bars = cs.map(([cat,amt]) =>
+        `<div class="chart-bar-row">
+          <div class="chart-bar-label">${catIcon(cat)} ${cat}</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
+          <div class="chart-bar-val">${fmtWithCur(amt,cur)}</div>
+        </div>`).join('');
+      return `${isMulti ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'16px':0} 0 8px;">
+        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>` : ''}${bars}`;
+    }).join('');
   }
 }
 
