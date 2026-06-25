@@ -2398,7 +2398,7 @@ function renderAccounts() {
       const cur = a.currency || state.currency;
       const bal = effectiveBal(a);
       const isNeg = bal < 0;
-      const showBadge = cur !== state.currency;
+      const showBadge = curEntries.length > 1;
       return `<div class="account-row">
         <div class="account-ico" style="background:${isNeg?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
         <div class="account-body">
