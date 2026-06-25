@@ -2137,12 +2137,29 @@ function renderTransactions() {
 
   if (!txns.length) { document.getElementById('all-txns').innerHTML = `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
 
-  const byDate = {};
-  txns.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
-  const sorted = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
-  document.getElementById('all-txns').innerHTML = sorted.map(d =>
-    `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t)).join('')}`
-  ).join('');
+  const currencies = [...new Set(txns.map(t => t.currency || state.currency))];
+  const isMultiCurTxn = currencies.length > 1;
+
+  const groupByDate = arr => {
+    const byDate = {};
+    arr.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
+    return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
+      .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t)).join('')}`)
+      .join('');
+  };
+
+  if (!isMultiCurTxn) {
+    document.getElementById('all-txns').innerHTML = groupByDate(txns);
+  } else {
+    document.getElementById('all-txns').innerHTML = currencies.map((cur, i) => {
+      const curTxns = txns.filter(t => (t.currency || state.currency) === cur);
+      if (!curTxns.length) return '';
+      return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
+        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>${groupByDate(curTxns)}`;
+    }).join('');
+  }
 }
 
 /* ── BUDGETS VIEW ── */
@@ -2153,7 +2170,15 @@ function renderBudgets() {
     return;
   }
 
-  document.getElementById('budget-list').innerHTML = state.budgets.map(b => {
+  const budgetsByCur = {};
+  state.budgets.forEach(b => {
+    const c = b.currency || state.currency;
+    if (!budgetsByCur[c]) budgetsByCur[c] = [];
+    budgetsByCur[c].push(b);
+  });
+  const isMultiCurBudget = Object.keys(budgetsByCur).length > 1;
+
+  const budgetCardHTML = b => {
     const spent = getBudgetSpent(b.category);
     const pct   = Math.min((spent/b.amount)*100, 100);
     const over  = spent > b.amount;
@@ -2165,7 +2190,7 @@ function renderBudgets() {
           ${catIcon(b.category)} ${b.category}
           ${over ? `<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
           ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
-          <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>
+          ${!isMultiCurBudget ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>` : ''}
         </div>
         <div class="budget-actions">
           <button class="icon-btn edit" onclick="openBudgetModal('${b.id}')" title="Edit budget">✏️</button>
@@ -2178,7 +2203,15 @@ function renderBudgets() {
         <span class="budget-pct" style="color:${color}">${pct.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-b.amount, b.currency)+' over)' : ' ('+fmtWithCur(b.amount-spent, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  document.getElementById('budget-list').innerHTML = Object.entries(budgetsByCur).map(([cur, budgets], i) => `
+    ${isMultiCurBudget ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
+      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>` : ''}
+    ${budgets.map(budgetCardHTML).join('')}
+  `).join('');
 
   // Group budgets by currency for overview
   const budgetByCur = {};
@@ -2350,15 +2383,32 @@ function renderAnalytics() {
     document.getElementById('an-largest').textContent      = '—';
     document.getElementById('an-largest-desc').textContent = '—';
   }
-  const cs = getCategorySpend();
-  if (!cs.length) { document.getElementById('analytics-chart').innerHTML=`<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`; return; }
-  const max2 = cs[0][1];
-  document.getElementById('analytics-chart').innerHTML = cs.map(([cat,amt]) =>
-    `<div class="chart-bar-row">
-      <div class="chart-bar-label">${catIcon(cat)} ${cat}</div>
-      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max2*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
-      <div class="chart-bar-val">${fmt(amt)}</div>
-    </div>`).join('');
+  const monthTxns = getMonthTxns().filter(t => t.type === 'expense');
+  if (!monthTxns.length) { document.getElementById('analytics-chart').innerHTML=`<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`; return; }
+
+  // Group by currency → category
+  const expByCur = {};
+  monthTxns.forEach(t => {
+    const c = t.currency || state.currency;
+    if (!expByCur[c]) expByCur[c] = {};
+    expByCur[c][t.category] = (expByCur[c][t.category] || 0) + t.amount;
+  });
+  const isMultiCurAn = Object.keys(expByCur).length > 1;
+
+  document.getElementById('analytics-chart').innerHTML = Object.entries(expByCur).map(([cur, cats], i) => {
+    const cs = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+    const max2 = cs[0][1];
+    const bars = cs.map(([cat, amt]) =>
+      `<div class="chart-bar-row">
+        <div class="chart-bar-label">${catIcon(cat)} ${cat}</div>
+        <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max2*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
+        <div class="chart-bar-val">${fmtWithCur(amt, cur)}</div>
+      </div>`).join('');
+    return `${isMultiCurAn ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
+      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>` : ''}${bars}`;
+  }).join('');
 }
 
 /* ── ACCOUNTS ── */
