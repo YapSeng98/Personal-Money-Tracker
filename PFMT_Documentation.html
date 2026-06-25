@@ -370,7 +370,7 @@
     <div class="logo-icon">💰</div>
     <div>
       <div class="logo-text">PFMT Docs</div>
-      <div class="logo-sub">v1.0 · June 2026</div>
+      <div class="logo-sub">v2.0 · June 2026</div>
     </div>
   </div>
 
@@ -414,6 +414,8 @@
   <div class="sidebar-section">
     <div class="sidebar-section-label">Frontend</div>
     <a href="#frontend-features">App Features</a>
+    <a href="#frontend-ai">AI / Groq Integration</a>
+    <a href="#frontend-i18n">Bilingual Support</a>
     <a href="#frontend-state">State Structure</a>
     <a href="#frontend-sync">Data Sync Model</a>
     <a href="#frontend-lock">PIN Lock</a>
@@ -1180,7 +1182,74 @@ Page loads
         <tr><td><strong>Analytics</strong></td><td>📈</td><td>Monthly trend chart, category spend breakdown, income vs expense comparison. Optional Groq AI spending insights.</td></tr>
         <tr><td><strong>Accounts</strong></td><td>🏦</td><td>Bank/wallet account list with balances. Add/edit/delete. Balance updates sync to SN.</td></tr>
         <tr><td><strong>Profile</strong></td><td>👤</td><td>Avatar initials, display name, email, stats (transactions/accounts/goals). Edit display name, email, income target. Change password.</td></tr>
-        <tr><td><strong>Settings</strong></td><td>⚙️</td><td>SN connection status card, Test Connection, Sync Data buttons. PIN setup. Currency, language. Groq API key. Quick links to SN Studio/Tables.</td></tr>
+        <tr><td><strong>Settings</strong></td><td>⚙️</td><td>SN connection status card, Test Connection, Sync Data buttons. PIN setup. Currency, language. Groq API key for AI features. Quick links to SN Studio/Tables.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ AI FEATURES ══════════════════════════════════════════ -->
+  <h2 id="frontend-ai">🤖 AI / Groq Integration</h2>
+  <p>PFMT integrates with the <strong>Groq API</strong> (free tier) to provide contextual AI coaching across 5 panels. All AI calls send a plain-text financial summary to Groq's <span class="inline-code">llama3-8b-8192</span> model and display the markdown-style response inline.</p>
+
+  <h3>AI Panels</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Panel</th><th>Page</th><th>Trigger</th><th>Prompt focus</th></tr></thead>
+      <tbody>
+        <tr><td><strong>✨ AI Insights</strong></td><td>Dashboard / header button</td><td>"Generate Insights"</td><td>3–4 actionable spending insights with key numbers highlighted</td></tr>
+        <tr><td><strong>Budget Coach</strong></td><td>Budgets</td><td>"Analyse My Budgets"</td><td>3 budget recommendations based on current spend vs limits</td></tr>
+        <tr><td><strong>Goal Coach</strong></td><td>Goals</td><td>"Get AI Advice"</td><td>Savings pace analysis and monthly contribution adjustments to reach goals faster</td></tr>
+        <tr><td><strong>Spend Analysis Report</strong></td><td>Analytics</td><td>"Generate AI Report"</td><td>Monthly summary: spending overview, top 2 watch areas, goal progress, one recommendation</td></tr>
+        <tr><td><strong>Account Insights</strong></td><td>Accounts</td><td>"Analyse My Accounts"</td><td>Advice on optimising account balances and savings strategy</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Setup</h3>
+  <ol>
+    <li>Go to <a href="https://console.groq.com" style="color:var(--primary)">console.groq.com</a> → sign up free → create an API key.</li>
+    <li>In the PFMT app: <strong>Settings → AI Configuration</strong> → paste the key → Save.</li>
+    <li>The key is stored in <span class="inline-code">state.geminiKey</span> (legacy name) and persisted to localStorage.</li>
+    <li>If no key is saved, all AI buttons show a warning banner instead of calling Groq.</li>
+  </ol>
+
+  <h3>How it works</h3>
+  <pre><code><span class="cm">// callAI(prompt, targetElementId)</span>
+<span class="kw">async function</span> callAI(prompt, targetId) {
+  <span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">'https://api.groq.com/openai/v1/chat/completions'</span>, {
+    method: <span class="str">'POST'</span>,
+    headers: { Authorization: <span class="str">`Bearer ${state.geminiKey}`</span>, 'Content-Type': <span class="str">'application/json'</span> },
+    body: JSON.stringify({
+      model: <span class="str">'llama3-8b-8192'</span>,
+      messages: [{ role: <span class="str">'user'</span>, content: prompt }]
+    })
+  });
+  <span class="kw">const</span> text = data.choices?.[<span class="num">0</span>]?.message?.content;
+  document.getElementById(targetId).innerHTML = text;  <span class="cm">// rendered as HTML</span>
+}</code></pre>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>Free tier limits:</strong> Groq's free plan allows 14,400 requests/day and 30 requests/minute with the llama3-8b-8192 model — more than sufficient for personal use.</div>
+  </div>
+  <div class="alert alert-warning">
+    <span class="alert-icon">⚠️</span>
+    <div><strong>Data privacy:</strong> Financial summaries (amounts, categories, goal names) are sent to Groq's servers. Do not use if your financial data is sensitive or subject to regulatory restrictions.</div>
+  </div>
+
+  <!-- ══ BILINGUAL ══════════════════════════════════════════ -->
+  <h2 id="frontend-i18n">🌐 Bilingual Support (EN / ZH)</h2>
+  <p>The app ships with full <strong>English and Simplified Chinese</strong> translations. All UI strings are looked up via the <span class="inline-code">t(key)</span> helper against a <span class="inline-code">TRANSLATIONS</span> object.</p>
+  <pre><code><span class="cm">// Switch language</span>
+state.language = <span class="str">'zh'</span>;  <span class="cm">// or 'en'</span>
+renderAll();             <span class="cm">// re-renders every panel using the new locale</span></code></pre>
+  <p>Language preference is saved to <span class="inline-code">state.language</span>, synced to the SN user profile (<span class="inline-code">language</span> field on <span class="inline-code">x_887486_0_user_profile</span>), and restored on every page load. The language selector is in <strong>Settings → Preferences</strong>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Where stored</th><th>Synced to SN?</th></tr></thead>
+      <tbody>
+        <tr><td>Language (en / zh)</td><td><span class="inline-code">state.language</span> → localStorage</td><td>✅ <span class="inline-code">user_profile.language</span></td></tr>
+        <tr><td>Currency (SGD / USD / AUD / MYR)</td><td><span class="inline-code">state.currency</span> → localStorage</td><td>✅ <span class="inline-code">user_profile.currency</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -1500,7 +1569,7 @@ util.seedCategories();</code></pre>
 
   <hr>
   <p style="text-align:center;color:var(--text-light);font-size:13px">
-    PFMT — Personal Finance Money Tracker &nbsp;·&nbsp; Technical Documentation &nbsp;·&nbsp; June 2026
+    PFMT v2.0 — Personal Finance Money Tracker &nbsp;·&nbsp; Technical Documentation &nbsp;·&nbsp; June 2026
   </p>
 
 </main>
