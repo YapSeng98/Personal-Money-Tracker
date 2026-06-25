@@ -2228,24 +2228,30 @@ function renderGoals() {
     return;
   }
 
-  const sortedGoals = [...state.goals].sort((a, b) => a.name.localeCompare(b.name));
-  document.getElementById('goals-list').innerHTML = sortedGoals.map(g => {
+  // Group goals by currency, alphabetically within each group
+  const goalsByCur = {};
+  state.goals.forEach(g => {
+    const c = g.currency || state.currency;
+    if (!goalsByCur[c]) goalsByCur[c] = [];
+    goalsByCur[c].push(g);
+  });
+  Object.values(goalsByCur).forEach(arr => arr.sort((a,b) => a.name.localeCompare(b.name)));
+  const isMultiCurGoals = Object.keys(goalsByCur).length > 1;
+
+  const goalCardHTML = g => {
     const pct      = Math.min((g.current/g.target)*100, 100);
     const achieved = g.current >= g.target;
     const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
-    let monthsLeft = null;
     let monthsLeftLabel = '';
     if (!achieved) {
       if (g.date) {
-        const now = new Date();
-        const td  = new Date(g.date);
-        const diff = (td.getFullYear() - now.getFullYear()) * 12 + (td.getMonth() - now.getMonth());
-        monthsLeft = Math.max(diff, 0);
-        monthsLeftLabel = monthsLeft === 0 ? 'Due this month' : `~${monthsLeft}${t('goal_mo_left')}`;
+        const now = new Date(), td = new Date(g.date);
+        const diff = (td.getFullYear()-now.getFullYear())*12+(td.getMonth()-now.getMonth());
+        const ml = Math.max(diff, 0);
+        monthsLeftLabel = ml === 0 ? 'Due this month' : `~${ml}${t('goal_mo_left')}`;
       } else if (g.monthly > 0) {
-        monthsLeft = Math.ceil(remaining / g.monthly);
-        monthsLeftLabel = `~${monthsLeft}${t('goal_mo_left')}`;
+        monthsLeftLabel = `~${Math.ceil(remaining/g.monthly)}${t('goal_mo_left')}`;
       }
     }
     return `<div class="goal-card">
@@ -2255,9 +2261,7 @@ function renderGoals() {
           ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
         </div>
         <div class="goal-right">
-          <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:2px;">
-            <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${g.currency || state.currency}</span>
-          </div>
+          ${!isMultiCurGoals ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:2px;"><span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${g.currency || state.currency}</span></div>` : ''}
           <div class="goal-current">${fmtWithCur(g.current, g.currency)}</div>
           <div class="goal-target">${t('goal_of')} ${fmtWithCur(g.target, g.currency)}</div>
         </div>
@@ -2274,7 +2278,15 @@ function renderGoals() {
         </div>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  document.getElementById('goals-list').innerHTML = Object.entries(goalsByCur).map(([cur, goals], i) => `
+    ${isMultiCurGoals ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'24px':0} 0 12px;">
+      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>` : ''}
+    ${goals.map(goalCardHTML).join('')}
+  `).join('');
 
   const achieved = state.goals.filter(g => g.current >= g.target).length;
   const byCur = {};
