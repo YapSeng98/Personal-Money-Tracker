@@ -1423,7 +1423,7 @@ function openTxnModal(id = null) {
   const accSel = document.getElementById('txn-account');
   if (state.accounts.length) {
     accSel.innerHTML = state.accounts.map(a =>
-      `<option value="${a.name}">${a.icon || '🏦'} ${a.name}</option>`
+      `<option value="${esc(a.name)}">${a.icon || '🏦'} ${esc(a.name)}</option>`
     ).join('');
   } else {
     accSel.innerHTML = '<option value="" disabled>No accounts — add one in Accounts tab</option>';
@@ -1882,6 +1882,7 @@ async function deleteAccount(id) {
 // RENDER ENGINE
 // ═══════════════════════════════════════════════
 const fmt = n => '$' + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const CUR_SYM = { SGD:'S$', USD:'$', AUD:'A$', MYR:'RM' };
 const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cur || '$'); return s + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
@@ -2128,7 +2129,7 @@ function renderDashboard() {
       const max = cs[0][1];
       const bars = cs.map(([cat,amt]) =>
         `<div class="chart-bar-row">
-          <div class="chart-bar-label">${catIcon(cat)} ${cat}</div>
+          <div class="chart-bar-label">${catIcon(cat)} ${esc(cat)}</div>
           <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
           <div class="chart-bar-val">${fmtWithCur(amt,cur)}</div>
         </div>`).join('');
@@ -2147,8 +2148,8 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
   return `<div class="txn-row">
     <div class="txn-ico" style="background:${CAT_BG[txn.category]||'#F7F9FC'}">${catIcon(txn.category)}</div>
     <div class="txn-body">
-      <div class="txn-name">${txn.description}</div>
-      <div class="txn-meta">${[txn.category, txn.account, fmtDate(txn.date), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-name">${esc(txn.description)}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -2163,7 +2164,7 @@ function populateCategoryFilter() {
   const sel = document.getElementById('filter-cat');
   if (!sel) return;
   const cats = [...new Set(state.transactions.map(t => t.category))].sort();
-  sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${catIcon(c)} ${c}</option>`).join('');
+  sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${esc(c)}">${catIcon(c)} ${esc(c)}</option>`).join('');
 }
 
 function clearFilters() {
@@ -2243,7 +2244,7 @@ function renderBudgets() {
     return `<div class="budget-item">
       <div class="budget-header">
         <div class="budget-name">
-          ${catIcon(b.category)} ${b.category}
+          ${catIcon(b.category)} ${esc(b.category)}
           ${over ? `<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
           ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
           ${!isMultiCurBudget ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>` : ''}
@@ -2346,7 +2347,7 @@ function renderGoals() {
     return `<div class="goal-card">
       <div class="goal-header">
         <div class="goal-title">
-          ${g.icon} ${g.name}
+          ${g.icon} ${esc(g.name)}
           ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
         </div>
         <div class="goal-right">
@@ -2477,7 +2478,7 @@ function renderAnalytics() {
     const max2 = cs[0][1];
     const bars = cs.map(([cat, amt]) =>
       `<div class="chart-bar-row">
-        <div class="chart-bar-label">${catIcon(cat)} ${cat}</div>
+        <div class="chart-bar-label">${catIcon(cat)} ${esc(cat)}</div>
         <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max2*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
         <div class="chart-bar-val">${fmtWithCur(amt, cur)}</div>
       </div>`).join('');
@@ -2541,8 +2542,8 @@ function renderAccounts() {
       return `<div class="account-row">
         <div class="account-ico" style="background:${isNeg?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
         <div class="account-body">
-          <div class="account-name">${a.name}${showBadge?` <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.5px;">${cur}</span>`:''}</div>
-          <div class="account-type">${a.institution} · ${a.type}</div>
+          <div class="account-name">${esc(a.name)}${showBadge?` <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.5px;">${cur}</span>`:''}</div>
+          <div class="account-type">${esc(a.institution)} · ${esc(a.type)}</div>
         </div>
         <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${isNeg?'-':''}${fmtWithCur(Math.abs(bal),cur)}</div>
         <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">

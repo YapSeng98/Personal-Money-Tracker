@@ -112,6 +112,7 @@ All tables share the prefix `x_887486_0_`.
 | `description` | String | Required |
 | `transaction_date` | Date | |
 | `notes` | String | Optional |
+| `currency` | String | Per-transaction currency (SGD/USD/AUD/MYR), default `SGD` |
 | `state` | String | `1`=Draft, `2`=Confirmed |
 | `is_recurring` | Boolean | |
 | `recurring_frequency` | String | `daily`, `weekly`, `monthly` |
@@ -139,6 +140,7 @@ All tables share the prefix `x_887486_0_`.
 | `alert_threshold` | Integer | Percent, default `80` |
 | `period_start` | Date | |
 | `period_end` | Date | |
+| `currency` | String | Per-budget currency (SGD/USD/AUD/MYR), default `SGD`; duplicate check is category + currency |
 
 ### `savings_goal`
 
@@ -296,6 +298,7 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
       "category": "Food & Drink",
       "account": "DBS Checking",
       "date": "2024-06-15",
+      "currency": "SGD",
       "notes": ""
     }
   ],
@@ -314,6 +317,7 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
   "date": "2024-06-15",
   "account_name": "DBS Checking",
   "category_name": "Food & Drink",
+  "currency": "SGD",
   "notes": ""
 }
 // Response 201
@@ -357,7 +361,8 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
       "remaining_amount": 175.00,
       "alert_threshold": 80,
       "period_start": "2024-06-01",
-      "period_end": "2024-06-30"
+      "period_end": "2024-06-30",
+      "currency": "SGD"
     }
   ],
   "count": 1
@@ -372,12 +377,13 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
   "category_name": "Food & Drink",
   "budget_amount": 500.00,
   "alert_threshold": 80,
+  "currency": "SGD",
   "period_start": "2024-06-01",
   "period_end": "2024-06-30"
 }
 // Response 201
 { "result": { "sys_id": "...", "status": "created" } }
-// Error 409 if budget for this category already exists
+// Error 409 if budget for this category + currency already exists
 ```
 
 #### PUT `/budgets`
@@ -553,12 +559,12 @@ Page load
 
 | Page | Description |
 |---|---|
-| Dashboard | Monthly net balance, quick stats, recent transactions, spend breakdown |
-| Transactions | Full list with month/type filter, add/edit/delete, SN sync |
-| Budgets | Category budgets, spent vs. limit, alert threshold rings |
-| Goals | Savings goals with per-goal currency, progress bars, quick contribution buttons |
-| Analytics | Charts — category breakdown, monthly trends, income vs. expenses |
-| Accounts | Linked accounts, balances, institution |
+| Dashboard | Per-currency hero balance/income/expense, KPI cards, spend category chart grouped by currency |
+| Transactions | Full list with month/type filter; grouped by currency section when multi-currency; add/edit/delete with currency field |
+| Budgets | Per-currency budgets; same category allowed in different currencies; spend isolated per currency |
+| Goals | Savings goals grouped by currency section headers; per-goal currency, progress bars |
+| Analytics | Per-currency income/expense/savings-rate stat cards; category chart grouped by currency |
+| Accounts | Linked accounts grouped by currency; asset allocation and debt ratio shown per currency in Insights |
 | Profile | User info, account stats, edit display name / email / income target |
 | Settings | SN connection card, PIN setup, currency/language, Groq AI key |
 
@@ -566,8 +572,8 @@ Page load
 
 ```javascript
 {
-  transactions: [],   // [{id, sys_id, type, amount, description, category, account, date, notes}]
-  budgets:      [],   // [{id, sys_id, category, amount, spent, alertPct}]
+  transactions: [],   // [{id, sys_id, type, amount, description, category, account, date, currency, notes}]
+  budgets:      [],   // [{id, sys_id, category, amount, spent, alertPct, currency}]
   goals:        [],   // [{id, sys_id, name, icon, target, current, monthly, date, currency, remarks}]
   accounts:     [],   // [{id, sys_id, name, type, institution, balance, currency}]
 
@@ -775,7 +781,7 @@ Seeded with `seed_test_users.py`. All passwords: **`Test1234!`**
 | 403 | Access denied — record belongs to another user |
 | 404 | Record not found, or unknown endpoint action |
 | 405 | HTTP method not allowed on this resource |
-| 409 | Conflict — duplicate (e.g. budget for same category already exists) |
+| 409 | Conflict — duplicate (e.g. budget for same category + currency already exists) |
 | 500 | Server error — check SN system logs |
 
 All error responses follow the format:
