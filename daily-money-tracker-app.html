@@ -272,16 +272,16 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .month-nav-label{font-family:var(--fd);font-size:14px;font-weight:700;min-width:140px;text-align:center;}
 .month-today-btn{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--jade-s);color:var(--jade-d);font-size:11px;font-weight:700;cursor:pointer;}
 
-/* ── BOTTOM NAV (mobile) ── */
+/* ── BOTTOM NAV (mobile) — PFMT dark ink, matches sidebar ── */
 .bottom-nav{display:none;}
 @media(max-width:900px){
-  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:90;display:flex;align-items:flex-end;justify-content:space-around;background:#FBF8F1;border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:10px 6px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.07);}
-  .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:2px 0;font-family:var(--ff);}
-  .bnav-ico{font-size:24px;line-height:1;filter:grayscale(.4);opacity:.7;transition:.15s;}
-  .bnav-lbl{font-size:12px;font-weight:600;color:var(--muted);transition:.15s;}
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:90;display:flex;align-items:flex-end;justify-content:space-around;background:var(--ink);border-radius:20px 20px 0 0;padding:10px 6px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(13,17,23,.35);}
+  .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:6px 0 2px;font-family:var(--ff);border-radius:10px;}
+  .bnav-ico{font-size:22px;line-height:1;filter:grayscale(1);opacity:.5;transition:.15s;}
+  .bnav-lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);transition:.15s;}
   .bnav-item.active .bnav-ico{filter:none;opacity:1;}
-  .bnav-item.active .bnav-lbl{color:var(--ink);font-weight:800;}
-  .bnav-fab{width:62px;height:62px;border-radius:50%;border:none;background:radial-gradient(circle at 35% 30%,#F97316,#EA580C 75%);color:#fff;font-size:30px;font-weight:600;cursor:pointer;margin:-36px 4px 6px;box-shadow:0 6px 18px rgba(234,88,12,.4),0 0 0 7px #FBF8F1;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .bnav-item.active .bnav-lbl{color:var(--jade);font-weight:700;}
+  .bnav-fab{width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#00C896 0%,#0EA5E9 100%);color:#fff;font-size:28px;font-weight:600;cursor:pointer;margin:-34px 4px 6px;box-shadow:0 6px 18px rgba(0,200,150,.4),0 0 0 6px var(--ink);flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;}
   .bnav-fab:active{transform:scale(.94);}
   .content{padding-bottom:110px!important;}
 }
@@ -829,11 +829,11 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 <!-- BOTTOM NAV (mobile only)                     -->
 <!-- ════════════════════════════════════════════ -->
 <nav class="bottom-nav" id="bottom-nav">
-  <button class="bnav-item active" data-bview="dashboard" onclick="showView('dashboard')"><span class="bnav-ico">🌞</span><span class="bnav-lbl" data-bkey="bnav_home">Today</span></button>
-  <button class="bnav-item" data-bview="transactions" onclick="showView('transactions')"><span class="bnav-ico">🗓️</span><span class="bnav-lbl" data-bkey="bnav_txns">Txns</span></button>
+  <button class="bnav-item active" data-bview="dashboard" onclick="showView('dashboard')"><span class="bnav-ico">🏠</span><span class="bnav-lbl" data-bkey="bnav_home">Home</span></button>
+  <button class="bnav-item" data-bview="transactions" onclick="showView('transactions')"><span class="bnav-ico">💳</span><span class="bnav-lbl" data-bkey="bnav_txns">Txns</span></button>
   <button class="bnav-fab" onclick="openTxnModal()" title="Add transaction">+</button>
   <button class="bnav-item" data-bview="goals" onclick="showView('goals')"><span class="bnav-ico">🎯</span><span class="bnav-lbl" data-bkey="bnav_goals">Goals</span></button>
-  <button class="bnav-item" data-bview="analytics" onclick="showView('analytics')"><span class="bnav-ico">✍️</span><span class="bnav-lbl" data-bkey="bnav_review">Review</span></button>
+  <button class="bnav-item" data-bview="analytics" onclick="showView('analytics')"><span class="bnav-ico">📈</span><span class="bnav-lbl" data-bkey="bnav_review">Stats</span></button>
 </nav>
 
 <!-- ════════════════════════════════════════════ -->
@@ -1091,7 +1091,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 // ═══════════════════════════════════════════════
 const TRANSLATIONS = {
   en: {
-    bnav_home:'Today', bnav_txns:'Txns', bnav_goals:'Goals', bnav_review:'Review',
+    bnav_home:'Home', bnav_txns:'Txns', bnav_goals:'Goals', bnav_review:'Stats',
     nav_main:'Main', nav_manage:'Manage', nav_dashboard:'Dashboard', nav_transactions:'Transactions',
     nav_budgets:'Budgets', nav_goals:'Goals', nav_analytics:'Analytics', nav_accounts:'Accounts',
     nav_settings:'Settings',
@@ -1190,7 +1190,7 @@ const TRANSLATIONS = {
     sn_not_connected:'Not connected',
   },
   zh: {
-    bnav_home:'今天', bnav_txns:'交易', bnav_goals:'目标', bnav_review:'回顾',
+    bnav_home:'主页', bnav_txns:'交易', bnav_goals:'目标', bnav_review:'分析',
     nav_main:'主要', nav_manage:'管理', nav_dashboard:'仪表盘', nav_transactions:'交易记录',
     nav_budgets:'预算', nav_goals:'目标', nav_analytics:'分析', nav_accounts:'账户',
     nav_settings:'设置',
