@@ -550,6 +550,7 @@ Page load
 - Session tokens are 32-char random hex (fit in SN String(40) fields)
 - Credentials (including password) are stored in browser `localStorage` to enable auto-connect — do not use on shared/public computers
 - 4-digit PIN lock is available as an additional app-level guard (Settings → App Security)
+- All user-entered strings (descriptions, names, categories, institutions) are HTML-escaped via `esc()` before rendering — prevents stored XSS from local input or SN-synced data
 
 ---
 
@@ -567,6 +568,14 @@ Page load
 | Accounts | Linked accounts grouped by currency; asset allocation and debt ratio shown per currency in Insights |
 | Profile | User info, account stats, edit display name / email / income target |
 | Settings | SN connection card, PIN setup, currency/language, Groq AI key |
+
+### Mobile layout (≤900px)
+
+- Sidebar collapses into a hamburger drawer; a **bottom navigation bar** appears — dark ink bar matching the sidebar, with Home 🏠 / Txns 💳 / Goals 🎯 / Stats 📈 tabs and a center jade-gradient **+** FAB that opens the Add Transaction modal
+- Active tab highlights jade (like the sidebar's active state); tab state stays in sync with the sidebar
+- Labels are localized (EN/中文); safe-area padding for iPhone home indicators
+- Budgets, Accounts, and Settings remain reachable via the hamburger drawer
+- Verified across desktop 1440 / laptop 1024 / tablet 768 / phone 390 / phone 360 / landscape — no horizontal overflow on any page
 
 ### State structure
 
