@@ -2,6 +2,8 @@
 
 A full-featured personal finance web app that syncs with ServiceNow as its cloud backend. Track transactions, manage budgets, set savings goals, and analyse spending — all from a single HTML file hosted on GitHub Pages.
 
+> 📖 **New to the app?** See the [User Guide](USER_GUIDE.md) for step-by-step usage instructions. This README covers architecture, API, and deployment.
+
 ---
 
 ## Table of Contents

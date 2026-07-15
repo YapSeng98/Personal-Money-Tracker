@@ -1,0 +1,285 @@
+# PFMT — User Guide
+
+**Personal Finance Money Tracker** · Track spending, budgets, savings goals, and accounts — synced to ServiceNow, working offline, in your browser.
+
+---
+
+## Table of Contents
+
+1. [Getting Started](#1-getting-started)
+2. [Interface Overview](#2-interface-overview)
+3. [Dashboard](#3-dashboard)
+4. [Transactions](#4-transactions)
+5. [Budgets](#5-budgets)
+6. [Savings Goals](#6-savings-goals)
+7. [Analytics](#7-analytics)
+8. [Accounts](#8-accounts)
+9. [Multi-Currency](#9-multi-currency)
+10. [AI Insights](#10-ai-insights)
+11. [Settings & Profile](#11-settings--profile)
+12. [Data, Sync & Export](#12-data-sync--export)
+13. [Troubleshooting](#13-troubleshooting)
+
+---
+
+## 1. Getting Started
+
+### Opening the app
+
+Open the app URL in any modern browser (Chrome, Safari, Edge, Firefox) on desktop or mobile. No installation needed.
+
+### Creating an account
+
+1. On the login screen, tap **Register**
+2. Fill in:
+   - **Instance** — your ServiceNow instance (e.g. `dev405150.service-now.com`); pre-filled if provided
+   - **Username** — lowercase, unique
+   - **Display name** and **email**
+   - **Password** (entered twice)
+3. Tap **Create Account** — you're logged in immediately
+
+### Logging in
+
+1. Enter your **username** and **password**
+2. Press **Enter** or tap **Sign In**
+
+The app remembers your credentials and **auto-connects on your next visit** — you'll skip the login screen entirely. Because credentials are stored in the browser, avoid using shared/public computers.
+
+### Working offline
+
+If ServiceNow is unreachable, the app still works: everything is saved to your browser's local storage and re-synced when the connection returns. The connection status dot in the sidebar shows your sync state.
+
+---
+
+## 2. Interface Overview
+
+### Desktop (wide screens)
+
+- **Left sidebar** — navigate between Dashboard, Transactions, Budgets, Goals, Analytics, Accounts, and Settings
+- **Top bar** — page title plus quick actions:
+  - **⬇ CSV** — export transactions to a CSV file
+  - **⬇ SN JSON** — export a ServiceNow-ready JSON backup
+  - **✨ AI Insights** — open the AI analysis panel
+  - **+ Add Transaction** — the fastest way to record spending
+- **Month bar** (Dashboard, Transactions, Budgets) — step between months with **‹ ›**, or tap **Today** to jump back to the current month
+
+### Mobile (phones & tablets)
+
+- **Bottom navigation bar** — the four most-used pages, plus a center **+** button:
+
+  | Tab | Page |
+  |---|---|
+  | 🏠 Home | Dashboard |
+  | 💳 Txns | Transactions |
+  | **+** (center) | Opens Add Transaction |
+  | 🎯 Goals | Savings Goals |
+  | 📈 Stats | Analytics |
+
+- **☰ hamburger** (top-left) — opens the full sidebar drawer for Budgets, Accounts, and Settings
+
+---
+
+## 3. Dashboard
+
+Your monthly money at a glance:
+
+- **Net Balance hero** — income minus expenses for the selected month. With multiple currencies, each currency gets its own row (e.g. `S$4,988` and `RM910` — never mixed together)
+- **KPI cards** — transaction count, average daily spend, savings rate, and budgets over limit
+- **Recent Transactions** — the latest entries; tap **View all →** for the full list
+- **Spending by Category** — bar chart of where the money went, grouped per currency
+
+Use the month bar to review any past month.
+
+---
+
+## 4. Transactions
+
+### Adding a transaction
+
+1. Tap **+ Add Transaction** (top bar) or the **+** FAB (mobile bottom bar)
+2. Choose the type: **Expense**, **Income**, or **Transfer**
+3. Enter the **amount** and pick the **currency** (SGD / USD / AUD / MYR)
+4. Enter a **description** (required), pick a **category**, an **account** (optional), and the **date**
+5. Add **notes** if you like, then tap **Save**
+
+### Editing & deleting
+
+Each row has **✏️ edit** and **🗑️ delete** buttons. Deleting asks for confirmation first.
+
+### Finding transactions
+
+- **Search box** — filters by description as you type
+- **Type filter** — show only expenses or income
+- **Category filter** — show one category
+- **Month bar** — step to any month
+- **Clear** — reset all filters at once
+
+When you use more than one currency, the list groups under **SGD / MYR / …** section headers, with a small currency badge on every row.
+
+---
+
+## 5. Budgets
+
+Set a monthly spending limit per category — the app tracks progress automatically from your expense transactions.
+
+### Creating a budget
+
+1. Go to **Budgets** → **+ Add Budget**
+2. Pick a **category**, set the **monthly limit**, choose the **currency**, and set the **alert threshold** (default 80%)
+3. Tap **Save**
+
+You can hold the **same category in different currencies** (e.g. Food & Drink at S$500 *and* RM400) — each budget only counts transactions in **its own currency**. Creating a second budget for the same category + currency is blocked.
+
+### Reading the budget card
+
+- Progress bar: **green** (healthy) → **amber** with a *NEAR* badge (past your alert threshold) → **red** with an *OVER* badge (limit exceeded)
+- Shows spent vs. limit and how much is left, in the budget's currency
+
+Budgets follow the month bar — check last month's performance any time.
+
+---
+
+## 6. Savings Goals
+
+### Creating a goal
+
+1. Go to **Goals** → **+ Add Goal**
+2. Give it a **name** and **icon**, set the **target amount** and **currency**
+3. Optionally set the **amount saved so far**, a **monthly contribution**, a **target date**, and **remarks**
+
+### Tracking progress
+
+- Each card shows a progress bar, percent complete, amount to go, and (if you set a monthly contribution or date) an estimated **months left**
+- **Quick contribution buttons** in the edit modal add money in one tap
+- When savings reach the target, the goal shows a green **Achieved** badge 🎉
+
+Goals in different currencies appear under their own currency section headers.
+
+---
+
+## 7. Analytics
+
+Deeper insight into the selected month:
+
+- **Stat cards** — total income, total expenses, savings rate, and largest expense. With mixed currencies, each stat breaks out per currency
+- **Category chart** — spending distribution per currency
+- **📊 Generate Full Report** — an AI-written summary of your month (see [AI Insights](#10-ai-insights))
+
+---
+
+## 8. Accounts
+
+Track where your money lives.
+
+### Adding an account
+
+1. Go to **Accounts** → **+ Add Account**
+2. Enter the **name** (e.g. "DBS Savings"), pick a **type** (bank / cash / credit card / other), the **institution**, **balance**, and **currency**
+
+Credit cards can have negative balances — shown in red.
+
+### Account Insights
+
+Below the list, the Insights panel shows **per currency**:
+
+- **Asset allocation** — how balances split across account types
+- **Debt ratio** — debt vs. assets, so a MYR credit card never distorts your SGD picture
+
+---
+
+## 9. Multi-Currency
+
+PFMT supports **SGD, USD, AUD, and MYR** side by side, with one golden rule:
+
+> **Currencies never mix.** An SGD budget only counts SGD spending; MYR income never inflates your SGD savings rate; each currency gets its own totals everywhere.
+
+How it looks in practice:
+
+- Every transaction, budget, goal, and account carries its own currency
+- Symbols: `S$` (SGD), `$` (USD), `A$` (AUD), `RM` (MYR)
+- When you hold more than one currency, every page groups items under blue **SGD / MYR / …** section headers, and rows show a small currency badge
+- Dashboard hero, KPIs, analytics stats, and charts all split per currency automatically
+- With a single currency, the interface stays clean and simple — no headers or badges
+
+Your **default currency** (Settings → Preferences) is what new transactions pre-select.
+
+---
+
+## 10. AI Insights
+
+Get personalised, AI-written analysis of your finances — free.
+
+### One-time setup
+
+1. Get a free API key at [console.groq.com](https://console.groq.com)
+2. Go to **Settings → AI Configuration**, paste the key, tap **Save**
+
+### Using it
+
+| Where | Button | What you get |
+|---|---|---|
+| Top bar / Dashboard | ✨ AI Insights | Overall monthly summary and tips |
+| Budgets | 🎯 Analyse My Budgets | Which budgets are at risk and why |
+| Goals | 🎯 Coach My Goals | Feasibility and pacing advice |
+| Analytics | 📊 Generate Full Report | Full written monthly report |
+| Accounts | 💰 Analyse My Accounts | Emergency fund, debt, and allocation tips |
+
+The **Now Assist** toggle in Settings turns AI features on/off. Your financial summary is sent to Groq only when you tap an AI button.
+
+---
+
+## 11. Settings & Profile
+
+**Settings** (⚙️ in the sidebar / hamburger drawer) contains everything else:
+
+- **Profile card** — your avatar, display name, username, email, and member-since date, plus live stats (transactions, accounts, active goals)
+- **Edit Profile** — change display name, email, and monthly income target
+- **Change Password** — enter current + new password
+- **Preferences**
+  - **Currency** — default currency for new entries
+  - **Language** — English or 中文 (the whole interface switches instantly)
+  - **Budget Alerts** — toggle threshold notifications
+  - **Now Assist** — toggle AI features
+- **ServiceNow Connection** — instance, connected user, connection test, and **Sign Out**
+- **Data tools**
+  - **Load Sample Data** — fill the app with demo data to explore
+  - **Clear All Data** — wipe everything local (asks for confirmation; does not delete ServiceNow records)
+
+---
+
+## 12. Data, Sync & Export
+
+### How your data is stored
+
+| Layer | What | When |
+|---|---|---|
+| Browser localStorage | Full app state | Instantly, on every change |
+| ServiceNow | Transactions, budgets, goals, accounts, profile | Pushed automatically in the background when connected |
+
+On page load the app pulls fresh data from ServiceNow, so you can switch devices freely — just log in with the same account.
+
+Rows display a small badge showing their sync state: **SN** (synced to ServiceNow) or **local** (not yet pushed).
+
+### Exporting
+
+- **⬇ CSV** — download all transactions as a spreadsheet-friendly CSV
+- **⬇ SN JSON** — download a ServiceNow-format JSON backup of everything
+
+---
+
+## 13. Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| **"Invalid or expired session"** | Sessions last 7 days. The app usually re-logs you in automatically; if not, sign in again. |
+| **Can't log in** | Check the instance URL has no `https://` prefix and no trailing slash (e.g. `dev405150.service-now.com`). Verify username/password. If your ServiceNow PDI was hibernating, wake it at developer.servicenow.com and retry. |
+| **"Budget for this category and currency already exists"** | You already have a budget for that category in that currency. Edit the existing one, or pick a different currency. |
+| **Changes not appearing on another device** | Reload the page — data is pulled from ServiceNow on load. Check the sidebar connection dot is green. |
+| **Old version showing after an update** | Hard-refresh: `Cmd/Ctrl+Shift+R` on desktop; on mobile, clear the site from browser cache. |
+| **Numbers look mixed between currencies** | They never are — check the blue currency section headers; each section's totals are independent. |
+| **AI buttons say a key is needed** | Add your free Groq API key under **Settings → AI Configuration**. |
+| **Started fresh by accident (sample data everywhere)** | Sample data loads only when no saved data exists. Log in to restore your real data from ServiceNow, or use **Clear All Data** then reload. |
+
+---
+
+*PFMT — Personal Finance Money Tracker · For setup, API, and developer documentation see [README.md](README.md)*
