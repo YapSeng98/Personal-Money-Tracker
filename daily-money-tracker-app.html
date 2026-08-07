@@ -1961,6 +1961,11 @@ function getMonthTxns(month) {
   return state.transactions.filter(t => t.date.startsWith(month || state.filterMonth));
 }
 
+function daysInFilterMonth() {
+  const [y, m] = state.filterMonth.split('-');
+  return new Date(+y, +m, 0).getDate();
+}
+
 function calcStats() {
   const txns    = getMonthTxns();
   const income  = txns.filter(t => t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -1969,7 +1974,7 @@ function calcStats() {
     income, expense,
     balance      : income - expense,
     savingsRate  : income > 0 ? ((income-expense)/income*100) : 0,
-    avgDaily     : expense > 0 ? expense/30 : 0,
+    avgDaily     : expense > 0 ? expense/daysInFilterMonth() : 0,
     overBudget   : state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length
   };
 }
@@ -2129,7 +2134,7 @@ function renderDashboard() {
       `<div style="font-size:11px;font-weight:700;color:var(--coral);">−${fmtWithCur(curStats(cur).exp,cur)}</div>`).join('');
     document.getElementById('kpi-avg-daily').innerHTML = currencies.map(cur => {
       const exp = curStats(cur).exp;
-      return `<div style="font-size:11px;font-weight:700;">${fmtWithCur(exp/30,cur)}</div>`;
+      return `<div style="font-size:11px;font-weight:700;">${fmtWithCur(exp/daysInFilterMonth(),cur)}</div>`;
     }).join('');
     // Savings rate: best/worst
     const rates = currencies.map(cur => { const {inc,exp} = curStats(cur); return inc>0?(inc-exp)/inc*100:null; }).filter(r=>r!==null);
@@ -2274,8 +2279,9 @@ function renderBudgets() {
   const isMultiCurBudget = Object.keys(budgetsByCur).length > 1;
 
   const budgetCardHTML = b => {
-    const spent = getBudgetSpent(b.category, b.currency);
-    const pct   = Math.min((spent/b.amount)*100, 100);
+    const spent   = getBudgetSpent(b.category, b.currency);
+    const pctReal = b.amount > 0 ? (spent/b.amount)*100 : 0;
+    const pct     = Math.min(pctReal, 100); // capped — bar width only
     const over  = spent > b.amount;
     const near  = pct >= b.alertPct && !over;
     const color = over ? 'var(--coral)' : near ? 'var(--amber)' : 'var(--jade)';
@@ -2295,7 +2301,7 @@ function renderBudgets() {
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <div class="budget-stats">
         <span>${fmtWithCur(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(b.amount, b.currency)}</span>
-        <span class="budget-pct" style="color:${color}">${pct.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-b.amount, b.currency)+' over)' : ' ('+fmtWithCur(b.amount-spent, b.currency)+' '+t('budget_left')+')'}</span>
+        <span class="budget-pct" style="color:${color}">${pctReal.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-b.amount, b.currency)+' over)' : ' ('+fmtWithCur(b.amount-spent, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
     </div>`;
   };
@@ -2489,15 +2495,31 @@ function renderAnalytics() {
       : `<div class="stat-card-val" style="color:${col};">${val}</div>`;
   }).join('');
 
-  // Largest expense (all-time, show with correct currency)
+  // Largest expense — never compare raw amounts across different currencies (RM400 is not "bigger" than S$300)
   const exps = allTxns.filter(t=>t.type==='expense');
-  if (exps.length) {
-    const max = exps.reduce((m,t)=>t.amount>m.amount?t:m,exps[0]);
+  const largestByCur = {};
+  exps.forEach(t => {
+    const c = t.currency || state.currency;
+    if (!largestByCur[c] || t.amount > largestByCur[c].amount) largestByCur[c] = t;
+  });
+  const largestCurs = Object.keys(largestByCur);
+  if (!largestCurs.length) {
+    document.getElementById('an-largest').textContent      = '—';
+    document.getElementById('an-largest-desc').textContent = '—';
+  } else if (largestCurs.length === 1) {
+    const max = largestByCur[largestCurs[0]];
     document.getElementById('an-largest').textContent      = fmtWithCur(max.amount, max.currency);
     document.getElementById('an-largest-desc').textContent = max.description;
   } else {
-    document.getElementById('an-largest').textContent      = '—';
-    document.getElementById('an-largest-desc').textContent = '—';
+    document.getElementById('an-largest').innerHTML = largestCurs.map(cur => {
+      const m = largestByCur[cur];
+      return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+        <span style="font-size:10px;color:var(--muted);font-weight:700;">${cur}</span>
+        <span style="${statRowStyle}">${fmtWithCur(m.amount,cur)}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('an-largest-desc').innerHTML = largestCurs.map(cur =>
+      `<div>${esc(largestByCur[cur].description)}</div>`).join('');
   }
   const monthTxns = getMonthTxns().filter(t => t.type === 'expense');
   if (!monthTxns.length) { document.getElementById('analytics-chart').innerHTML=`<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`; return; }
@@ -2530,7 +2552,8 @@ function renderAnalytics() {
 /* ── ACCOUNTS ── */
 // Effective balance = stored starting balance ± all linked transactions
 function effectiveBal(acc) {
-  const linked  = state.transactions.filter(t => t.account === acc.name);
+  const accCur  = acc.currency || state.currency;
+  const linked  = state.transactions.filter(t => t.account === acc.name && (t.currency || state.currency) === accCur);
   const income  = linked.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const expense = linked.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   return Math.round((acc.balance + income - expense) * 100) / 100;
@@ -2664,9 +2687,21 @@ function renderAccounts() {
 }
 
 async function getAccountsAI() {
-  const totalAssets = state.accounts.filter(a=>a.balance>0).reduce((s,a)=>s+a.balance,0);
-  const totalDebt   = state.accounts.filter(a=>a.balance<0).reduce((s,a)=>s+Math.abs(a.balance),0);
-  const prompt = `You are a personal finance advisor. Analyse these accounts for a Singapore user and give 3-4 concise, actionable tips to optimise their finances:\n\nAccounts:\n${state.accounts.map(a=>`- ${a.name} (${a.institution}, ${a.type}): ${fmt(a.balance)}`).join('\n')}\n\nTotal Assets: ${fmt(totalAssets)}, Total Debt: ${fmt(totalDebt)}, Net Worth: ${fmt(totalAssets-totalDebt)}\n\nFocus on: emergency fund adequacy, debt reduction priority, savings diversification. Keep it practical and brief.`;
+  // Totals must stay per-currency — summing SGD and MYR into one number would give the AI nonsense
+  const byCur = {};
+  state.accounts.forEach(a => {
+    const c = a.currency || state.currency;
+    if (!byCur[c]) byCur[c] = { assets: 0, debt: 0 };
+    const b = effectiveBal(a);
+    if (b > 0) byCur[c].assets += b; else byCur[c].debt += Math.abs(b);
+  });
+  const totalsLine = Object.entries(byCur).map(([cur, d]) =>
+    `${cur} — Assets: ${fmtWithCur(d.assets,cur)}, Debt: ${fmtWithCur(d.debt,cur)}, Net: ${fmtWithCur(d.assets-d.debt,cur)}`).join('\n');
+  const accLines = state.accounts.map(a => {
+    const cur = a.currency || state.currency;
+    return `- ${a.name} (${a.institution}, ${a.type}, ${cur}): ${fmtWithCur(effectiveBal(a), cur)}`;
+  }).join('\n');
+  const prompt = `You are a personal finance advisor. Analyse these accounts and give 3-4 concise, actionable tips to optimise their finances.\n\nIMPORTANT: balances are in multiple currencies. Never add different currencies together; advise per currency.\n\nAccounts:\n${accLines}\n\nTotals per currency:\n${totalsLine}\n\nFocus on: emergency fund adequacy, debt reduction priority, savings diversification. Keep it practical and brief.`;
   await callAI(prompt, 'accounts-ai-output');
 }
 
@@ -2696,9 +2731,23 @@ async function callAI(prompt, targetId) {
 }
 
 function buildSummary() {
-  const s = calcStats();
-  const cs = getCategorySpend();
-  return `${state.currency} data for ${getMonthLabel(state.filterMonth)}: Balance ${fmt(s.balance)}, Income ${fmt(s.income)}, Expenses ${fmt(s.expense)}, Savings rate ${s.savingsRate.toFixed(1)}%, Daily avg ${fmt(s.avgDaily)}. Top categories: ${cs.slice(0,5).map(([c,a])=>`${c} ${fmt(a)}`).join(', ')}. Budgets: ${state.budgets.map(b=>`${b.category} ${fmtWithCur(getBudgetSpent(b.category, b.currency), b.currency)}/${fmtWithCur(b.amount, b.currency)}`).join('; ')||'none'}. Goals: ${state.goals.map(g=>`${g.name} ${fmtWithCur(g.current, g.currency)}/${fmtWithCur(g.target, g.currency)}`).join('; ')||'none'}. Context: Singapore user, ServiceNow PDI app.`;
+  // Per-currency breakdown — never merge currencies into one total for the AI
+  const monthTxns = getMonthTxns();
+  const days = daysInFilterMonth();
+  const curs = [...new Set(monthTxns.map(t => t.currency || state.currency))];
+  const perCur = curs.map(cur => {
+    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const rate = inc > 0 ? ((inc-exp)/inc*100).toFixed(1)+'%' : 'N/A';
+    const cats = {};
+    monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense')
+      .forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
+    const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5)
+      .map(([c,a])=>`${c} ${fmtWithCur(a,cur)}`).join(', ') || 'none';
+    return `${cur}: Balance ${fmtWithCur(inc-exp,cur)}, Income ${fmtWithCur(inc,cur)}, Expenses ${fmtWithCur(exp,cur)}, Savings rate ${rate}, Daily avg ${fmtWithCur(exp/days,cur)}. Top categories: ${topCats}`;
+  }).join(' | ') || 'no transactions this month';
+  const multiNote = curs.length > 1 ? ' IMPORTANT: amounts are in multiple currencies — never add different currencies together; advise per currency.' : '';
+  return `Data for ${getMonthLabel(state.filterMonth)} (${days} days).${multiNote} ${perCur}. Budgets: ${state.budgets.map(b=>`${b.category} ${fmtWithCur(getBudgetSpent(b.category, b.currency), b.currency)}/${fmtWithCur(b.amount, b.currency)}`).join('; ')||'none'}. Goals: ${state.goals.map(g=>`${g.name} ${fmtWithCur(g.current, g.currency)}/${fmtWithCur(g.target, g.currency)}`).join('; ')||'none'}. Context: ServiceNow PDI app.`;
 }
 
 // ═══════════════════════════════════════════════
@@ -2706,9 +2755,10 @@ function buildSummary() {
 // ═══════════════════════════════════════════════
 function exportCSV() {
   if (!state.transactions.length) { showToast(t('toast_no_txns_export'), 'info'); return; }
-  const hdr = ['Date','Type','Description','Category','Account','Amount','Notes'];
+  const q = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const hdr = ['Date','Type','Description','Category','Account','Currency','Amount','Notes'];
   const rows = state.transactions.map(t =>
-    [t.date, t.type, `"${t.description.replace(/"/g,'""')}"`, t.category, t.account, t.amount.toFixed(2), `"${(t.notes||'').replace(/"/g,'""')}"`]
+    [t.date, t.type, q(t.description), q(t.category), q(t.account), t.currency || state.currency, t.amount.toFixed(2), q(t.notes)]
   );
   const csv = [hdr, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -2723,15 +2773,21 @@ function exportSNJSON() {
   const payload = {
     x_pfmt_transaction: state.transactions.map(t => ({
       transaction_type: t.type, amount: t.amount, description: t.description,
-      category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
+      category: t.category, account: t.account, transaction_date: t.date,
+      currency: t.currency || state.currency, notes: t.notes || ''
     })),
     x_pfmt_budget: state.budgets.map(b => ({
-      category: b.category, budget_amount: b.amount,
+      category: b.category, budget_amount: b.amount, currency: b.currency || state.currency,
       spent_amount: getBudgetSpent(b.category, b.currency), alert_threshold_pct: b.alertPct || 80
     })),
     x_pfmt_savings_goal: state.goals.map(g => ({
       goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
-      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date
+      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date,
+      currency: g.currency || state.currency
+    })),
+    x_pfmt_account: state.accounts.map(a => ({
+      account_name: a.name, account_type: a.type, institution_name: a.institution,
+      current_balance: a.balance, currency: a.currency || state.currency
     }))
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
