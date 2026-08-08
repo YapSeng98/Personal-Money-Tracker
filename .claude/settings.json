@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)",
+      "Bash(git ls-tree *)",
+      "Bash(curl -s --max-time 20 \"https://yapseng98.github.io/Personal-Money-Tracker/\")",
+      "Bash(curl -s --max-time 20 \"https://yapseng98.github.io/Personal-Money-Tracker/Personal-Money-Tracker/\")",
+      "Bash(node acc_group_test.js)"
+    ]
+  }
+}

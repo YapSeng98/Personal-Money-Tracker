@@ -212,8 +212,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .account-row:last-child{border-bottom:none;}
 .account-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
 .account-body{flex:1;min-width:0;}
-.account-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.account-type{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.account-name{font-size:13px;font-weight:700;overflow-wrap:anywhere;}
+.account-type{font-size:11px;color:var(--muted);overflow-wrap:anywhere;}
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0;}
 
 /* ── ANALYTICS ── */
@@ -2623,17 +2623,15 @@ function renderAccounts() {
           </div>
         </div>`).join('');
 
-  document.getElementById('accounts-list').innerHTML = `
-    <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;">${summaryHTML}</div>
-    ${state.accounts.map(a=>{
-      const cur = a.currency || state.currency;
-      const bal = effectiveBal(a);
-      const isNeg = bal < 0;
-      const showBadge = curEntries.length > 1;
-      return `<div class="account-row">
+  const isMultiCurAcc = curEntries.length > 1;
+  const accountRowHTML = a => {
+    const cur = a.currency || state.currency;
+    const bal = effectiveBal(a);
+    const isNeg = bal < 0;
+    return `<div class="account-row">
         <div class="account-ico" style="background:${isNeg?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
         <div class="account-body">
-          <div class="account-name">${esc(a.name)}${showBadge?` <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.5px;">${cur}</span>`:''}</div>
+          <div class="account-name">${esc(a.name)}</div>
           <div class="account-type">${esc(a.institution)} · ${esc(a.type)}</div>
         </div>
         <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${isNeg?'-':''}${fmtWithCur(Math.abs(bal),cur)}</div>
@@ -2642,7 +2640,29 @@ function renderAccounts() {
           <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
         </div>
       </div>`;
-    }).join('')}`;
+  };
+
+  // Group the rows under currency headers, matching transactions/budgets/goals.
+  // Each section carries its own subtotal so the figures stay per-currency.
+  const accountsByCur = {};
+  state.accounts.forEach(a => {
+    const c = a.currency || state.currency;
+    (accountsByCur[c] = accountsByCur[c] || []).push(a);
+  });
+  const rowsHTML = isMultiCurAcc
+    ? Object.entries(accountsByCur).map(([cur, accs], i) => {
+        const net = accs.reduce((s,a)=>s+effectiveBal(a),0);
+        return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'18px':'4px'} 0 8px;">
+          <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <span style="font-family:var(--fm);font-size:11px;font-weight:700;color:${net<0?'var(--coral)':'var(--muted)'};">${fmtSigned(net,cur)}</span>
+        </div>${accs.map(accountRowHTML).join('')}`;
+      }).join('')
+    : state.accounts.map(accountRowHTML).join('');
+
+  document.getElementById('accounts-list').innerHTML = `
+    <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;">${summaryHTML}</div>
+    ${rowsHTML}`;
 
   // ── Account Insights panel ──
   if (!state.accounts.length) {
