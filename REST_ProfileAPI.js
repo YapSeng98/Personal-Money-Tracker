@@ -69,6 +69,7 @@
         language              : profileGR.getValue('language_preference') || 'en',
         avatar_color          : profileGR.getValue('avatar_color')        || '#8B5CF6',
         monthly_income_target : parseFloat(profileGR.getValue('monthly_income_target')) || 0,
+        ai_api_key            : profileGR.getValue('ai_api_key')           || '',
         last_login            : profileGR.getValue('last_login')          || '',
         sys_created_on        : profileGR.getValue('sys_created_on')      || '',
         stats: {
@@ -103,6 +104,11 @@
     if (body.monthly_income_target !== undefined)
       profileGR.monthly_income_target = parseFloat(body.monthly_income_target) || 0;
 
+    // AI provider key, stored per account so it follows the user across devices.
+    // Sent back only to the owning session (token already validated above).
+    if (body.ai_api_key !== undefined)
+      profileGR.ai_api_key = body.ai_api_key;
+
     // Password change — requires current_password verification
     if (body.new_password) {
       if (!body.current_password) {
@@ -132,7 +138,8 @@
         currency     : profileGR.getValue('currency_preference') || 'SGD',
         language     : profileGR.getValue('language_preference') || 'en',
         avatar_color : profileGR.getValue('avatar_color')        || '#8B5CF6',
-        monthly_income_target: parseFloat(profileGR.getValue('monthly_income_target')) || 0
+        monthly_income_target: parseFloat(profileGR.getValue('monthly_income_target')) || 0,
+        ai_api_key   : profileGR.getValue('ai_api_key')          || ''
       }
     });
     return;

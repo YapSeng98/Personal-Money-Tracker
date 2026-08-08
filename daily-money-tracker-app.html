@@ -3407,7 +3407,27 @@ function saveAIKey() {
   saveState();
   const el = document.getElementById('ai-key-status');
   if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = t('toast_groq_saved'); }
-  showToast(t('toast_groq_toast'), 'success');
+
+  // Store it against the account too, so the key follows the user to their phone
+  // instead of having to be re-entered on every device.
+  if (state.snToken) {
+    snAPI.call('/profile', 'PUT', { ai_api_key: val })
+      .then(() => showToast('API key saved and synced to your account', 'success'))
+      .catch(e => showToast('Saved on this device only — sync failed: ' + e.message, 'warning'));
+  } else {
+    showToast('Saved on this device only — sign in to sync it to your account', 'warning');
+  }
+}
+
+// Adopt the account's stored key when this device doesn't have one yet. A key
+// typed locally wins, so a device is never silently switched to another key.
+function applyProfileAIKey(prof) {
+  if (prof && prof.ai_api_key && !state.geminiKey) {
+    state.geminiKey = prof.ai_api_key;
+    saveState();
+    const aiIn = document.getElementById('gemini-key-input');
+    if (aiIn) aiIn.value = state.geminiKey;
+  }
 }
 
 function setConnStatus(status) {
@@ -3740,6 +3760,7 @@ async function _onSNAuthSuccess(result) {
     const prof = await snAPI.call('/profile');
     if (prof) {
       state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
+      applyProfileAIKey(prof);
       saveState();
     }
   } catch(_) {}
@@ -4023,6 +4044,7 @@ async function changePassword() {
         state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
         if (prof.currency) state.currency = prof.currency;
         if (prof.language) state.language = prof.language;
+        applyProfileAIKey(prof);
         saveState();
       }
       renderAll();

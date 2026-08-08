@@ -81,6 +81,7 @@ All tables share the prefix `x_887486_0_`.
 | `language_preference` | String | Default: `en` |
 | `avatar_color` | String | Hex color, default `#8B5CF6` |
 | `monthly_income_target` | Decimal | |
+| `ai_api_key` | Password (2 Way Encrypted) | Groq API key, per account so it syncs across devices. Use the encrypted type, not plain String |
 | `last_login` | DateTime | Bumped on every valid token use |
 
 ### `session`

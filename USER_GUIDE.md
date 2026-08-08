@@ -256,6 +256,10 @@ Get personalised, AI-written analysis of your finances — free.
 1. Get a free API key at [console.groq.com](https://console.groq.com)
 2. Go to **Settings → AI Configuration**, paste the key, tap **Save**
 
+You only need to do this **once per account, not once per device**. The key is saved to your account, so signing in on your phone picks it up automatically. If a device already has its own key saved, that one is kept — the account's key never silently replaces it.
+
+Saving while signed out keeps the key on that device only, and the app tells you so.
+
 ### Using it
 
 | Where | Button | What you get |
