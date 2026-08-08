@@ -892,8 +892,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <option value="Groceries">🛒 Groceries</option>
           <option value="Shopping">🛍️ Shopping</option>
           <option value="Bills">🏠 Bills</option>
+          <option value="Rental">🔑 Rental</option>
           <option value="Health">🏥 Health</option>
           <option value="Entertainment">🎬 Entertainment</option>
+          <option value="Sport">⚽ Sport</option>
           <option value="Education">📚 Education</option>
           <option value="Travel">✈️ Travel</option>
           <option value="Salary">💼 Salary</option>
@@ -948,8 +950,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <label class="form-label">Category</label>
       <select class="form-input" id="budget-cat">
         <option>Food & Drink</option><option>Transport</option><option>Groceries</option>
-        <option>Shopping</option><option>Bills</option><option>Health</option>
-        <option>Entertainment</option><option>Education</option><option>Travel</option><option>Other</option>
+        <option>Shopping</option><option>Bills</option><option>Rental</option><option>Health</option>
+        <option>Entertainment</option><option>Sport</option><option>Education</option><option>Travel</option><option>Other</option>
       </select>
     </div>
     <div class="form-group">
@@ -1033,13 +1035,20 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       </div>
       <div class="form-group">
         <label class="form-label">Currency</label>
-        <select class="form-input" id="goal-currency">
+        <select class="form-input" id="goal-currency" onchange="populateGoalAccountOptions()">
           <option value="SGD">SGD</option>
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
           <option value="MYR">MYR</option>
         </select>
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Linked Account <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+      <select class="form-input" id="goal-account" onchange="onGoalAccountChange()">
+        <option value="">— None (enter amount manually) —</option>
+      </select>
+      <div id="goal-account-hint" style="font-size:11px;color:var(--sky);margin-top:4px;display:none;">🔗 Saved amount now follows this account's balance — add a transaction on it to update the goal.</div>
     </div>
     <div class="form-group">
       <label class="form-label">Remarks</label>
@@ -1400,14 +1409,14 @@ function loadState() {
 
 const CAT_COLORS = {
   'Food & Drink':'#8B5CF6','Transport':'#00C896','Groceries':'#3B82F6',
-  'Shopping':'#FF5B5B','Bills':'#F59E0B','Health':'#EC4899',
-  'Entertainment':'#F97316','Education':'#6366F1','Travel':'#14B8A6',
+  'Shopping':'#FF5B5B','Bills':'#F59E0B','Rental':'#64748B','Health':'#EC4899',
+  'Entertainment':'#F97316','Sport':'#84CC16','Education':'#6366F1','Travel':'#14B8A6',
   'Salary':'#00C896','Freelance':'#3B82F6','Investment':'#8B5CF6','Other':'#6B7280'
 };
 const CAT_BG = {
   'Food & Drink':'#F5F3FF','Transport':'#E6FBF5','Groceries':'#EFF6FF',
-  'Shopping':'#FFF0F0','Bills':'#FFFBEB','Health':'#FDF2F8',
-  'Entertainment':'#FFF7ED','Education':'#EEF2FF','Travel':'#F0FDFA',
+  'Shopping':'#FFF0F0','Bills':'#FFFBEB','Rental':'#F1F5F9','Health':'#FDF2F8',
+  'Entertainment':'#FFF7ED','Sport':'#F7FEE7','Education':'#EEF2FF','Travel':'#F0FDFA',
   'Salary':'#E6FBF5','Freelance':'#EFF6FF','Investment':'#F5F3FF','Other':'#F7F9FC'
 };
 
@@ -1524,7 +1533,7 @@ function setType(type, el) {
   }
   const catSel = document.getElementById('txn-cat');
   const income  = ['Salary','Freelance','Investment','Other'];
-  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Health','Entertainment','Education','Travel','Other'];
+  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Other'];
   const opts = type === 'income' ? income : expense;
   const prev = catSel.value;
   catSel.innerHTML = opts.map(o => `<option value="${o}">${catIcon(o)} ${o}</option>`).join('');
@@ -1761,11 +1770,11 @@ function openGoalModal(id = null) {
   const editing = id !== null;
   document.getElementById('goal-modal-title').textContent    = editing ? t('modal_edit_goal') : t('modal_add_goal');
   document.getElementById('goal-edit-badge').style.display   = editing ? 'inline-flex' : 'none';
-  document.getElementById('goal-contrib-section').style.display = editing ? 'block' : 'none';
   document.getElementById('goal-edit-id').value              = id !== null ? id : '';
   document.getElementById('goal-name').value    = '';
   document.getElementById('goal-target').value  = '';
   document.getElementById('goal-current').value = '0';
+  document.getElementById('goal-current').disabled = false;
   document.getElementById('goal-monthly').value  = '';
   document.getElementById('goal-remarks').value  = '';
   document.getElementById('goal-currency').value = state.currency;
@@ -1773,6 +1782,7 @@ function openGoalModal(id = null) {
   const d = new Date(); d.setFullYear(d.getFullYear() + 1);
   document.getElementById('goal-date').value = localDateStr(d);
 
+  let linkedAccount = '';
   if (editing) {
     const g = state.goals.find(x => x.id == id);
     if (!g) return;
@@ -1784,10 +1794,43 @@ function openGoalModal(id = null) {
     document.getElementById('goal-date').value     = g.date;
     document.getElementById('goal-remarks').value  = g.remarks || '';
     document.getElementById('goal-currency').value = g.currency || state.currency;
+    linkedAccount = g.linkedAccount || '';
   }
+  populateGoalAccountOptions(linkedAccount);
   document.getElementById('goal-modal').classList.add('open');
 }
 function closeGoalModal() { document.getElementById('goal-modal').classList.remove('open'); }
+
+// Only accounts in the goal's own currency are offered — linking across
+// currencies would silently break the never-mix-currencies rule.
+function populateGoalAccountOptions(selected) {
+  const cur  = document.getElementById('goal-currency').value;
+  const sel  = document.getElementById('goal-account');
+  const keep = selected !== undefined ? selected : sel.value;
+  const accts = state.accounts.filter(a => (a.currency || state.currency) === cur);
+  sel.innerHTML = '<option value="">— None (enter amount manually) —</option>'
+    + accts.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+  sel.value = accts.some(a => a.name === keep) ? keep : '';
+  onGoalAccountChange();
+}
+
+// A linked goal's "current saved" is derived from the account, not typed —
+// disable the field and steer contributions to the account's transactions instead.
+function onGoalAccountChange() {
+  const accName = document.getElementById('goal-account').value;
+  const linked  = !!accName;
+  const curInput = document.getElementById('goal-current');
+  const editing = document.getElementById('goal-edit-id').value !== '';
+  document.getElementById('goal-account-hint').style.display = linked ? 'block' : 'none';
+  curInput.disabled = linked;
+  curInput.style.opacity = linked ? '0.6' : '1';
+  const contribSection = document.getElementById('goal-contrib-section');
+  if (contribSection) contribSection.style.display = (editing && !linked) ? 'block' : 'none';
+  if (linked) {
+    const acc = state.accounts.find(a => a.name === accName && (a.currency||state.currency) === document.getElementById('goal-currency').value);
+    if (acc) curInput.value = effectiveBal(acc).toFixed(2);
+  }
+}
 
 function quickContrib(amount) {
   const cur = parseFloat(document.getElementById('goal-current').value) || 0;
@@ -1805,17 +1848,19 @@ async function saveGoal() {
   const remarks  = document.getElementById('goal-remarks').value.trim();
   const currency = document.getElementById('goal-currency').value;
   const editId   = document.getElementById('goal-edit-id').value;
+  const linkedAccount = document.getElementById('goal-account').value;
 
   if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
   if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
   const snPayload = { goal_name: name, goal_icon: icon, target_amount: target,
-    current_amount: current, monthly_contribution: monthly, target_date: date, remarks, currency };
+    current_amount: current, monthly_contribution: monthly, target_date: date, remarks, currency,
+    account_name: linkedAccount };
 
   if (editId !== '') {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
-      state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date, remarks, currency };
+      state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date, remarks, currency, linkedAccount };
       saveState();
       const sysId = _snId(state.goals[idx]);
       if (state.snToken && sysId) {
@@ -1825,7 +1870,7 @@ async function saveGoal() {
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    const goal = { id: state.nextId++, name, icon, target, current, monthly, date, remarks, currency };
+    const goal = { id: state.nextId++, name, icon, target, current, monthly, date, remarks, currency, linkedAccount };
     state.goals.push(goal);
     saveState();
     if (state.snToken) {
@@ -1952,7 +1997,7 @@ const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cu
 // wherever a bare, possibly-negative figure is shown or sent to the model.
 const fmtSigned = (n, cur) => (n < 0 ? '-' : '') + fmtWithCur(n, cur);
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
-const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Health':'🏥','Entertainment':'🎬','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
+const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
 
 // ── Month helpers ──────────────────────────────
 function getMonthLabel(ym) {
@@ -2116,6 +2161,7 @@ function applyLanguage() {
 function renderAll() {
   applyLanguage();
   updateMonthUI();
+  syncLinkedGoals();
   renderDashboard();
   renderTransactions();
   renderBudgets();
@@ -2184,7 +2230,7 @@ function renderDashboard() {
 
   const recent = monthTxns.slice(0,8);
   document.getElementById('recent-txns').innerHTML = recent.length
-    ? recent.map(txn => txnRowHTML(txn)).join('')
+    ? txnListByDate(recent)
     : `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_month')} ${getMonthLabel(state.filterMonth)}.<br>${t('empty_add_first')}</p></div>`;
 
   // Category chart — per-currency sections when mixed
@@ -2215,6 +2261,16 @@ function renderDashboard() {
 }
 
 /* ── TXN ROW HTML ── */
+// Shared by the dashboard's Recent Transactions card and the Transactions view —
+// both group the same way, so a date header only needs to be built once.
+function txnListByDate(arr, forceBadge = false) {
+  const byDate = {};
+  arr.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
+  return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
+    .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
+    .join('');
+}
+
 function txnRowHTML(txn, showActions = true, forceBadge = false) {
   const isPos = txn.type === 'income';
   const showBadge = forceBadge || (txn.currency && txn.currency !== state.currency);
@@ -2270,16 +2326,8 @@ function renderTransactions() {
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))];
   const isMultiCurTxn = currencies.length > 1;
 
-  const groupByDate = (arr, forceBadge = false) => {
-    const byDate = {};
-    arr.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
-    return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
-      .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
-      .join('');
-  };
-
   if (!isMultiCurTxn) {
-    document.getElementById('all-txns').innerHTML = groupByDate(txns);
+    document.getElementById('all-txns').innerHTML = txnListByDate(txns);
   } else {
     document.getElementById('all-txns').innerHTML = currencies.map((cur, i) => {
       const curTxns = txns.filter(t => (t.currency || state.currency) === cur);
@@ -2287,7 +2335,7 @@ function renderTransactions() {
       return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
         <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
         <div style="flex:1;height:1px;background:var(--border);"></div>
-      </div>${groupByDate(curTxns, true)}`;
+      </div>${txnListByDate(curTxns, true)}`;
     }).join('');
   }
 }
@@ -2423,6 +2471,7 @@ function renderGoals() {
         <div class="goal-title">
           ${g.icon} ${esc(g.name)}
           ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
+          ${g.linkedAccount ? `<span title="Synced from ${esc(g.linkedAccount)}" style="background:var(--sky-s);color:var(--sky);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">🔗 ${esc(g.linkedAccount)}</span>` : ''}
         </div>
         <div class="goal-right">
           ${!isMultiCurGoals ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:2px;"><span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${g.currency || state.currency}</span></div>` : ''}
@@ -2587,6 +2636,26 @@ function effectiveBal(acc) {
   const income  = linked.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const expense = linked.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   return Math.round((acc.balance + income - expense) * 100) / 100;
+}
+
+// A goal linked to an account tracks that account's live balance instead of a
+// manually-typed figure. Runs on every renderAll() but only writes/syncs when
+// the computed value actually moved, so it stays cheap and doesn't spam the API.
+function syncLinkedGoals() {
+  state.goals.forEach(g => {
+    if (!g.linkedAccount) return;
+    const acc = state.accounts.find(a => a.name === g.linkedAccount && (a.currency || state.currency) === (g.currency || state.currency));
+    if (!acc) return;
+    const newCurrent = effectiveBal(acc);
+    if (newCurrent === g.current) return;
+    g.current = newCurrent;
+    g.status = g.current >= g.target ? 'achieved' : 'in_progress';
+    const sysId = _snId(g);
+    if (state.snToken && sysId) {
+      snAPI.call('/goals', 'PUT', { sys_id: sysId, current_amount: g.current })
+        .catch(e => console.warn('goal sync:', e.message));
+    }
+  });
 }
 
 function renderAccounts() {
@@ -2885,7 +2954,7 @@ function exportSNJSON() {
     x_pfmt_savings_goal: state.goals.map(g => ({
       goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
       current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date,
-      currency: g.currency || state.currency
+      currency: g.currency || state.currency, linked_account: g.linkedAccount || ''
     })),
     x_pfmt_account: state.accounts.map(a => ({
       account_name: a.name, account_type: a.type, institution_name: a.institution,
@@ -3442,7 +3511,8 @@ async function snLoadAll() {
       date     : g.target_date || '',
       status   : g.goal_status,
       remarks  : g.remarks || '',
-      currency : g.currency || state.currency
+      currency : g.currency || state.currency,
+      linkedAccount: g.account_name || ''
     }));
     state.accounts = (accounts || []).map(a => ({
       id         : a.sys_id,

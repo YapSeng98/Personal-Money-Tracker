@@ -457,8 +457,9 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
 #### PUT `/goals`
 
 ```json
-{ "sys_id": "...", "current_amount": 3000.00, "currency": "SGD" }
+{ "sys_id": "...", "current_amount": 3000.00, "currency": "SGD", "account_name": "Savings" }
 // Response 200 — goal_status auto-updated
+// account_name: "" clears the link; a name that doesn't resolve leaves the existing link untouched
 { "result": { "sys_id": "...", "status": "updated" } }
 ```
 
@@ -646,6 +647,14 @@ Persisted to `localStorage` key `pfmt_state_v2`.
 | `FLOW_MonthlyBudgetReset` | 1st of month, 00:01 SGT | Reset spent_amount, apply rollover, update period dates |
 | `FLOW_RecurringTransactions` | Daily 08:00 SGT | Clone recurring transactions, advance next_run_date |
 
+### Scheduled Jobs
+
+| Name | Schedule | Purpose |
+|---|---|---|
+| `SCHED_WeeklyBackupEmail` | Weekly (pick a day/time) | Email each user their accounts/transactions/budgets/goals as CSV attachments |
+
+Paste into **System Definition → Scheduled Jobs → New → "Automatically run a script of your choosing"**. Users with no data yet are skipped — nothing is sent until there's something to back up. Uses each user's `email` field on `user_profile`, so make sure that's filled in (set at registration, editable from **Settings**).
+
 ### Client Scripts (form UI)
 
 | Name | Event | Purpose |
@@ -665,7 +674,7 @@ new GR_Utilities().seedCategories();
 
 Default categories seeded:
 
-**Expense**: Food & Drink 🍜, Transport 🚇, Groceries 🛒, Shopping 🛍️, Bills 🏠, Health 🏥, Entertainment 🎬, Education 📚, Travel ✈️, Other 💰
+**Expense**: Food & Drink 🍜, Transport 🚇, Groceries 🛒, Shopping 🛍️, Bills 🏠, Rental 🔑, Health 🏥, Entertainment 🎬, Sport ⚽, Education 📚, Travel ✈️, Other 💰
 
 **Income**: Salary 💼, Freelance 💻, Investment 📈
 
@@ -732,6 +741,12 @@ Create each file listed in [ServiceNow Components](#servicenow-components). Past
 ### Step 5 — Flows
 
 Import `FLOW_MonthlyBudgetReset.js` and `FLOW_RecurringTransactions.js` in Flow Designer. Set the scheduled triggers as described.
+
+---
+
+### Step 5b — Scheduled Jobs
+
+Create a Scheduled Job from `SCHED_WeeklyBackupEmail.js` as described in [Scheduled Jobs](#scheduled-jobs). Optional, but recommended once real data is on the instance.
 
 ---
 

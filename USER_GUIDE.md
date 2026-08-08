@@ -155,6 +155,16 @@ Budgets follow the month bar — check last month's performance any time.
 
 Goals in different currencies appear under their own currency section headers.
 
+### Linking a goal to an account
+
+Instead of typing your saved amount by hand, you can link a goal to one of your **Accounts**:
+
+1. Open the goal (or start a new one) and pick an account from **Linked Account**
+2. Only accounts in the goal's own currency are offered
+3. Once linked, the goal's **saved amount** follows that account's balance automatically — add, edit, or delete a transaction on the account and the goal updates on its own
+4. The goal card shows a 🔗 badge with the linked account's name, and the Quick Contribution buttons are hidden (add a transaction on the account instead)
+5. To go back to manual entry, edit the goal and set Linked Account back to **None**
+
 ---
 
 ## 7. Analytics

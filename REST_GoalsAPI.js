@@ -201,7 +201,7 @@
   }
 
   // ── PUT /goals ────────────────────────────────────────────
-  // Body: { sys_id, goal_name, goal_icon, target_amount, current_amount, monthly_contribution, target_date, remarks, currency }
+  // Body: { sys_id, goal_name, goal_icon, target_amount, current_amount, monthly_contribution, target_date, remarks, currency, account_name }
   if (method === 'PUT') {
     var putBody = request.body ? request.body.data : {};
     if (!putBody.sys_id) {
@@ -223,6 +223,21 @@
     if (putBody.target_date          !== undefined) editGR.target_date          = putBody.target_date;
     if (putBody.remarks              !== undefined) editGR.remarks              = putBody.remarks;
     if (putBody.currency             !== undefined) editGR.currency             = putBody.currency;
+
+    // Link/unlink an account. Empty string clears the reference; a name that
+    // doesn't resolve leaves the existing link untouched rather than erroring.
+    if (putBody.account_name !== undefined) {
+      if (putBody.account_name) {
+        var putAccGR = new GlideRecord('x_887486_0_account');
+        putAccGR.addQuery('user_profile', profileSysId);
+        putAccGR.addQuery('account_name', putBody.account_name);
+        putAccGR.setLimit(1);
+        putAccGR.query();
+        if (putAccGR.next()) editGR.setValue('account', putAccGR.getUniqueValue());
+      } else {
+        editGR.setValue('account', '');
+      }
+    }
 
     // Auto-update status
     var updatedCurrent = parseFloat(editGR.current_amount.toString()) || 0;
