@@ -100,6 +100,7 @@ Use the month bar to review any past month.
 2. Choose the type: **Expense**, **Income**, **Transfer**, or **Asset**
 3. Enter the **amount** and pick the **currency** (SGD / USD / AUD / MYR)
 4. Enter a **description** (required), pick a **category**, an **account** (optional), and the **date**
+   - Picking an account sets the currency to that account's. Saving a row whose currency differs from its account is refused — such a row would sit in the list without changing any balance.
 5. Add **notes** if you like, then tap **Save**
 
 ### The four types
@@ -121,7 +122,11 @@ Categories: Investment 📈, Property 🏘️, Gold 🥇, Vehicle 🚗, Other �
 
 Pick a **From Account** and a **To Account**. The money leaves one and arrives in the other, and the list shows it as a single `🔄 DBS Saving → KenTrade` row.
 
+The **currency follows the From Account** — pick UOB (SGD) and you're sending SGD; pick Maybank (MYR) and you're sending MYR. It's locked to the account on purpose, because a transaction whose currency doesn't match its account moves no money at all.
+
 **Different currencies?** If the destination uses another currency, a second field appears: **Amount Received**. Enter what actually landed — e.g. send `S$100`, receive `RM340`. The app never guesses an exchange rate, so both figures stay true to your bank statement.
+
+To send the other way, just swap the accounts: put Maybank in **From** and DBS in **To**, and the labels flip to *Amount Sent (MYR)* / *Amount Received (SGD)*.
 
 Transfers don't count as income or spending, and don't consume a budget.
 

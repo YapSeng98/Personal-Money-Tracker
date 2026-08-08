@@ -927,7 +927,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       </div>
       <div class="form-group">
         <label class="form-label" id="txn-account-label">Account</label>
-        <select class="form-input" id="txn-account" onchange="if(state.currentType==='transfer'){populateToAccounts();updateTransferUI();}"></select>
+        <select class="form-input" id="txn-account" onchange="onTxnAccountChange()"></select>
       </div>
     </div>
     <div class="form-row">
@@ -1601,6 +1601,15 @@ function setType(type, el) {
   updateTransferUI();
 }
 
+// A transaction whose currency differs from its account's currency is invisible
+// to effectiveBal() — it would sit in the list moving no money. The account is
+// the source of truth, so picking one sets the currency to match.
+function onTxnAccountChange() {
+  const acc = state.accounts.find(a => a.name === document.getElementById('txn-account').value);
+  if (acc) document.getElementById('txn-currency').value = acc.currency || state.currency;
+  if (state.currentType === 'transfer') { populateToAccounts(); updateTransferUI(); }
+}
+
 // The destination list excludes the source account — transferring to yourself
 // is a no-op that would still write two rows.
 function populateToAccounts(selected) {
@@ -1617,8 +1626,17 @@ function populateToAccounts(selected) {
 // Cross-currency transfers can't be derived — the app holds no FX rates — so the
 // second amount field appears and the user supplies what actually arrived.
 function updateTransferUI() {
-  if (state.currentType !== 'transfer') return;
-  const fromCur = document.getElementById('txn-currency').value;
+  const curSel = document.getElementById('txn-currency');
+  if (state.currentType !== 'transfer') { curSel.disabled = false; curSel.style.opacity = '1'; return; }
+
+  // In a transfer the sending currency IS the From Account's currency; letting it
+  // be picked separately produced legs that moved no money.
+  const fromAcc = state.accounts.find(a => a.name === document.getElementById('txn-account').value);
+  if (fromAcc) curSel.value = fromAcc.currency || state.currency;
+  curSel.disabled = !!fromAcc;
+  curSel.style.opacity = fromAcc ? '0.6' : '1';
+
+  const fromCur = curSel.value;
   const toName  = document.getElementById('txn-to-account').value;
   const toAcc   = state.accounts.find(a => a.name === toName);
   const toCur   = toAcc ? (toAcc.currency || state.currency) : fromCur;
@@ -1784,6 +1802,14 @@ async function saveTransaction() {
   if (!amt || amt <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
   if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
   if (!date)             { showToast(t('toast_enter_date'), 'error'); return; }
+
+  // effectiveBal() only counts rows whose currency matches the account's, so a
+  // mismatch here would save a row that silently moves nothing.
+  const acctObj = state.accounts.find(a => a.name === acct);
+  if (acctObj && (acctObj.currency || state.currency) !== currency) {
+    showToast(`${acct} is a ${acctObj.currency || state.currency} account — set the currency to match, or pick another account.`, 'error');
+    return;
+  }
 
   // ── Transfers are written as a matched pair, not one row ──
   // An expense on the source and an income on the destination, sharing a group
