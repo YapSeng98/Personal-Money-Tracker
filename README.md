@@ -766,18 +766,24 @@ new GR_Utilities().seedCategories();
 
 Seeded with `seed_test_users.py`. All passwords: **`Test1234!`**
 
-| Name | Username | Currency | Notes |
-|---|---|---|---|
-| Alice Tan | `alice_9af4d6` | SGD | 3 accounts, 12 txns, 6 budgets, 3 goals |
-| Ben Lim | `ben_4c71fc` | SGD | 4 accounts, 14 txns, 7 budgets, 4 goals |
-| Chloe Ng | `chloe_b6bb1d` | MYR | 3 accounts, 10 txns, 6 budgets, 3 goals |
-| David Wong | `david_9cbb6f` | AUD | 4 accounts, 12 txns, 7 budgets, 3 goals |
-| Emma Liew | `emma_c110cb` | SGD | 3 accounts, 10 txns, 5 budgets, 3 goals (zh) |
-| Farid Hassan | `farid_55eefb` | SGD | 4 accounts, 12 txns, 7 budgets, 4 goals |
-| Grace Koh | `grace_d04d09` | SGD | 2 accounts, 10 txns, 5 budgets, 3 goals |
-| Harry Teo | `harry_a93580` | SGD | 5 accounts, 12 txns, 8 budgets, 4 goals |
-| Iris Chan | `iris_55fb43` | SGD | 3 accounts, 11 txns, 6 budgets, 4 goals (zh) |
-| Jake Sim | `jake_433bb1` | SGD | 4 accounts, 14 txns, 7 budgets, 4 goals |
+Seeded 2026-08-08 — 281 records, every one carrying an explicit currency. Re-running the script creates a *new* set of users (the `uuid` suffix changes); it never overwrites an existing one.
+
+| Name | Username | Currencies | Acc | Txn | Bud | Goal | Exercises |
+|---|---|---|---|---|---|---|---|
+| Alice Tan | `alice_8b5abb` | SGD + MYR | 4 | 12 | 6 | 3 | JB weekend spend; same category budgeted in both currencies |
+| Ben Lim | `ben_670e6e` | SGD + USD | 5 | 13 | 7 | 3 | USD brokerage; USD Education budget goes over |
+| Chloe Ng | `chloe_05186a` | MYR + SGD | 4 | 12 | 7 | 3 | Cross-border commuter — MYR home, SGD salary |
+| David Wong | `david_96383d` | AUD | 4 | 12 | 7 | 3 | Pure single currency — clean UI, no grouping headers |
+| Emma Liew | `emma_431de0` | SGD | 3 | 10 | 5 | 3 | Chinese UI; Shopping budget over |
+| Farid Hassan | `farid_1a0542` | SGD + MYR | 5 | 12 | 7 | 3 | Family support to MY; MYR Shopping over |
+| Grace Koh | `grace_1ed5d1` | SGD | 2 | 10 | 5 | 3 | Lightest dataset — new-user experience |
+| **Harry Teo** | `harry_1160b8` | **SGD + USD + MYR** | 6 | 14 | 9 | 4 | **Heaviest dataset, 3 currencies, 6 account types** |
+| Iris Chan | `iris_bbccbb` | SGD | 3 | 11 | 6 | 4 | Chinese UI; Shopping budget over |
+| Jake Sim | `jake_ef82a9` | SGD + USD | 5 | 14 | 8 | 4 | Remote dev paid in USD |
+
+**Best for demos:** `harry_1160b8` — three currencies, six accounts, and budgets that land in healthy / near / over states.
+
+> Transaction dates are seeded relative to the run date and span roughly the last 25 days, so they straddle two calendar months. Use the month bar (**‹ ›**) to move between them — some currencies only appear in the earlier month.
 
 ---
 
