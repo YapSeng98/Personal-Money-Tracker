@@ -951,7 +951,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <select class="form-input" id="budget-cat">
         <option>Food & Drink</option><option>Transport</option><option>Groceries</option>
         <option>Shopping</option><option>Bills</option><option>Rental</option><option>Health</option>
-        <option>Entertainment</option><option>Sport</option><option>Education</option><option>Travel</option><option>Other</option>
+        <option>Entertainment</option><option>Sport</option><option>Education</option><option>Travel</option><option>Investment</option><option>Other</option>
       </select>
     </div>
     <div class="form-group">
@@ -1533,7 +1533,9 @@ function setType(type, el) {
   }
   const catSel = document.getElementById('txn-cat');
   const income  = ['Salary','Freelance','Investment','Other'];
-  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Other'];
+  // Investment appears in both lists: money going into a brokerage/fund is an
+  // outflow from the source account, while returns from it are income.
+  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Other'];
   const opts = type === 'income' ? income : expense;
   const prev = catSel.value;
   catSel.innerHTML = opts.map(o => `<option value="${o}">${catIcon(o)} ${o}</option>`).join('');

@@ -17,6 +17,7 @@ A full-featured personal finance web app that syncs with ServiceNow as its cloud
 7. [ServiceNow Components](#servicenow-components)
 8. [Deployment Guide](#deployment-guide)
 9. [Test Users](#test-users)
+10. [Known Limitations](#known-limitations)
 10. [Error Reference](#error-reference)
 
 ---
@@ -674,9 +675,11 @@ new GR_Utilities().seedCategories();
 
 Default categories seeded:
 
-**Expense**: Food & Drink 🍜, Transport 🚇, Groceries 🛒, Shopping 🛍️, Bills 🏠, Rental 🔑, Health 🏥, Entertainment 🎬, Sport ⚽, Education 📚, Travel ✈️, Other 💰
+**Expense**: Food & Drink 🍜, Transport 🚇, Groceries 🛒, Shopping 🛍️, Bills 🏠, Rental 🔑, Health 🏥, Entertainment 🎬, Sport ⚽, Education 📚, Travel ✈️, Investment 📈, Other 💰
 
 **Income**: Salary 💼, Freelance 💻, Investment 📈
+
+**Investment** appears in both lists — money into a fund is an outflow, returns from it are income.
 
 ---
 
@@ -799,6 +802,20 @@ Seeded 2026-08-08 — 281 records, every one carrying an explicit currency. Re-r
 **Best for demos:** `harry_1160b8` — three currencies, six accounts, and budgets that land in healthy / near / over states.
 
 > Transaction dates are seeded relative to the run date and span roughly the last 25 days, so they straddle two calendar months. Use the month bar (**‹ ›**) to move between them — some currencies only appear in the earlier month.
+
+---
+
+## Known Limitations
+
+### ⚠️ The Transfer tab does not move money
+
+A transaction saved with type `transfer` is stored and listed, but it is **invisible to every balance calculation**. `effectiveBal()` sums only `income` and `expense` rows, so a transfer changes no account balance, no KPI, and no linked-goal amount.
+
+It also captures only **one** account — a real transfer needs a *from* and a *to*. `BR_UpdateAccountBalance.js` notes `// Transfer: handled by a separate paired transaction`, but the frontend never creates that pair.
+
+**Workaround:** record the movement as an **Expense** on the source account (and, if you also track the destination, an **Income** on it).
+
+**To fix properly** would require: a second account field in the modal, writing two paired rows (expense on source + income on destination) sharing a transfer group id, teaching the transactions list to render the pair as one item, and making delete/edit operate on both. Same-currency only, unless an FX rate is introduced.
 
 ---
 
