@@ -826,9 +826,9 @@ Also re-paste `REST_TransactionsAPI.js` so the API reads and writes the field.
 
 Transfers created before this change were saved as a single row with type `transfer`, which no balance calculation reads. They remain inert — delete and re-enter them to get correct balances.
 
-### Editing a transfer
+### Transaction ordering
 
-Not supported. Delete it and add a new one; editing one leg in isolation would desynchronise the pair.
+Rows sort by `transaction_date` descending, then `sys_created_on` descending, so the newest entry sits on top even among same-day rows. The API returns `created` for this; without the updated `REST_TransactionsAPI.js` same-day ordering falls back to whatever order the API returns.
 
 ---
 

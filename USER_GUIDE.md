@@ -129,12 +129,12 @@ Transfers don't count as income or spending, and don't consume a budget.
 
 Each row has **✏️ edit** and **🗑️ delete** buttons. Deleting asks for confirmation first.
 
-Transfers are the exception: they can't be edited (delete and re-add instead), and deleting one removes **both** sides together, so an account is never left with a half-transfer.
+Transfers can be edited like anything else — including swapping the direction if you picked From and To the wrong way round. Deleting one removes **both** sides together, so an account is never left with a half-transfer.
 
 ### Finding transactions
 
 - **Search box** — filters by description as you type
-- **Type filter** — show only expenses or income
+- **Type filter** — Expenses, Income, Assets, or Transfers
 - **Category filter** — show one category
 - **Month bar** — step to any month
 - **Clear** — reset all filters at once

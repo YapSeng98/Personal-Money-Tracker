@@ -41,6 +41,7 @@
     if (type)  gr.addQuery('transaction_type', type);
     if (month) gr.addQuery('transaction_date', 'STARTSWITH', month);
     gr.orderByDesc('transaction_date');
+    gr.orderByDesc('sys_created_on'); // same-day rows: newest first
     gr.setLimit(limit);
     gr.query();
 
@@ -56,7 +57,8 @@
         date       : gr.transaction_date.toString(),
         notes      : gr.notes.toString(),
         currency   : gr.getValue('currency') || 'SGD',
-        transfer_group: gr.getValue('transfer_group') || ''
+        transfer_group: gr.getValue('transfer_group') || '',
+        created    : gr.getValue('sys_created_on') || ''
       });
     }
 

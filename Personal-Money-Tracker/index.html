@@ -618,6 +618,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <option value="">All Types</option>
             <option value="expense">Expenses</option>
             <option value="income">Income</option>
+            <option value="asset">Assets</option>
             <option value="transfer">Transfers</option>
           </select>
           <select class="form-input" id="filter-cat" onchange="renderTransactions()">
@@ -1526,6 +1527,30 @@ function openTxnModal(id = null) {
   if (editing) {
     const txn = state.transactions.find(x => x.id == id);
     if (!txn) return;
+
+    // A transfer is two rows. Load both back into the one form: the outgoing leg
+    // supplies From/amount, the incoming leg supplies To/amount received.
+    if (txn.transferGroup) {
+      const legs = state.transactions.filter(x => x.transferGroup === txn.transferGroup);
+      const out  = legs.find(x => x.type === 'expense') || txn;
+      const inc  = legs.find(x => x.type === 'income');
+      setType('transfer', document.getElementById('tab-transfer'));
+      document.getElementById('txn-desc').value     = out.description;
+      document.getElementById('txn-date').value     = out.date;
+      document.getElementById('txn-notes').value    = out.notes || '';
+      setSelectVal('txn-cat', out.category);
+      setSelectVal('txn-account', out.account);
+      document.getElementById('txn-currency').value = out.currency || state.currency;
+      document.getElementById('txn-amount').value   = out.amount;
+      populateToAccounts(inc ? inc.account : '');
+      updateTransferUI();
+      if (inc) document.getElementById('txn-amount-recv').value = inc.amount;
+      document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
+      document.getElementById('save-txn-btn').className   = 'btn btn-amber';
+      document.getElementById('txn-modal').classList.add('open');
+      return;
+    }
+
     setType(txn.type, document.getElementById(`tab-${txn.type}`));
     document.getElementById('txn-amount').value  = txn.amount;
     document.getElementById('txn-desc').value    = txn.description;
@@ -1685,7 +1710,7 @@ async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, to
   legs.forEach(leg => {
     const txn = { id: state.nextId++, type: leg.type, amount: leg.amount, description: desc,
       category: cat, account: leg.account, date, notes, currency: leg.currency,
-      transferGroup: group, transferPeer: leg.peer };
+      transferGroup: group, transferPeer: leg.peer, created: nowStamp() };
     state.transactions.unshift(txn);
     created.push(txn);
   });
@@ -1713,6 +1738,39 @@ async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, to
   renderAll();
 }
 
+// Edits both legs in place, keeping their sys_ids and the shared group, so the
+// pair stays intact and the direction can be corrected after a mistake.
+async function updateTransferPair(editId, { amt, recvAmt, desc, cat, from, to, fromCur, toCur, date, notes }) {
+  const anchor = state.transactions.find(x => x.id == editId);
+  if (!anchor || !anchor.transferGroup) { showToast('Transfer not found', 'error'); return; }
+  const legs = state.transactions.filter(x => x.transferGroup === anchor.transferGroup);
+  const out  = legs.find(x => x.type === 'expense');
+  const inc  = legs.find(x => x.type === 'income');
+  if (!out || !inc) { showToast('This transfer is missing a side — delete and re-add it.', 'error'); return; }
+
+  Object.assign(out, { amount: amt,     account: from, currency: fromCur, transferPeer: to,
+                       description: desc, category: cat, date, notes });
+  Object.assign(inc, { amount: recvAmt, account: to,   currency: toCur,   transferPeer: from,
+                       description: desc, category: cat, date, notes });
+  saveState();
+
+  if (state.snToken) {
+    await Promise.all([out, inc].map(leg => {
+      const sysId = _snId(leg);
+      if (!sysId) return Promise.resolve();
+      return snAPI.call('/transactions', 'PUT', {
+        sys_id: sysId, type: leg.type, amount: leg.amount, description: leg.description,
+        category_name: leg.category, account_name: leg.account, date: leg.date,
+        notes: leg.notes, currency: leg.currency, transfer_group: leg.transferGroup
+      }).catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    }));
+  }
+
+  showToast(`Transfer updated · ${from} → ${to}`, 'success');
+  closeTxnModal();
+  renderAll();
+}
+
 async function saveTransaction() {
   const amt   = parseFloat(document.getElementById('txn-amount').value);
   const desc  = document.getElementById('txn-desc').value.trim();
@@ -1733,7 +1791,6 @@ async function saveTransaction() {
   // a cross-currency transfer keeps each leg in its own currency — the two
   // amounts are supplied by the user, never converted.
   if (state.currentType === 'transfer') {
-    if (editId !== '') { showToast('Editing a transfer is not supported — delete it and add a new one.', 'error'); return; }
     const toAcct = document.getElementById('txn-to-account').value;
     if (!acct)            { showToast('Choose the account the money leaves from', 'error'); return; }
     if (!toAcct)          { showToast('Choose the destination account', 'error'); return; }
@@ -1746,8 +1803,13 @@ async function saveTransaction() {
     if (differs && (!recvAmt || recvAmt <= 0)) {
       showToast(`Enter the amount received in ${toCur}`, 'error'); return;
     }
-    await saveTransferPair({ amt, recvAmt, desc, cat, from: acct, to: toAcct,
-                             fromCur: currency, toCur, date, notes });
+    if (editId !== '') {
+      await updateTransferPair(editId, { amt, recvAmt, desc, cat, from: acct, to: toAcct,
+                                         fromCur: currency, toCur, date, notes });
+    } else {
+      await saveTransferPair({ amt, recvAmt, desc, cat, from: acct, to: toAcct,
+                               fromCur: currency, toCur, date, notes });
+    }
     return;
   }
 
@@ -1769,7 +1831,7 @@ async function saveTransaction() {
     }
   } else {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt,
-      description: desc, category: cat, account: acct, date, notes, currency };
+      description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp() };
     state.transactions.unshift(txn);
     if (state.snToken) {
       snAPI.call('/transactions', 'POST', snPayload)
@@ -2176,8 +2238,19 @@ function updateMonthUI() {
   const todayBtn = document.getElementById('month-today-btn');
   if (todayBtn) todayBtn.style.display = state.filterMonth === localYM() ? 'none' : 'inline-flex';
 }
+// 'YYYY-MM-DD HH:MM:SS' UTC — same shape as ServiceNow's sys_created_on, so
+// locally-added rows and synced rows sort against each other correctly.
+const nowStamp = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+// Newest first: by date, then by when the row was actually created. Without the
+// second key, same-day rows fell back to whatever order the API returned.
+function sortTxnsDesc(arr) {
+  return arr.slice().sort((a, b) =>
+    b.date.localeCompare(a.date) || (b.created || '').localeCompare(a.created || ''));
+}
+
 function getMonthTxns(month) {
-  return state.transactions.filter(t => t.date.startsWith(month || state.filterMonth));
+  return sortTxnsDesc(state.transactions.filter(t => t.date.startsWith(month || state.filterMonth)));
 }
 
 function daysInFilterMonth() {
@@ -2417,7 +2490,7 @@ function renderDashboard() {
 // both group the same way, so a date header only needs to be built once.
 function txnListByDate(arr, forceBadge = false) {
   const byDate = {};
-  arr.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
+  sortTxnsDesc(arr).forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
     .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
     .join('');
@@ -2449,7 +2522,8 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
       </div>
       <div class="txn-amt" style="color:var(--sky);">${fmtWithCur(txn.amount, txn.currency)}${diffCur ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
-        <button class="icon-btn del" onclick="deleteTransaction('${txn.id}')" title="Delete transfer (both sides)">🗑️</button>
+        <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit transfer">✏️</button>
+        <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete transfer (both sides)">🗑️</button>
       </div>` : ''}
     </div>`;
   }
@@ -2495,7 +2569,14 @@ function renderTransactions() {
 
   let txns = state.transactions.filter(t => {
     if (!t.date.startsWith(state.filterMonth))               return false;
-    if (typeF   && t.type !== typeF)                         return false;
+    // A transfer is stored as an expense+income pair, so it can't be matched on
+    // t.type. Select it by its group instead, and keep the legs out of the
+    // Expenses/Income filters — a transfer is neither.
+    if (typeF === 'transfer') {
+      if (!t.transferGroup) return false;
+    } else if (typeF) {
+      if (t.type !== typeF || t.transferGroup) return false;
+    }
     if (catF    && t.category !== catF)                      return false;
     if (searchF && !t.description.toLowerCase().includes(searchF)) return false;
     return true;
@@ -3674,7 +3755,8 @@ async function snLoadAll() {
       date       : t.date,
       notes      : t.notes || '',
       currency   : t.currency || state.currency,
-      transferGroup: t.transfer_group || ''
+      transferGroup: t.transfer_group || '',
+      created    : t.created || ''
     }));
     // Rebuild each transfer leg's peer-account label from its partner row.
     const tgroups = {};
