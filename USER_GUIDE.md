@@ -260,6 +260,8 @@ You only need to do this **once per account, not once per device**. The key is s
 
 Saving while signed out keeps the key on that device only, and the app tells you so.
 
+**Getting "invalid API key" on one device?** That device is holding an older key. It fixes itself the next time you use an AI button — the app notices the rejection and switches to your account's key. To force it immediately, tap **use the key from my account ↻** under Settings → AI Configuration.
+
 ### Using it
 
 | Where | Button | What you get |
@@ -324,6 +326,7 @@ Rows display a small badge showing their sync state: **SN** (synced to ServiceNo
 | **Old version showing after an update** | Hard-refresh: `Cmd/Ctrl+Shift+R` on desktop; on mobile, clear the site from browser cache. |
 | **Numbers look mixed between currencies** | They never are — check the blue currency section headers; each section's totals are independent. |
 | **AI buttons say a key is needed** | Add your free Groq API key under **Settings → AI Configuration**. |
+| **"Your API key was rejected" on one device** | That device holds an older key. Use an AI button once and it switches to your account's key automatically, or tap **use the key from my account ↻** in Settings to force it. |
 | **Started fresh by accident (sample data everywhere)** | Sample data loads only when no saved data exists. Log in to restore your real data from ServiceNow, or use **Clear All Data** then reload. |
 
 ---

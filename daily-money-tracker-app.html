@@ -827,6 +827,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
             </div>
             <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky);">console.groq.com ↗</a></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">Saving stores the key on your account, so your other devices pick it up. If this device is stuck on an old key, <a href="#" onclick="pullAccountAIKey();return false;" style="color:var(--sky);font-weight:600;">use the key from my account ↻</a></div>
           </div>
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
@@ -3178,19 +3179,72 @@ async function callAI(prompt, targetId, requires) {
     return;
   }
   el.innerHTML = '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
+
+  const ask = key => fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt + AI_RULES }] })
+  });
+
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.geminiKey}` },
-      body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt + AI_RULES }] })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.status); }
+    let res = await ask(state.geminiKey);
+
+    // A key saved on this device takes priority, which is normally right — but a
+    // stale one would then shadow the account's good key forever. If the provider
+    // actually rejects it, fall back to the account key and keep it if it works.
+    if (res.status === 401) {
+      const accKey = await fetchAccountAIKey();
+      if (accKey && accKey !== state.geminiKey) {
+        const retry = await ask(accKey);
+        if (retry.ok) {
+          state.geminiKey = accKey;
+          saveState();
+          const aiIn = document.getElementById('gemini-key-input');
+          if (aiIn) aiIn.value = accKey;
+          showToast('This device had an old API key — switched to the one saved on your account', 'success');
+          res = retry;
+        }
+      }
+    }
+
+    if (!res.ok) {
+      let msg;
+      try { const e = await res.json(); msg = e.error?.message || `HTTP ${res.status}`; }
+      catch(_) { msg = `HTTP ${res.status}`; }
+      if (res.status === 401) {
+        el.innerHTML = `<span style="color:#F59E0B;">Your API key was rejected. Open <strong>Settings → AI Configuration</strong> and paste a valid Groq key — it will then sync to your other devices.</span>`;
+        return;
+      }
+      throw new Error(msg);
+    }
+
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || 'No insights generated.';
     el.innerHTML = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   } catch (e) {
-    el.innerHTML = `<span style="color:#FF8080;">Error: ${e.message}</span>`;
+    el.innerHTML = `<span style="color:#FF8080;">Error: ${esc(e.message)}</span>`;
   }
+}
+
+// Manual override for a device holding a stale key — overwrites the local copy
+// with whatever the account has, without waiting for a request to be rejected.
+async function pullAccountAIKey() {
+  if (!state.snToken) { showToast('Sign in first to load the key from your account', 'error'); return; }
+  const accKey = await fetchAccountAIKey();
+  if (!accKey) { showToast('No API key is saved on your account yet — paste one here and Save', 'warning'); return; }
+  if (accKey === state.geminiKey) { showToast('This device is already using your account key', 'info'); return; }
+  state.geminiKey = accKey;
+  saveState();
+  const aiIn = document.getElementById('gemini-key-input');
+  if (aiIn) aiIn.value = accKey;
+  showToast('Loaded the API key from your account', 'success');
+}
+
+// The key currently stored against the account, or '' if unavailable.
+async function fetchAccountAIKey() {
+  if (!state.snToken) return '';
+  try { const prof = await snAPI.call('/profile'); return (prof && prof.ai_api_key) || ''; }
+  catch(_) { return ''; }
 }
 
 function buildSummary() {
