@@ -1947,6 +1947,10 @@ const fmt = n => '$' + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigi
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const CUR_SYM = { SGD:'S$', USD:'$', AUD:'A$', MYR:'RM' };
 const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cur || '$'); return s + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
+// fmtWithCur() strips the sign via Math.abs(), which suits callers that supply
+// their own +/- prefix but silently turns a negative balance positive. Use this
+// wherever a bare, possibly-negative figure is shown or sent to the model.
+const fmtSigned = (n, cur) => (n < 0 ? '-' : '') + fmtWithCur(n, cur);
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
 const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Health':'🏥','Entertainment':'🎬','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
 
@@ -2140,7 +2144,7 @@ function renderDashboard() {
 
   if (!isMulti) {
     const cur = currencies[0] || state.currency;
-    document.getElementById('hero-balance').innerHTML = `<span style="font-family:var(--fd);font-size:clamp(28px,5vw,52px);font-weight:800;">${fmtWithCur(s.balance, cur)}</span>`;
+    document.getElementById('hero-balance').innerHTML = `<span style="font-family:var(--fd);font-size:clamp(28px,5vw,52px);font-weight:800;">${fmtSigned(s.balance, cur)}</span>`;
     document.getElementById('hero-income').textContent  = '+' + fmtWithCur(s.income, cur);
     document.getElementById('hero-expense').textContent = '−' + fmtWithCur(s.expense, cur);
     document.getElementById('kpi-avg-daily').textContent = fmtWithCur(s.avgDaily, cur);
@@ -2152,7 +2156,7 @@ function renderDashboard() {
     const rowStyle = `font-family:var(--fm);font-size:clamp(16px,2.5vw,24px);font-weight:700;line-height:1.5;`;
     document.getElementById('hero-balance').innerHTML = currencies.map(cur => {
       const {bal} = curStats(cur);
-      return `<div style="${rowStyle}color:${bal>=0?'white':'var(--coral)'};">${fmtWithCur(bal,cur)}</div>`;
+      return `<div style="${rowStyle}color:${bal>=0?'white':'var(--coral)'};">${fmtSigned(bal,cur)}</div>`;
     }).join('');
     document.getElementById('hero-income').innerHTML = currencies.map(cur =>
       `<div style="font-size:11px;font-weight:700;color:var(--jade);">+${fmtWithCur(curStats(cur).inc,cur)}</div>`).join('');
@@ -2606,7 +2610,7 @@ function renderAccounts() {
         return `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
           <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmtWithCur(d.assets-d.debt,cur)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmtSigned(d.assets-d.debt,cur)}</div></div>
         </div>`;
       })()
     : curEntries.map(([cur, d]) => `
@@ -2615,7 +2619,7 @@ function renderAccounts() {
           <div style="display:flex;gap:12px;text-align:right;flex-wrap:wrap;justify-content:flex-end;min-width:0;">
             <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_assets')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
             <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_debt')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
-            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${fmtWithCur(d.assets-d.debt,cur)}</div></div>
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${fmtSigned(d.assets-d.debt,cur)}</div></div>
           </div>
         </div>`).join('');
 
@@ -2725,10 +2729,10 @@ async function getAccountsAI() {
     if (b > 0) byCur[c].assets += b; else byCur[c].debt += Math.abs(b);
   });
   const totalsLine = Object.entries(byCur).map(([cur, d]) =>
-    `${cur} — Assets: ${fmtWithCur(d.assets,cur)}, Debt: ${fmtWithCur(d.debt,cur)}, Net: ${fmtWithCur(d.assets-d.debt,cur)}`).join('\n');
+    `${cur} — Assets: ${fmtWithCur(d.assets,cur)}, Debt: ${fmtWithCur(d.debt,cur)}, Net: ${fmtSigned(d.assets-d.debt,cur)}`).join('\n');
   const accLines = state.accounts.map(a => {
     const cur = a.currency || state.currency;
-    return `- ${a.name} (${a.institution}, ${a.type}, ${cur}): ${fmtWithCur(effectiveBal(a), cur)}`;
+    return `- ${a.name} (${a.institution}, ${a.type}, ${cur}): ${fmtSigned(effectiveBal(a), cur)}`;
   }).join('\n');
   const prompt = `You are a personal finance advisor. Analyse these accounts and give 3-4 concise, actionable tips to optimise their finances.\n\nIMPORTANT: balances are in multiple currencies. Never add different currencies together; advise per currency.\n\nAccounts:\n${accLines}\n\nTotals per currency:\n${totalsLine}\n\nFocus on: emergency fund adequacy, debt reduction priority, savings diversification. Keep it practical and brief.`;
   await callAI(prompt, 'accounts-ai-output', { ok: true });
@@ -2746,7 +2750,9 @@ STRICT RULES — follow exactly:
 - Use ONLY the figures provided above. Never invent accounts, balances, transactions, or amounts.
 - The only currencies that exist here are SGD (S$), USD ($), AUD (A$) and MYR (RM). Never mention any other currency.
 - Never add amounts of different currencies together. Give advice separately per currency.
-- Where the data says "none" or is empty, say so plainly. Do not substitute an example or a typical scenario.`;
+- Where the data says "none" or is empty, say so plainly. Do not substitute an example or a typical scenario.
+- Each quoted "name" is ONE item. Its two amounts are that item's current value and its target/limit — never two separate goals, budgets, or accounts. Report exactly as many items as are listed.
+- Do not comment on the number of days in the month unless asked; it is context for averages only.`;
 
 /**
  * Single entry point for every AI feature.
@@ -2801,10 +2807,29 @@ function buildSummary() {
       .forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
     const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5)
       .map(([c,a])=>`${c} ${fmtWithCur(a,cur)}`).join(', ') || 'none';
-    return `${cur}: Balance ${fmtWithCur(inc-exp,cur)}, Income ${fmtWithCur(inc,cur)}, Expenses ${fmtWithCur(exp,cur)}, Savings rate ${rate}, Daily avg ${fmtWithCur(exp/days,cur)}. Top categories: ${topCats}`;
+    return `${cur}: Balance ${fmtSigned(inc-exp,cur)}, Income ${fmtWithCur(inc,cur)}, Expenses ${fmtWithCur(exp,cur)}, Savings rate ${rate}, Daily avg ${fmtWithCur(exp/days,cur)}. Top categories: ${topCats}`;
   }).join(' | ') || 'no transactions this month';
   const multiNote = curs.length > 1 ? ' IMPORTANT: amounts are in multiple currencies — never add different currencies together; advise per currency.' : '';
-  return `Data for ${getMonthLabel(state.filterMonth)} (${days} days).${multiNote} ${perCur}. Budgets: ${state.budgets.map(b=>`${b.category} ${fmtWithCur(getBudgetSpent(b.category, b.currency), b.currency)}/${fmtWithCur(b.amount, b.currency)}`).join('; ')||'none'}. Goals: ${state.goals.map(g=>`${g.name} ${fmtWithCur(g.current, g.currency)}/${fmtWithCur(g.target, g.currency)}`).join('; ')||'none'}. Context: ServiceNow PDI app.`;
+
+  // Spell out "X of Y" in words. An "X/Y" shorthand reads as two separate
+  // items to a model, which reported a single goal as two.
+  const budgetsLine = state.budgets.length
+    ? `${state.budgets.length} budget${state.budgets.length>1?'s':''} — ` + state.budgets.map(b => {
+        const spent = getBudgetSpent(b.category, b.currency);
+        const pct = b.amount > 0 ? Math.round(spent/b.amount*100) : 0;
+        return `"${b.category}": ${fmtWithCur(spent, b.currency)} spent against a ${fmtWithCur(b.amount, b.currency)} monthly limit (${pct}% used)`;
+      }).join('; ')
+    : 'none';
+
+  const goalsLine = state.goals.length
+    ? `${state.goals.length} goal${state.goals.length>1?'s':''} — ` + state.goals.map(g => {
+        const pct = g.target > 0 ? Math.round(g.current/g.target*100) : 0;
+        const contrib = g.monthly > 0 ? `, contributing ${fmtWithCur(g.monthly, g.currency)} per month` : ', no monthly contribution set';
+        return `"${g.name}": ${fmtWithCur(g.current, g.currency)} saved so far towards a ${fmtWithCur(g.target, g.currency)} target (${pct}% complete${contrib})`;
+      }).join('; ')
+    : 'none';
+
+  return `Reporting period: ${getMonthLabel(state.filterMonth)}, a ${days}-day month.${multiNote} ${perCur}. Budgets: ${budgetsLine}. Goals: ${goalsLine}. Context: ServiceNow PDI app.`;
 }
 
 // ═══════════════════════════════════════════════
