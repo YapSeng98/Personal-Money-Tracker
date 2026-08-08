@@ -64,6 +64,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
 /* ── KPI ── */
 .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.kpi-strip>*{min-width:0;}
 .kpi{background:white;border:1px solid var(--border);border-radius:14px;padding:18px 20px;transition:box-shadow .2s;}
 .kpi:hover{box-shadow:0 4px 20px rgba(0,0,0,.06);}
 .kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
@@ -75,6 +76,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .balance-hero::before{content:'';position:absolute;right:-40px;top:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,150,.22) 0%,transparent 70%);}
 .balance-hero::after{content:'';position:absolute;left:-60px;bottom:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(14,165,233,.16) 0%,transparent 70%);}
 .balance-grid{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;position:relative;z-index:1;}
+.balance-grid>*{min-width:0;}
 .balance-main-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px;}
 .balance-main-val{font-family:var(--fd);font-size:48px;font-weight:700;letter-spacing:-1.5px;}
 .balance-side{display:flex;gap:28px;}
@@ -86,7 +88,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
 /* ── PANEL ── */
 .row-3{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;margin-bottom:20px;}
-.panel{background:white;border:1px solid var(--border);border-radius:16px;padding:22px 24px;}
+.row-3>*{min-width:0;}
+.panel{background:white;border:1px solid var(--border);border-radius:16px;padding:22px 24px;min-width:0;}
 .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
 .panel-title{font-family:var(--fd);font-size:15px;font-weight:700;}
 
@@ -98,8 +101,10 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .txn-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
 .txn-body{flex:1;min-width:0;}
 .txn-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.txn-meta{font-size:11px;color:var(--muted);margin-top:1px;}
-.txn-amt{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
+/* Wraps rather than truncates: the currency badge sits last and must stay
+   visible on narrow screens. overflow-wrap stops a long word forcing width. */
+.txn-meta{font-size:11px;color:var(--muted);margin-top:1px;overflow-wrap:anywhere;}
+.txn-amt{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .txn-amt.pos{color:var(--jade-d);}
 .txn-amt.neg{color:var(--coral);}
 .txn-actions{display:flex;gap:4px;opacity:.35;transition:opacity .15s;}
@@ -167,6 +172,14 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
 .form-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:var(--ff);font-size:14px;color:var(--ink);background:white;transition:border-color .15s;outline:none;}
 .form-input:focus{border-color:var(--sky);}
+/* iOS Safari styles date inputs natively: centred text and an intrinsic width
+   that overflows the field. Normalise them to match every other input. */
+input[type="date"].form-input{-webkit-appearance:none;appearance:none;text-align:left;min-width:0;max-width:100%;}
+input[type="date"].form-input::-webkit-date-and-time-value{text-align:left;margin:0;}
+input[type="date"].form-input::-webkit-calendar-picker-indicator{margin-left:auto;flex-shrink:0;}
+select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:12px;padding-right:34px;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .amount-input-wrap{position:relative;}
 .amount-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-weight:700;color:var(--muted);font-size:14px;}
@@ -198,13 +211,14 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .account-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);}
 .account-row:last-child{border-bottom:none;}
 .account-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-.account-body{flex:1;}
-.account-name{font-size:13px;font-weight:700;}
-.account-type{font-size:11px;color:var(--muted);}
-.account-bal{font-family:var(--fd);font-size:15px;font-weight:700;}
+.account-body{flex:1;min-width:0;}
+.account-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.account-type{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0;}
 
 /* ── ANALYTICS ── */
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.analytics-grid>*{min-width:0;}
 .stat-card{background:white;border:1px solid var(--border);border-radius:14px;padding:20px;}
 .stat-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
 .stat-card-val{font-family:var(--fd);font-size:32px;font-weight:700;margin-bottom:4px;}
@@ -488,7 +502,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
     <!-- ── Panel B: SN Register ── -->
     <div class="sn-login-panel" id="panel-register">
-      <input class="sn-login-input" id="sn-reg-instance" type="text" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-instance" type="text" value="dev405150.service-now.com" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <input class="sn-login-input" id="sn-reg-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email (optional)" autocomplete="email" onkeydown="if(event.key==='Enter')doSNRegister()"/>
@@ -1194,6 +1208,10 @@ const TRANSLATIONS = {
     toast_enter_goal_name:'Enter a goal name', toast_enter_goal_target:'Enter a valid target amount',
     toast_enter_account_name:'Enter an account name', toast_enter_api_key:'Enter an API key',
     ai_no_key:'⚠️ Add your free Groq API key in <strong>Settings → AI Configuration</strong> to enable insights.',
+    ai_need_txns:'📭 No transactions yet. Insights are generated from your own data — add a transaction first.',
+    ai_need_budgets:'📊 No budgets yet. Add a budget and this coach will analyse your actual spending against it.',
+    ai_need_goals:'🎯 No savings goals yet. Add a goal and this coach will advise on reaching it.',
+    ai_need_accounts:'🏦 No accounts yet. Add an account and this coach will analyse your real balances.',
     sn_not_connected:'Not connected',
   },
   zh: {
@@ -1293,6 +1311,10 @@ const TRANSLATIONS = {
     toast_enter_goal_name:'请输入目标名称', toast_enter_goal_target:'请输入有效目标金额',
     toast_enter_account_name:'请输入账户名称', toast_enter_api_key:'请输入 API 密钥',
     ai_no_key:'⚠️ 请在 <strong>设置 → AI 配置</strong> 中添加免费 Groq API 密钥以启用洞察。',
+    ai_need_txns:'📭 尚无交易记录。洞察基于您的实际数据生成 — 请先添加一笔交易。',
+    ai_need_budgets:'📊 尚无预算。添加预算后，教练将根据您的实际支出进行分析。',
+    ai_need_goals:'🎯 尚无储蓄目标。添加目标后，教练将提供达成建议。',
+    ai_need_accounts:'🏦 尚无账户。添加账户后，教练将分析您的实际余额。',
     sn_not_connected:'未连接',
   }
 };
@@ -1307,6 +1329,10 @@ const DEFAULT_ACCOUNTS = [
   { id: 3, name: 'Grab PayLater', type: 'Credit Card', institution: 'Grab', balance: -380.00,  icon: '💳' }
 ];
 
+// Prefilled on the register form so a new user never has to type it.
+// Keep in sync with the value attribute on #sn-reg-instance.
+const DEFAULT_SN_INSTANCE = 'dev405150.service-now.com';
+
 let state = {
   transactions: [],
   budgets: [],
@@ -1316,7 +1342,7 @@ let state = {
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   geminiKey: '',
-  snInstance: 'dev405150.service-now.com',
+  snInstance: DEFAULT_SN_INSTANCE,
   snUsername: 'admin',
   snPassword: '',
   lastSync: null,
@@ -2584,9 +2610,9 @@ function renderAccounts() {
         </div>`;
       })()
     : curEntries.map(([cur, d]) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);">
           <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
-          <div style="display:flex;gap:16px;text-align:right;">
+          <div style="display:flex;gap:12px;text-align:right;flex-wrap:wrap;justify-content:flex-end;min-width:0;">
             <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_assets')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
             <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_debt')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
             <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${fmtWithCur(d.assets-d.debt,cur)}</div></div>
@@ -2687,6 +2713,9 @@ function renderAccounts() {
 }
 
 async function getAccountsAI() {
+  if (!state.accounts.length) {
+    return callAI('', 'accounts-ai-output', { ok: false, msg: 'ai_need_accounts' });
+  }
   // Totals must stay per-currency — summing SGD and MYR into one number would give the AI nonsense
   const byCur = {};
   state.accounts.forEach(a => {
@@ -2702,14 +2731,42 @@ async function getAccountsAI() {
     return `- ${a.name} (${a.institution}, ${a.type}, ${cur}): ${fmtWithCur(effectiveBal(a), cur)}`;
   }).join('\n');
   const prompt = `You are a personal finance advisor. Analyse these accounts and give 3-4 concise, actionable tips to optimise their finances.\n\nIMPORTANT: balances are in multiple currencies. Never add different currencies together; advise per currency.\n\nAccounts:\n${accLines}\n\nTotals per currency:\n${totalsLine}\n\nFocus on: emergency fund adequacy, debt reduction priority, savings diversification. Keep it practical and brief.`;
-  await callAI(prompt, 'accounts-ai-output');
+  await callAI(prompt, 'accounts-ai-output', { ok: true });
 }
 
 // ═══════════════════════════════════════════════
 // AI INSIGHTS
 // ═══════════════════════════════════════════════
-async function callAI(prompt, targetId) {
+// Appended to every prompt below. An LLM handed an empty data section will
+// happily invent accounts and currencies, so the constraints live at the choke
+// point rather than in each caller, where a new AI button could omit them.
+const AI_RULES = `
+
+STRICT RULES — follow exactly:
+- Use ONLY the figures provided above. Never invent accounts, balances, transactions, or amounts.
+- The only currencies that exist here are SGD (S$), USD ($), AUD (A$) and MYR (RM). Never mention any other currency.
+- Never add amounts of different currencies together. Give advice separately per currency.
+- Where the data says "none" or is empty, say so plainly. Do not substitute an example or a typical scenario.`;
+
+/**
+ * Single entry point for every AI feature.
+ * @param requires {{ok:boolean, msg:string}} data precondition — when not ok,
+ *        the model is never called and msg (a translation key) is shown instead.
+ */
+async function callAI(prompt, targetId, requires) {
   const el = document.getElementById(targetId);
+  if (!el) return;
+
+  // Caller-declared precondition (e.g. "needs at least one account")
+  if (requires && !requires.ok) {
+    el.innerHTML = `<span style="color:#F59E0B;">${t(requires.msg)}</span>`;
+    return;
+  }
+  // Backstop: never call the model with a completely empty app, whatever the caller said
+  if (!state.transactions.length && !state.budgets.length && !state.goals.length && !state.accounts.length) {
+    el.innerHTML = `<span style="color:#F59E0B;">${t('ai_need_txns')}</span>`;
+    return;
+  }
   if (!state.geminiKey) {
     el.innerHTML = `<span style="color:#F59E0B;">${t('ai_no_key')}</span>`;
     return;
@@ -2719,7 +2776,7 @@ async function callAI(prompt, targetId) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.geminiKey}` },
-      body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt + AI_RULES }] })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.status); }
     const data = await res.json();
@@ -2831,17 +2888,20 @@ function updateLastSync() {
 }
 
 function openAI() {
-  if (!state.transactions.length) { showToast('Add some transactions first!', 'info'); return; }
-  callAI(`You are a personal finance advisor. Analyse this data and give 3-4 specific actionable insights in 2-3 sentences each. Use ** for key numbers.\n\n${buildSummary()}`, 'ai-output');
+  callAI(`You are a personal finance advisor. Analyse this data and give 3-4 specific actionable insights in 2-3 sentences each. Use ** for key numbers.\n\n${buildSummary()}`,
+    'ai-output', { ok: state.transactions.length > 0, msg: 'ai_need_txns' });
 }
 function getBudgetAI() {
-  callAI(`You are a budget coach. Give 3 specific budget recommendations based on this data. Use ** for emphasis.\n\n${buildSummary()}`, 'budget-ai-output');
+  callAI(`You are a budget coach. Give 3 specific budget recommendations based on this data. Use ** for emphasis.\n\n${buildSummary()}`,
+    'budget-ai-output', { ok: state.budgets.length > 0, msg: 'ai_need_budgets' });
 }
 function getGoalsAI() {
-  callAI(`You are a savings coach. Analyse the savings goals and give specific advice on how to reach them faster. Suggest monthly contribution adjustments. Use ** for key figures.\n\n${buildSummary()}`, 'goals-ai-output');
+  callAI(`You are a savings coach. Analyse the savings goals and give specific advice on how to reach them faster. Suggest monthly contribution adjustments. Use ** for key figures.\n\n${buildSummary()}`,
+    'goals-ai-output', { ok: state.goals.length > 0, msg: 'ai_need_goals' });
 }
 function getAnalyticsAI() {
-  callAI(`You are a financial analyst. Write a monthly spend analysis: 1) Spending summary, 2) Top 2 areas to watch, 3) Goal progress, 4) One specific recommendation. Use ** for key figures.\n\n${buildSummary()}`, 'analytics-ai-output');
+  callAI(`You are a financial analyst. Write a monthly spend analysis: 1) Spending summary, 2) Top 2 areas to watch, 3) Goal progress, 4) One specific recommendation. Use ** for key figures.\n\n${buildSummary()}`,
+    'analytics-ai-output', { ok: state.transactions.length > 0, msg: 'ai_need_txns' });
 }
 
 // ═══════════════════════════════════════════════
@@ -3134,6 +3194,10 @@ function showAuthPanel(panel) {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
+  // A new user shouldn't have to know the instance URL — prefill it whenever
+  // the field is empty (this runs on every panel switch, unlike _showSNLogin).
+  const reg = document.getElementById('sn-reg-instance');
+  if (reg && !reg.value.trim()) reg.value = state.snInstance || DEFAULT_SN_INSTANCE;
 }
 
 function _setLoginLoading(on, msg) {
@@ -3144,7 +3208,7 @@ function _setLoginLoading(on, msg) {
 }
 
 async function doSNLogin() {
-  const instance  = state.snInstance || 'dev405150.service-now.com';
+  const instance  = state.snInstance || DEFAULT_SN_INSTANCE;
   const username  = (document.getElementById('sn-li-username')?.value || '').trim();
   const password  = document.getElementById('sn-li-password')?.value || '';
   const errEl     = document.getElementById('sn-li-err');
