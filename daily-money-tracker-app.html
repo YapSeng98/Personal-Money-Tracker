@@ -3745,6 +3745,15 @@ async function snLoadAll() {
       snAPI.call('/goals'),
       snAPI.call('/accounts')
     ]);
+    // Remember locally-known transfer pairings before the refresh overwrites them.
+    // If ServiceNow has no transfer_group field yet, this keeps transfers paired
+    // on the device that created them instead of splitting into two loose rows.
+    const knownGroups = {};
+    state.transactions.forEach(t => {
+      const key = _snId(t);
+      if (key && t.transferGroup) knownGroups[key] = { g: t.transferGroup, peer: t.transferPeer || '' };
+    });
+
     state.transactions = (txns  || []).map(t => ({
       id         : t.sys_id,
       type       : t.type,
@@ -3755,7 +3764,8 @@ async function snLoadAll() {
       date       : t.date,
       notes      : t.notes || '',
       currency   : t.currency || state.currency,
-      transferGroup: t.transfer_group || '',
+      transferGroup: t.transfer_group || (knownGroups[t.sys_id]?.g || ''),
+      transferPeer : knownGroups[t.sys_id]?.peer || '',
       created    : t.created || ''
     }));
     // Rebuild each transfer leg's peer-account label from its partner row.

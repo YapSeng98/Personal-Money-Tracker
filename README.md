@@ -818,7 +818,7 @@ That id needs a field on `x_887486_0_transaction`:
 |---|---|---|
 | `transfer_group` | String (40) | Shared id linking the two legs of a transfer |
 
-**Without it, balances are still correct** — both legs are real expense/income rows. What is lost after a reload is the *pairing*: the two legs render as a separate expense and income instead of one `🔄 Transfer` row, and deleting one no longer removes the other.
+**Without it, balances are still correct** — both legs are real expense/income rows. The app also carries known pairings across a reload from `localStorage` (matched on `sys_id`), so transfers stay paired on the device that created them. What the field buys you is pairing that survives on *other* devices and after clearing browser data; without it, a transfer opened elsewhere shows as a loose expense and income, and editing it opens on the Income/Expense tab rather than Transfer.
 
 Also re-paste `REST_TransactionsAPI.js` so the API reads and writes the field.
 
