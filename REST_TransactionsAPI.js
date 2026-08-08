@@ -55,7 +55,8 @@
         account    : gr.account.account_name.toString(),
         date       : gr.transaction_date.toString(),
         notes      : gr.notes.toString(),
-        currency   : gr.getValue('currency') || 'SGD'
+        currency   : gr.getValue('currency') || 'SGD',
+        transfer_group: gr.getValue('transfer_group') || ''
       });
     }
 
@@ -87,6 +88,7 @@
     newGR.transaction_date = body.date || new GlideDateTime().getDate().getValue();
     newGR.notes            = body.notes    || '';
     newGR.currency         = body.currency || 'SGD';
+    newGR.transfer_group   = body.transfer_group || '';
     newGR.state            = '2'; // Confirmed
 
     // Resolve account by name (must belong to this user)

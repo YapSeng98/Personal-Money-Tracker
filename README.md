@@ -110,12 +110,13 @@ All tables share the prefix `x_887486_0_`.
 |---|---|---|
 | `account` | Reference | |
 | `category` | Reference | |
-| `transaction_type` | String | `expense`, `income`, `transfer` |
+| `transaction_type` | String | `expense`, `income`, `asset`. Transfers are stored as an expense+income pair sharing `transfer_group` |
 | `amount` | Decimal | Must be > 0 |
 | `description` | String | Required |
 | `transaction_date` | Date | |
 | `notes` | String | Optional |
 | `currency` | String | Per-transaction currency (SGD/USD/AUD/MYR), default `SGD` |
+| `transfer_group` | String(40) | Shared id linking the two legs of a transfer; empty for normal rows |
 | `state` | String | `1`=Draft, `2`=Confirmed |
 | `is_recurring` | Boolean | |
 | `recurring_frequency` | String | `daily`, `weekly`, `monthly` |
@@ -807,15 +808,27 @@ Seeded 2026-08-08 — 281 records, every one carrying an explicit currency. Re-r
 
 ## Known Limitations
 
-### ⚠️ The Transfer tab does not move money
+### Transfers require one ServiceNow field
 
-A transaction saved with type `transfer` is stored and listed, but it is **invisible to every balance calculation**. `effectiveBal()` sums only `income` and `expense` rows, so a transfer changes no account balance, no KPI, and no linked-goal amount.
+Transfers are stored as a **matched pair** — an expense on the source account and an income on the destination — linked by a shared `transfer_group` id. Both balances then move through the normal `effectiveBal()` logic.
 
-It also captures only **one** account — a real transfer needs a *from* and a *to*. `BR_UpdateAccountBalance.js` notes `// Transfer: handled by a separate paired transaction`, but the frontend never creates that pair.
+That id needs a field on `x_887486_0_transaction`:
 
-**Workaround:** record the movement as an **Expense** on the source account (and, if you also track the destination, an **Income** on it).
+| Field | Type | Notes |
+|---|---|---|
+| `transfer_group` | String (40) | Shared id linking the two legs of a transfer |
 
-**To fix properly** would require: a second account field in the modal, writing two paired rows (expense on source + income on destination) sharing a transfer group id, teaching the transactions list to render the pair as one item, and making delete/edit operate on both. Same-currency only, unless an FX rate is introduced.
+**Without it, balances are still correct** — both legs are real expense/income rows. What is lost after a reload is the *pairing*: the two legs render as a separate expense and income instead of one `🔄 Transfer` row, and deleting one no longer removes the other.
+
+Also re-paste `REST_TransactionsAPI.js` so the API reads and writes the field.
+
+### Legacy `transfer` rows are inert
+
+Transfers created before this change were saved as a single row with type `transfer`, which no balance calculation reads. They remain inert — delete and re-enter them to get correct balances.
+
+### Editing a transfer
+
+Not supported. Delete it and add a new one; editing one leg in isolation would desynchronise the pair.
 
 ---
 

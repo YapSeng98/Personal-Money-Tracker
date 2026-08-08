@@ -97,14 +97,39 @@ Use the month bar to review any past month.
 ### Adding a transaction
 
 1. Tap **+ Add Transaction** (top bar) or the **+** FAB (mobile bottom bar)
-2. Choose the type: **Expense**, **Income**, or **Transfer**
+2. Choose the type: **Expense**, **Income**, **Transfer**, or **Asset**
 3. Enter the **amount** and pick the **currency** (SGD / USD / AUD / MYR)
 4. Enter a **description** (required), pick a **category**, an **account** (optional), and the **date**
 5. Add **notes** if you like, then tap **Save**
 
+### The four types
+
+| Type | What it does to the account | Counted as income/spending? |
+|---|---|---|
+| **Expense** | Decreases it | Yes — spending, and uses up a budget |
+| **Income** | Increases it | Yes — earnings |
+| **Asset** | Increases it | **No** — value you hold, not money you earned |
+| **Transfer** | Moves it between two accounts | **No** — your own money changing pockets |
+
+### Asset
+
+Use **Asset** to record value going into a holding — a brokerage top-up, gold, property, a vehicle. It raises the account's balance and feeds any goal linked to that account, but is deliberately kept out of your income figure and savings rate, because it isn't earnings.
+
+Categories: Investment 📈, Property 🏘️, Gold 🥇, Vehicle 🚗, Other 💰.
+
+### Transfer
+
+Pick a **From Account** and a **To Account**. The money leaves one and arrives in the other, and the list shows it as a single `🔄 DBS Saving → KenTrade` row.
+
+**Different currencies?** If the destination uses another currency, a second field appears: **Amount Received**. Enter what actually landed — e.g. send `S$100`, receive `RM340`. The app never guesses an exchange rate, so both figures stay true to your bank statement.
+
+Transfers don't count as income or spending, and don't consume a budget.
+
 ### Editing & deleting
 
 Each row has **✏️ edit** and **🗑️ delete** buttons. Deleting asks for confirmation first.
+
+Transfers are the exception: they can't be edited (delete and re-add instead), and deleting one removes **both** sides together, so an account is never left with a half-transfer.
 
 ### Finding transactions
 

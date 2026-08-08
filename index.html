@@ -46,6 +46,7 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .topbar-actions{display:flex;gap:10px;align-items:center;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
 .btn-primary{background:var(--ink);color:white;}
+.btn-purple{background:#8B5CF6;color:white;}
 .btn-primary:hover{background:var(--ink2);}
 .btn-jade{background:var(--jade);color:white;}
 .btn-jade:hover{background:var(--jade-d);}
@@ -166,6 +167,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .type-tab.expense.active{background:var(--coral);}
 .type-tab.income.active{background:var(--jade);}
 .type-tab.transfer.active{background:var(--sky);}
+.type-tab.asset.active{background:#8B5CF6;}
+.type-tab{white-space:nowrap;min-width:0;padding:8px 4px;}
 
 /* form */
 .form-group{margin-bottom:16px;}
@@ -871,12 +874,29 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <button class="type-tab expense active" id="tab-expense" onclick="setType('expense',this)">Expense</button>
       <button class="type-tab income" id="tab-income" onclick="setType('income',this)">Income</button>
       <button class="type-tab transfer" id="tab-transfer" onclick="setType('transfer',this)">Transfer</button>
+      <button class="type-tab asset" id="tab-asset" onclick="setType('asset',this)">Asset</button>
     </div>
     <div class="form-group">
-      <label class="form-label">Amount</label>
+      <label class="form-label" id="txn-amount-label">Amount</label>
       <div class="amount-input-wrap">
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="txn-amount" placeholder="0.00" step="0.01" min="0">
+      </div>
+    </div>
+    <!-- Transfer-only: destination account + the amount that actually lands there.
+         Cross-currency transfers take both real figures rather than an FX rate. -->
+    <div id="txn-transfer-block" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">To Account</label>
+        <select class="form-input" id="txn-to-account" onchange="updateTransferUI()"></select>
+      </div>
+      <div class="form-group" id="txn-recv-group" style="display:none;">
+        <label class="form-label" id="txn-recv-label">Amount Received</label>
+        <div class="amount-input-wrap">
+          <span class="amount-prefix">$</span>
+          <input class="form-input" type="number" id="txn-amount-recv" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div style="font-size:11px;color:var(--sky);margin-top:4px;">Different currencies — enter the amount that actually arrived. No exchange rate is guessed.</div>
       </div>
     </div>
     <div class="form-group">
@@ -905,8 +925,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Account</label>
-        <select class="form-input" id="txn-account"></select>
+        <label class="form-label" id="txn-account-label">Account</label>
+        <select class="form-input" id="txn-account" onchange="if(state.currentType==='transfer'){populateToAccounts();updateTransferUI();}"></select>
       </div>
     </div>
     <div class="form-row">
@@ -916,7 +936,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       </div>
       <div class="form-group">
         <label class="form-label">Currency</label>
-        <select class="form-input" id="txn-currency">
+        <select class="form-input" id="txn-currency" onchange="updateTransferUI()">
           <option value="SGD">SGD</option>
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
@@ -1411,13 +1431,15 @@ const CAT_COLORS = {
   'Food & Drink':'#8B5CF6','Transport':'#00C896','Groceries':'#3B82F6',
   'Shopping':'#FF5B5B','Bills':'#F59E0B','Rental':'#64748B','Health':'#EC4899',
   'Entertainment':'#F97316','Sport':'#84CC16','Education':'#6366F1','Travel':'#14B8A6',
-  'Salary':'#00C896','Freelance':'#3B82F6','Investment':'#8B5CF6','Other':'#6B7280'
+  'Salary':'#00C896','Freelance':'#3B82F6','Investment':'#8B5CF6',
+  'Property':'#0EA5E9','Gold':'#EAB308','Vehicle':'#78716C','Other':'#6B7280'
 };
 const CAT_BG = {
   'Food & Drink':'#F5F3FF','Transport':'#E6FBF5','Groceries':'#EFF6FF',
   'Shopping':'#FFF0F0','Bills':'#FFFBEB','Rental':'#F1F5F9','Health':'#FDF2F8',
   'Entertainment':'#FFF7ED','Sport':'#F7FEE7','Education':'#EEF2FF','Travel':'#F0FDFA',
-  'Salary':'#E6FBF5','Freelance':'#EFF6FF','Investment':'#F5F3FF','Other':'#F7F9FC'
+  'Salary':'#E6FBF5','Freelance':'#EFF6FF','Investment':'#F5F3FF',
+  'Property':'#F0F9FF','Gold':'#FEFCE8','Vehicle':'#FAFAF9','Other':'#F7F9FC'
 };
 
 // ═══════════════════════════════════════════════
@@ -1489,6 +1511,7 @@ function openTxnModal(id = null) {
   document.getElementById('txn-desc').value               = '';
   document.getElementById('txn-notes').value              = '';
   document.getElementById('txn-currency').value           = state.currency;
+  document.getElementById('txn-amount-recv').value        = '';
 
   // Populate account dropdown from user's saved accounts
   const accSel = document.getElementById('txn-account');
@@ -1529,17 +1552,55 @@ function setType(type, el) {
   if (el) el.classList.add('active');
   const saveBtn = document.getElementById('save-txn-btn');
   if (!document.getElementById('txn-edit-id').value) {
-    saveBtn.className = type === 'expense' ? 'btn btn-coral' : type === 'income' ? 'btn btn-jade' : 'btn btn-primary';
+    saveBtn.className = type === 'expense' ? 'btn btn-coral' : type === 'income' ? 'btn btn-jade'
+                      : type === 'asset'   ? 'btn btn-purple' : 'btn btn-primary';
   }
   const catSel = document.getElementById('txn-cat');
   const income  = ['Salary','Freelance','Investment','Other'];
   // Investment appears in both lists: money going into a brokerage/fund is an
   // outflow from the source account, while returns from it are income.
   const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Other'];
-  const opts = type === 'income' ? income : expense;
+  const asset   = ['Investment','Property','Gold','Vehicle','Other'];
+  const opts = type === 'income' ? income : type === 'asset' ? asset : expense;
   const prev = catSel.value;
   catSel.innerHTML = opts.map(o => `<option value="${o}">${catIcon(o)} ${o}</option>`).join('');
   if (opts.includes(prev)) catSel.value = prev;
+
+  // Transfers need a destination; the source is the normal Account field.
+  const isTransfer = type === 'transfer';
+  document.getElementById('txn-transfer-block').style.display = isTransfer ? 'block' : 'none';
+  document.getElementById('txn-amount-label').textContent = isTransfer ? 'Amount Sent' : 'Amount';
+  const accLabel = document.getElementById('txn-account-label');
+  if (accLabel) accLabel.textContent = isTransfer ? 'From Account' : 'Account';
+  if (isTransfer) populateToAccounts();
+  updateTransferUI();
+}
+
+// The destination list excludes the source account — transferring to yourself
+// is a no-op that would still write two rows.
+function populateToAccounts(selected) {
+  const from = document.getElementById('txn-account').value;
+  const sel  = document.getElementById('txn-to-account');
+  if (!sel) return;
+  const keep = selected !== undefined ? selected : sel.value;
+  const opts = state.accounts.filter(a => a.name !== from);
+  sel.innerHTML = '<option value="">— Select destination —</option>'
+    + opts.map(a => `<option value="${esc(a.name)}">${esc(a.name)} (${a.currency || state.currency})</option>`).join('');
+  if (opts.some(a => a.name === keep)) sel.value = keep;
+}
+
+// Cross-currency transfers can't be derived — the app holds no FX rates — so the
+// second amount field appears and the user supplies what actually arrived.
+function updateTransferUI() {
+  if (state.currentType !== 'transfer') return;
+  const fromCur = document.getElementById('txn-currency').value;
+  const toName  = document.getElementById('txn-to-account').value;
+  const toAcc   = state.accounts.find(a => a.name === toName);
+  const toCur   = toAcc ? (toAcc.currency || state.currency) : fromCur;
+  const differs = !!toAcc && toCur !== fromCur;
+  document.getElementById('txn-recv-group').style.display = differs ? 'block' : 'none';
+  document.getElementById('txn-recv-label').textContent   = `Amount Received (${toCur})`;
+  document.getElementById('txn-amount-label').textContent = differs ? `Amount Sent (${fromCur})` : 'Amount Sent';
 }
 
 function setSelectVal(id, val) {
@@ -1612,6 +1673,46 @@ function _snId(item) {
   return item.sys_id || (typeof item.id === 'string' && item.id.length > 20 ? item.id : null);
 }
 
+// Writes the two legs of a transfer and links them with a shared group id so the
+// list can render them as one item and delete can remove both.
+async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, toCur, date, notes }) {
+  const group = 'tg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const legs = [
+    { type: 'expense', amount: amt,     account: from, currency: fromCur, peer: to   },
+    { type: 'income',  amount: recvAmt, account: to,   currency: toCur,   peer: from }
+  ];
+  const created = [];
+  legs.forEach(leg => {
+    const txn = { id: state.nextId++, type: leg.type, amount: leg.amount, description: desc,
+      category: cat, account: leg.account, date, notes, currency: leg.currency,
+      transferGroup: group, transferPeer: leg.peer };
+    state.transactions.unshift(txn);
+    created.push(txn);
+  });
+  saveState();
+
+  if (state.snToken) {
+    await Promise.all(created.map(txn =>
+      snAPI.call('/transactions', 'POST', {
+        type: txn.type, amount: txn.amount, description: txn.description,
+        category_name: txn.category, account_name: txn.account, date: txn.date,
+        notes: txn.notes, currency: txn.currency, transfer_group: group
+      }).then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
+        .catch(e => showToast('SN sync failed: ' + e.message, 'error'))
+    ));
+  } else {
+    showToast('Not signed in — transfer saved locally only. Please sign in to sync.', 'error');
+  }
+
+  const same = fromCur === toCur;
+  showToast(same
+    ? `Transferred ${fmtWithCur(amt, fromCur)} · ${from} → ${to}`
+    : `Transferred ${fmtWithCur(amt, fromCur)} → ${fmtWithCur(recvAmt, toCur)} · ${from} → ${to}`,
+    'success');
+  closeTxnModal();
+  renderAll();
+}
+
 async function saveTransaction() {
   const amt   = parseFloat(document.getElementById('txn-amount').value);
   const desc  = document.getElementById('txn-desc').value.trim();
@@ -1625,6 +1726,30 @@ async function saveTransaction() {
   if (!amt || amt <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
   if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
   if (!date)             { showToast(t('toast_enter_date'), 'error'); return; }
+
+  // ── Transfers are written as a matched pair, not one row ──
+  // An expense on the source and an income on the destination, sharing a group
+  // id. Both balances then move through the existing effectiveBal() logic, and
+  // a cross-currency transfer keeps each leg in its own currency — the two
+  // amounts are supplied by the user, never converted.
+  if (state.currentType === 'transfer') {
+    if (editId !== '') { showToast('Editing a transfer is not supported — delete it and add a new one.', 'error'); return; }
+    const toAcct = document.getElementById('txn-to-account').value;
+    if (!acct)            { showToast('Choose the account the money leaves from', 'error'); return; }
+    if (!toAcct)          { showToast('Choose the destination account', 'error'); return; }
+    if (toAcct === acct)  { showToast('From and To must be different accounts', 'error'); return; }
+    const toAccObj = state.accounts.find(a => a.name === toAcct);
+    const toCur    = toAccObj ? (toAccObj.currency || state.currency) : currency;
+    const differs  = toCur !== currency;
+    const recvRaw  = parseFloat(document.getElementById('txn-amount-recv').value);
+    const recvAmt  = differs ? recvRaw : amt;
+    if (differs && (!recvAmt || recvAmt <= 0)) {
+      showToast(`Enter the amount received in ${toCur}`, 'error'); return;
+    }
+    await saveTransferPair({ amt, recvAmt, desc, cat, from: acct, to: toAcct,
+                             fromCur: currency, toCur, date, notes });
+    return;
+  }
 
   const snPayload = { type: state.currentType, amount: amt, description: desc,
     category_name: cat, account_name: acct, date, notes, currency };
@@ -1664,16 +1789,33 @@ async function saveTransaction() {
 async function deleteTransaction(id) {
   const txn = state.transactions.find(x => x.id == id);
   if (!txn) return;
-  const ok = await showConfirm(t('confirm_del_txn'), `"${txn.description}" — $${txn.amount.toFixed(2)}`);
+
+  // Deleting one leg of a transfer would leave the other stranded, silently
+  // shifting a balance. Both legs go together.
+  const legs = txn.transferGroup
+    ? state.transactions.filter(x => x.transferGroup === txn.transferGroup)
+    : [txn];
+
+  const detail = txn.transferGroup
+    ? `Transfer ${esc(txn.account)} → ${esc(txn.transferPeer || '?')} — removes both sides`
+    : `"${txn.description}" — $${txn.amount.toFixed(2)}`;
+  const ok = await showConfirm(t('confirm_del_txn'), detail);
   if (!ok) return;
-  state.transactions = state.transactions.filter(x => x.id != id);
+
+  const ids = legs.map(l => l.id);
+  state.transactions = state.transactions.filter(x => !ids.includes(x.id));
   saveState();
   renderAll();
   showToast(t('toast_txn_deleted'), 'info');
-  const snIdDel = _snId(txn);
-  if (state.snToken && snIdDel) {
-    snAPI.call('/transactions', 'DELETE', { sys_id: snIdDel })
-      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+
+  if (state.snToken) {
+    legs.forEach(leg => {
+      const snIdDel = _snId(leg);
+      if (snIdDel) {
+        snAPI.call('/transactions', 'DELETE', { sys_id: snIdDel })
+          .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+      }
+    });
   }
 }
 
@@ -1999,7 +2141,7 @@ const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cu
 // wherever a bare, possibly-negative figure is shown or sent to the model.
 const fmtSigned = (n, cur) => (n < 0 ? '-' : '') + fmtWithCur(n, cur);
 const fmtDate = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } };
-const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Other':'💰' }[cat] || '💰');
+const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Other':'💰' }[cat] || '💰');
 
 // ── Month helpers ──────────────────────────────
 function getMonthLabel(ym) {
@@ -2043,10 +2185,18 @@ function daysInFilterMonth() {
   return new Date(+y, +m, 0).getDate();
 }
 
+// A transfer is stored as a matched expense+income pair so that both account
+// balances move through the normal logic. But a transfer is neither earnings nor
+// spending — without this guard, shifting S$1,000 between your own accounts would
+// report S$1,000 of income AND S$1,000 of expenses, wrecking the savings rate and
+// consuming a budget. effectiveBal() deliberately does NOT use this: there the
+// legs must count, because that is what moves the money.
+const isFlow = t => !t.transferGroup;
+
 function calcStats() {
   const txns    = getMonthTxns();
-  const income  = txns.filter(t => t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const expense = txns.filter(t => t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const income  = txns.filter(t => t.type==='income'  && isFlow(t)).reduce((s,t)=>s+t.amount,0);
+  const expense = txns.filter(t => t.type==='expense' && isFlow(t)).reduce((s,t)=>s+t.amount,0);
   return {
     income, expense,
     balance      : income - expense,
@@ -2058,13 +2208,13 @@ function calcStats() {
 
 function getBudgetSpent(category, currency) {
   const cur = currency || state.currency;
-  return getMonthTxns().filter(t => t.type==='expense' && t.category===category && (t.currency||state.currency) === cur)
+  return getMonthTxns().filter(t => t.type==='expense' && isFlow(t) && t.category===category && (t.currency||state.currency) === cur)
     .reduce((s,t)=>s+t.amount, 0);
 }
 
 function getCategorySpend() {
   const map = {};
-  getMonthTxns().filter(t=>t.type==='expense').forEach(t => { map[t.category] = (map[t.category]||0) + t.amount; });
+  getMonthTxns().filter(t=>t.type==='expense' && isFlow(t)).forEach(t => { map[t.category] = (map[t.category]||0) + t.amount; });
   return Object.entries(map).sort((a,b)=>b[1]-a[1]);
 }
 
@@ -2185,8 +2335,8 @@ function renderDashboard() {
 
   // Per-currency stats helper
   const curStats = cur => {
-    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
+    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
     return { inc, exp, bal: inc - exp };
   };
 
@@ -2237,7 +2387,7 @@ function renderDashboard() {
 
   // Category chart — per-currency sections when mixed
   const expByCur = {};
-  monthTxns.filter(t=>t.type==='expense').forEach(t => {
+  monthTxns.filter(t=>t.type==='expense' && isFlow(t)).forEach(t => {
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
     expByCur[c][t.category] = (expByCur[c][t.category]||0) + t.amount;
@@ -2269,20 +2419,48 @@ function txnListByDate(arr, forceBadge = false) {
   const byDate = {};
   arr.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
-    .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${byDate[d].map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
+    .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
     .join('');
+}
+
+// A transfer occupies two rows in state. Showing both would read as an unrelated
+// expense and income; only the outgoing leg is rendered, carrying the pair.
+function collapseTransfers(arr) {
+  // Keep the outgoing leg only. Order matters here: both legs are unshifted at
+  // save time, so the income leg comes first in the array — a "first one wins"
+  // rule would drop the pair entirely.
+  return arr.filter(t => !t.transferGroup || t.type === 'expense');
 }
 
 function txnRowHTML(txn, showActions = true, forceBadge = false) {
   const isPos = txn.type === 'income';
+  const isAsset = txn.type === 'asset';
   const showBadge = forceBadge || (txn.currency && txn.currency !== state.currency);
+
+  if (txn.transferGroup) {
+    const peer = state.transactions.find(x => x.transferGroup === txn.transferGroup && x !== txn);
+    const recv = peer ? fmtWithCur(peer.amount, peer.currency) : '';
+    const diffCur = peer && (peer.currency || state.currency) !== (txn.currency || state.currency);
+    return `<div class="txn-row">
+      <div class="txn-ico" style="background:var(--sky-s)">🔄</div>
+      <div class="txn-body">
+        <div class="txn-name">${esc(txn.description)}</div>
+        <div class="txn-meta">${esc(txn.account)} → ${esc(txn.transferPeer || (peer && peer.account) || '?')} · ${fmtDate(txn.date)} · <span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">TRANSFER</span></div>
+      </div>
+      <div class="txn-amt" style="color:var(--sky);">${fmtWithCur(txn.amount, txn.currency)}${diffCur ? ` → ${recv}` : ''}</div>
+      ${showActions ? `<div class="txn-actions">
+        <button class="icon-btn del" onclick="deleteTransaction('${txn.id}')" title="Delete transfer (both sides)">🗑️</button>
+      </div>` : ''}
+    </div>`;
+  }
+
   return `<div class="txn-row">
     <div class="txn-ico" style="background:${CAT_BG[txn.category]||'#F7F9FC'}">${catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
-      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:#F5F3FF;color:#8B5CF6;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
-    <div class="txn-amt ${isPos?'pos':'neg'}">${isPos?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
+    <div class="txn-amt ${isPos||isAsset?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':''}>${isPos||isAsset?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
       <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit">✏️</button>
       <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete">🗑️</button>
@@ -2563,8 +2741,8 @@ function renderAnalytics() {
 
   // Savings rate per currency
   document.getElementById('an-savings').innerHTML = currencies.map(cur => {
-    const inc = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const inc = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
+    const exp = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
     const rate = inc > 0 ? ((inc-exp)/inc*100) : null;
     const col  = rate===null ? 'var(--muted)' : rate>=20 ? 'var(--jade-d)' : rate>=0 ? 'var(--amber)' : 'var(--coral)';
     const val  = rate===null ? (exp>0?'N/A':'—') : rate.toFixed(1)+'%';
@@ -2577,7 +2755,7 @@ function renderAnalytics() {
   }).join('');
 
   // Largest expense — never compare raw amounts across different currencies (RM400 is not "bigger" than S$300)
-  const exps = allTxns.filter(t=>t.type==='expense');
+  const exps = allTxns.filter(t=>t.type==='expense' && isFlow(t));
   const largestByCur = {};
   exps.forEach(t => {
     const c = t.currency || state.currency;
@@ -2602,7 +2780,7 @@ function renderAnalytics() {
     document.getElementById('an-largest-desc').innerHTML = largestCurs.map(cur =>
       `<div>${esc(largestByCur[cur].description)}</div>`).join('');
   }
-  const monthTxns = getMonthTxns().filter(t => t.type === 'expense');
+  const monthTxns = getMonthTxns().filter(t => t.type === 'expense' && isFlow(t));
   if (!monthTxns.length) { document.getElementById('analytics-chart').innerHTML=`<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`; return; }
 
   // Group by currency → category
@@ -2637,7 +2815,11 @@ function effectiveBal(acc) {
   const linked  = state.transactions.filter(t => t.account === acc.name && (t.currency || state.currency) === accCur);
   const income  = linked.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const expense = linked.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  return Math.round((acc.balance + income - expense) * 100) / 100;
+  // 'asset' adds value held in the account (money moved into a holding). It moves
+  // the balance like income but is deliberately kept out of the income/expense
+  // KPIs and budgets — it is not earnings and not spending.
+  const asset   = linked.filter(t => t.type === 'asset').reduce((s, t) => s + t.amount, 0);
+  return Math.round((acc.balance + income + asset - expense) * 100) / 100;
 }
 
 // A goal linked to an account tracks that account's live balance instead of a
@@ -2890,11 +3072,11 @@ function buildSummary() {
   const days = daysInFilterMonth();
   const curs = [...new Set(monthTxns.map(t => t.currency || state.currency))];
   const perCur = curs.map(cur => {
-    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
+    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
     const rate = inc > 0 ? ((inc-exp)/inc*100).toFixed(1)+'%' : 'N/A';
     const cats = {};
-    monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense')
+    monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t))
       .forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
     const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5)
       .map(([c,a])=>`${c} ${fmtWithCur(a,cur)}`).join(', ') || 'none';
@@ -3491,8 +3673,18 @@ async function snLoadAll() {
       account    : t.account,
       date       : t.date,
       notes      : t.notes || '',
-      currency   : t.currency || state.currency
+      currency   : t.currency || state.currency,
+      transferGroup: t.transfer_group || ''
     }));
+    // Rebuild each transfer leg's peer-account label from its partner row.
+    const tgroups = {};
+    state.transactions.forEach(t => { if (t.transferGroup) (tgroups[t.transferGroup] = tgroups[t.transferGroup] || []).push(t); });
+    Object.values(tgroups).forEach(pair => {
+      if (pair.length === 2) {
+        pair[0].transferPeer = pair[1].account;
+        pair[1].transferPeer = pair[0].account;
+      }
+    });
     state.budgets = (budgets || []).map(b => ({
       id       : b.sys_id,
       category : b.category,
