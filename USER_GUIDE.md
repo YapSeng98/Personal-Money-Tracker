@@ -144,7 +144,9 @@ Transfers can be edited like anything else — including swapping the direction 
 - **Month bar** — step to any month
 - **Clear** — reset all filters at once
 
-When you use more than one currency, the list groups under **SGD / MYR / …** section headers, with a small currency badge on every row.
+Each date header shows that **day's net total** on the right — green when you took in more than you spent, red when you spent more. Transfers are left out, since moving your own money between accounts is neither a gain nor a loss.
+
+When you use more than one currency, the list groups under **SGD / MYR / …** section headers, with a small currency badge on every row. Day totals stay inside their own currency section, so amounts in different currencies are never added together.
 
 ---
 

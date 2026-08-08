@@ -95,7 +95,8 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .panel-title{font-family:var(--fd);font-size:15px;font-weight:700;}
 
 /* ── TRANSACTIONS ── */
-.txn-date-group{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;}
+.txn-date-group{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.txn-date-total{font-family:var(--fm);font-size:11px;letter-spacing:0;text-transform:none;white-space:nowrap;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;min-width:0;}
 .txn-row{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;transition:background .15s;margin:0 -12px;}
 .txn-row:hover{background:var(--surface);}
 .txn-row+.txn-row{border-top:1px solid var(--border);}
@@ -2514,11 +2515,30 @@ function renderDashboard() {
 /* ── TXN ROW HTML ── */
 // Shared by the dashboard's Recent Transactions card and the Transactions view —
 // both group the same way, so a date header only needs to be built once.
-function txnListByDate(arr, forceBadge = false) {
+// Net movement for one day, kept separate per currency — these are real amounts
+// in different units and must never be added together. Transfers are left out:
+// moving your own money between accounts is not a gain or a loss.
+function dayTotalHTML(rows) {
+  const byCur = {};
+  rows.filter(isFlow).forEach(t => {
+    const cur = t.currency || state.currency;
+    byCur[cur] = (byCur[cur] || 0) + (t.type === 'expense' ? -t.amount : t.amount);
+  });
+  const parts = Object.entries(byCur).map(([cur, raw]) => {
+    const v = Math.round(raw * 100) / 100;
+    const color = v < 0 ? 'var(--coral)' : v > 0 ? 'var(--jade-d)' : 'var(--muted)';
+    return `<span style="color:${color};">${fmtSigned(v, cur)}</span>`;
+  });
+  return parts.length ? `<span class="txn-date-total">${parts.join('')}</span>` : '';
+}
+
+// showTotals is off by default: the dashboard shows only the latest few rows, so
+// a "day total" there could quietly leave part of the day out.
+function txnListByDate(arr, forceBadge = false, showTotals = false) {
   const byDate = {};
   sortTxnsDesc(arr).forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
-    .map(d => `<div class="txn-date-group">${fmtDate(d)}</div>${collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
+    .map(d => `<div class="txn-date-group"><span>${fmtDate(d)}</span>${showTotals ? dayTotalHTML(byDate[d]) : ''}</div>${collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
     .join('');
 }
 
@@ -2614,7 +2634,7 @@ function renderTransactions() {
   const isMultiCurTxn = currencies.length > 1;
 
   if (!isMultiCurTxn) {
-    document.getElementById('all-txns').innerHTML = txnListByDate(txns);
+    document.getElementById('all-txns').innerHTML = txnListByDate(txns, false, true);
   } else {
     document.getElementById('all-txns').innerHTML = currencies.map((cur, i) => {
       const curTxns = txns.filter(t => (t.currency || state.currency) === cur);
@@ -2622,7 +2642,7 @@ function renderTransactions() {
       return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
         <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
         <div style="flex:1;height:1px;background:var(--border);"></div>
-      </div>${txnListByDate(curTxns, true)}`;
+      </div>${txnListByDate(curTxns, true, true)}`;
     }).join('');
   }
 }
