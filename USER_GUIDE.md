@@ -220,6 +220,12 @@ Track where your money lives.
 
 Credit cards can have negative balances — shown in red.
 
+### Hiding balances
+
+The 🙈 button next to **+ Add Account** hides every figure on the page — the summary totals, each currency's net, and every account balance — behind `••••••`. It's **on by default**: opening the app for the first time, or on a device that's never set a preference, balances start hidden until you tap 🙈 to reveal them (it becomes 👁️). Your choice is then remembered on that device for next time.
+
+This is scoped to the Accounts page only — the Dashboard and Transactions list are unaffected.
+
 ### Account Insights
 
 Below the list, the Insights panel shows **per currency**:

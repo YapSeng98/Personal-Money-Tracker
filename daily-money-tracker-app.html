@@ -704,7 +704,12 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="view" id="view-accounts">
       <div class="responsive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div class="panel">
-          <div class="panel-header"><div class="panel-title">My Accounts</div><button class="btn btn-primary btn-sm" onclick="openAccountModal()">+ Add</button></div>
+          <div class="panel-header"><div class="panel-title">My Accounts</div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" id="mask-toggle-btn" onclick="toggleBalanceMask()" title="Show balances">🙈</button>
+              <button class="btn btn-primary btn-sm" onclick="openAccountModal()">+ Add</button>
+            </div>
+          </div>
           <div id="accounts-list"></div>
         </div>
         <div>
@@ -1382,6 +1387,9 @@ let state = {
   language: 'en',
   budgetAlerts: true,
   nowAssist: true,
+  // Masked by default — the point of the toggle is that opening the app in public
+  // never shows real numbers until you deliberately choose to reveal them.
+  balancesMasked: true,
   // SN custom auth
   snToken: null,
   snProfileSysId: null,
@@ -1410,6 +1418,7 @@ function saveState() {
       language: state.language,
       budgetAlerts: state.budgetAlerts,
       nowAssist: state.nowAssist,
+      balancesMasked: state.balancesMasked,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
       snUserProfile: state.snUserProfile
@@ -2970,7 +2979,27 @@ function syncLinkedGoals() {
   });
 }
 
+// Fixed-width dots regardless of the real string's length, so masking a S$50
+// balance and a S$50,000 one look identical — the length itself is information.
+const maskAmt = text => state.balancesMasked ? '••••••' : text;
+
+function toggleBalanceMask() {
+  state.balancesMasked = !state.balancesMasked;
+  saveState();
+  setMaskBtnIcon();
+  renderAccounts();
+}
+
+function setMaskBtnIcon() {
+  const btn = document.getElementById('mask-toggle-btn');
+  if (!btn) return;
+  btn.textContent = state.balancesMasked ? '🙈' : '👁️';
+  btn.title = state.balancesMasked ? 'Show balances' : 'Hide balances';
+}
+
 function renderAccounts() {
+  setMaskBtnIcon();
+
   // ── Group by currency for the summary panel ──
   const byCur = {};
   state.accounts.forEach(a => {
@@ -2989,18 +3018,18 @@ function renderAccounts() {
     ? (() => {
         const [cur, d] = curEntries[0];
         return `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${fmtSigned(d.assets-d.debt,cur)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${maskAmt(fmtWithCur(d.assets,cur))}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${maskAmt(fmtWithCur(d.debt,cur))}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${maskAmt(fmtSigned(d.assets-d.debt,cur))}</div></div>
         </div>`;
       })()
     : curEntries.map(([cur, d]) => `
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);">
           <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
           <div style="display:flex;gap:12px;text-align:right;flex-wrap:wrap;justify-content:flex-end;min-width:0;">
-            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_assets')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--jade-d)">${fmtWithCur(d.assets,cur)}</div></div>
-            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_debt')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--coral)">${fmtWithCur(d.debt,cur)}</div></div>
-            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${fmtSigned(d.assets-d.debt,cur)}</div></div>
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_assets')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--jade-d)">${maskAmt(fmtWithCur(d.assets,cur))}</div></div>
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_debt')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--coral)">${maskAmt(fmtWithCur(d.debt,cur))}</div></div>
+            <div><div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${maskAmt(fmtSigned(d.assets-d.debt,cur))}</div></div>
           </div>
         </div>`).join('');
 
@@ -3015,7 +3044,7 @@ function renderAccounts() {
           <div class="account-name">${esc(a.name)}</div>
           <div class="account-type">${esc(a.institution)} · ${esc(a.type)}</div>
         </div>
-        <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${isNeg?'-':''}${fmtWithCur(Math.abs(bal),cur)}</div>
+        <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${maskAmt((isNeg?'-':'')+fmtWithCur(Math.abs(bal),cur))}</div>
         <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
           <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
           <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
@@ -3036,7 +3065,7 @@ function renderAccounts() {
         return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'18px':'4px'} 0 8px;">
           <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
           <div style="flex:1;height:1px;background:var(--border);"></div>
-          <span style="font-family:var(--fm);font-size:11px;font-weight:700;color:${net<0?'var(--coral)':'var(--muted)'};">${fmtSigned(net,cur)}</span>
+          <span style="font-family:var(--fm);font-size:11px;font-weight:700;color:${net<0?'var(--coral)':'var(--muted)'};">${maskAmt(fmtSigned(net,cur))}</span>
         </div>${accs.map(accountRowHTML).join('')}`;
       }).join('')
     : state.accounts.map(accountRowHTML).join('');
