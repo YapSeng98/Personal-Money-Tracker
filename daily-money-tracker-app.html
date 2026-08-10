@@ -3101,7 +3101,7 @@ function renderAccounts() {
       const col = typeColors[type] || 'var(--muted)';
       return `<div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
-          <span>${type}</span><span style="font-family:var(--fm);color:var(--muted)">${pct.toFixed(1)}% · ${fmtWithCur(bal,cur)}</span>
+          <span>${type}</span><span style="font-family:var(--fm);color:var(--muted)">${pct.toFixed(1)}% · ${maskAmt(fmtWithCur(bal,cur))}</span>
         </div>
         <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;">
           <div style="width:${pct.toFixed(1)}%;height:100%;border-radius:99px;background:${col};transition:width .4s;"></div>
