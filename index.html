@@ -816,7 +816,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- ServiceNow Connection -->
         <div class="settings-section">
-          <h3>ServiceNow Connection</h3>
+          <h3 data-lkey="settings_sn_conn">ServiceNow Connection</h3>
           <div id="sn-conn-status-card" style="background:linear-gradient(135deg,#0D1117,#1a2744);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <div>
@@ -840,7 +840,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- Account Details -->
         <div class="settings-section">
-          <h3>Account Details</h3>
+          <h3 data-lkey="settings_account_details">Account Details</h3>
           <!-- Mini profile card -->
           <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,var(--ink) 0%,#1a2744 100%);border-radius:14px;margin-bottom:18px;">
             <div class="profile-avatar" id="prof-avatar" style="background:#8B5CF6;width:56px;height:56px;font-size:20px;flex-shrink:0;">YC</div>
@@ -868,7 +868,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- Edit Profile -->
         <div class="settings-section">
-          <h3>Edit Profile</h3>
+          <h3 data-lkey="settings_edit_profile">Edit Profile</h3>
           <div style="display:grid;gap:10px;">
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Display Name</label>
@@ -888,7 +888,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- Change Password -->
         <div class="settings-section">
-          <h3>Change Password</h3>
+          <h3 data-lkey="settings_change_password">Change Password</h3>
           <div style="display:grid;gap:10px;">
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Current Password</label>
@@ -908,7 +908,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- App Lock -->
         <div class="settings-section">
-          <h3>App Lock</h3>
+          <h3 data-lkey="settings_app_lock">App Lock</h3>
           <div id="app-lock-status" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
           <div style="display:grid;gap:10px;">
             <div>
@@ -930,7 +930,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- AI Configuration -->
         <div class="settings-section">
-          <h3>AI Configuration</h3>
+          <h3 data-lkey="settings_ai_config">AI Configuration</h3>
           <div class="form-group">
             <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
             <div style="display:flex;gap:8px;">
@@ -945,7 +945,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
         <!-- Data -->
         <div class="settings-section">
-          <h3>Data</h3>
+          <h3 data-lkey="settings_data">Data</h3>
           <div class="setting-row"><div><div class="setting-label">Load Sample Data</div></div><button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="loadSampleData()">Load Samples</button></div>
           <div class="setting-row"><div><div class="setting-label">Clear All Data</div></div><button class="btn btn-coral" style="font-size:12px;padding:7px 14px;" onclick="clearData()">Clear Data</button></div>
         </div>
@@ -1306,6 +1306,7 @@ const TRANSLATIONS = {
     settings_sn_conn:'ServiceNow Connection',
     settings_account_details:'Account Details', settings_ai_config:'AI Configuration',
     settings_edit_profile:'Edit Profile', settings_change_password:'Change Password',
+    settings_app_lock:'App Lock',
     settings_data:'Data', settings_load_samples:'Load Sample Data', settings_clear_data:'Clear All Data',
     btn_load_samples:'Load Samples', btn_clear_data:'Clear Data',
     modal_add_txn:'Add Transaction', modal_edit_txn:'Edit Transaction',
@@ -1409,6 +1410,7 @@ const TRANSLATIONS = {
     settings_sn_conn:'ServiceNow 连接',
     settings_account_details:'账户详情', settings_ai_config:'AI 配置',
     settings_edit_profile:'编辑资料', settings_change_password:'修改密码',
+    settings_app_lock:'应用锁',
     settings_data:'数据', settings_load_samples:'加载示例数据', settings_clear_data:'清除全部数据',
     btn_load_samples:'加载示例', btn_clear_data:'清除数据',
     modal_add_txn:'添加交易', modal_edit_txn:'编辑交易',
@@ -2507,10 +2509,14 @@ function applyLanguage() {
   // Login
   const lBadge = document.getElementById('login-badge');
   if (lBadge) lBadge.textContent = t('login_badge');
-  // Settings headings
-  const settingsH3 = document.querySelectorAll('.settings-section h3');
-  const h3Keys = ['settings_sn_conn','settings_account_details','settings_edit_profile','settings_change_password','settings_ai_config','settings_data'];
-  settingsH3.forEach((el,i) => { if (h3Keys[i]) el.textContent = t(h3Keys[i]); });
+  // Settings headings — keyed off each heading's own data-lkey, never its
+  // position. This previously mapped an array of keys onto the h3 list by
+  // index, so inserting the App Lock section shifted everything below it:
+  // "App Lock" rendered as "AI Configuration", the real AI section became
+  // "Data", and App Lock became invisible to anyone looking for it.
+  document.querySelectorAll('.settings-section h3[data-lkey]').forEach(el => {
+    el.textContent = t(el.dataset.lkey);
+  });
   // Settings labels
   const langSel = document.getElementById('language-select');
   if (langSel) langSel.value = state.language;
