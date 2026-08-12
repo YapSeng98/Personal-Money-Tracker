@@ -128,6 +128,12 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .trend-bar{width:100%;max-width:28px;background:linear-gradient(180deg,var(--coral),var(--coral-s));border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;}
 .trend-bar-col.trend-bar-selected .trend-bar{background:linear-gradient(180deg,var(--sky),#60A5FA);}
 .trend-bar-label{font-size:9px;color:var(--muted);margin-top:6px;white-space:nowrap;}
+.sp-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.sp-legend-swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.sp-legend-label{flex:1;font-size:12px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sp-legend-pct-input{width:44px;font-size:12px;font-weight:700;text-align:right;border:1px solid var(--border);border-radius:6px;padding:4px 5px;font-family:var(--fm);flex-shrink:0;}
+.sp-legend-pct-sign{font-size:11px;color:var(--muted);flex-shrink:0;margin-left:-4px;}
+.sp-legend-amt{width:88px;text-align:right;font-size:12px;font-family:var(--fm);color:var(--muted);flex-shrink:0;}
 .chart-bar-row{display:flex;align-items:center;gap:10px;}
 .chart-bar-label{width:110px;font-size:12px;font-weight:500;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .chart-bar-track{flex:1;background:var(--surface);border-radius:99px;height:8px;overflow:hidden;}
@@ -659,6 +665,44 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
     <!-- ════ BUDGETS ════ -->
     <div class="view" id="view-budgets">
+      <div class="panel" style="margin-bottom:16px;" id="salary-planner-panel">
+        <div class="panel-header" style="cursor:pointer;" onclick="toggleSalaryPlanner()">
+          <div class="panel-title">💼 Plan from Salary <span id="salary-planner-summary" style="font-weight:400;color:var(--muted);font-size:12px;"></span></div>
+          <span id="salary-planner-chevron" style="font-size:14px;color:var(--muted);">▾</span>
+        </div>
+        <div id="salary-planner-body" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Currency</label>
+              <select class="form-input" id="sp-currency" onchange="onSalaryPlannerCurrencyChange()">
+                <option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Monthly Salary</label>
+              <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="sp-salary" oninput="renderSalaryPlanner()"></div>
+            </div>
+          </div>
+          <div id="sp-auto-note" style="font-size:11px;color:var(--sky);margin:-4px 0 14px;"></div>
+
+          <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+            <div style="position:relative;width:130px;height:130px;flex-shrink:0;margin:0 auto;">
+              <div id="sp-donut" style="width:130px;height:130px;border-radius:50%;background:var(--border);"></div>
+              <div style="position:absolute;inset:18px;background:white;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div id="sp-donut-pct" style="font-size:18px;font-weight:700;">0%</div>
+                <div style="font-size:9px;color:var(--muted);">allocated</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:220px;" id="sp-legend"></div>
+          </div>
+          <div id="sp-status-line" style="font-size:12px;font-weight:600;margin-top:10px;"></div>
+
+          <div class="form-actions" style="margin-top:16px;">
+            <button class="btn btn-ghost" onclick="toggleSalaryPlanner()">Cancel</button>
+            <button class="btn btn-jade" onclick="applySalaryPlanToBudgets()">Apply to Budgets</button>
+          </div>
+        </div>
+      </div>
       <div class="responsive-grid" style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;">
         <div>
           <div class="panel">
@@ -2724,6 +2768,149 @@ function renderTransactions() {
       </div>${txnListByDate(curTxns, true, true)}`;
     }).join('');
   }
+}
+
+/* ── SALARY PLANNER ── */
+// Expense categories only — the planner writes to Budgets, which track
+// spending, not income or asset categories.
+const SALARY_PLANNER_CATS = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Other'];
+
+function toggleSalaryPlanner() {
+  const body = document.getElementById('salary-planner-body');
+  const chev = document.getElementById('salary-planner-chevron');
+  const opening = body.style.display === 'none';
+  body.style.display = opening ? 'block' : 'none';
+  chev.textContent = opening ? '▴' : '▾';
+  if (opening) initSalaryPlanner();
+}
+
+function initSalaryPlanner() {
+  document.getElementById('sp-currency').value = state.currency;
+  onSalaryPlannerCurrencyChange();
+}
+
+// Salary auto-fills from this month's income in the chosen currency — never
+// merged across currencies, matching how every other total in this app works.
+function onSalaryPlannerCurrencyChange() {
+  const cur = document.getElementById('sp-currency').value;
+  const auto = getMonthTxns().filter(t => t.type === 'income' && isFlow(t) && (t.currency || state.currency) === cur)
+    .reduce((s, t) => s + t.amount, 0);
+  document.getElementById('sp-salary').value = auto > 0 ? auto.toFixed(2) : '';
+  document.getElementById('sp-auto-note').textContent = auto > 0
+    ? `⟳ Auto-filled from this month's income (${fmtWithCur(auto, cur)}) — edit if this isn't your take-home pay`
+    : 'No income recorded this month yet — enter your salary manually';
+  buildSalaryPlannerLegend(cur, auto);
+  renderSalaryPlanner();
+}
+
+// Pre-fills each row from the category's EXISTING budget (as a % of the
+// auto-derived salary), so opening the planner the first time already
+// reflects however you're currently allocating — not a blank slate.
+function buildSalaryPlannerLegend(cur, salaryForPct) {
+  document.getElementById('sp-legend').innerHTML = SALARY_PLANNER_CATS.map(cat => {
+    const existing = state.budgets.find(b => b.category === cat && (b.currency || state.currency) === cur);
+    const pct = (existing && salaryForPct > 0) ? Math.round(existing.amount / salaryForPct * 100) : '';
+    return `<div class="sp-legend-row">
+      <span class="sp-legend-swatch" style="background:${CAT_COLORS[cat] || '#6B7280'}"></span>
+      <span class="sp-legend-label">${catIcon(cat)} ${esc(cat)}</span>
+      <input type="number" min="0" max="100" class="sp-legend-pct-input" data-cat="${esc(cat)}" value="${pct}" placeholder="0" oninput="renderSalaryPlanner()">
+      <span class="sp-legend-pct-sign">%</span>
+      <span class="sp-legend-amt" data-cat-amt="${esc(cat)}">—</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSalaryPlanner() {
+  const cur    = document.getElementById('sp-currency').value;
+  const salary = parseFloat(document.getElementById('sp-salary').value) || 0;
+  const rows   = [...document.querySelectorAll('.sp-legend-pct-input')];
+
+  let totalPct = 0;
+  const slices = [];
+  rows.forEach(inp => {
+    const pct = parseFloat(inp.value) || 0;
+    const cat = inp.dataset.cat;
+    totalPct += pct;
+    const amtEl = document.querySelector(`[data-cat-amt="${cat}"]`);
+    if (amtEl) amtEl.textContent = pct > 0 ? fmtWithCur(salary * pct / 100, cur) : '—';
+    if (pct > 0) slices.push({ pct, color: CAT_COLORS[cat] || '#6B7280' });
+  });
+  totalPct = Math.round(totalPct * 10) / 10;
+
+  const donut = document.getElementById('sp-donut');
+  const overAllocated = totalPct > 100;
+  if (overAllocated) {
+    donut.style.background = 'var(--coral)';
+  } else if (slices.length) {
+    let acc = 0;
+    const stops = slices.map(s => {
+      const start = acc; acc += s.pct;
+      return `${s.color} ${start}% ${Math.min(acc, 100)}%`;
+    });
+    stops.push(`var(--border) ${Math.min(acc, 100)}% 100%`);
+    donut.style.background = `conic-gradient(${stops.join(',')})`;
+  } else {
+    donut.style.background = 'var(--border)';
+  }
+
+  const pctEl = document.getElementById('sp-donut-pct');
+  pctEl.textContent = `${totalPct}%`;
+  pctEl.style.color = overAllocated ? 'var(--coral)' : 'var(--ink)';
+
+  const statusEl = document.getElementById('sp-status-line');
+  if (overAllocated) {
+    statusEl.style.color = 'var(--coral)';
+    statusEl.textContent = `Over by ${(totalPct - 100).toFixed(1)}% (${fmtWithCur(salary * (totalPct - 100) / 100, cur)}) — you can still apply this if it's intentional`;
+  } else if (totalPct < 100 && salary > 0) {
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = `${(100 - totalPct).toFixed(1)}% unallocated (${fmtWithCur(salary * (100 - totalPct) / 100, cur)}) — not written to any budget`;
+  } else {
+    statusEl.textContent = '';
+  }
+
+  const summaryEl = document.getElementById('salary-planner-summary');
+  if (summaryEl) summaryEl.textContent = salary > 0 ? `— ${fmtWithCur(salary, cur)} · ${totalPct}% allocated` : '';
+}
+
+async function applySalaryPlanToBudgets() {
+  const cur    = document.getElementById('sp-currency').value;
+  const salary = parseFloat(document.getElementById('sp-salary').value) || 0;
+  if (salary <= 0) { showToast('Enter a salary amount first', 'error'); return; }
+
+  const toApply = [...document.querySelectorAll('.sp-legend-pct-input')]
+    .map(inp => ({ cat: inp.dataset.cat, pct: parseFloat(inp.value) || 0 }))
+    .filter(r => r.pct > 0)
+    .map(r => ({ cat: r.cat, amount: Math.round(salary * r.pct / 100 * 100) / 100 }));
+  if (!toApply.length) { showToast('Set a percentage for at least one category', 'error'); return; }
+
+  let created = 0, updated = 0;
+  toApply.forEach(({ cat, amount }) => {
+    const idx = state.budgets.findIndex(b => b.category === cat && (b.currency || state.currency) === cur);
+    if (idx >= 0) {
+      const existing = state.budgets[idx];
+      existing.amount = amount;
+      const sysId = _snId(existing);
+      if (state.snToken && sysId) {
+        snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amount, alert_threshold: existing.alertPct || 80, currency: cur })
+          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      }
+      updated++;
+    } else {
+      const bgt = { id: state.nextId++, category: cat, amount, spent: 0, alertPct: 80, currency: cur };
+      state.budgets.push(bgt);
+      if (state.snToken) {
+        snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amount, alert_threshold: 80, currency: cur })
+          .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
+          .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+      }
+      created++;
+    }
+  });
+  saveState();
+
+  showToast(`${created} budget${created !== 1 ? 's' : ''} created, ${updated} updated`, 'success');
+  toggleSalaryPlanner();
+  renderAll();
 }
 
 /* ── BUDGETS VIEW ── */

@@ -179,6 +179,17 @@ You can hold the **same category in different currencies** (e.g. Food & Drink at
 
 Budgets follow the month bar — check last month's performance any time.
 
+### Plan from Salary
+
+At the top of Budgets, tap **💼 Plan from Salary** to set your whole month's budgets by percentage instead of one category at a time:
+
+1. Pick a **currency** — salary auto-fills from that currency's income this month (edit it if it's not your actual take-home pay)
+2. Type a **%** next to each category — the donut and dollar amount update live as you type
+3. If you already have budgets in that currency, they're pre-filled as their current % of salary, so opening it the first time shows where your money already goes, not a blank form
+4. **Apply to Budgets** writes the amounts in — updating any category you already had a budget for, creating one for any you didn't
+
+Percentages don't need to add up to 100 — anything left over is shown as unallocated, and going over 100% is allowed (flagged in red) in case that's genuinely what you mean to do. Currency is never mixed: switching to MYR shows MYR income and MYR budgets only, completely separate from SGD.
+
 ---
 
 ## 6. Savings Goals
