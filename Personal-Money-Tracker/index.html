@@ -517,6 +517,23 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <button class="sn-login-toggle" onclick="showAuthPanel('login')">Already have an account? <span>Sign in</span></button>
     </div>
 
+    <!-- ── Panel C: App Lock (PIN) ── -->
+    <div class="sn-login-panel" id="panel-pinlock">
+      <div style="text-align:center;color:rgba(255,255,255,.7);font-size:13px;margin-bottom:14px;">🔒 Enter your PIN to continue</div>
+      <input class="sn-login-input" id="pin-lock-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter')submitPinUnlock()"/>
+      <div class="sn-login-err" id="pin-lock-err"></div>
+      <button class="sn-login-btn" onclick="submitPinUnlock()">Unlock</button>
+      <button class="sn-login-toggle" onclick="showPinRecovery()">Forgot PIN?</button>
+
+      <div id="pin-recovery-block" style="display:none;margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);">
+        <div style="text-align:center;color:rgba(255,255,255,.5);font-size:11px;margin-bottom:10px;">Sign in with your account password to reset the PIN</div>
+        <input class="sn-login-input" id="pin-recovery-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
+        <input class="sn-login-input" id="pin-recovery-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPinRecovery()"/>
+        <div class="sn-login-err" id="pin-recovery-err"></div>
+        <button class="sn-login-btn" onclick="submitPinRecovery()">Verify &amp; Reset PIN</button>
+      </div>
+    </div>
+
     <!-- footer -->
     <div class="l-footer">
       <div class="l-connecting" id="login-connecting">
@@ -819,6 +836,27 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               <input class="form-input" id="prof-pw-confirm" type="password" placeholder="Confirm new password"/>
             </div>
             <button class="btn btn-ghost" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
+          </div>
+        </div>
+
+        <!-- App Lock -->
+        <div class="settings-section">
+          <h3>App Lock</h3>
+          <div id="app-lock-status" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
+          <div style="display:grid;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">PIN (4–6 digits)</label>
+              <input class="form-input" id="applock-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••"/>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Confirm PIN</label>
+              <input class="form-input" id="applock-pin-confirm" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••"/>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-jade" id="applock-save-btn" onclick="saveAppLockPin()">Enable App Lock</button>
+              <button class="btn btn-coral" id="applock-off-btn" onclick="turnOffAppLock()" style="display:none;">Turn Off</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);">Locks the whole app on this device until the PIN is entered. Stored only on this device, never synced — if you forget it, reset it on the lock screen with your account password.</div>
           </div>
         </div>
 
@@ -1390,6 +1428,11 @@ let state = {
   // Masked by default — the point of the toggle is that opening the app in public
   // never shows real numbers until you deliberately choose to reveal them.
   balancesMasked: true,
+  // App-lock PIN — device-local only, never synced. A PIN synced via SN would be
+  // pointless: anyone reaching the API already has the session token that's
+  // sitting right next to it in the same localStorage.
+  appLockEnabled: false,
+  appLockPinHash: '',
   // SN custom auth
   snToken: null,
   snProfileSysId: null,
@@ -1419,6 +1462,8 @@ function saveState() {
       budgetAlerts: state.budgetAlerts,
       nowAssist: state.nowAssist,
       balancesMasked: state.balancesMasked,
+      appLockEnabled: state.appLockEnabled,
+      appLockPinHash: state.appLockPinHash,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
       snUserProfile: state.snUserProfile
@@ -3516,10 +3561,18 @@ function applyProfileAIKey(prof) {
 function setConnStatus(status) {
   const inst = state.snInstance || 'Not connected';
   const cfg = { connected:{color:'#00C896',text:inst+' · Live',ctext:'Connected'}, connecting:{color:'#F59E0B',text:'Connecting…',ctext:'Connecting…'}, disconnected:{color:'#6B7280',text:'Not connected',ctext:'Not connected'}, error:{color:'#FF5B5B',text:'Connection error',ctext:'Error'} }[status];
-  document.getElementById('sn-dot').style.background  = cfg.color;
-  document.getElementById('sn-status-text').textContent = cfg.text;
-  document.getElementById('conn-dot').style.background  = cfg.color;
-  document.getElementById('conn-label').textContent     = cfg.ctext;
+  // sn-dot/sn-status-text/conn-dot/conn-label are leftover from a since-removed
+  // status indicator — guarded like sync-btn below so a missing element degrades
+  // silently instead of throwing and aborting whatever called this (it used to:
+  // every fresh boot's very first statement was an unguarded call to this).
+  const snDot = document.getElementById('sn-dot');
+  if (snDot) snDot.style.background = cfg.color;
+  const snText = document.getElementById('sn-status-text');
+  if (snText) snText.textContent = cfg.text;
+  const connDot = document.getElementById('conn-dot');
+  if (connDot) connDot.style.background = cfg.color;
+  const connLabel = document.getElementById('conn-label');
+  if (connLabel) connLabel.textContent = cfg.ctext;
   SN.connected = status === 'connected';
   const sb = document.getElementById('sync-btn');
   if (sb) sb.disabled = !SN.connected;
@@ -3714,11 +3767,11 @@ const snAPI = {
 };
 
 function showAuthPanel(panel) {
-  ['panel-login','panel-register'].forEach(id => {
+  ['panel-login','panel-register','panel-pinlock'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', id === 'panel-' + panel);
   });
-  ['sn-li-err','sn-reg-err'].forEach(id => {
+  ['sn-li-err','sn-reg-err','pin-lock-err','pin-recovery-err'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
@@ -3726,6 +3779,101 @@ function showAuthPanel(panel) {
   // the field is empty (this runs on every panel switch, unlike _showSNLogin).
   const reg = document.getElementById('sn-reg-instance');
   if (reg && !reg.value.trim()) reg.value = state.snInstance || DEFAULT_SN_INSTANCE;
+}
+
+// ═══════════════════════════════════════════════
+// APP LOCK (PIN) — gates the whole app on this device
+// ═══════════════════════════════════════════════
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function _refreshAppLockUI() {
+  const status  = document.getElementById('app-lock-status');
+  const saveBtn = document.getElementById('applock-save-btn');
+  const offBtn  = document.getElementById('applock-off-btn');
+  if (!status) return;
+  if (state.appLockEnabled) {
+    status.textContent = '🔒 App Lock is ON for this device.';
+    if (saveBtn) saveBtn.textContent = 'Update PIN';
+    if (offBtn)  offBtn.style.display = 'inline-flex';
+  } else {
+    status.textContent = 'App Lock is off. Set a PIN to require it every time the app opens on this device.';
+    if (saveBtn) saveBtn.textContent = 'Enable App Lock';
+    if (offBtn)  offBtn.style.display = 'none';
+  }
+}
+
+async function saveAppLockPin() {
+  const pin     = document.getElementById('applock-pin')?.value || '';
+  const confirm = document.getElementById('applock-pin-confirm')?.value || '';
+  if (!/^\d{4,6}$/.test(pin)) { showToast('PIN must be 4–6 digits', 'error'); return; }
+  if (pin !== confirm)        { showToast('PINs do not match', 'error'); return; }
+  state.appLockPinHash = await sha256Hex(pin);
+  state.appLockEnabled = true;
+  saveState();
+  document.getElementById('applock-pin').value = '';
+  document.getElementById('applock-pin-confirm').value = '';
+  _refreshAppLockUI();
+  showToast('App Lock enabled', 'success');
+}
+
+function turnOffAppLock() {
+  state.appLockEnabled = false;
+  state.appLockPinHash = '';
+  saveState();
+  _refreshAppLockUI();
+  showToast('App Lock turned off', 'info');
+}
+
+async function submitPinUnlock() {
+  const val   = document.getElementById('pin-lock-input')?.value || '';
+  const errEl = document.getElementById('pin-lock-err');
+  if (!val) { errEl.textContent = 'Enter your PIN'; return; }
+  const hash = await sha256Hex(val);
+  if (hash !== state.appLockPinHash) {
+    errEl.textContent = 'Incorrect PIN';
+    document.getElementById('pin-lock-input').value = '';
+    return;
+  }
+  errEl.textContent = '';
+  startApp();
+}
+
+function showPinRecovery() {
+  const block = document.getElementById('pin-recovery-block');
+  if (block) block.style.display = 'block';
+  const u = document.getElementById('pin-recovery-username');
+  if (u && !u.value) u.value = state.snUsername || '';
+  const p = document.getElementById('pin-recovery-password');
+  if (p) p.focus();
+}
+
+// Proving you know the account password is enough to reset a forgotten PIN —
+// the PIN only gates this device's UI, it was never the thing actually
+// protecting your data, so this doesn't need a separate recovery channel.
+async function submitPinRecovery() {
+  const username = (document.getElementById('pin-recovery-username')?.value || '').trim();
+  const password = document.getElementById('pin-recovery-password')?.value || '';
+  const errEl     = document.getElementById('pin-recovery-err');
+  if (!username || !password) { errEl.textContent = 'Enter your username and password'; return; }
+  errEl.textContent = '';
+  _setLoginLoading(true, 'Verifying…');
+  try {
+    const result = await snAPI.call('/auth/login', 'POST', { username, password });
+    state.appLockEnabled = false;
+    state.appLockPinHash = '';
+    state.snUsername = username;
+    state.snPassword = password;
+    saveState();
+    await _onSNAuthSuccess(result);
+    _populateSettingsUI();
+    showToast('PIN removed — set a new one anytime in Settings', 'info');
+  } catch(e) {
+    _setLoginLoading(false);
+    errEl.textContent = e.message || 'Verification failed';
+  }
 }
 
 function _setLoginLoading(on, msg) {
@@ -4084,12 +4232,11 @@ async function changePassword() {
 // ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
-(function init() {
-  const hadSaved = loadState();
-  setConnStatus('disconnected');
-  if (!hadSaved) loadSampleData(); else renderAll();
 
-  // Populate settings fields from persisted state
+// Populate settings fields from persisted state. Split out from startApp() so
+// the PIN-recovery path can call it too, without re-running the SN auth branch
+// it would otherwise trigger a second time.
+function _populateSettingsUI() {
   const snIn = document.getElementById('sn-instance-input');
   if (snIn) snIn.value = state.snInstance;
   const snUser = document.getElementById('sn-username');
@@ -4112,9 +4259,20 @@ async function changePassword() {
   const langSel = document.getElementById('language-select');
   if (langSel) langSel.value = state.language || 'en';
   applyLanguage();
-
   updateMonthUI();
   updateLastSync();
+  _refreshAppLockUI();
+}
+
+let _hadSavedStateAtBoot = false;
+
+// Everything that used to run unconditionally in init() now waits behind the
+// PIN gate (if one is set) — nothing here runs, and nothing is rendered, until
+// submitPinUnlock() or submitPinRecovery() calls this.
+function startApp() {
+  setConnStatus('disconnected');
+  if (!_hadSavedStateAtBoot) loadSampleData(); else renderAll();
+  _populateSettingsUI();
 
   // SN Auth flow: check for saved session token
   if (state.snToken && state.snProfileSysId) {
@@ -4144,6 +4302,21 @@ async function changePassword() {
   } else {
     // No saved session — auto-connect with saved credentials if available
     _tryAutoLogin();
+  }
+}
+
+(function init() {
+  _hadSavedStateAtBoot = loadState();
+  if (state.appLockEnabled && state.appLockPinHash) {
+    // Locked: show the PIN panel and stop. No render, no auto-login, no data
+    // in the DOM until the correct PIN (or password recovery) clears this.
+    const ol = document.getElementById('login-overlay');
+    if (ol) ol.style.display = 'flex';
+    showAuthPanel('pinlock');
+    const pinInput = document.getElementById('pin-lock-input');
+    if (pinInput) setTimeout(() => pinInput.focus(), 100);
+  } else {
+    startApp();
   }
 })();
 </script>

@@ -45,6 +45,16 @@ Open the app URL in any modern browser (Chrome, Safari, Edge, Firefox) on deskto
 
 The app remembers your credentials and **auto-connects on your next visit** — you'll skip the login screen entirely. Because credentials are stored in the browser, avoid using shared/public computers.
 
+### App Lock (PIN)
+
+For a layer of privacy on top of auto-connect — a PIN prompt on every reopen, so a glance at an unlocked phone doesn't show your login already sitting there:
+
+1. **Settings → App Lock** → enter a 4–6 digit PIN twice → **Enable App Lock**
+2. From then on, opening the app on this device shows a PIN prompt before anything else — before the login screen, before any data is drawn
+3. **Forgot it?** Tap **Forgot PIN?** on the lock screen and verify with your account username/password — that clears the PIN so you can set a new one
+
+The PIN is stored only on this device (like the balance mask) — it's never sent to ServiceNow, and doesn't sync to your other devices. Each device you use it on needs its own PIN set separately.
+
 ### Working offline
 
 If ServiceNow is unreachable, the app still works: everything is saved to your browser's local storage and re-synced when the connection returns. The connection status dot in the sidebar shows your sync state.
