@@ -123,7 +123,9 @@ All tables share the prefix `x_887486_0_`.
 | `recurring_frequency` | String | `daily`, `weekly`, `monthly` |
 | `next_run_date` | Date | Set by `BR_ValidateTransaction.js` from `is_recurring`+`recurring_frequency`; advanced by `FLOW_RecurringTransactions.js` after each clone |
 
-`state` is also set to Draft by an unrelated rule: any transaction dated in the future — the date picker has no upper bound. The frontend tells these apart from recurring clones by checking whether `notes` starts with `Auto-generated from recurring template:` (written by the Flow); only those show in the Pending Recurring review. A future-dated manual entry stays Draft in ServiceNow but is otherwise unaffected — it still renders as a normal transaction in the app today, since the app has never distinguished Draft from Confirmed for anything other than recurring clones.
+`state` is also set to Draft by `BR_ValidateTransaction.js` for any transaction dated in the future — the date picker has no upper bound. The frontend does not currently distinguish Draft from Confirmed: every row returned by the API renders as a normal transaction.
+
+> **Recurring is backend-only right now.** `is_recurring`, `recurring_frequency`, and `next_run_date` are read/written by the API and the Flow, but the frontend UI for it was removed — there is no way to create a recurring template from the app today, and clones the Flow generates would render as ordinary transactions. Re-adding the UI is a frontend-only job; the schema and scripts are already in place.
 
 ### `category`
 
@@ -658,7 +660,7 @@ Persisted to `localStorage` key `pfmt_state_v2`.
 | Name | Schedule | Purpose |
 |---|---|---|
 | `FLOW_MonthlyBudgetReset` | 1st of month, 00:01 SGT | Reset spent_amount, apply rollover, update period dates |
-| `FLOW_RecurringTransactions` | Daily 08:00 SGT | Clone recurring transactions **as Draft** (waits for the user to confirm — see Pending Recurring in the [User Guide](USER_GUIDE.md#4-transactions)), copy the template's currency, advance `next_run_date` |
+| `FLOW_RecurringTransactions` | Daily 08:00 SGT | Clone recurring transactions as Draft, copy the template's currency, advance `next_run_date`. **Currently dormant** — nothing in the app sets `is_recurring`, so it finds no templates to clone |
 
 ### Scheduled Jobs
 

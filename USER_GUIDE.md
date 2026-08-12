@@ -142,19 +142,6 @@ To send the other way, just swap the accounts: put Maybank in **From** and DBS i
 
 Transfers don't count as income or spending, and don't consume a budget.
 
-### Repeating a transaction
-
-Tick **🔁 Repeat this transaction** on any Expense, Income, or Asset (not available on Transfer) and pick **Daily / Weekly / Monthly**. Rent, salary, subscriptions — anything on a schedule.
-
-This is **not** hands-off from the very first save — the transaction you're saving right now goes in as usual, but every future occurrence is created as a **draft that waits for you**:
-
-1. On the due date, a new instance appears in a **⏰ Pending Recurring** banner at the top of the Dashboard
-2. It doesn't touch your balance or budgets yet
-3. Tap **✓ Confirm** to accept it as-is, **✏️** to adjust the amount/date first (rent went up, you paid a few days late — whatever changed), or **Skip** to drop just that one occurrence
-4. Only after you confirm does it count — and only then does the schedule affect anything
-
-To stop a repeating transaction, edit it and un-tick Repeat — that stops future ones without touching anything already confirmed. Deleting it outright removes the template the same way.
-
 ### Editing & deleting
 
 Each row has **✏️ edit** and **🗑️ delete** buttons. Deleting asks for confirmation first.
