@@ -25,7 +25,13 @@
     newTxn.amount            = gr.amount;
     newTxn.description       = gr.description;
     newTxn.transaction_date  = today;
-    newTxn.state             = '2'; // Confirmed
+    newTxn.currency           = gr.getValue('currency') || 'SGD'; // was missing — every clone
+                                                                    // silently fell back to the
+                                                                    // field default regardless of
+                                                                    // the template's real currency
+    newTxn.state             = '1'; // Draft — waits for the user to confirm before it
+                                     // touches any balance or budget. See PFMT_ServiceNow
+                                     // index.html's Pending Recurring panel on the Dashboard.
     newTxn.is_recurring      = false; // clone is a one-off instance
     newTxn.notes             = 'Auto-generated from recurring template: ' + gr.sys_id;
     newTxn.insert();

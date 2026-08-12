@@ -58,7 +58,11 @@
         notes      : gr.notes.toString(),
         currency   : gr.getValue('currency') || 'SGD',
         transfer_group: gr.getValue('transfer_group') || '',
-        created    : gr.getValue('sys_created_on') || ''
+        created    : gr.getValue('sys_created_on') || '',
+        state               : gr.getValue('state') || '2',
+        is_recurring        : gr.getValue('is_recurring') === 'true',
+        recurring_frequency : gr.getValue('recurring_frequency') || '',
+        next_run_date       : gr.getValue('next_run_date') || ''
       });
     }
 
@@ -68,7 +72,7 @@
   }
 
   // ── POST /transactions ────────────────────────────────────
-  // Body: { type, amount, description, date, account_name, category_name, notes, currency }
+  // Body: { type, amount, description, date, account_name, category_name, notes, currency, is_recurring, recurring_frequency }
   if (method === 'POST') {
     var body = request.body ? request.body.data : {};
 
@@ -91,7 +95,13 @@
     newGR.notes            = body.notes    || '';
     newGR.currency         = body.currency || 'SGD';
     newGR.transfer_group   = body.transfer_group || '';
-    newGR.state            = '2'; // Confirmed
+    newGR.state            = '2'; // Confirmed — a template the user creates is a real
+                                   // transaction happening now, not a draft. Only the
+                                   // Flow's future clones are Draft (see FLOW_RecurringTransactions.js).
+    newGR.is_recurring         = !!body.is_recurring;
+    newGR.recurring_frequency  = body.recurring_frequency || '';
+    // next_run_date is computed by BR_ValidateTransaction.js from is_recurring +
+    // recurring_frequency — not set here, so there is one place that owns that logic.
 
     // Resolve account by name (must belong to this user)
     if (body.account_name) {
@@ -127,7 +137,7 @@
   }
 
   // ── PUT /transactions ─────────────────────────────────────
-  // Body: { sys_id, type, amount, description, date, account_name, category_name, notes, currency }
+  // Body: { sys_id, type, amount, description, date, account_name, category_name, notes, currency, is_recurring, recurring_frequency, state }
   if (method === 'PUT') {
     var putBody = request.body ? request.body.data : {};
     if (!putBody.sys_id) {
@@ -151,6 +161,11 @@
     if (putBody.date        !== undefined) editGR.transaction_date = putBody.date;
     if (putBody.notes       !== undefined) editGR.notes            = putBody.notes;
     if (putBody.currency    !== undefined) editGR.currency         = putBody.currency;
+    if (putBody.is_recurring        !== undefined) editGR.is_recurring        = !!putBody.is_recurring;
+    if (putBody.recurring_frequency !== undefined) editGR.recurring_frequency = putBody.recurring_frequency;
+    // Confirming a pending recurring instance (Draft -> Confirmed) goes through
+    // this same PUT, alongside whatever fields the user adjusted before confirming.
+    if (putBody.state       !== undefined) editGR.state            = putBody.state;
 
     if (putBody.account_name) {
       var putAccGR = new GlideRecord('x_887486_0_account');

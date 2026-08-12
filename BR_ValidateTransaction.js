@@ -34,8 +34,14 @@
     gs.addInfoMessage('Future-dated transaction saved as Draft.');
   }
 
-  // Set next_run_date for recurring transactions
-  if (current.is_recurring && current.operation() === 'insert') {
+  // Set next_run_date for recurring transactions. Covers not just insert
+  // (creating a new template with Repeat ticked) but also update — someone
+  // ticking Repeat on an existing transaction later has the same need, and
+  // FLOW_RecurringTransactions.js only picks up templates where next_run_date
+  // is already set. Only fires when next_run_date is still empty, so it never
+  // resets an already-running schedule just because the amount was edited.
+  if (current.is_recurring && !current.next_run_date &&
+      (current.operation() === 'insert' || current.operation() === 'update')) {
     var freq    = current.recurring_frequency.toString();
     var nextRun = new GlideDateTime();
     if (freq === 'daily')   nextRun.addDaysUTC(1);

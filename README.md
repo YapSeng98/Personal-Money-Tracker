@@ -118,10 +118,12 @@ All tables share the prefix `x_887486_0_`.
 | `notes` | String | Optional |
 | `currency` | String | Per-transaction currency (SGD/USD/AUD/MYR), default `SGD` |
 | `transfer_group` | String(40) | Shared id linking the two legs of a transfer; empty for normal rows |
-| `state` | String | `1`=Draft, `2`=Confirmed |
-| `is_recurring` | Boolean | |
+| `state` | String | `1`=Draft, `2`=Confirmed. Draft excluded from every balance/budget calculation until confirmed |
+| `is_recurring` | Boolean | Marks a template. `false` on the clones the Flow generates — a clone is a one-off instance, not itself a template |
 | `recurring_frequency` | String | `daily`, `weekly`, `monthly` |
-| `next_run_date` | Date | Managed by FLOW_RecurringTransactions |
+| `next_run_date` | Date | Set by `BR_ValidateTransaction.js` from `is_recurring`+`recurring_frequency`; advanced by `FLOW_RecurringTransactions.js` after each clone |
+
+`state` is also set to Draft by an unrelated rule: any transaction dated in the future — the date picker has no upper bound. The frontend tells these apart from recurring clones by checking whether `notes` starts with `Auto-generated from recurring template:` (written by the Flow); only those show in the Pending Recurring review. A future-dated manual entry stays Draft in ServiceNow but is otherwise unaffected — it still renders as a normal transaction in the app today, since the app has never distinguished Draft from Confirmed for anything other than recurring clones.
 
 ### `category`
 
@@ -289,7 +291,7 @@ Content-Type: application/json
 
 #### GET `/transactions`
 
-Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
+Query params: `limit` (default 500, the app requests 3000), `type` (expense|income), `month` (YYYY-MM)
 
 ```json
 // Response 200
@@ -304,7 +306,11 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
       "account": "DBS Checking",
       "date": "2024-06-15",
       "currency": "SGD",
-      "notes": ""
+      "notes": "",
+      "state": "2",
+      "is_recurring": false,
+      "recurring_frequency": "",
+      "next_run_date": ""
     }
   ],
   "count": 1
@@ -323,9 +329,11 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
   "account_name": "DBS Checking",
   "category_name": "Food & Drink",
   "currency": "SGD",
-  "notes": ""
+  "notes": "",
+  "is_recurring": true,
+  "recurring_frequency": "monthly"
 }
-// Response 201
+// Response 201 — always Confirmed (state=2); next_run_date computed by BR_ValidateTransaction.js
 { "result": { "sys_id": "...", "status": "created" } }
 ```
 
@@ -337,6 +345,8 @@ Query params: `limit` (default 500), `type` (expense|income), `month` (YYYY-MM)
 // Response 200
 { "result": { "sys_id": "...", "status": "updated" } }
 ```
+
+`is_recurring`, `recurring_frequency`, and `state` are also accepted on PUT. Confirming a pending recurring instance is a PUT with `state: "2"`; un-ticking Repeat on an existing template is a PUT with `is_recurring: false`.
 
 #### DELETE `/transactions`
 
@@ -638,7 +648,7 @@ Persisted to `localStorage` key `pfmt_state_v2`.
 
 | Name | Table | Trigger | Purpose |
 |---|---|---|---|
-| `BR_ValidateTransaction` | transaction | Before Insert+Update | Validate amount > 0, set recurring next_run_date |
+| `BR_ValidateTransaction` | transaction | Before Insert+Update | Validate amount > 0, force Draft for future-dated rows, set recurring `next_run_date` (on insert, or on update if not already set — so ticking Repeat on an existing row still schedules it) |
 | `BR_UpdateAccountBalance` | transaction | After Insert+Update (Confirmed) | Increment/decrement account balance |
 | `BR_UpdateBudgetSpent` | transaction | After Insert (Expense) | Update budget spent_amount + fire alert event |
 | `BR_BudgetCalculatedFields` | budget | Before Insert+Update | Calculate remaining_amount, default period dates |
@@ -648,7 +658,7 @@ Persisted to `localStorage` key `pfmt_state_v2`.
 | Name | Schedule | Purpose |
 |---|---|---|
 | `FLOW_MonthlyBudgetReset` | 1st of month, 00:01 SGT | Reset spent_amount, apply rollover, update period dates |
-| `FLOW_RecurringTransactions` | Daily 08:00 SGT | Clone recurring transactions, advance next_run_date |
+| `FLOW_RecurringTransactions` | Daily 08:00 SGT | Clone recurring transactions **as Draft** (waits for the user to confirm — see Pending Recurring in the [User Guide](USER_GUIDE.md#4-transactions)), copy the template's currency, advance `next_run_date` |
 
 ### Scheduled Jobs
 
