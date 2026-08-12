@@ -51,6 +51,8 @@ For a layer of privacy on top of auto-connect — a PIN prompt on every reopen, 
 
 1. **Settings → App Lock** → enter a 4–6 digit PIN twice → **Enable App Lock**
 2. From then on, opening the app on this device shows a PIN prompt before anything else — before the login screen, before any data is drawn
+   - It also **re-locks after 1 minute of inactivity**, so walking away from an open tab doesn't leave your finances on screen. Any click, tap, keypress, or scroll resets the timer
+   - **🔒 Lock Now** in Settings locks it immediately if you'd rather not wait
 3. **Forgot it?** Tap **Forgot PIN?** on the lock screen and verify with your account username/password — that clears the PIN so you can set a new one
 
 The PIN is stored only on this device (like the balance mask) — it's never sent to ServiceNow, and doesn't sync to your other devices. Each device you use it on needs its own PIN set separately.
@@ -199,6 +201,7 @@ At the top of Budgets, tap **💼 Plan from Salary** to set your whole month's b
 1. Pick a **currency** — salary auto-fills from that currency's income this month (edit it if it's not your actual take-home pay)
 2. Type a **%** next to each category — the donut and dollar amount update live as you type
 3. If you already have budgets in that currency, they're pre-filled as their current % of salary, so opening it the first time shows where your money already goes, not a blank form
+   - Percentages only pre-fill when your existing budgets actually fit the salary shown. Open the planner early in the month and the auto-filled salary is only the income received *so far* — measuring a full month's budgets against that would produce nonsense figures, so it starts blank and tells you why. Set the salary to your real monthly take-home and enter the percentages yourself
 4. **Apply to Budgets** writes the amounts in — updating any category you already had a budget for, creating one for any you didn't
 
 Percentages don't need to add up to 100 — anything left over is shown as unallocated, and going over 100% is allowed (flagged in red) in case that's genuinely what you mean to do. Currency is never mixed: switching to MYR shows MYR income and MYR budgets only, completely separate from SGD.

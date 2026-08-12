@@ -683,7 +683,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="sp-salary" oninput="renderSalaryPlanner()"></div>
             </div>
           </div>
-          <div id="sp-auto-note" style="font-size:11px;color:var(--sky);margin:-4px 0 14px;"></div>
+          <div id="sp-auto-note" style="font-size:11px;color:var(--sky);margin:-4px 0 6px;"></div>
+          <div id="sp-prefill-note" style="display:none;font-size:11px;color:var(--amber);margin:0 0 14px;"></div>
 
           <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
             <div style="position:relative;width:130px;height:130px;flex-shrink:0;margin:0 auto;">
@@ -918,11 +919,12 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Confirm PIN</label>
               <input class="form-input" id="applock-pin-confirm" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••"/>
             </div>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-jade" id="applock-save-btn" onclick="saveAppLockPin()">Enable App Lock</button>
+              <button class="btn btn-ghost" id="applock-now-btn" onclick="lockAppNow()" style="display:none;">🔒 Lock Now</button>
               <button class="btn btn-coral" id="applock-off-btn" onclick="turnOffAppLock()" style="display:none;">Turn Off</button>
             </div>
-            <div style="font-size:11px;color:var(--muted);">Locks the whole app on this device until the PIN is entered. Stored only on this device, never synced — if you forget it, reset it on the lock screen with your account password.</div>
+            <div style="font-size:11px;color:var(--muted);">Locks the whole app on this device until the PIN is entered — on open, and again automatically if you leave the app for more than a minute. Stored only on this device, never synced; if you forget it, reset it on the lock screen with your account password.</div>
           </div>
         </div>
 
@@ -2804,12 +2806,31 @@ function onSalaryPlannerCurrencyChange() {
 }
 
 // Pre-fills each row from the category's EXISTING budget (as a % of the
-// auto-derived salary), so opening the planner the first time already
-// reflects however you're currently allocating — not a blank slate.
+// auto-derived salary), so opening the planner already reflects however you're
+// currently allocating — but ONLY when those budgets plausibly came from this
+// salary figure. The auto-fill is this month's income *so far*: open the
+// planner on the 3rd and it might read S$136, against budgets set for a full
+// month's S$6000. Dividing by the small number turned a normal S$450 budget
+// into "329%", and the total into a meaningless 1280%. When the derived total
+// overshoots, the budgets clearly weren't derived from this number — start
+// blank rather than show absurd figures.
 function buildSalaryPlannerLegend(cur, salaryForPct) {
+  const derived = {};
+  let derivedTotal = 0;
+  if (salaryForPct > 0) {
+    SALARY_PLANNER_CATS.forEach(cat => {
+      const existing = state.budgets.find(b => b.category === cat && (b.currency || state.currency) === cur);
+      if (existing && existing.amount > 0) {
+        const p = Math.round(existing.amount / salaryForPct * 100);
+        derived[cat] = p;
+        derivedTotal += p;
+      }
+    });
+  }
+  const usePrefill = derivedTotal > 0 && derivedTotal <= 100;
+
   document.getElementById('sp-legend').innerHTML = SALARY_PLANNER_CATS.map(cat => {
-    const existing = state.budgets.find(b => b.category === cat && (b.currency || state.currency) === cur);
-    const pct = (existing && salaryForPct > 0) ? Math.round(existing.amount / salaryForPct * 100) : '';
+    const pct = usePrefill && derived[cat] !== undefined ? derived[cat] : '';
     return `<div class="sp-legend-row">
       <span class="sp-legend-swatch" style="background:${CAT_COLORS[cat] || '#6B7280'}"></span>
       <span class="sp-legend-label">${catIcon(cat)} ${esc(cat)}</span>
@@ -2818,6 +2839,14 @@ function buildSalaryPlannerLegend(cur, salaryForPct) {
       <span class="sp-legend-amt" data-cat-amt="${esc(cat)}">—</span>
     </div>`;
   }).join('');
+
+  const note = document.getElementById('sp-prefill-note');
+  if (note) {
+    note.style.display = (derivedTotal > 100) ? 'block' : 'none';
+    note.textContent = (derivedTotal > 100)
+      ? `Your existing ${cur} budgets add up to more than this salary figure, so percentages start blank. Set the salary to your real monthly take-home first, then enter percentages.`
+      : '';
+  }
 }
 
 function renderSalaryPlanner() {
@@ -4087,15 +4116,18 @@ function _refreshAppLockUI() {
   const status  = document.getElementById('app-lock-status');
   const saveBtn = document.getElementById('applock-save-btn');
   const offBtn  = document.getElementById('applock-off-btn');
+  const nowBtn  = document.getElementById('applock-now-btn');
   if (!status) return;
   if (state.appLockEnabled) {
-    status.textContent = '🔒 App Lock is ON for this device.';
+    status.textContent = '🔒 App Lock is ON — locks on open, and after 1 minute of inactivity.';
     if (saveBtn) saveBtn.textContent = 'Update PIN';
     if (offBtn)  offBtn.style.display = 'inline-flex';
+    if (nowBtn)  nowBtn.style.display = 'inline-flex';
   } else {
     status.textContent = 'App Lock is off. Set a PIN to require it every time the app opens on this device.';
     if (saveBtn) saveBtn.textContent = 'Enable App Lock';
     if (offBtn)  offBtn.style.display = 'none';
+    if (nowBtn)  nowBtn.style.display = 'none';
   }
 }
 
@@ -4110,6 +4142,7 @@ async function saveAppLockPin() {
   document.getElementById('applock-pin').value = '';
   document.getElementById('applock-pin-confirm').value = '';
   _refreshAppLockUI();
+  resetIdleTimer(); // start counting from the moment it's switched on
   showToast('App Lock enabled', 'success');
 }
 
@@ -4117,6 +4150,7 @@ function turnOffAppLock() {
   state.appLockEnabled = false;
   state.appLockPinHash = '';
   saveState();
+  clearTimeout(_idleTimer);
   _refreshAppLockUI();
   showToast('App Lock turned off', 'info');
 }
@@ -4132,8 +4166,61 @@ async function submitPinUnlock() {
     return;
   }
   errEl.textContent = '';
-  startApp();
+  document.getElementById('pin-lock-input').value = '';
+  // Re-lock (auto-lock while the tab stayed open) vs cold boot: the app is
+  // already running in the second case, so just drop the overlay rather than
+  // re-running the whole boot + auto-login sequence.
+  if (_appStarted) { _hideSNLogin(); _lastHiddenAt = null; }
+  else             { startApp(); }
+  resetIdleTimer();
 }
+
+// ── Auto-lock ────────────────────────────────────────────────
+// The initial PIN gate only runs at boot. Without this, unlocking once left the
+// app open indefinitely — walk away with the tab open and anyone could read it.
+// Two triggers, both 1 minute: no interaction at all, or the tab was left.
+const APP_LOCK_IDLE_MS = 60000;
+let _lastHiddenAt = null;
+let _idleTimer = null;
+
+function _isCurrentlyLocked() {
+  return document.getElementById('panel-pinlock')?.classList.contains('active')
+      && document.getElementById('login-overlay')?.style.display === 'flex';
+}
+
+function lockAppNow() {
+  if (!state.appLockEnabled || !state.appLockPinHash) return;
+  clearTimeout(_idleTimer);
+  const ol = document.getElementById('login-overlay');
+  if (ol) ol.style.display = 'flex';
+  showAuthPanel('pinlock');
+  const pinInput = document.getElementById('pin-lock-input');
+  if (pinInput) { pinInput.value = ''; setTimeout(() => pinInput.focus(), 100); }
+}
+
+function resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  if (!state.appLockEnabled || !state.appLockPinHash) return;
+  if (_isCurrentlyLocked()) return; // already locked; typing the PIN shouldn't arm it
+  _idleTimer = setTimeout(lockAppNow, APP_LOCK_IDLE_MS);
+}
+
+['mousedown','keydown','touchstart','scroll','click'].forEach(ev =>
+  document.addEventListener(ev, resetIdleTimer, { passive: true }));
+
+document.addEventListener('visibilitychange', () => {
+  if (!state.appLockEnabled || !state.appLockPinHash) return;
+  if (document.hidden) {
+    clearTimeout(_idleTimer); // a background tab can't be "used"; the hidden clock takes over
+    if (!_isCurrentlyLocked()) _lastHiddenAt = Date.now();
+  } else if (_lastHiddenAt && Date.now() - _lastHiddenAt >= APP_LOCK_IDLE_MS) {
+    _lastHiddenAt = null;
+    lockAppNow();
+  } else {
+    _lastHiddenAt = null;
+    resetIdleTimer();
+  }
+});
 
 function showPinRecovery() {
   const block = document.getElementById('pin-recovery-block');
@@ -4564,11 +4651,13 @@ function _populateSettingsUI() {
 }
 
 let _hadSavedStateAtBoot = false;
+let _appStarted = false;
 
 // Everything that used to run unconditionally in init() now waits behind the
 // PIN gate (if one is set) — nothing here runs, and nothing is rendered, until
 // submitPinUnlock() or submitPinRecovery() calls this.
 function startApp() {
+  _appStarted = true;
   setConnStatus('disconnected');
   if (!_hadSavedStateAtBoot) loadSampleData(); else renderAll();
   _populateSettingsUI();
