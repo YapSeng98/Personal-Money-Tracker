@@ -134,13 +134,6 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 .sp-legend-pct-input{width:44px;font-size:12px;font-weight:700;text-align:right;border:1px solid var(--border);border-radius:6px;padding:4px 5px;font-family:var(--fm);flex-shrink:0;}
 .sp-legend-pct-sign{font-size:11px;color:var(--muted);flex-shrink:0;margin-left:-4px;}
 .sp-legend-amt{width:88px;text-align:right;font-size:12px;font-family:var(--fm);color:var(--muted);flex-shrink:0;}
-.pending-recur-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
-.pending-recur-row:last-child{border-bottom:none;}
-.pending-recur-body{flex:1;min-width:0;}
-.pending-recur-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pending-recur-meta{font-size:11px;color:var(--muted);margin-top:1px;}
-.pending-recur-amt{font-family:var(--fm);font-weight:700;font-size:13px;flex-shrink:0;}
-.pending-recur-actions{display:flex;gap:4px;flex-shrink:0;}
 .chart-bar-row{display:flex;align-items:center;gap:10px;}
 .chart-bar-label{width:110px;font-size:12px;font-weight:500;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .chart-bar-track{flex:1;background:var(--surface);border-radius:99px;height:8px;overflow:hidden;}
@@ -610,10 +603,6 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
     <!-- ════ DASHBOARD ════ -->
     <div class="view active" id="view-dashboard">
-      <div class="panel" id="pending-recurring-panel" style="display:none;margin-bottom:16px;border:1px solid var(--amber);">
-        <div class="panel-header"><div class="panel-title">⏰ Pending Recurring (<span id="pending-recurring-count">0</span>)</div></div>
-        <div id="pending-recurring-list"></div>
-      </div>
       <div class="balance-hero">
         <div class="balance-grid">
           <div>
@@ -1071,25 +1060,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <label class="form-label">Notes (optional)</label>
       <input class="form-input" type="text" id="txn-notes" placeholder="Any additional notes…">
     </div>
-    <!-- Not offered on Transfer — see setType(). A repeat creates ONE new
-         confirmed row per interval, not two, so it doesn't fit the paired-write
-         transfer mechanism. -->
-    <div class="form-group" id="txn-recurring-group">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
-        <input type="checkbox" id="txn-recurring" onchange="onRecurringToggle()"> 🔁 Repeat this transaction
-      </label>
-      <select class="form-input" id="txn-recurring-freq" style="display:none;margin-top:8px;">
-        <option value="monthly">Monthly</option>
-        <option value="weekly">Weekly</option>
-        <option value="daily">Daily</option>
-      </select>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Creates a new confirmed transaction automatically at each interval. It will still wait for you to confirm — see the Dashboard when one is due.</div>
-    </div>
     <input type="hidden" id="txn-edit-id" value="">
-    <!-- Set instead of txn-edit-id when opened from the Pending Recurring
-         banner — saveTransaction() confirms the draft (state -> Confirmed)
-         rather than editing an already-counted row. -->
-    <input type="hidden" id="txn-confirm-draft-id" value="">
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="closeTxnModal()">Cancel</button>
       <button class="btn btn-jade" id="save-txn-btn" onclick="saveTransaction()">Save Transaction</button>
@@ -1529,7 +1500,6 @@ let state = {
   appLockEnabled: false,
   appLockPinHash: '',
   trendMonths: 6,
-  pendingRecurring: [],
   // SN custom auth
   snToken: null,
   snProfileSysId: null,
@@ -1562,7 +1532,6 @@ function saveState() {
       appLockEnabled: state.appLockEnabled,
       appLockPinHash: state.appLockPinHash,
       trendMonths: state.trendMonths,
-      pendingRecurring: state.pendingRecurring,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
       snUserProfile: state.snUserProfile
@@ -1662,15 +1631,12 @@ function openTxnModal(id = null) {
   document.getElementById('txn-edit-badge').textContent   = t('modal_editing_txn');
   document.getElementById('txn-edit-badge').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('txn-edit-id').value            = id !== null ? id : '';
-  document.getElementById('txn-confirm-draft-id').value   = '';
   document.getElementById('txn-date').value               = localDateStr();
   document.getElementById('txn-amount').value             = '';
   document.getElementById('txn-desc').value                = '';
   document.getElementById('txn-notes').value               = '';
   document.getElementById('txn-currency').value             = state.currency;
   document.getElementById('txn-amount-recv').value          = '';
-  document.getElementById('txn-recurring').checked          = false;
-  onRecurringToggle();
 
   // Populate account dropdown from user's saved accounts
   const accSel = document.getElementById('txn-account');
@@ -1717,9 +1683,6 @@ function openTxnModal(id = null) {
     setSelectVal('txn-cat',      txn.category);
     setSelectVal('txn-account',  txn.account);
     document.getElementById('txn-currency').value = txn.currency || state.currency;
-    document.getElementById('txn-recurring').checked = !!txn.isRecurring;
-    if (txn.isRecurring) setSelectVal('txn-recurring-freq', txn.recurringFreq || 'monthly');
-    onRecurringToggle();
     document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
@@ -1731,67 +1694,6 @@ function openTxnModal(id = null) {
   setTimeout(() => document.getElementById('txn-amount').focus(), 100);
 }
 function closeTxnModal() { document.getElementById('txn-modal').classList.remove('open'); }
-
-/* ── PENDING RECURRING ── */
-// Opens the normal transaction modal pre-filled from a pending draft, but
-// wired to confirm-with-edits (txn-confirm-draft-id) instead of a normal edit.
-function openPendingRecurringModal(id) {
-  const draft = state.pendingRecurring.find(d => d.id == id);
-  if (!draft) return;
-  openTxnModal(); // resets the form to a clean slate first
-  document.getElementById('txn-confirm-draft-id').value = id;
-  document.getElementById('txn-modal-title').textContent = 'Confirm Recurring Transaction';
-  document.getElementById('txn-edit-badge').textContent  = '🔁 From recurring template';
-  document.getElementById('txn-edit-badge').style.display = 'inline-flex';
-  setType(draft.type, document.getElementById(`tab-${draft.type}`));
-  document.getElementById('txn-amount').value  = draft.amount;
-  document.getElementById('txn-desc').value    = draft.description;
-  document.getElementById('txn-date').value    = draft.date;
-  document.getElementById('txn-notes').value   = draft.notes || '';
-  setSelectVal('txn-cat',     draft.category);
-  setSelectVal('txn-account', draft.account);
-  document.getElementById('txn-currency').value = draft.currency || state.currency;
-  document.getElementById('txn-recurring-group').style.display = 'none'; // a clone is a one-off instance, not itself a template
-  document.getElementById('save-txn-btn').textContent = 'Confirm';
-  document.getElementById('save-txn-btn').className   = 'btn btn-jade';
-}
-
-// Confirms as-is, no edits — same PUT + local move as the modal path, just
-// without opening it.
-async function confirmPendingRecurring(id) {
-  const draft = state.pendingRecurring.find(d => d.id == id);
-  if (!draft) return;
-  state.pendingRecurring = state.pendingRecurring.filter(d => d.id != id);
-  const confirmed = { ...draft, isRecurring: false, recurringFreq: '' };
-  delete confirmed.state;
-  state.transactions.unshift(confirmed);
-  saveState();
-  renderAll();
-  const sysId = _snId(draft);
-  if (state.snToken && sysId) {
-    snAPI.call('/transactions', 'PUT', { sys_id: sysId, state: '2' })
-      .catch(e => showToast('SN sync: ' + e.message, 'warning'));
-  }
-  showToast('Confirmed', 'success');
-}
-
-// Discards this one instance only — the template's schedule already advanced
-// server-side regardless, so skipping doesn't need to touch it.
-async function skipPendingRecurring(id) {
-  const draft = state.pendingRecurring.find(d => d.id == id);
-  if (!draft) return;
-  const ok = await showConfirm('Skip this recurring transaction?', `"${draft.description}" — ${fmtWithCur(draft.amount, draft.currency)} won't be added for this cycle.`);
-  if (!ok) return;
-  state.pendingRecurring = state.pendingRecurring.filter(d => d.id != id);
-  saveState();
-  renderAll();
-  const sysId = _snId(draft);
-  if (state.snToken && sysId) {
-    snAPI.call('/transactions', 'DELETE', { sys_id: sysId })
-      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
-  }
-  showToast('Skipped', 'info');
-}
 
 function setType(type, el) {
   state.currentType = type;
@@ -1821,21 +1723,6 @@ function setType(type, el) {
   if (accLabel) accLabel.textContent = isTransfer ? 'From Account' : 'Account';
   if (isTransfer) populateToAccounts();
   updateTransferUI();
-
-  // Repeat doesn't fit the paired-write transfer mechanism — hide it there.
-  const recurGroup = document.getElementById('txn-recurring-group');
-  if (recurGroup) {
-    recurGroup.style.display = isTransfer ? 'none' : 'block';
-    if (isTransfer) {
-      document.getElementById('txn-recurring').checked = false;
-      onRecurringToggle();
-    }
-  }
-}
-
-function onRecurringToggle() {
-  const on = document.getElementById('txn-recurring').checked;
-  document.getElementById('txn-recurring-freq').style.display = on ? 'block' : 'none';
 }
 
 // A transaction whose currency differs from its account's currency is invisible
@@ -2035,9 +1922,6 @@ async function saveTransaction() {
   const notes    = document.getElementById('txn-notes').value.trim();
   const currency = document.getElementById('txn-currency').value;
   const editId   = document.getElementById('txn-edit-id').value;
-  const confirmDraftId = document.getElementById('txn-confirm-draft-id').value;
-  const isRecurring   = state.currentType !== 'transfer' && document.getElementById('txn-recurring').checked;
-  const recurringFreq = isRecurring ? document.getElementById('txn-recurring-freq').value : '';
 
   if (!amt || amt <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
   if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
@@ -2080,42 +1964,14 @@ async function saveTransaction() {
   }
 
   const snPayload = { type: state.currentType, amount: amt, description: desc,
-    category_name: cat, account_name: acct, date, notes, currency,
-    is_recurring: isRecurring, recurring_frequency: recurringFreq };
-
-  // Confirming a pending recurring instance: it already exists in SN as a
-  // Draft, so this is neither create nor a normal edit — PUT the (possibly
-  // adjusted) values plus state:'2', then move it out of the pending list and
-  // into the real transaction list locally.
-  if (confirmDraftId !== '') {
-    const draft = state.pendingRecurring.find(d => d.id == confirmDraftId);
-    if (draft) {
-      const confirmed = { ...draft, type: state.currentType, amount: amt,
-        description: desc, category: cat, account: acct, date, notes, currency,
-        isRecurring: false, recurringFreq: '' };
-      delete confirmed.state;
-      state.pendingRecurring = state.pendingRecurring.filter(d => d.id != confirmDraftId);
-      state.transactions.unshift(confirmed);
-      const sysId = _snId(draft);
-      if (state.snToken && sysId) {
-        snAPI.call('/transactions', 'PUT', { sys_id: sysId, ...snPayload, state: '2' })
-          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
-      }
-      showToast('Confirmed', 'success');
-    }
-    saveState();
-    closeTxnModal();
-    renderAll();
-    return;
-  }
+    category_name: cat, account_name: acct, date, notes, currency };
 
   if (editId !== '') {
     const idx = state.transactions.findIndex(tx => tx.id == editId);
     if (idx >= 0) {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
-        description: desc, category: cat, account: acct, date, notes, currency,
-        isRecurring, recurringFreq };
+        description: desc, category: cat, account: acct, date, notes, currency };
       const snIdTxn = _snId(old);
       if (state.snToken && snIdTxn) {
         snAPI.call('/transactions', 'PUT', { sys_id: snIdTxn, ...snPayload })
@@ -2125,8 +1981,7 @@ async function saveTransaction() {
     }
   } else {
     const txn = { id: state.nextId++, type: state.currentType, amount: amt,
-      description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp(),
-      isRecurring, recurringFreq };
+      description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp() };
     state.transactions.unshift(txn);
     if (state.snToken) {
       snAPI.call('/transactions', 'POST', snPayload)
@@ -2695,31 +2550,7 @@ function renderAll() {
 }
 
 /* ── DASHBOARD ── */
-function renderPendingRecurring() {
-  const panel = document.getElementById('pending-recurring-panel');
-  const n = (state.pendingRecurring || []).length;
-  panel.style.display = n ? 'block' : 'none';
-  if (!n) return;
-  document.getElementById('pending-recurring-count').textContent = n;
-  document.getElementById('pending-recurring-list').innerHTML = state.pendingRecurring.map(d => {
-    const isPos = d.type === 'income';
-    return `<div class="pending-recur-row">
-      <div class="pending-recur-body">
-        <div class="pending-recur-name">${catIcon(d.category)} ${esc(d.description)}</div>
-        <div class="pending-recur-meta">${esc(d.category)} · ${esc(d.account)} · ${fmtDate(d.date)}</div>
-      </div>
-      <div class="pending-recur-amt" style="color:${isPos?'var(--jade-d)':'var(--coral)'}">${isPos?'+':'-'}${fmtWithCur(d.amount, d.currency)}</div>
-      <div class="pending-recur-actions">
-        <button class="btn btn-jade btn-sm" style="padding:5px 9px;font-size:11px;" onclick="confirmPendingRecurring('${d.id}')">✓ Confirm</button>
-        <button class="btn btn-ghost btn-sm" style="padding:5px 9px;font-size:11px;" onclick="openPendingRecurringModal('${d.id}')">✏️</button>
-        <button class="btn btn-ghost btn-sm" style="padding:5px 9px;font-size:11px;" onclick="skipPendingRecurring('${d.id}')">Skip</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
 function renderDashboard() {
-  renderPendingRecurring();
   const s = calcStats();
   const monthTxns = getMonthTxns();
   const currencies = [...new Set(monthTxns.map(t => t.currency || state.currency))];
@@ -2870,7 +2701,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
     <div class="txn-ico" style="background:${CAT_BG[txn.category]||'#F7F9FC'}">${catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
-      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:#F5F3FF;color:#8B5CF6;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', txn.isRecurring ? `<span title="Repeats ${esc(txn.recurringFreq||'monthly')}" style="background:var(--amber-s);color:#92400E;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">🔁</span>` : '', showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:#F5F3FF;color:#8B5CF6;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="txn-amt ${isPos||isAsset?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':''}>${isPos||isAsset?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -4519,8 +4350,7 @@ async function snLoadAll() {
       if (key && t.transferGroup) knownGroups[key] = { g: t.transferGroup, peer: t.transferPeer || '' };
     });
 
-    const RECUR_CLONE_MARKER = 'Auto-generated from recurring template:';
-    const mapped = (txns || []).map(t => ({
+    state.transactions = (txns  || []).map(t => ({
       id         : t.sys_id,
       type       : t.type,
       amount     : t.amount,
@@ -4532,19 +4362,8 @@ async function snLoadAll() {
       currency   : t.currency || state.currency,
       transferGroup: t.transfer_group || (knownGroups[t.sys_id]?.g || ''),
       transferPeer : knownGroups[t.sys_id]?.peer || '',
-      created    : t.created || '',
-      isRecurring  : t.is_recurring || false,
-      recurringFreq: t.recurring_frequency || '',
-      state        : t.state || '2',
-      sys_id       : t.sys_id
+      created    : t.created || ''
     }));
-    // A Draft row is either a recurring clone awaiting confirmation, or (via a
-    // separate, unrelated SN rule) a future-dated transaction someone entered
-    // manually — the date picker has no upper bound. Only the notes marker the
-    // recurring Flow writes distinguishes the two; without it, a future-dated
-    // entry would wrongly show up as something to confirm/skip.
-    state.pendingRecurring = mapped.filter(t => t.state === '1' && t.notes.startsWith(RECUR_CLONE_MARKER));
-    state.transactions = mapped.filter(t => !(t.state === '1' && t.notes.startsWith(RECUR_CLONE_MARKER)));
 
     // Rebuild each transfer leg's peer-account label from its partner row.
     const tgroups = {};
