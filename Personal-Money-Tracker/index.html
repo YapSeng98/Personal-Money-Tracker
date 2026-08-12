@@ -119,6 +119,15 @@ body{font-family:var(--ff);background:var(--surface);color:var(--ink);display:fl
 
 /* ── CHART BARS ── */
 .chart-bar-wrap{display:flex;flex-direction:column;gap:12px;}
+.trend-range-tabs{display:flex;gap:4px;}
+.trend-range-btn{font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;border:none;background:var(--surface);color:var(--muted);cursor:pointer;}
+.trend-range-btn.active{background:var(--coral);color:#fff;}
+.trend-detail{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px;min-height:18px;}
+.trend-bars{display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 2px;}
+.trend-bar-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;}
+.trend-bar{width:100%;max-width:28px;background:linear-gradient(180deg,var(--coral),var(--coral-s));border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;}
+.trend-bar-col.trend-bar-selected .trend-bar{background:linear-gradient(180deg,var(--sky),#60A5FA);}
+.trend-bar-label{font-size:9px;color:var(--muted);margin-top:6px;white-space:nowrap;}
 .chart-bar-row{display:flex;align-items:center;gap:10px;}
 .chart-bar-label{width:110px;font-size:12px;font-weight:500;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .chart-bar-track{flex:1;background:var(--surface);border-radius:99px;height:8px;overflow:hidden;}
@@ -709,6 +718,19 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <div class="panel" style="margin-bottom:20px;">
         <div class="panel-header"><div class="panel-title">Category Breakdown</div></div>
         <div class="chart-bar-wrap" id="analytics-chart"><div class="empty"><div class="icon">📊</div><p>Add transactions to see breakdown</p></div></div>
+      </div>
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-header">
+          <div class="panel-title">Spending Trend</div>
+          <div class="trend-range-tabs" id="trend-range-tabs">
+            <button class="trend-range-btn" data-months="3" onclick="setTrendRange(3)">3M</button>
+            <button class="trend-range-btn" data-months="6" onclick="setTrendRange(6)">6M</button>
+            <button class="trend-range-btn" data-months="9" onclick="setTrendRange(9)">9M</button>
+            <button class="trend-range-btn" data-months="12" onclick="setTrendRange(12)">12M</button>
+          </div>
+        </div>
+        <div class="trend-detail" id="trend-detail">&nbsp;</div>
+        <div id="trend-chart"></div>
       </div>
       <div class="ai-panel">
         <div class="ai-header"><div class="ai-badge">Platform Analytics</div><div class="ai-title">Spend Analysis Report</div></div>
@@ -1433,6 +1455,7 @@ let state = {
   // sitting right next to it in the same localStorage.
   appLockEnabled: false,
   appLockPinHash: '',
+  trendMonths: 6,
   // SN custom auth
   snToken: null,
   snProfileSysId: null,
@@ -1464,6 +1487,7 @@ function saveState() {
       balancesMasked: state.balancesMasked,
       appLockEnabled: state.appLockEnabled,
       appLockPinHash: state.appLockPinHash,
+      trendMonths: state.trendMonths,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
       snUserProfile: state.snUserProfile
@@ -2902,6 +2926,12 @@ function renderGoals() {
 
 /* ── ANALYTICS ── */
 function renderAnalytics() {
+  // Independent of everything below — the category-breakdown panel further
+  // down has an early return when the CURRENT month has no expenses, which
+  // must not stop the trend chart from rendering its own (possibly non-empty,
+  // possibly empty) view of the last N months.
+  renderSpendingTrend();
+
   // All-time per-currency totals
   const allTxns = state.transactions;
   const currencies = [...new Set(allTxns.map(t => t.currency || state.currency))];
@@ -2988,6 +3018,83 @@ function renderAnalytics() {
       <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>` : ''}${bars}`;
   }).join('');
+}
+
+function setTrendRange(n) {
+  state.trendMonths = n;
+  saveState();
+  renderSpendingTrend();
+}
+
+function showTrendDetail(mk, cur, amt, el) {
+  const [y, m] = mk.split('-');
+  const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
+  document.getElementById('trend-detail').textContent = `${label}: ${fmtWithCur(amt, cur)}`;
+  document.querySelectorAll('.trend-bar-col').forEach(c => c.classList.remove('trend-bar-selected'));
+  if (el) el.classList.add('trend-bar-selected');
+}
+
+// Relative to today, not state.filterMonth — Analytics has no month bar of its
+// own, so "last N months" means a stable trailing window, not whatever month
+// happens to be selected elsewhere in the app.
+function renderSpendingTrend() {
+  const n = state.trendMonths || 6;
+  document.querySelectorAll('.trend-range-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.months) === n));
+
+  const now = new Date();
+  const months = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  // Expense only, transfers excluded (isFlow) — this is spending, not net cash movement.
+  const byMonthCur = {};
+  state.transactions.forEach(t => {
+    if (t.type !== 'expense' || !isFlow(t)) return;
+    const mk = t.date.slice(0, 7);
+    if (!months.includes(mk)) return;
+    const cur = t.currency || state.currency;
+    if (!byMonthCur[cur]) byMonthCur[cur] = {};
+    byMonthCur[cur][mk] = (byMonthCur[cur][mk] || 0) + t.amount;
+  });
+
+  const el = document.getElementById('trend-chart');
+  const currencies = Object.keys(byMonthCur);
+  if (!currencies.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">📈</div><p>No spending in the last ${n} months</p></div>`;
+    document.getElementById('trend-detail').innerHTML = '&nbsp;';
+    return;
+  }
+  const isMultiCurTrend = currencies.length > 1;
+
+  el.innerHTML = currencies.map(cur => {
+    const vals = months.map(mk => byMonthCur[cur]?.[mk] || 0);
+    const max  = Math.max(...vals, 0.01);
+    const bars = months.map((mk, i) => {
+      const v = vals[i];
+      const h = (v / max * 100).toFixed(1);
+      const [y, m] = mk.split('-');
+      const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
+      return `<div class="trend-bar-col" onclick="showTrendDetail('${mk}','${cur}',${v},this)">
+        <div class="trend-bar" style="height:${h}%;"></div>
+        <div class="trend-bar-label">${label}</div>
+      </div>`;
+    }).join('');
+    return `${isMultiCurTrend ? `<div style="display:flex;align-items:center;gap:10px;margin:12px 0 10px;">
+      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>` : ''}<div class="trend-bars">${bars}</div>`;
+  }).join('');
+
+  // Default to the most recent month with data, first currency, so the detail
+  // line isn't empty on first render.
+  const firstCur = currencies[0];
+  const lastMonthWithData = [...months].reverse().find(mk => byMonthCur[firstCur]?.[mk] > 0) || months[months.length - 1];
+  const defaultAmt = byMonthCur[firstCur]?.[lastMonthWithData] || 0;
+  const defaultCol = document.querySelector(`.trend-bars .trend-bar-col:nth-child(${months.indexOf(lastMonthWithData) + 1})`);
+  showTrendDetail(lastMonthWithData, firstCur, defaultAmt, defaultCol);
 }
 
 /* ── ACCOUNTS ── */
@@ -4038,7 +4145,11 @@ function _hideSNLogin() {
 async function snLoadAll() {
   try {
     const [txns, budgets, goals, accounts] = await Promise.all([
-      snAPI.call('/transactions?limit=500'),
+      // 3000 comfortably covers a full year even for a heavy multi-account user;
+      // this only affects payload size for people who actually have that many —
+      // a light user's fetch is unchanged since the number is a ceiling, not a
+      // target. Needed so the spending-trend chart isn't quietly missing months.
+      snAPI.call('/transactions?limit=3000'),
       snAPI.call('/budgets'),
       snAPI.call('/goals'),
       snAPI.call('/accounts')
