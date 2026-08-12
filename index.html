@@ -4173,12 +4173,13 @@ async function submitPinUnlock() {
   }
   errEl.textContent = '';
   document.getElementById('pin-lock-input').value = '';
-  // Re-lock (auto-lock while the tab stayed open) vs cold boot: the app is
-  // already running in the second case, so just drop the overlay rather than
-  // re-running the whole boot + auto-login sequence.
-  if (_appStarted) { _hideSNLogin(); _lastHiddenAt = null; }
-  else             { startApp(); }
+  _hideSNLogin();
+  _lastHiddenAt = null;
   resetIdleTimer();
+  if (_pendingWelcome) {
+    showToast(`Welcome, ${_pendingWelcome} 👋`, 'success');
+    _pendingWelcome = '';
+  }
 }
 
 // ── Auto-lock ────────────────────────────────────────────────
@@ -4383,9 +4384,29 @@ async function _onSNAuthSuccess(result) {
     }
   } catch(_) {}
   _setLoginLoading(false);
-  _hideSNLogin();
   renderAll();
-  showToast(`Welcome, ${state.snUserProfile.display_name || state.snUserProfile.username} 👋`, 'success');
+  _revealAppAfterAuth(state.snUserProfile.display_name || state.snUserProfile.username);
+}
+
+// Authentication has succeeded — either reveal the app, or interpose the PIN
+// gate when App Lock is on. The PIN sits AFTER login rather than before it, so
+// signing in always ends at the PIN screen: that also means signing out and
+// back in can't slip past the lock, which it could when the gate only ran at
+// page load.
+let _pendingWelcome = '';
+function _revealAppAfterAuth(welcomeName) {
+  if (state.appLockEnabled && state.appLockPinHash) {
+    _pendingWelcome = welcomeName || '';
+    const ol = document.getElementById('login-overlay');
+    if (ol) ol.style.display = 'flex';
+    showAuthPanel('pinlock');
+    const pin = document.getElementById('pin-lock-input');
+    if (pin) { pin.value = ''; setTimeout(() => pin.focus(), 100); }
+    return;
+  }
+  _hideSNLogin();
+  resetIdleTimer();
+  if (welcomeName) showToast(`Welcome, ${welcomeName} 👋`, 'success');
 }
 
 async function snLogout() {
@@ -4412,6 +4433,15 @@ function _showSNLogin() {
   showAuthPanel('login');
   const reg = document.getElementById('sn-reg-instance');
   if (reg && state.snInstance) reg.value = state.snInstance;
+  // doSNLogin() disables the button while signing in and only re-enables it on
+  // failure — a successful login left it disabled forever. That went unnoticed
+  // while the overlay was only ever dismissed for good, but signing out brings
+  // this screen back, and the button was dead until a page reload.
+  const btn = document.getElementById('sn-li-btn');
+  if (btn) btn.disabled = false;
+  const pw = document.getElementById('sn-li-password');
+  if (pw) pw.value = '';
+  _setLoginLoading(false);
 }
 
 
@@ -4657,13 +4687,11 @@ function _populateSettingsUI() {
 }
 
 let _hadSavedStateAtBoot = false;
-let _appStarted = false;
 
 // Everything that used to run unconditionally in init() now waits behind the
 // PIN gate (if one is set) — nothing here runs, and nothing is rendered, until
 // submitPinUnlock() or submitPinRecovery() calls this.
 function startApp() {
-  _appStarted = true;
   setConnStatus('disconnected');
   if (!_hadSavedStateAtBoot) loadSampleData(); else renderAll();
   _populateSettingsUI();
@@ -4674,7 +4702,6 @@ function startApp() {
     _setLoginLoading(true, 'Verifying session…');
     snAPI.call('/profile').then(prof => {
       _setLoginLoading(false);
-      _hideSNLogin();
       if (prof) {
         state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
         if (prof.currency) state.currency = prof.currency;
@@ -4683,6 +4710,9 @@ function startApp() {
         saveState();
       }
       renderAll();
+      // Restoring a saved session counts as signing in, so it goes through the
+      // same PIN gate as a fresh login.
+      _revealAppAfterAuth('');
       if (prof) snLoadAll().then(() => renderAll());
     }).catch(() => {
       // Token invalid/expired — clear stale profile identity, try auto-login
@@ -4701,17 +4731,10 @@ function startApp() {
 
 (function init() {
   _hadSavedStateAtBoot = loadState();
-  if (state.appLockEnabled && state.appLockPinHash) {
-    // Locked: show the PIN panel and stop. No render, no auto-login, no data
-    // in the DOM until the correct PIN (or password recovery) clears this.
-    const ol = document.getElementById('login-overlay');
-    if (ol) ol.style.display = 'flex';
-    showAuthPanel('pinlock');
-    const pinInput = document.getElementById('pin-lock-input');
-    if (pinInput) setTimeout(() => pinInput.focus(), 100);
-  } else {
-    startApp();
-  }
+  // The PIN gate lives after authentication now (see _revealAppAfterAuth), not
+  // here — signing in is what triggers it, so logging out and back in can't
+  // bypass it the way it could when the check only ran once at page load.
+  startApp();
 })();
 </script>
 </body>

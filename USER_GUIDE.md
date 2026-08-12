@@ -50,7 +50,11 @@ The app remembers your credentials and **auto-connects on your next visit** — 
 For a layer of privacy on top of auto-connect — a PIN prompt on every reopen, so a glance at an unlocked phone doesn't show your login already sitting there:
 
 1. **Settings → App Lock** → enter a 4–6 digit PIN twice → **Enable App Lock**
-2. From then on, opening the app on this device shows a PIN prompt before anything else — before the login screen, before any data is drawn
+2. From then on, **signing in always ends at the PIN screen**:
+
+   `username + password  →  🔒 PIN  →  Dashboard`
+
+   That holds whether you typed your password or the app signed you in automatically from a saved session — either way the PIN is the last step before your data appears.
    - It also **re-locks after 1 minute of inactivity**, so walking away from an open tab doesn't leave your finances on screen. Any click, tap, keypress, or scroll resets the timer
    - **🔒 Lock Now** in Settings locks it immediately if you'd rather not wait
 3. **Forgot it?** Tap **Forgot PIN?** on the lock screen and verify with your account username/password — that clears the PIN so you can set a new one
