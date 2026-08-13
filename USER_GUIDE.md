@@ -54,7 +54,15 @@ For a layer of privacy on top of auto-connect — a PIN prompt on every reopen, 
 
    `username + password  →  🔒 PIN  →  Dashboard`
 
-   That holds whether you typed your password or the app signed you in automatically from a saved session — either way the PIN is the last step before your data appears.
+   With App Lock on, **reopening or refreshing the app always asks for your password again** — the "auto-connect on your next visit" shortcut is deliberately switched off, because a saved session that opens straight into your finances would defeat the lock.
+
+   The 1-minute idle re-lock is different: your session stays signed in, so **coming back after stepping away only costs the PIN**, not the password.
+
+   | | What you enter |
+   |---|---|
+   | Reopen / refresh the app | Password **+** PIN |
+   | Back after the 1-min idle lock | PIN only |
+   | 🔒 Lock Now | PIN only |
    - It also **re-locks after 1 minute of inactivity**, so walking away from an open tab doesn't leave your finances on screen. Any click, tap, keypress, or scroll resets the timer
    - **🔒 Lock Now** in Settings locks it immediately if you'd rather not wait
 3. **Forgot it?** Tap **Forgot PIN?** on the lock screen and verify with your account username/password — that clears the PIN so you can set a new one

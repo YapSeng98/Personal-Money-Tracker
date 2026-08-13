@@ -4696,6 +4696,16 @@ function startApp() {
   if (!_hadSavedStateAtBoot) loadSampleData(); else renderAll();
   _populateSettingsUI();
 
+  // With App Lock on, a fresh page load always demands a full sign-in — no
+  // silent session restore, no auto-login from saved credentials. The idle
+  // re-lock is different: that keeps the session alive and only asks for the
+  // PIN, so stepping away for a minute costs a PIN, while actually reopening
+  // the app costs password + PIN.
+  if (state.appLockEnabled && state.appLockPinHash) {
+    _showSNLogin();
+    return;
+  }
+
   // SN Auth flow: check for saved session token
   if (state.snToken && state.snProfileSysId) {
     // Token found — keep login overlay visible until validation completes
