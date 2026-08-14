@@ -69,6 +69,15 @@ For a layer of privacy on top of auto-connect — a PIN prompt on every reopen, 
 
 The PIN is stored only on this device (like the balance mask) — it's never sent to ServiceNow, and doesn't sync to your other devices. Each device you use it on needs its own PIN set separately.
 
+### Light & dark theme
+
+**Settings → Appearance**, or the 🌙 / ☀️ button in the top bar for a quick flip.
+
+- **Auto** (default) follows your phone or computer's own light/dark setting — including switching automatically when your device does at sunset
+- **Light** / **Dark** pin it on this device regardless of the system setting
+
+The choice is saved per device, so your phone can run dark while your laptop stays light.
+
 ### Working offline
 
 If ServiceNow is unreachable, the app still works: everything is saved to your browser's local storage and re-synced when the connection returns. The connection status dot in the sidebar shows your sync state.
