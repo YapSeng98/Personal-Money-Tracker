@@ -55,13 +55,16 @@ html[data-theme="dark"] {
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-html{transition:background-color .35s ease;}
+/* Page colour lives on <html> so body's ::before/::after can sit at z-index:-1
+   — behind all content but still in front of the page colour. Putting the
+   colour on <body> instead would bury them. */
+html{background:var(--bg);transition:background-color .35s ease;}
 
 /* Ambient depth — slow-drifting colour fields anchored to the top corners like
    a dashboard header glow, rather than blobs floating mid-screen. Fixed +
    pointer-events:none so it never intercepts clicks or scrolls. */
 body::before{
-  content:'';position:fixed;inset:-20%;z-index:0;pointer-events:none;
+  content:'';position:fixed;inset:-20%;z-index:-1;pointer-events:none;
   background:
     radial-gradient(46% 34% at 6% -4%,  var(--aurora-2), transparent 66%),
     radial-gradient(40% 30% at 94% -2%, var(--aurora-1), transparent 66%),
@@ -78,18 +81,17 @@ body::before{
    both themes now (very faint in light), since it's what makes the surface read
    as financial rather than as a generic gradient wallpaper. */
 body::after{
-  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),
                    linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
   background-size:64px 64px;
   -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 35%,transparent 78%);
           mask-image:radial-gradient(120% 90% at 50% 0%,#000 35%,transparent 78%);
 }
-.app-shell,.topbar,.month-nav,.bottom-nav,.modal-backdrop,.confirm-backdrop,#toast{position:relative;z-index:1;}
 @media (prefers-reduced-motion:reduce){
   body::before{animation:none;}
 }
-body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;flex-direction:column;}
+body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;flex-direction:column;}
 
 /* ── SHELL ── */
 .app-shell{display:flex;height:100vh;overflow:hidden;}
