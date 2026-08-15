@@ -151,6 +151,12 @@ Use **Asset** to record value going into a holding — a brokerage top-up, gold,
 
 Categories: Investment 📈, Property 🏘️, Gold 🥇, Vehicle 🚗, Other 💰.
 
+**Where did the money come from?** Pick a **Funded From** account and the amount is deducted there and added to the holding — the money moves rather than appearing from nowhere. Your net worth is unchanged by the purchase itself, which is correct: you swapped cash for an asset.
+
+Leave **Funded From** blank only when you're recording something you *already owned* (an existing holding you're adding to the app for the first time). In that case the holding goes up with nothing deducted anywhere.
+
+Only same-currency accounts are offered as a funding source, and the holding can't fund itself. Deleting a funded asset removes both sides and restores both balances.
+
 ### Transfer
 
 Pick a **From Account** and a **To Account**. The money leaves one and arrives in the other, and the list shows it as a single `🔄 DBS Saving → KenTrade` row.
