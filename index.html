@@ -3008,7 +3008,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
       </div>
       <div class="txn-amt" style="color:${inkC};">${fmtWithCur(txn.amount, txn.currency)}${diffCur ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
-        ${isAssetPair ? '' : `<button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit transfer">✏️</button>`}
+        <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="${isAssetPair ? 'Edit asset' : 'Edit transfer'}">✏️</button>
         <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete (both sides)">🗑️</button>
       </div>` : ''}
     </div>`;
