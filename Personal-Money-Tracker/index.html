@@ -1767,6 +1767,29 @@ function openTxnModal(id = null) {
       const legs = state.transactions.filter(x => x.transferGroup === txn.transferGroup);
       const out  = legs.find(x => x.type === 'expense') || txn;
       const inc  = legs.find(x => x.type === 'income');
+      const assetLeg = legs.find(x => x.type === 'asset');
+
+      // A funded asset is a pair too, but it belongs on the Asset tab with its
+      // funding source filled in — not on Transfer, which would misrepresent it
+      // and lose the asset leg on save.
+      if (assetLeg) {
+        setType('asset', document.getElementById('tab-asset'));
+        document.getElementById('txn-desc').value     = assetLeg.description;
+        document.getElementById('txn-date').value     = assetLeg.date;
+        document.getElementById('txn-notes').value    = assetLeg.notes || '';
+        setSelectVal('txn-cat', assetLeg.category);
+        setSelectVal('txn-account', assetLeg.account);
+        document.getElementById('txn-currency').value = assetLeg.currency || state.currency;
+        document.getElementById('txn-amount').value   = assetLeg.amount;
+        populateFundAccounts(out && out !== assetLeg ? out.account : '');
+        updateAssetUI();
+        document.getElementById('txn-edit-id').value = assetLeg.id;
+        document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
+        document.getElementById('save-txn-btn').className   = 'btn btn-amber';
+        document.getElementById('txn-modal').classList.add('open');
+        return;
+      }
+
       setType('transfer', document.getElementById('tab-transfer'));
       document.getElementById('txn-desc').value     = out.description;
       document.getElementById('txn-date').value     = out.date;
@@ -1792,6 +1815,10 @@ function openTxnModal(id = null) {
     setSelectVal('txn-cat',      txn.category);
     setSelectVal('txn-account',  txn.account);
     document.getElementById('txn-currency').value = txn.currency || state.currency;
+    // setType() ran before the account/currency were filled in, so the funding
+    // list was built against the previous account — it offered the holding
+    // itself and hid the real source. Rebuild now that both are set.
+    if (txn.type === 'asset') { populateFundAccounts(''); updateAssetUI(); }
     document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
@@ -2025,6 +2052,72 @@ async function saveAssetPair({ amt, desc, cat, from, to, currency, date, notes }
   renderAll();
 }
 
+// Editing an asset, covering every combination of funding before/after:
+//   none → none    plain field update
+//   none → funded  create the matching expense leg and link them
+//   funded → none  drop the expense leg, money returns to the source
+//   funded → funded update both legs, including switching source account
+async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, notes, fundFrom }) {
+  const assetRow = state.transactions.find(t => t.id == editId);
+  if (!assetRow) { showToast('Transaction not found', 'error'); return; }
+  const group    = assetRow.transferGroup || '';
+  const expenseLeg = group ? state.transactions.find(t => t.transferGroup === group && t.type === 'expense') : null;
+
+  Object.assign(assetRow, { type:'asset', amount:amt, description:desc, category:cat,
+                            account:to, currency, date, notes });
+
+  const syncSN = (row, extra={}) => {
+    const sysId = _snId(row);
+    if (!state.snToken || !sysId) return Promise.resolve();
+    return snAPI.call('/transactions', 'PUT', { sys_id: sysId, type: row.type, amount: row.amount,
+      description: row.description, category_name: row.category, account_name: row.account,
+      date: row.date, notes: row.notes, currency: row.currency, ...extra })
+      .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+  };
+
+  if (fundFrom && expenseLeg) {
+    Object.assign(expenseLeg, { amount:amt, description:desc, category:cat,
+                                account:fundFrom, currency, date, notes });
+    assetRow.transferPeer   = fundFrom;
+    expenseLeg.transferPeer = to;
+    await Promise.all([syncSN(assetRow), syncSN(expenseLeg)]);
+
+  } else if (fundFrom && !expenseLeg) {
+    const g = group || ('ag_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    assetRow.transferGroup = g;
+    assetRow.transferPeer  = fundFrom;
+    const leg = { id: state.nextId++, type:'expense', amount:amt, description:desc, category:cat,
+                  account:fundFrom, date, notes, currency, transferGroup:g, transferPeer:to,
+                  created: nowStamp() };
+    state.transactions.unshift(leg);
+    await syncSN(assetRow, { transfer_group: g });
+    if (state.snToken) {
+      await snAPI.call('/transactions', 'POST', { type:'expense', amount:amt, description:desc,
+        category_name:cat, account_name:fundFrom, date, notes, currency, transfer_group:g })
+        .then(res => { if (res?.sys_id) leg.sys_id = res.sys_id; })
+        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    }
+
+  } else if (!fundFrom && expenseLeg) {
+    state.transactions = state.transactions.filter(t => t.id !== expenseLeg.id);
+    delete assetRow.transferGroup; delete assetRow.transferPeer;
+    const sysId = _snId(expenseLeg);
+    if (state.snToken && sysId) {
+      snAPI.call('/transactions', 'DELETE', { sys_id: sysId })
+        .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+    }
+    await syncSN(assetRow, { transfer_group: '' });
+
+  } else {
+    await syncSN(assetRow);
+  }
+
+  saveState();
+  showToast(fundFrom ? `Updated — ${fmtWithCur(amt, currency)} from ${fundFrom}` : t('toast_txn_updated'), 'success');
+  closeTxnModal();
+  renderAll();
+}
+
 async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, toCur, date, notes }) {
   const group = 'tg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const legs = [
@@ -2151,11 +2244,21 @@ async function saveTransaction() {
   // holding credited, sharing a group id so both balances move, neither shows
   // up as income/spending, and deleting one removes both. Same mechanism as a
   // transfer — the destination leg just carries type 'asset'.
-  if (state.currentType === 'asset' && editId === '') {
+  if (state.currentType === 'asset') {
     const fundFrom = document.getElementById('txn-fund-account').value;
-    if (fundFrom) {
-      if (fundFrom === acct) { showToast('Funding account must differ from the holding', 'error'); return; }
-      await saveAssetPair({ amt, desc, cat, from: fundFrom, to: acct, currency, date, notes });
+    if (fundFrom && fundFrom === acct) {
+      showToast('Funding account must differ from the holding', 'error'); return;
+    }
+    if (editId === '') {
+      if (fundFrom) {
+        await saveAssetPair({ amt, desc, cat, from: fundFrom, to: acct, currency, date, notes });
+        return;
+      }
+    } else {
+      // Editing has to handle funding changing in either direction, not just
+      // the create case — otherwise picking a source on an existing asset
+      // silently did nothing and no money was ever deducted.
+      await updateAssetFunding(editId, { amt, desc, cat, to: acct, currency, date, notes, fundFrom });
       return;
     }
   }
