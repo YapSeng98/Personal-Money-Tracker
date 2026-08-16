@@ -2991,17 +2991,33 @@ function txnListByDate(arr, forceBadge = false, showTotals = false) {
   const byDate = {};
   sortTxnsDesc(arr).forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
-    .map(d => `<div class="txn-date-group"><span>${fmtDate(d)}</span>${showTotals ? dayTotalHTML(byDate[d]) : ''}</div>${collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('')}`)
+    .map(d => {
+      // Build the rows first: collapsing can empty a day out, and a date header
+      // with nothing under it just looks like a rendering fault.
+      const rows = collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('');
+      if (!rows) return '';
+      return `<div class="txn-date-group"><span>${fmtDate(d)}</span>${showTotals ? dayTotalHTML(byDate[d]) : ''}</div>${rows}`;
+    })
     .join('');
 }
 
 // A transfer occupies two rows in state. Showing both would read as an unrelated
 // expense and income; only the outgoing leg is rendered, carrying the pair.
 function collapseTransfers(arr) {
-  // Keep the outgoing leg only. Order matters here: both legs are unshifted at
-  // save time, so the income leg comes first in the array — a "first one wins"
-  // rule would drop the pair entirely.
-  return arr.filter(t => !t.transferGroup || t.type === 'expense');
+  // Collapse a pair to one row only when BOTH legs are in this same list.
+  // A cross-currency transfer has its legs in different currency sections, so
+  // each section holds just one — dropping it there made the money vanish from
+  // that currency's view entirely (and left an empty date header behind).
+  const legsHere = {};
+  arr.forEach(t => { if (t.transferGroup) legsHere[t.transferGroup] = (legsHere[t.transferGroup] || 0) + 1; });
+  return arr.filter(t => {
+    if (!t.transferGroup) return true;
+    // Both legs here → show the outgoing one. Every pair has exactly one
+    // expense leg (transfer = expense+income, asset = expense+asset), so this
+    // picks precisely one row; "not income" would have kept both for an asset.
+    if (legsHere[t.transferGroup] > 1) return t.type === 'expense';
+    return true; // lone leg (legs split across currency sections): show it
+  });
 }
 
 function txnRowHTML(txn, showActions = true, forceBadge = false) {
@@ -3020,13 +3036,21 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
     const inkC  = isAssetPair ? 'var(--violet)'   : 'var(--sky)';
     const icon  = isAssetPair ? '📈' : '🔄';
     const badge = isAssetPair ? 'ASSET' : 'TRANSFER';
+    // Direction follows the leg being shown. When only the receiving leg is in
+    // view (a cross-currency transfer, whose legs sit in different currency
+    // sections), "TNG → DBS" would claim the money went the wrong way.
+    const other    = esc(txn.transferPeer || (peer && peer.account) || '?');
+    const incoming = txn.type === 'income';
+    const route    = incoming ? `${other} → ${esc(txn.account)}` : `${esc(txn.account)} → ${other}`;
+    // A lone leg shows its own amount; a collapsed pair shows sent → received.
+    const showsPair = peer && !incoming;
     return `<div class="txn-row">
       <div class="txn-ico" style="background:${tint}">${icon}</div>
       <div class="txn-body">
         <div class="txn-name">${esc(txn.description)}</div>
-        <div class="txn-meta">${esc(txn.account)} → ${esc(txn.transferPeer || (peer && peer.account) || '?')} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span></div>
+        <div class="txn-meta">${route} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span></div>
       </div>
-      <div class="txn-amt" style="color:${inkC};">${fmtWithCur(txn.amount, txn.currency)}${diffCur ? ` → ${recv}` : ''}</div>
+      <div class="txn-amt" style="color:${inkC};">${incoming ? '+' : ''}${fmtWithCur(txn.amount, txn.currency)}${(showsPair && diffCur) ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
         <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="${isAssetPair ? 'Edit asset' : 'Edit transfer'}">✏️</button>
         <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete (both sides)">🗑️</button>
