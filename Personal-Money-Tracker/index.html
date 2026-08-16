@@ -206,6 +206,13 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .sp-legend-pct-input{width:44px;font-size:12px;font-weight:700;text-align:right;border:1px solid var(--border);border-radius:6px;padding:4px 5px;font-family:var(--fm);flex-shrink:0;}
 .sp-legend-pct-sign{font-size:11px;color:var(--muted);flex-shrink:0;margin-left:-4px;}
 .sp-legend-amt{width:88px;text-align:right;font-size:12px;font-family:var(--fm);color:var(--muted);flex-shrink:0;}
+/* Native dropdown internals don't reliably inherit the control's colours, so
+   dark mode gets them explicitly — otherwise options can render near-black on
+   near-black depending on the browser. */
+select.form-input optgroup{font-weight:700;font-style:normal;}
+html[data-theme="dark"] select.form-input option,
+html[data-theme="dark"] select.form-input optgroup{background:var(--card);color:var(--ink);}
+html[data-theme="dark"] select.form-input optgroup{color:var(--sky);}
 .theme-opts{display:flex;gap:8px;flex-wrap:wrap;}
 .theme-opt{font-size:13px;font-weight:600;padding:9px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;font-family:var(--ff);transition:all .15s;}
 .theme-opt:hover{border-color:var(--jade);}
@@ -1750,9 +1757,7 @@ function openTxnModal(id = null) {
   // Populate account dropdown from user's saved accounts
   const accSel = document.getElementById('txn-account');
   if (state.accounts.length) {
-    accSel.innerHTML = state.accounts.map(a =>
-      `<option value="${esc(a.name)}">${a.icon || '🏦'} ${esc(a.name)}</option>`
-    ).join('');
+    accSel.innerHTML = accountOptionsHTML(state.accounts);
   } else {
     accSel.innerHTML = '<option value="" disabled>No accounts — add one in Accounts tab</option>';
   }
@@ -1906,6 +1911,22 @@ function onTxnAccountChange() {
   if (state.currentType === 'asset')    { populateFundAccounts(); updateAssetUI(); }
 }
 
+// Accounts grouped under a currency <optgroup> when more than one currency is
+// in play. A flat list mixing SGD and MYR entries is easy to misread — and
+// picking the wrong-currency account is exactly the mistake that produces a
+// row which moves no money. Single-currency users see no grouping at all.
+function accountOptionsHTML(accounts) {
+  const byCur = {};
+  accounts.forEach(a => {
+    const c = a.currency || state.currency;
+    (byCur[c] = byCur[c] || []).push(a);
+  });
+  const curs = Object.keys(byCur).sort();
+  const opt = a => `<option value="${esc(a.name)}">${a.icon || '🏦'} ${esc(a.name)}</option>`;
+  if (curs.length <= 1) return accounts.map(opt).join('');
+  return curs.map(c => `<optgroup label="${c}">${byCur[c].map(opt).join('')}</optgroup>`).join('');
+}
+
 // The destination list excludes the source account — transferring to yourself
 // is a no-op that would still write two rows.
 function populateToAccounts(selected) {
@@ -1914,8 +1935,7 @@ function populateToAccounts(selected) {
   if (!sel) return;
   const keep = selected !== undefined ? selected : sel.value;
   const opts = state.accounts.filter(a => a.name !== from);
-  sel.innerHTML = '<option value="">— Select destination —</option>'
-    + opts.map(a => `<option value="${esc(a.name)}">${esc(a.name)} (${a.currency || state.currency})</option>`).join('');
+  sel.innerHTML = '<option value="">— Select destination —</option>' + accountOptionsHTML(opts);
   if (opts.some(a => a.name === keep)) sel.value = keep;
 }
 
