@@ -177,8 +177,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .txn-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* Wraps rather than truncates: the currency badge sits last and must stay
    visible on narrow screens. overflow-wrap stops a long word forcing width. */
-.txn-meta{font-size:11px;color:var(--muted);margin-top:1px;overflow-wrap:anywhere;}
-.txn-amt{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.txn-meta{font-size:11px;color:var(--muted);margin-top:1px;overflow-wrap:break-word;}
+.txn-amt{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0;margin-left:auto;}
 .txn-amt.pos{color:var(--jade-d);}
 .txn-amt.neg{color:var(--coral);}
 .txn-actions{display:flex;gap:4px;opacity:.35;transition:opacity .15s;}
@@ -423,6 +423,21 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   .content{padding-bottom:132px!important;}
   /* iOS: inputs under 16px trigger Safari auto-zoom on focus — force 16px */
   input.form-input,select.form-input,textarea.form-input,.sn-login-input,.search-input{font-size:16px!important;}
+
+  /* A cross-currency transfer's amount ("S$1,000.00 → RM3,173.30") is far too
+     wide to sit beside the description on a phone. Let the row wrap so the
+     amount takes its own line instead of squeezing the text to a sliver. */
+  .txn-row{flex-wrap:wrap;row-gap:6px;align-items:flex-start;}
+  /* basis 0 (not auto) so a long description doesn't set the body's width and
+     bump the icon onto its own line */
+  /* Deterministic two-line row: the body claims exactly the width left beside
+     the icon, so the amount and buttons are pushed onto their own line rather
+     than competing for space and crushing the description. */
+  .txn-body{flex:1 1 calc(100% - 46px);min-width:0;}
+  .txn-ico{width:34px;height:34px;font-size:16px;}
+  .txn-amt{order:3;flex:1 1 auto;text-align:right;font-size:14px;margin-left:0;}
+  .txn-actions{order:4;flex:0 0 auto;opacity:1;}  /* no hover on touch */
+  .txn-meta{line-height:1.45;}
 }
 
 /* ── HAMBURGER ── */
