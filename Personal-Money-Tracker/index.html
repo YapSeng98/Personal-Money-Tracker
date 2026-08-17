@@ -140,6 +140,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .kpi-strip>*{min-width:0;}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;transition:box-shadow .2s;}
 .kpi:hover{box-shadow:0 4px 20px rgba(0,0,0,.06);}
+.msum-x{color:var(--sky);font-family:var(--fm);}
+.msum-foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
 .hero-exch{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-top:6px;letter-spacing:.2px;}
 .hero-cur-grid{display:flex;flex-wrap:wrap;gap:12px;}
 .hero-cur-card{flex:1 1 210px;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
@@ -914,7 +916,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div class="panel-title">Monthly In &amp; Out</div>
           <button class="btn btn-ghost btn-sm" onclick="exportMonthlySummaryCSV()" title="Download this table as CSV">⬇ CSV</button>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. Same-currency transfers and asset purchases are left out — inside one currency they net to zero. A currency exchange <em>is</em> counted: the SGD really left your SGD, and the MYR really arrived, so each side is flagged below its month.</div>
+        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. <strong>Income</strong> and <strong>Spending</strong> are what you actually earned and spent. Moving your own money — a same-currency transfer or an asset purchase — nets to zero inside a currency and is left out entirely. A currency exchange does move money, so it gets its own columns rather than being mixed into income or spending. <strong>Net</strong> is all of it together, and matches the change in that currency's accounts.</div>
         <div id="monthly-summary"></div>
       </div>
       <div class="ai-panel">
@@ -3796,8 +3798,17 @@ function monthlyInOut() {
     const cur = t.currency || state.currency;
     byCur[cur] = byCur[cur] || {};
     byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0, xIn: 0, xOut: 0 };
-    if (t.type === 'income') { byCur[cur][mk].inc += t.amount; if (cross) byCur[cur][mk].xIn  += t.amount; }
-    else                     { byCur[cur][mk].exp += t.amount; if (cross) byCur[cur][mk].xOut += t.amount; }
+    // Exchange is kept OUT of inc/exp rather than added to both. Counting the
+    // same money twice made "Money In" of RM3,173.30 look like MYR earnings
+    // when nothing was earned in MYR, and made SGD spending read 2,800 on this
+    // page while the dashboard said 1,800 for the same month.
+    if (cross) {
+      if (t.type === 'income') byCur[cur][mk].xIn  += t.amount;
+      else                     byCur[cur][mk].xOut += t.amount;
+    } else {
+      if (t.type === 'income') byCur[cur][mk].inc  += t.amount;
+      else                     byCur[cur][mk].exp  += t.amount;
+    }
   });
   return { months, byCur };
 }
@@ -3821,34 +3832,41 @@ function renderMonthlySummary() {
   el.innerHTML = currencies.map(cur => {
     // Only months that actually have activity — a run of empty rows is noise.
     const rows = months.filter(mk => byCur[cur][mk]);
-    let tIn = 0, tOut = 0;
+    // The exchange columns appear only for a currency that actually saw one,
+    // so a single-currency book keeps the plain four-column table.
+    const hasX = rows.some(mk => byCur[cur][mk].xIn || byCur[cur][mk].xOut);
+    let tIn = 0, tOut = 0, tXIn = 0, tXOut = 0;
+    const cell = (v, sign, cls) => `<td class="${cls}">${v ? sign + fmtWithCur(v, cur) : '—'}</td>`;
+
     const body = rows.map(mk => {
       const { inc, exp, xIn, xOut } = byCur[cur][mk];
-      tIn += inc; tOut += exp;
-      const net = Math.round((inc - exp) * 100) / 100;
-      // Flag the portion that came from a currency exchange rather than real
-      // earning or spending, so "Money In" of RM3,173 isn't mistaken for income.
-      const note = (xIn || xOut)
-        ? `<div style="font-size:10px;color:var(--sky);font-weight:400;margin-top:2px;">${
-            [xIn ? `incl. ${fmtWithCur(xIn, cur)} exchanged in` : '',
-             xOut ? `incl. ${fmtWithCur(xOut, cur)} exchanged out` : ''].filter(Boolean).join(' · ')
-          }</div>` : '';
+      tIn += inc; tOut += exp; tXIn += xIn; tXOut += xOut;
+      // Net is everything that moved, earned or exchanged — so it matches the
+      // change in this currency's accounts, and the dashboard's net.
+      const net = Math.round((inc - exp + xIn - xOut) * 100) / 100;
       return `<tr>
-        <td>${label(mk)}${note}</td>
-        <td class="msum-in">${inc ? '+' + fmtWithCur(inc, cur) : '—'}</td>
-        <td class="msum-out">${exp ? '-' + fmtWithCur(exp, cur) : '—'}</td>
+        <td>${label(mk)}</td>
+        ${cell(inc, '+', 'msum-in')}
+        ${cell(exp, '-', 'msum-out')}
+        ${hasX ? cell(xIn, '+', 'msum-x') + cell(xOut, '-', 'msum-x') : ''}
         <td style="color:${net < 0 ? 'var(--coral)' : 'var(--jade-d)'};font-weight:700;">${fmtSigned(net, cur)}</td>
       </tr>`;
     }).join('');
-    const tNet = Math.round((tIn - tOut) * 100) / 100;
+
+    const tNet = Math.round((tIn - tOut + tXIn - tXOut) * 100) / 100;
     return `<div class="msum-cur"><span>${cur}</span><div></div></div>
       <div class="msum-wrap"><table class="msum-table">
-        <thead><tr><th>Month</th><th>Money In</th><th>Money Out</th><th>Net</th></tr></thead>
+        <thead><tr>
+          <th>Month</th><th>Income</th><th>Spending</th>
+          ${hasX ? '<th>Exchanged In</th><th>Exchanged Out</th>' : ''}
+          <th>Net</th>
+        </tr></thead>
         <tbody>${body}
           <tr class="msum-total">
             <td>Total</td>
-            <td class="msum-in">${tIn ? '+' + fmtWithCur(tIn, cur) : '—'}</td>
-            <td class="msum-out">${tOut ? '-' + fmtWithCur(tOut, cur) : '—'}</td>
+            ${cell(tIn, '+', 'msum-in')}
+            ${cell(tOut, '-', 'msum-out')}
+            ${hasX ? cell(tXIn, '+', 'msum-x') + cell(tXOut, '-', 'msum-x') : ''}
             <td style="color:${tNet < 0 ? 'var(--coral)' : 'var(--jade-d)'};">${fmtSigned(tNet, cur)}</td>
           </tr>
         </tbody>
@@ -3861,11 +3879,12 @@ function exportMonthlySummaryCSV() {
   const currencies = Object.keys(byCur).sort();
   if (!currencies.length) { showToast('Nothing to export for this range', 'warning'); return; }
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = [['Currency','Month','Money In','Money Out','Net','Exchanged In','Exchanged Out'].map(q).join(',')];
+  const lines = [['Currency','Month','Income','Spending','Net','Exchanged In','Exchanged Out'].map(q).join(',')];
   currencies.forEach(cur => {
     months.filter(mk => byCur[cur][mk]).forEach(mk => {
       const { inc, exp, xIn, xOut } = byCur[cur][mk];
-      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2), (inc - exp).toFixed(2),
+      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2),
+                  (inc - exp + (xIn || 0) - (xOut || 0)).toFixed(2),
                   (xIn || 0).toFixed(2), (xOut || 0).toFixed(2)].map(q).join(','));
     });
   });

@@ -263,7 +263,11 @@ Deeper insight into the selected month:
 - **Category chart** — spending distribution per currency
 - **Spending Trend** — a bar per month for your last 3/6/9/12 months (pick the range with the **3M / 6M / 9M / 12M** tabs), so you can spot a rising or falling pattern without paging back through the month bar one month at a time. Tap any bar to see its exact figure. Transfers aren't counted — moving your own money between accounts isn't spending. Mixed currencies get their own section each, never added together
 - **Monthly In & Out** — a month-by-month table of **money in**, **money out**, and **net**, with a total row. Each currency gets its own table; figures are never combined across currencies. It follows the same 3/6/9/12 range picker as the trend chart, and **⬇ CSV** downloads exactly what you see
-  - Transfers and asset purchases are excluded — moving your own money between accounts is neither income nor spending, so counting it would inflate both columns
+  - **Income** and **Spending** are only what you truly earned and spent
+  - Same-currency transfers and asset purchases are excluded entirely — inside one currency they net to zero
+  - A **cross-currency** transfer did move money, so it gets its own **Exchanged In / Exchanged Out** columns rather than being added to income or spending. Send `S$1,000` and receive `RM3,173.30` and you'll see `-S$1,000.00` under SGD Exchanged Out and `+RM3,173.30` under MYR Exchanged In — with MYR income showing a dash, because nothing was earned in MYR
+  - These columns only appear for a currency that actually saw an exchange
+  - **Net** is everything together, and always matches the change in that currency's accounts — and the figure on the dashboard
 - **📊 Generate Full Report** — an AI-written summary of your month (see [AI Insights](#10-ai-insights))
 
 ---
