@@ -2388,7 +2388,7 @@ async function deleteTransaction(id) {
 
   const detail = txn.transferGroup
     ? `Transfer ${esc(txn.account)} → ${esc(txn.transferPeer || '?')} — removes both sides`
-    : `"${txn.description}" — $${txn.amount.toFixed(2)}`;
+    : `"${txn.description}" — ${fmtWithCur(txn.amount, txn.currency || state.currency)}`;
   const ok = await showConfirm(t('confirm_del_txn'), detail);
   if (!ok) return;
 
@@ -2484,7 +2484,7 @@ async function saveBudget() {
 async function deleteBudget(id) {
   const b = state.budgets.find(x => x.id == id);
   if (!b) return;
-  const ok = await showConfirm(t('confirm_del_budget'), `${b.category} — $${b.amount.toFixed(2)} limit`);
+  const ok = await showConfirm(t('confirm_del_budget'), `${b.category} — ${fmtWithCur(b.amount, b.currency || state.currency)} limit`);
   if (!ok) return;
   state.budgets = state.budgets.filter(x => x.id != id);
   saveState();
@@ -2624,7 +2624,7 @@ async function saveGoal() {
 async function deleteGoal(id) {
   const g = state.goals.find(x => x.id == id);
   if (!g) return;
-  const ok = await showConfirm(t('confirm_del_goal'), `"${g.name}" — $${g.target.toFixed(2)} target`);
+  const ok = await showConfirm(t('confirm_del_goal'), `"${g.name}" — ${fmtWithCur(g.target, g.currency || state.currency)} target`);
   if (!ok) return;
   state.goals = state.goals.filter(x => x.id != id);
   saveState();
