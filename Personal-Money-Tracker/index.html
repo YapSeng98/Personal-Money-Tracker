@@ -213,6 +213,20 @@ select.form-input optgroup{font-weight:700;font-style:normal;}
 html[data-theme="dark"] select.form-input option,
 html[data-theme="dark"] select.form-input optgroup{background:var(--card);color:var(--ink);}
 html[data-theme="dark"] select.form-input optgroup{color:var(--sky);}
+.msum-cur{display:flex;align-items:center;gap:10px;margin:16px 0 8px;}
+.msum-cur:first-child{margin-top:0;}
+.msum-cur span{font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;}
+.msum-cur div{flex:1;height:1px;background:var(--border);}
+.msum-table{width:100%;border-collapse:collapse;font-size:12px;}
+.msum-table th{text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:6px 0 8px;border-bottom:1px solid var(--border);}
+.msum-table th:first-child{text-align:left;}
+.msum-table td{padding:9px 0;border-bottom:1px solid var(--border);font-family:var(--fm);text-align:right;white-space:nowrap;}
+.msum-table td:first-child{text-align:left;font-family:var(--ff);font-weight:600;}
+.msum-table tr:last-child td{border-bottom:none;}
+.msum-table tr.msum-total td{border-top:2px solid var(--border);font-weight:700;padding-top:11px;}
+.msum-in{color:var(--jade-d);}
+.msum-out{color:var(--coral);}
+.msum-wrap{overflow-x:auto;}
 .theme-opts{display:flex;gap:8px;flex-wrap:wrap;}
 .theme-opt{font-size:13px;font-weight:600;padding:9px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;font-family:var(--ff);transition:all .15s;}
 .theme-opt:hover{border-color:var(--jade);}
@@ -862,6 +876,14 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         </div>
         <div class="trend-detail" id="trend-detail">&nbsp;</div>
         <div id="trend-chart"></div>
+      </div>
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-header">
+          <div class="panel-title">Monthly In &amp; Out</div>
+          <button class="btn btn-ghost btn-sm" onclick="exportMonthlySummaryCSV()" title="Download this table as CSV">⬇ CSV</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. Transfers and asset purchases are left out — moving your own money between accounts is neither income nor spending.</div>
+        <div id="monthly-summary"></div>
       </div>
       <div class="ai-panel">
         <div class="ai-header"><div class="ai-badge">Platform Analytics</div><div class="ai-title">Spend Analysis Report</div></div>
@@ -3506,6 +3528,7 @@ function renderAnalytics() {
   // must not stop the trend chart from rendering its own (possibly non-empty,
   // possibly empty) view of the last N months.
   renderSpendingTrend();
+  renderMonthlySummary();
 
   // All-time per-currency totals
   const allTxns = state.transactions;
@@ -3599,6 +3622,107 @@ function setTrendRange(n) {
   state.trendMonths = n;
   saveState();
   renderSpendingTrend();
+  renderMonthlySummary();
+}
+
+// Month keys for the selected range, newest first. Relative to today rather
+// than the month bar — Analytics has no month bar of its own.
+function summaryMonthKeys() {
+  const n = state.trendMonths || 6;
+  const now = new Date();
+  const keys = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return keys;
+}
+
+// { CUR: { 'YYYY-MM': {inc, exp} } } — per currency, never combined. isFlow
+// drops transfer/asset-pair legs: shifting your own money between accounts is
+// not money entering or leaving your control.
+function monthlyInOut() {
+  const months = summaryMonthKeys();
+  const byCur = {};
+  state.transactions.forEach(t => {
+    if (!isFlow(t)) return;
+    if (t.type !== 'income' && t.type !== 'expense') return;
+    const mk = t.date.slice(0, 7);
+    if (!months.includes(mk)) return;
+    const cur = t.currency || state.currency;
+    byCur[cur] = byCur[cur] || {};
+    byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0 };
+    if (t.type === 'income') byCur[cur][mk].inc += t.amount;
+    else                     byCur[cur][mk].exp += t.amount;
+  });
+  return { months, byCur };
+}
+
+function renderMonthlySummary() {
+  const el = document.getElementById('monthly-summary');
+  if (!el) return;
+  const { months, byCur } = monthlyInOut();
+  const currencies = Object.keys(byCur).sort();
+
+  if (!currencies.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">📄</div><p>No income or spending in the last ${state.trendMonths || 6} months.</p></div>`;
+    return;
+  }
+
+  const label = mk => {
+    const [y, m] = mk.split('-');
+    return new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'short', year: 'numeric' });
+  };
+
+  el.innerHTML = currencies.map(cur => {
+    // Only months that actually have activity — a run of empty rows is noise.
+    const rows = months.filter(mk => byCur[cur][mk]);
+    let tIn = 0, tOut = 0;
+    const body = rows.map(mk => {
+      const { inc, exp } = byCur[cur][mk];
+      tIn += inc; tOut += exp;
+      const net = Math.round((inc - exp) * 100) / 100;
+      return `<tr>
+        <td>${label(mk)}</td>
+        <td class="msum-in">${inc ? '+' + fmtWithCur(inc, cur) : '—'}</td>
+        <td class="msum-out">${exp ? '-' + fmtWithCur(exp, cur) : '—'}</td>
+        <td style="color:${net < 0 ? 'var(--coral)' : 'var(--jade-d)'};font-weight:700;">${fmtSigned(net, cur)}</td>
+      </tr>`;
+    }).join('');
+    const tNet = Math.round((tIn - tOut) * 100) / 100;
+    return `<div class="msum-cur"><span>${cur}</span><div></div></div>
+      <div class="msum-wrap"><table class="msum-table">
+        <thead><tr><th>Month</th><th>Money In</th><th>Money Out</th><th>Net</th></tr></thead>
+        <tbody>${body}
+          <tr class="msum-total">
+            <td>Total</td>
+            <td class="msum-in">${tIn ? '+' + fmtWithCur(tIn, cur) : '—'}</td>
+            <td class="msum-out">${tOut ? '-' + fmtWithCur(tOut, cur) : '—'}</td>
+            <td style="color:${tNet < 0 ? 'var(--coral)' : 'var(--jade-d)'};">${fmtSigned(tNet, cur)}</td>
+          </tr>
+        </tbody>
+      </table></div>`;
+  }).join('');
+}
+
+function exportMonthlySummaryCSV() {
+  const { months, byCur } = monthlyInOut();
+  const currencies = Object.keys(byCur).sort();
+  if (!currencies.length) { showToast('Nothing to export for this range', 'warning'); return; }
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [['Currency','Month','Money In','Money Out','Net'].map(q).join(',')];
+  currencies.forEach(cur => {
+    months.filter(mk => byCur[cur][mk]).forEach(mk => {
+      const { inc, exp } = byCur[cur][mk];
+      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2), (inc - exp).toFixed(2)].map(q).join(','));
+    });
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pfmt_monthly_in_out_${state.trendMonths || 6}m.csv`;
+  a.click();
+  showToast('Monthly summary exported', 'success');
 }
 
 function showTrendDetail(mk, cur, amt, el) {

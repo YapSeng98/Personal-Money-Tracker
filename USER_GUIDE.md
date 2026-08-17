@@ -257,6 +257,8 @@ Deeper insight into the selected month:
 - **Stat cards** — total income, total expenses, savings rate, and largest expense. With mixed currencies, each stat breaks out per currency
 - **Category chart** — spending distribution per currency
 - **Spending Trend** — a bar per month for your last 3/6/9/12 months (pick the range with the **3M / 6M / 9M / 12M** tabs), so you can spot a rising or falling pattern without paging back through the month bar one month at a time. Tap any bar to see its exact figure. Transfers aren't counted — moving your own money between accounts isn't spending. Mixed currencies get their own section each, never added together
+- **Monthly In & Out** — a month-by-month table of **money in**, **money out**, and **net**, with a total row. Each currency gets its own table; figures are never combined across currencies. It follows the same 3/6/9/12 range picker as the trend chart, and **⬇ CSV** downloads exactly what you see
+  - Transfers and asset purchases are excluded — moving your own money between accounts is neither income nor spending, so counting it would inflate both columns
 - **📊 Generate Full Report** — an AI-written summary of your month (see [AI Insights](#10-ai-insights))
 
 ---
