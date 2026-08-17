@@ -116,7 +116,10 @@ If ServiceNow is unreachable, the app still works: everything is saved to your b
 
 Your monthly money at a glance:
 
-- **Net Balance hero** — income minus expenses for the selected month. With multiple currencies, each currency gets its own row (e.g. `S$4,988` and `RM910` — never mixed together)
+- **Net Balance hero** — what actually moved in the selected month. With multiple currencies each one gets its **own labelled card** (`SGD`, `MYR`) carrying its own net, income and spending — never mixed together, and never lined up in a way you'd have to match by currency symbol
+  - A **cross-currency transfer** is neither earning nor spending, but it *is* real movement: send `S$1,000` and receive `RM3,173.30` and the SGD card notes `🔄 −S$1,000.00 exchanged out` while the MYR card notes `🔄 +RM3,173.30 exchanged in`. Each currency's net includes its own side, so the figure agrees with your accounts
+  - Income and spending stay clean — the exchange is never counted as either, so your savings rate isn't distorted by moving money between your own accounts
+  - A same-currency transfer, and the funding side of an asset purchase, move nothing in or out of that currency, so they don't appear at all
 - **KPI cards** — transaction count, average daily spend, savings rate, and budgets over limit
 - **Recent Transactions** — the latest entries; tap **View all →** for the full list
 - **Spending by Category** — bar chart of where the money went, grouped per currency
@@ -168,6 +171,8 @@ The **currency follows the From Account** — pick UOB (SGD) and you're sending 
 To send the other way, just swap the accounts: put Maybank in **From** and DBS in **To**, and the labels flip to *Amount Sent (MYR)* / *Amount Received (SGD)*.
 
 Transfers don't count as income or spending, and don't consume a budget.
+
+The **category is set to Transfer automatically** — there's nothing to pick. Older transfers made before this existed kept whatever category was chosen at the time (usually *Other*), which made them look like ordinary spending in the category breakdown. **Settings → Data → Retag Transfers** fixes those in one go; it also runs by itself the next time your data syncs. Asset purchases keep their real category, since *Investment* or *Gold* is meaningful there.
 
 ### Editing & deleting
 
@@ -351,7 +356,8 @@ The **Now Assist** toggle in Settings turns AI features on/off. Your financial s
 - **ServiceNow Connection** — instance, connected user, connection test, and **Sign Out**
 - **Data tools**
   - **Load Sample Data** — fill the app with demo data to explore
-  - **Clear All Data** — wipe everything local (asks for confirmation; does not delete ServiceNow records)
+  - **Retag Transfers** — sets older transfer rows to the **Transfer** category so they stop showing up as ordinary spending. Safe to run twice; it reports how many it changed
+- **Clear All Data** — wipe everything local (asks for confirmation; does not delete ServiceNow records)
 
 ---
 

@@ -140,6 +140,23 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .kpi-strip>*{min-width:0;}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;transition:box-shadow .2s;}
 .kpi:hover{box-shadow:0 4px 20px rgba(0,0,0,.06);}
+.hero-exch{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-top:6px;letter-spacing:.2px;}
+.hero-cur-grid{display:flex;flex-wrap:wrap;gap:12px;}
+.hero-cur-card{flex:1 1 210px;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;padding:14px 16px;}
+.hero-cur-code{font-size:10px;font-weight:800;letter-spacing:1.4px;color:rgba(255,255,255,.55);margin-bottom:4px;}
+.hero-cur-net{font-family:var(--fd);font-size:clamp(22px,3.2vw,34px);font-weight:800;line-height:1.15;
+  overflow-wrap:break-word;}
+.hero-cur-flow{font-family:var(--fm);font-size:12px;font-weight:700;margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;}
+.hero-flow-in{color:var(--jade);}
+.hero-flow-out{color:var(--coral);}
+.hero-flow-sep{color:rgba(255,255,255,.3);}
+.kpi-multi{font-family:var(--fm);font-size:12px;font-weight:700;line-height:1.6;}
+@media(max-width:900px){
+  .hero-cur-grid{gap:10px;}
+  .hero-cur-card{flex:1 1 100%;padding:12px 14px;}
+  .hero-exch{font-size:10px;line-height:1.4;}
+}
 .kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
 .kpi-val{font-family:var(--fd);font-size:26px;font-weight:700;margin-bottom:4px;}
 .kpi-sub{font-size:11px;color:var(--muted);}
@@ -731,10 +748,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         </div>
       </div>
       <div class="kpi-strip">
-        <div class="kpi"><div class="kpi-label">Transactions</div><div class="kpi-val" id="kpi-txn-count">0</div><div class="kpi-sub">This month</div></div>
-        <div class="kpi"><div class="kpi-label">Avg Daily Spend</div><div class="kpi-val" id="kpi-avg-daily">$0</div><div class="kpi-sub">Based on expenses</div></div>
-        <div class="kpi"><div class="kpi-label">Savings Rate</div><div class="kpi-val" id="kpi-savings-rate">0%</div><div class="kpi-sub">of income saved</div></div>
-        <div class="kpi"><div class="kpi-label">Budgets Over</div><div class="kpi-val" id="kpi-budgets-over" style="color:var(--coral)">0</div><div class="kpi-sub">categories exceeded</div></div>
+        <div class="kpi"><div class="kpi-label" data-lkey="kpi_transactions">Transactions</div><div class="kpi-val" id="kpi-txn-count">0</div><div class="kpi-sub" data-lkey="kpi_this_month">This month</div></div>
+        <div class="kpi"><div class="kpi-label" data-lkey="kpi_avg_daily">Avg Daily Spend</div><div class="kpi-val" id="kpi-avg-daily">$0</div><div class="kpi-sub" data-lkey="kpi_based_expenses">Based on expenses</div></div>
+        <div class="kpi"><div class="kpi-label" data-lkey="kpi_savings_rate">Savings Rate</div><div class="kpi-val" id="kpi-savings-rate">0%</div><div class="kpi-sub" data-lkey="kpi_of_income">of income saved</div></div>
+        <div class="kpi"><div class="kpi-label" data-lkey="kpi_budgets_over">Budgets Over</div><div class="kpi-val" id="kpi-budgets-over" style="color:var(--coral)">0</div><div class="kpi-sub" data-lkey="kpi_exceeded">categories exceeded</div></div>
       </div>
       <div class="row-3">
         <div class="panel">
@@ -763,11 +780,11 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="filter-bar">
           <input class="form-input search-input" type="text" id="search-input" placeholder="🔍 Search description…" oninput="renderTransactions()">
           <select class="form-input" id="filter-type" onchange="renderTransactions()">
-            <option value="">All Types</option>
-            <option value="expense">Expenses</option>
-            <option value="income">Income</option>
-            <option value="asset">Assets</option>
-            <option value="transfer">Transfers</option>
+            <option value="" data-lkey="filter_all_types">All Types</option>
+            <option value="expense" data-lkey="filter_expenses">Expenses</option>
+            <option value="income" data-lkey="filter_income">Income</option>
+            <option value="asset" data-lkey="filter_assets">Assets</option>
+            <option value="transfer" data-lkey="filter_transfers">Transfers</option>
           </select>
           <select class="form-input" id="filter-cat" onchange="renderTransactions()">
             <option value="">All Categories</option>
@@ -897,7 +914,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div class="panel-title">Monthly In &amp; Out</div>
           <button class="btn btn-ghost btn-sm" onclick="exportMonthlySummaryCSV()" title="Download this table as CSV">⬇ CSV</button>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. Transfers and asset purchases are left out — moving your own money between accounts is neither income nor spending.</div>
+        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. Same-currency transfers and asset purchases are left out — inside one currency they net to zero. A currency exchange <em>is</em> counted: the SGD really left your SGD, and the MYR really arrived, so each side is flagged below its month.</div>
         <div id="monthly-summary"></div>
       </div>
       <div class="ai-panel">
@@ -1081,6 +1098,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="settings-section">
           <h3 data-lkey="settings_data">Data</h3>
           <div class="setting-row"><div><div class="setting-label">Load Sample Data</div></div><button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="loadSampleData()">Load Samples</button></div>
+          <div class="setting-row"><div><div class="setting-label">Retag Transfers</div><div class="setting-sub">Set older transfer rows to the Transfer category</div></div><button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="runTransferRetag()">Retag</button></div>
           <div class="setting-row"><div><div class="setting-label">Clear All Data</div></div><button class="btn btn-coral" style="font-size:12px;padding:7px 14px;" onclick="clearData()">Clear Data</button></div>
         </div>
 
@@ -1418,7 +1436,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
     search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
-    filter_expenses:'Expenses', filter_income:'Income', filter_transfers:'Transfers',
+    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
     panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
@@ -1522,7 +1540,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
     search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
-    filter_expenses:'支出', filter_income:'收入', filter_transfers:'转账',
+    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
     panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
@@ -1708,14 +1726,14 @@ const CAT_COLORS = {
   'Shopping':'#FF5B5B','Bills':'#F59E0B','Rental':'#64748B','Health':'#EC4899',
   'Entertainment':'#F97316','Sport':'#84CC16','Education':'#6366F1','Travel':'#14B8A6',
   'Salary':'#00C896','Freelance':'#3B82F6','Investment':'#8B5CF6',
-  'Property':'#0EA5E9','Gold':'#EAB308','Vehicle':'#78716C','Other':'#6B7280'
+  'Property':'#0EA5E9','Gold':'#EAB308','Vehicle':'#78716C','Transfer':'#3B82F6','Other':'#6B7280'
 };
 const CAT_BG = {
   'Food & Drink':'#F5F3FF','Transport':'#E6FBF5','Groceries':'#EFF6FF',
   'Shopping':'#FFF0F0','Bills':'#FFFBEB','Rental':'#F1F5F9','Health':'#FDF2F8',
   'Entertainment':'#FFF7ED','Sport':'#F7FEE7','Education':'#EEF2FF','Travel':'#F0FDFA',
   'Salary':'#E6FBF5','Freelance':'#EFF6FF','Investment':'#F5F3FF',
-  'Property':'#F0F9FF','Gold':'#FEFCE8','Vehicle':'#FAFAF9','Other':'#F7F9FC'
+  'Property':'#F0F9FF','Gold':'#FEFCE8','Vehicle':'#FAFAF9','Transfer':'#EFF6FF','Other':'#F7F9FC'
 };
 
 // ═══════════════════════════════════════════════
@@ -1888,7 +1906,8 @@ function setType(type, el) {
   // outflow from the source account, while returns from it are income.
   const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Other'];
   const asset   = ['Investment','Property','Gold','Vehicle','Other'];
-  const opts = type === 'income' ? income : type === 'asset' ? asset : expense;
+  const transferCats = ['Transfer'];
+  const opts = type === 'income' ? income : type === 'asset' ? asset : type === 'transfer' ? transferCats : expense;
   const prev = catSel.value;
   catSel.innerHTML = opts.map(o => `<option value="${o}">${catIcon(o)} ${o}</option>`).join('');
   if (opts.includes(prev)) catSel.value = prev;
@@ -2176,6 +2195,7 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
 }
 
 async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, toCur, date, notes }) {
+  cat = 'Transfer'; // a transfer's category is never anything else
   const group = 'tg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const legs = [
     { type: 'expense', amount: amt,     account: from, currency: fromCur, peer: to   },
@@ -2216,6 +2236,7 @@ async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, to
 // Edits both legs in place, keeping their sys_ids and the shared group, so the
 // pair stays intact and the direction can be corrected after a mistake.
 async function updateTransferPair(editId, { amt, recvAmt, desc, cat, from, to, fromCur, toCur, date, notes }) {
+  cat = 'Transfer';
   const anchor = state.transactions.find(x => x.id == editId);
   if (!anchor || !anchor.transferGroup) { showToast('Transfer not found', 'error'); return; }
   const legs = state.transactions.filter(x => x.transferGroup === anchor.transferGroup);
@@ -2716,7 +2737,7 @@ const catBg = cat => document.documentElement.getAttribute('data-theme') === 'da
   ? (CAT_COLORS[cat] || '#6B7280') + '2E'
   : (CAT_BG[cat] || 'var(--surface)');
 
-const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Other':'💰' }[cat] || '💰');
+const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Transfer':'🔄','Other':'💰' }[cat] || '💰');
 
 // ── Month helpers ──────────────────────────────
 function getMonthLabel(ym) {
@@ -2779,16 +2800,48 @@ function daysInFilterMonth() {
 // legs must count, because that is what moves the money.
 const isFlow = t => !t.transferGroup;
 
-function calcStats() {
-  const txns    = getMonthTxns();
-  const income  = txns.filter(t => t.type==='income'  && isFlow(t)).reduce((s,t)=>s+t.amount,0);
-  const expense = txns.filter(t => t.type==='expense' && isFlow(t)).reduce((s,t)=>s+t.amount,0);
+// Everything the dashboard shows for ONE currency. Summing across currencies is
+// never valid here — there is no exchange rate in the app — so this is the only
+// unit the dashboard aggregates in.
+//
+// A cross-currency transfer is real movement for each side even though it is
+// neither earning nor spending: S$1,000 leaves SGD and RM3,173.30 arrives in
+// MYR. Counting it as income/expense would inflate both and wreck the savings
+// rate, but ignoring it entirely (what isFlow does) leaves the currency's net
+// disagreeing with its accounts. So it is tracked separately as exchange and
+// folded into net only.
+function curStats(cur, txns) {
+  const mine = txns.filter(t => (t.currency || state.currency) === cur);
+  let inc = 0, exp = 0, xIn = 0, xOut = 0;
+  mine.forEach(t => {
+    if (t.type !== 'income' && t.type !== 'expense') return;
+    if (isFlow(t)) {
+      if (t.type === 'income') inc += t.amount; else exp += t.amount;
+    } else if (isCrossCurrencyLeg(t)) {
+      if (t.type === 'income') xIn += t.amount; else xOut += t.amount;
+    }
+    // same-currency transfer legs and asset-funding legs move no money in or
+    // out of this currency, so they contribute nothing.
+  });
   return {
-    income, expense,
-    balance      : income - expense,
-    savingsRate  : income > 0 ? ((income-expense)/income*100) : 0,
-    avgDaily     : expense > 0 ? expense/daysInFilterMonth() : 0,
-    overBudget   : state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length
+    inc, exp, xIn, xOut,
+    net        : inc - exp + xIn - xOut,
+    earned     : inc - exp,
+    savingsRate: inc > 0 ? ((inc - exp) / inc * 100) : null,
+    avgDaily   : exp > 0 ? exp / daysInFilterMonth() : 0,
+    hasExchange: xIn > 0 || xOut > 0
+  };
+}
+
+function calcStats() {
+  const txns = getMonthTxns();
+  const currencies = [...new Set(txns.map(t => t.currency || state.currency))].sort();
+  const byCur = {};
+  currencies.forEach(c => { byCur[c] = curStats(c, txns); });
+  return {
+    txns, currencies, byCur,
+    count     : txns.length,
+    overBudget: state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length
   };
 }
 
@@ -2832,12 +2885,11 @@ function applyLanguage() {
   if (incLabel) incLabel.textContent = t('lbl_income');
   const expLabel = document.getElementById('hero-expense-label');
   if (expLabel) expLabel.textContent = t('lbl_expenses');
-  const kpiLabels = document.querySelectorAll('.kpi-label');
-  const kpiSubs   = document.querySelectorAll('.kpi-sub');
-  const kpiLabelKeys = ['kpi_transactions','kpi_avg_daily','kpi_savings_rate','kpi_budgets_over'];
-  const kpiSubKeys   = ['kpi_this_month','kpi_based_expenses','kpi_of_income','kpi_exceeded'];
-  kpiLabels.forEach((el,i) => { if (kpiLabelKeys[i]) el.textContent = t(kpiLabelKeys[i]); });
-  kpiSubs.forEach((el,i)   => { if (kpiSubKeys[i])   el.textContent = t(kpiSubKeys[i]); });
+  // Keyed per element rather than by position, so adding or reordering a KPI
+  // card can't silently shift every label one slot along.
+  document.querySelectorAll('.kpi-label[data-lkey],.kpi-sub[data-lkey]').forEach(el => {
+    el.textContent = t(el.dataset.lkey);
+  });
   const recentPanel = document.getElementById('dash-recent-title');
   if (recentPanel) recentPanel.textContent = t('panel_recent_txns');
   const viewAll = document.getElementById('dash-view-all');
@@ -2882,12 +2934,12 @@ function applyLanguage() {
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = state.currency || 'SGD';
   // Transaction filter options
-  const filterType = document.getElementById('filter-type');
-  if (filterType) {
-    const opts = filterType.querySelectorAll('option');
-    const filterKeys = ['filter_all_types','filter_expenses','filter_income','filter_transfers'];
-    opts.forEach((o,i) => { if (filterKeys[i]) o.textContent = t(filterKeys[i]); });
-  }
+  // Keyed per-option, never by position. Inserting "Assets" ahead of
+  // "Transfers" previously shifted this array and relabelled Assets as
+  // Transfers — the dropdown showed "Transfers" twice and no Assets at all.
+  document.querySelectorAll('#filter-type option[data-lkey]').forEach(o => {
+    o.textContent = t(o.dataset.lkey);
+  });
   // Transaction modal tabs
   const tabExpense = document.getElementById('tab-expense');
   const tabIncome  = document.getElementById('tab-income');
@@ -2919,50 +2971,66 @@ function renderAll() {
 /* ── DASHBOARD ── */
 function renderDashboard() {
   const s = calcStats();
-  const monthTxns = getMonthTxns();
-  const currencies = [...new Set(monthTxns.map(t => t.currency || state.currency))];
+  const monthTxns = s.txns;
+  const currencies = s.currencies.length ? s.currencies : [state.currency];
   const isMulti = currencies.length > 1;
 
-  // Per-currency stats helper
-  const curStats = cur => {
-    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
-    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
-    return { inc, exp, bal: inc - exp };
+  const heroBal  = document.getElementById('hero-balance');
+  const heroInc  = document.getElementById('hero-income');
+  const heroExp  = document.getElementById('hero-expense');
+  const heroSide = document.querySelector('.balance-side');
+  const avgEl    = document.getElementById('kpi-avg-daily');
+  const srEl     = document.getElementById('kpi-savings-rate');
+
+  // The exchange note always sits inside its own currency's block, so an
+  // incoming RM can never be read as an incoming S$.
+  const xNote = (c, st) => {
+    if (!st.hasExchange) return '';
+    const bits = [];
+    if (st.xIn)  bits.push(`+${fmtWithCur(st.xIn, c)} ${t('hero_exch_in')}`);
+    if (st.xOut) bits.push(`−${fmtWithCur(st.xOut, c)} ${t('hero_exch_out')}`);
+    return `<div class="hero-exch">🔄 ${bits.join(' · ')}</div>`;
   };
 
   if (!isMulti) {
-    const cur = currencies[0] || state.currency;
-    document.getElementById('hero-balance').innerHTML = `<span style="font-family:var(--fd);font-size:clamp(28px,5vw,52px);font-weight:800;">${fmtSigned(s.balance, cur)}</span>`;
-    document.getElementById('hero-income').textContent  = '+' + fmtWithCur(s.income, cur);
-    document.getElementById('hero-expense').textContent = '−' + fmtWithCur(s.expense, cur);
-    document.getElementById('kpi-avg-daily').textContent = fmtWithCur(s.avgDaily, cur);
-    const srEl = document.getElementById('kpi-savings-rate');
-    srEl.textContent = s.savingsRate.toFixed(1) + '%';
-    srEl.style.color = s.savingsRate >= 20 ? 'var(--jade-d)' : s.savingsRate >= 10 ? 'var(--amber)' : 'var(--coral)';
+    // One currency: the original layout, with income/expense in the side column.
+    const cur = currencies[0];
+    const st  = s.byCur[cur] || curStats(cur, monthTxns);
+    if (heroSide) heroSide.style.display = '';
+    heroBal.innerHTML = `<span style="font-family:var(--fd);font-size:clamp(28px,5vw,52px);font-weight:800;">${fmtSigned(st.net, cur)}</span>${xNote(cur, st)}`;
+    heroInc.textContent = '+' + fmtWithCur(st.inc, cur);
+    heroExp.textContent = '−' + fmtWithCur(st.exp, cur);
+    avgEl.textContent   = fmtWithCur(st.avgDaily, cur);
+    srEl.textContent    = st.savingsRate === null ? 'N/A' : st.savingsRate.toFixed(1) + '%';
+    srEl.style.color    = st.savingsRate === null ? 'var(--muted)'
+                        : st.savingsRate >= 20 ? 'var(--jade-d)'
+                        : st.savingsRate >= 10 ? 'var(--amber)' : 'var(--coral)';
   } else {
-    // Multi-currency: stacked per-currency rows in hero
-    const rowStyle = `font-family:var(--fm);font-size:clamp(16px,2.5vw,24px);font-weight:700;line-height:1.5;`;
-    document.getElementById('hero-balance').innerHTML = currencies.map(cur => {
-      const {bal} = curStats(cur);
-      return `<div style="${rowStyle}color:${bal>=0?'white':'var(--coral)'};">${fmtSigned(bal,cur)}</div>`;
-    }).join('');
-    document.getElementById('hero-income').innerHTML = currencies.map(cur =>
-      `<div style="font-size:11px;font-weight:700;color:var(--jade);">+${fmtWithCur(curStats(cur).inc,cur)}</div>`).join('');
-    document.getElementById('hero-expense').innerHTML = currencies.map(cur =>
-      `<div style="font-size:11px;font-weight:700;color:var(--coral);">−${fmtWithCur(curStats(cur).exp,cur)}</div>`).join('');
-    document.getElementById('kpi-avg-daily').innerHTML = currencies.map(cur => {
-      const exp = curStats(cur).exp;
-      return `<div style="font-size:11px;font-weight:700;">${fmtWithCur(exp/daysInFilterMonth(),cur)}</div>`;
-    }).join('');
-    // Savings rate: best/worst
-    const rates = currencies.map(cur => { const {inc,exp} = curStats(cur); return inc>0?(inc-exp)/inc*100:null; }).filter(r=>r!==null);
-    const avgRate = rates.length ? rates.reduce((a,b)=>a+b,0)/rates.length : 0;
-    const srEl = document.getElementById('kpi-savings-rate');
-    srEl.innerHTML = currencies.map(cur => {
-      const {inc,exp} = curStats(cur);
-      const r = inc > 0 ? ((inc-exp)/inc*100) : null;
+    // Several currencies: a separate self-contained card each. Splitting the
+    // net into one column and its income/expense into another made the two
+    // stacks line up only by coincidence — the reader had to match them by
+    // currency symbol. Each card now carries its own figures and is labelled.
+    if (heroSide) heroSide.style.display = 'none';
+    heroBal.innerHTML = `<div class="hero-cur-grid">` + currencies.map(c => {
+      const st = s.byCur[c];
+      return `<div class="hero-cur-card">
+        <div class="hero-cur-code">${c}</div>
+        <div class="hero-cur-net" style="color:${st.net>=0?'#fff':'var(--coral)'};">${fmtSigned(st.net,c)}</div>
+        <div class="hero-cur-flow">
+          <span class="hero-flow-in">${st.inc?'+'+fmtWithCur(st.inc,c):'—'}</span>
+          <span class="hero-flow-sep">·</span>
+          <span class="hero-flow-out">${st.exp?'−'+fmtWithCur(st.exp,c):'—'}</span>
+        </div>
+        ${xNote(c, st)}
+      </div>`;
+    }).join('') + `</div>`;
+
+    avgEl.innerHTML = currencies.map(c =>
+      `<div class="kpi-multi">${fmtWithCur(s.byCur[c].avgDaily,c)}</div>`).join('');
+    srEl.innerHTML = currencies.map(c => {
+      const r = s.byCur[c].savingsRate;
       const col = r===null?'var(--muted)':r>=20?'var(--jade-d)':r>=10?'var(--amber)':'var(--coral)';
-      return `<div style="font-size:11px;font-weight:700;color:${col};">${cur} ${r!==null?r.toFixed(1)+'%':'N/A'}</div>`;
+      return `<div class="kpi-multi" style="color:${col};">${c} ${r!==null?r.toFixed(1)+'%':'N/A'}</div>`;
     }).join('');
     srEl.style.color = '';
   }
@@ -3040,6 +3108,43 @@ function txnListByDate(arr, forceBadge = false, showTotals = false) {
 
 // A transfer occupies two rows in state. Showing both would read as an unrelated
 // expense and income; only the outgoing leg is rendered, carrying the pair.
+// True when this leg belongs to an asset purchase rather than a plain transfer.
+// Both are stored as pairs sharing a transferGroup, so the group's contents are
+// what tells them apart.
+// One-time backfill: transfers created before the Transfer category existed
+// carry whatever category was selected at the time (usually "Other"), which
+// made them indistinguishable from real spending in the category breakdown.
+// Retags the transfer legs only — asset pairs keep their real category, since
+// "Investment" or "Gold" is meaningful there.
+function runTransferRetag() {
+  const n = migrateTransferCategories();
+  renderAll();
+  showToast(n ? `Retagged ${n} transfer row${n>1?'s':''}` : 'All transfers are already tagged', n ? 'success' : 'info');
+}
+
+function migrateTransferCategories() {
+  let changed = 0;
+  state.transactions.forEach(t => {
+    if (!t.transferGroup) return;
+    if (isAssetGroup(t)) return;
+    if (t.category === 'Transfer') return;
+    t.category = 'Transfer';
+    changed++;
+    const sysId = _snId(t);
+    if (state.snToken && sysId) {
+      snAPI.call('/transactions', 'PUT', { sys_id: sysId, category_name: 'Transfer' })
+        .catch(e => console.warn('transfer category sync:', e.message));
+    }
+  });
+  if (changed) { saveState(); }
+  return changed;
+}
+
+function isAssetGroup(t) {
+  if (!t.transferGroup) return false;
+  return state.transactions.some(x => x.transferGroup === t.transferGroup && x.type === 'asset');
+}
+
 function collapseTransfers(arr) {
   // Collapse a pair to one row only when BOTH legs are in this same list.
   // A cross-currency transfer has its legs in different currency sections, so
@@ -3139,8 +3244,16 @@ function renderTransactions() {
     // A transfer is stored as an expense+income pair, so it can't be matched on
     // t.type. Select it by its group instead, and keep the legs out of the
     // Expenses/Income filters — a transfer is neither.
+    // A funded asset purchase is stored as a pair and therefore also carries a
+    // transferGroup. Without distinguishing them, "Transfers" listed asset
+    // purchases and "Assets" found nothing at all, because every funded asset
+    // leg was being excluded as if it were a transfer.
     if (typeF === 'transfer') {
-      if (!t.transferGroup) return false;
+      if (!t.transferGroup || isAssetGroup(t)) return false;
+    } else if (typeF === 'asset') {
+      if (t.type === 'asset') return true;          // the holding leg, paired or not
+      if (t.transferGroup && isAssetGroup(t)) return true; // its funding leg
+      return false;
     } else if (typeF) {
       if (t.type !== typeF || t.transferGroup) return false;
     }
@@ -3656,19 +3769,35 @@ function summaryMonthKeys() {
 // { CUR: { 'YYYY-MM': {inc, exp} } } — per currency, never combined. isFlow
 // drops transfer/asset-pair legs: shifting your own money between accounts is
 // not money entering or leaving your control.
+// True when a paired leg crosses currencies. Within one currency's book a
+// same-currency transfer nets to zero (-1000 then +1000), so counting it just
+// inflates both columns. A cross-currency transfer is different: the SGD really
+// did leave the SGD book and the MYR really did arrive in the MYR book, so from
+// each currency's point of view it IS a genuine flow.
+function isCrossCurrencyLeg(t) {
+  if (!t.transferGroup) return false;
+  const peer = state.transactions.find(x => x.transferGroup === t.transferGroup && x !== t);
+  if (!peer) return false;
+  return (peer.currency || state.currency) !== (t.currency || state.currency);
+}
+
 function monthlyInOut() {
   const months = summaryMonthKeys();
   const byCur = {};
   state.transactions.forEach(t => {
-    if (!isFlow(t)) return;
+    const cross = isCrossCurrencyLeg(t);
+    // Ordinary income/expense always counts. Paired legs count only when they
+    // cross currencies — an asset purchase or a same-currency transfer is money
+    // moving inside one book, not in or out of it.
+    if (!cross && !isFlow(t)) return;
     if (t.type !== 'income' && t.type !== 'expense') return;
     const mk = t.date.slice(0, 7);
     if (!months.includes(mk)) return;
     const cur = t.currency || state.currency;
     byCur[cur] = byCur[cur] || {};
-    byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0 };
-    if (t.type === 'income') byCur[cur][mk].inc += t.amount;
-    else                     byCur[cur][mk].exp += t.amount;
+    byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0, xIn: 0, xOut: 0 };
+    if (t.type === 'income') { byCur[cur][mk].inc += t.amount; if (cross) byCur[cur][mk].xIn  += t.amount; }
+    else                     { byCur[cur][mk].exp += t.amount; if (cross) byCur[cur][mk].xOut += t.amount; }
   });
   return { months, byCur };
 }
@@ -3694,11 +3823,18 @@ function renderMonthlySummary() {
     const rows = months.filter(mk => byCur[cur][mk]);
     let tIn = 0, tOut = 0;
     const body = rows.map(mk => {
-      const { inc, exp } = byCur[cur][mk];
+      const { inc, exp, xIn, xOut } = byCur[cur][mk];
       tIn += inc; tOut += exp;
       const net = Math.round((inc - exp) * 100) / 100;
+      // Flag the portion that came from a currency exchange rather than real
+      // earning or spending, so "Money In" of RM3,173 isn't mistaken for income.
+      const note = (xIn || xOut)
+        ? `<div style="font-size:10px;color:var(--sky);font-weight:400;margin-top:2px;">${
+            [xIn ? `incl. ${fmtWithCur(xIn, cur)} exchanged in` : '',
+             xOut ? `incl. ${fmtWithCur(xOut, cur)} exchanged out` : ''].filter(Boolean).join(' · ')
+          }</div>` : '';
       return `<tr>
-        <td>${label(mk)}</td>
+        <td>${label(mk)}${note}</td>
         <td class="msum-in">${inc ? '+' + fmtWithCur(inc, cur) : '—'}</td>
         <td class="msum-out">${exp ? '-' + fmtWithCur(exp, cur) : '—'}</td>
         <td style="color:${net < 0 ? 'var(--coral)' : 'var(--jade-d)'};font-weight:700;">${fmtSigned(net, cur)}</td>
@@ -3725,11 +3861,12 @@ function exportMonthlySummaryCSV() {
   const currencies = Object.keys(byCur).sort();
   if (!currencies.length) { showToast('Nothing to export for this range', 'warning'); return; }
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = [['Currency','Month','Money In','Money Out','Net'].map(q).join(',')];
+  const lines = [['Currency','Month','Money In','Money Out','Net','Exchanged In','Exchanged Out'].map(q).join(',')];
   currencies.forEach(cur => {
     months.filter(mk => byCur[cur][mk]).forEach(mk => {
-      const { inc, exp } = byCur[cur][mk];
-      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2), (inc - exp).toFixed(2)].map(q).join(','));
+      const { inc, exp, xIn, xOut } = byCur[cur][mk];
+      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2), (inc - exp).toFixed(2),
+                  (xIn || 0).toFixed(2), (xOut || 0).toFixed(2)].map(q).join(','));
     });
   });
   const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -5073,6 +5210,9 @@ async function snLoadAll() {
       balance    : a.current_balance,
       currency   : a.currency || 'SGD'
     }));
+    // Retag legacy transfers now that their real category is known.
+    const retagged = migrateTransferCategories();
+    if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
     state.lastSync = new Date().toISOString();
     saveState();
     updateLastSync();
