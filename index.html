@@ -792,6 +792,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <option value="asset" data-lkey="filter_assets">Assets</option>
             <option value="transfer" data-lkey="filter_transfers">Transfers</option>
           </select>
+          <select class="form-input" id="filter-period" onchange="renderTransactions()">
+            <option value="" data-lkey="filter_this_month">This Month</option>
+            <option value="all" data-lkey="filter_all_time">All Time</option>
+          </select>
           <select class="form-input" id="filter-cur" onchange="renderTransactions()" style="display:none;">
             <option value="" data-lkey="filter_all_currencies">All Currencies</option>
           </select>
@@ -1445,7 +1449,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
     search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
-    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_all_currencies:'All Currencies', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
+    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_all_currencies:'All Currencies', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
     panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
@@ -1549,7 +1553,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
     search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
-    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_all_currencies:'全部货币', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
+    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_all_currencies:'全部货币', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
     panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
@@ -2959,7 +2963,7 @@ function applyLanguage() {
   // Keyed per-option, never by position. Inserting "Assets" ahead of
   // "Transfers" previously shifted this array and relabelled Assets as
   // Transfers — the dropdown showed "Transfers" twice and no Assets at all.
-  document.querySelectorAll('#filter-type option[data-lkey]').forEach(o => {
+  document.querySelectorAll('#filter-type option[data-lkey],#filter-period option[data-lkey]').forEach(o => {
     o.textContent = t(o.dataset.lkey);
   });
   const curAll = document.querySelector('#filter-cur option[data-lkey]');
@@ -3249,6 +3253,8 @@ function showBudgetTransactions(el) {
   const ft = document.getElementById('filter-type');
   const fc = document.getElementById('filter-cat');
   const fu = document.getElementById('filter-cur');
+  const fp = document.getElementById('filter-period');
+  if (fp) fp.value = '';
   if (si) si.value = '';
   if (ft) ft.value = 'expense';        // a budget tracks spending only
   if (fc) fc.value = cat;
@@ -3301,10 +3307,12 @@ function clearFilters() {
   const ft = document.getElementById('filter-type');
   const fc = document.getElementById('filter-cat');
   const fu = document.getElementById('filter-cur');
+  const fp = document.getElementById('filter-period');
   if (si) si.value = '';
   if (ft) ft.value = '';
   if (fc) fc.value = '';
   if (fu) fu.value = '';
+  if (fp) fp.value = '';
   renderTransactions();
 }
 
@@ -3313,12 +3321,15 @@ function renderTransactions() {
   const typeF   = document.getElementById('filter-type')?.value || '';
   const catF    = document.getElementById('filter-cat')?.value  || '';
   const curF    = document.getElementById('filter-cur')?.value  || '';
+  const periodF = document.getElementById('filter-period')?.value || '';
   const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
   const clearBtn = document.getElementById('clear-filters-btn');
-  if (clearBtn) clearBtn.style.display = (typeF || catF || curF || searchF) ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = (typeF || catF || curF || periodF || searchF) ? 'inline-flex' : 'none';
 
   let txns = state.transactions.filter(t => {
-    if (!t.date.startsWith(state.filterMonth))               return false;
+    // The page was hard-scoped to the month bar, so anything in another month
+    // simply was not here — which reads as missing data rather than a filter.
+    if (!periodF && !t.date.startsWith(state.filterMonth)) return false;
     // A transfer is stored as an expense+income pair, so it can't be matched on
     // t.type. Select it by its group instead, and keep the legs out of the
     // Expenses/Income filters — a transfer is neither.
@@ -3345,6 +3356,14 @@ function renderTransactions() {
   });
 
   if (!txns.length) { document.getElementById('all-txns').innerHTML = `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
+
+  // The month bar does not drive this page in All Time; dim it rather than
+  // leaving a control that looks live but changes nothing.
+  const monthBar = document.getElementById('month-nav-bar');
+  if (monthBar) {
+    monthBar.style.opacity = periodF ? '.45' : '';
+    monthBar.title = periodF ? t('month_bar_inactive') : '';
+  }
 
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))];
   const isMultiCurTxn = currencies.length > 1;
@@ -3752,32 +3771,56 @@ function renderAnalytics() {
   const isMultiCurStat = currencies.length > 1;
 
   const statRowStyle = `font-family:var(--fm);font-size:${isMultiCurStat?'13px':'22px'};font-weight:700;`;
-  const curStatRows = (field, color, prefix='') => currencies.map(cur => {
-    const amt = allTxns.filter(t=>(t.currency||state.currency)===cur && t.type===field).reduce((s,t)=>s+t.amount,0);
+
+  // Every figure in this card stack comes from curStats, the same function the
+  // dashboard and the monthly table use. These totals used to filter on
+  // t.type alone with no isFlow(), so they counted transfer and asset legs as
+  // earning and spending, while the savings rate directly below them excluded
+  // exactly those rows. The two disagreed on screen: MYR income read RM4,523
+  // in one card and produced a −479% savings rate in the next, because the
+  // rate was dividing by the much smaller genuine income.
+  const statsByCur = {};
+  currencies.forEach(cur => { statsByCur[cur] = curStats(cur, allTxns); });
+
+  const curStatRows = (pick, color, prefix='') => currencies.map(cur => {
+    const val = pick(statsByCur[cur], cur);
     return isMultiCurStat
       ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
            <span style="font-size:10px;color:var(--muted);font-weight:700;">${cur}</span>
-           <span style="${statRowStyle}color:${color};">${prefix}${fmtWithCur(amt,cur)}</span>
+           <span style="${statRowStyle}color:${color};">${val}</span>
          </div>`
-      : `<div class="stat-card-val" style="color:${color};">${prefix}${fmtWithCur(amt,cur)}</div>`;
+      : `<div class="stat-card-val" style="color:${color};">${val}</div>`;
   }).join('');
 
-  document.getElementById('an-income').innerHTML  = curStatRows('income',  'var(--jade-d)', '+');
-  document.getElementById('an-expense').innerHTML = curStatRows('expense', 'var(--coral)',  '−');
+  document.getElementById('an-income').innerHTML  =
+    curStatRows((st, cur) => st.inc ? '+' + fmtWithCur(st.inc, cur) : '—', 'var(--jade-d)');
+  document.getElementById('an-expense').innerHTML =
+    curStatRows((st, cur) => st.exp ? '−' + fmtWithCur(st.exp, cur) : '—', 'var(--coral)');
 
-  // Savings rate per currency
+  // Savings rate per currency — now guaranteed to be derived from the two
+  // figures shown above it.
   document.getElementById('an-savings').innerHTML = currencies.map(cur => {
-    const inc = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
-    const exp = allTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
-    const rate = inc > 0 ? ((inc-exp)/inc*100) : null;
+    const st   = statsByCur[cur];
+    // A savings rate is income minus spending over income. When a currency is
+    // funded mainly by exchanging money in rather than earning it, that
+    // denominator is not representative and the ratio explodes: RM522 earned
+    // against RM3,026 spent reads −479%, which looks like a fault rather than
+    // the arithmetic it is. Say so instead of printing a number nobody can use.
+    const fundedByExchange = st.xIn > st.inc;
+    const rate = fundedByExchange ? null : st.savingsRate;
     const col  = rate===null ? 'var(--muted)' : rate>=20 ? 'var(--jade-d)' : rate>=0 ? 'var(--amber)' : 'var(--coral)';
-    const val  = rate===null ? (exp>0?'N/A':'—') : rate.toFixed(1)+'%';
+    const val  = fundedByExchange ? 'N/A'
+               : rate===null ? (st.exp>0?'N/A':'—')
+               : rate.toFixed(1)+'%';
+    const hint = fundedByExchange
+      ? ` title="Most of the ${cur} here arrived as a transfer from another currency rather than income, so a savings rate would not mean anything. Earned ${fmtWithCur(st.inc,cur)}, exchanged in ${fmtWithCur(st.xIn,cur)}."`
+      : '';
     return isMultiCurStat
       ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
            <span style="font-size:10px;color:var(--muted);font-weight:700;">${cur}</span>
-           <span style="${statRowStyle}color:${col};">${val}</span>
+           <span style="${statRowStyle}color:${col};"${hint}>${val}</span>
          </div>`
-      : `<div class="stat-card-val" style="color:${col};">${val}</div>`;
+      : `<div class="stat-card-val" style="color:${col};"${hint}>${val}</div>`;
   }).join('');
 
   // Largest expense — never compare raw amounts across different currencies (RM400 is not "bigger" than S$300)
