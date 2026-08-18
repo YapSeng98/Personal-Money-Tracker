@@ -174,6 +174,12 @@ Transfers don't count as income or spending, and don't consume a budget.
 
 The **category is set to Transfer automatically** — there's nothing to pick. Older transfers made before this existed kept whatever category was chosen at the time (usually *Other*), which made them look like ordinary spending in the category breakdown. **Settings → Data → Retag Transfers** fixes those in one go; it also runs by itself the next time your data syncs. Asset purchases keep their real category, since *Investment* or *Gold* is meaningful there.
 
+### Seeing what makes up a budget
+
+Click any budget card (or focus it and press Enter) to open the transaction list filtered to that category — the real list, with its usual edit and delete, so the rows always agree with the figure on the card. Budgets track spending, so income and transfers are left out. A category-and-currency pair drills in exactly: an MYR *Food & Drink* budget shows only the MYR rows, never the SGD ones.
+
+If nothing has been spent yet, you get an empty list rather than the whole month.
+
 ### Editing & deleting
 
 Each row has **✏️ edit** and **🗑️ delete** buttons. Deleting asks for confirmation first.
@@ -184,6 +190,7 @@ Transfers can be edited like anything else — including swapping the direction 
 
 - **Search box** — filters by description as you type
 - **Type filter** — Expenses, Income, Assets, or Transfers
+- **Currency filter** — only appears when you actually hold more than one currency. A cross-currency transfer shows under *both* sides, because each leg really is money in that currency
 - **Category filter** — show one category
 - **Month bar** — step to any month
 - **Clear** — reset all filters at once

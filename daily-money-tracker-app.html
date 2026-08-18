@@ -142,6 +142,10 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .kpi:hover{box-shadow:0 4px 20px rgba(0,0,0,.06);}
 .msum-x{color:var(--sky);font-family:var(--fm);}
 .msum-foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.budget-clickable{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease;}
+.budget-clickable:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(15,35,70,.10);border-color:var(--sky);}
+.budget-clickable:focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
+.budget-clickable:active{transform:translateY(0);}
 .hero-exch{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-top:6px;letter-spacing:.2px;}
 .hero-cur-grid{display:flex;flex-wrap:wrap;gap:12px;}
 .hero-cur-card{flex:1 1 210px;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
@@ -787,6 +791,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <option value="income" data-lkey="filter_income">Income</option>
             <option value="asset" data-lkey="filter_assets">Assets</option>
             <option value="transfer" data-lkey="filter_transfers">Transfers</option>
+          </select>
+          <select class="form-input" id="filter-cur" onchange="renderTransactions()" style="display:none;">
+            <option value="" data-lkey="filter_all_currencies">All Currencies</option>
           </select>
           <select class="form-input" id="filter-cat" onchange="renderTransactions()">
             <option value="">All Categories</option>
@@ -1438,7 +1445,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
     search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
-    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
+    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_all_currencies:'All Currencies', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
     panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
@@ -1542,7 +1549,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
     search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
-    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
+    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_all_currencies:'全部货币', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
     panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
@@ -1652,6 +1659,8 @@ let state = {
   nextId: 100,
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   geminiKey: '',
+  aiModel: '',   // resolved at runtime; providers retire model IDs
+
   snInstance: DEFAULT_SN_INSTANCE,
   snUsername: 'admin',
   snPassword: '',
@@ -1690,6 +1699,7 @@ function saveState() {
       nextId: state.nextId,
       filterMonth: state.filterMonth,
       geminiKey: state.geminiKey,
+      aiModel: state.aiModel,
       snInstance: state.snInstance,
       snUsername: state.snUsername,
       snPassword: state.snPassword,
@@ -1779,7 +1789,7 @@ function showView(name, el) {
   // show month nav only on views where it's relevant
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) monthBar.style.display = ['dashboard','budgets','transactions'].includes(name) ? 'flex' : 'none';
-  if (name === 'transactions') populateCategoryFilter();
+  if (name === 'transactions') { populateCategoryFilter(); populateCurrencyFilter(); }
   if (name === 'settings') {
     _updateSNConnCard();
     _renderProfileView();
@@ -1887,6 +1897,12 @@ function openTxnModal(id = null) {
     setType('expense', document.getElementById('tab-expense'));
     document.getElementById('save-txn-btn').textContent = t('modal_save_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-jade';
+    // The account dropdown lands on its first option without firing onchange,
+    // so the currency above still says state.currency. If that first account
+    // is in another currency the form opens contradicting itself — an MYR
+    // account showing SGD — and saving is then refused for a mismatch the user
+    // never made. Bind the currency to whatever is actually selected.
+    syncCurrencyToAccount();
   }
   document.getElementById('txn-modal').classList.add('open');
   setTimeout(() => document.getElementById('txn-amount').focus(), 100);
@@ -1962,9 +1978,13 @@ function updateAssetUI() {
 // A transaction whose currency differs from its account's currency is invisible
 // to effectiveBal() — it would sit in the list moving no money. The account is
 // the source of truth, so picking one sets the currency to match.
-function onTxnAccountChange() {
+function syncCurrencyToAccount() {
   const acc = state.accounts.find(a => a.name === document.getElementById('txn-account').value);
   if (acc) document.getElementById('txn-currency').value = acc.currency || state.currency;
+}
+
+function onTxnAccountChange() {
+  syncCurrencyToAccount();
   if (state.currentType === 'transfer') { populateToAccounts(); updateTransferUI(); }
   if (state.currentType === 'asset')    { populateFundAccounts(); updateAssetUI(); }
 }
@@ -2942,6 +2962,8 @@ function applyLanguage() {
   document.querySelectorAll('#filter-type option[data-lkey]').forEach(o => {
     o.textContent = t(o.dataset.lkey);
   });
+  const curAll = document.querySelector('#filter-cur option[data-lkey]');
+  if (curAll) curAll.textContent = t(curAll.dataset.lkey);
   // Transaction modal tabs
   const tabExpense = document.getElementById('tab-expense');
   const tabIncome  = document.getElementById('tab-income');
@@ -3216,11 +3238,61 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
   </div>`;
 }
 
+// Clicking a budget answers "what made up this figure?" by opening the real
+// transaction list filtered to that category — same rows, same edit/delete —
+// rather than a read-only popup that would drift from the list over time.
+function showBudgetTransactions(el) {
+  const cat = el.dataset.cat, cur = el.dataset.cur;
+  showView('transactions', document.querySelectorAll('.nav-item')[1]);
+
+  const si = document.getElementById('search-input');
+  const ft = document.getElementById('filter-type');
+  const fc = document.getElementById('filter-cat');
+  const fu = document.getElementById('filter-cur');
+  if (si) si.value = '';
+  if (ft) ft.value = 'expense';        // a budget tracks spending only
+  if (fc) fc.value = cat;
+  // Only meaningful when the filter is actually in play; populateCurrencyFilter
+  // clears it for a single-currency book, which is the correct outcome there.
+  if (fu && fu.style.display !== 'none') fu.value = cur;
+
+  renderTransactions();
+  const count = document.querySelectorAll('#all-txns .txn-row').length;
+  showToast(count ? `${count} ${cat} transaction${count > 1 ? 's' : ''}` : `No ${cat} transactions this month`, 'info');
+}
+
 /* ── TRANSACTIONS VIEW ── */
+// Only worth showing when the book actually holds more than one currency;
+// a single-currency user gets no extra control to ignore.
+function populateCurrencyFilter() {
+  const sel = document.getElementById('filter-cur');
+  if (!sel) return;
+  const curs = [...new Set(state.transactions.map(t => t.currency || state.currency))].sort();
+  if (curs.length < 2) {
+    sel.style.display = 'none';
+    sel.value = '';
+    return;
+  }
+  const prev = sel.value;
+  sel.style.display = '';
+  // Keep data-lkey on the rebuilt option — applyLanguage() finds it by that
+  // attribute, and without it a language switch silently leaves this in English.
+  sel.innerHTML = `<option value="" data-lkey="filter_all_currencies">${t('filter_all_currencies')}</option>` +
+    curs.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  // Keep the user's choice across a re-render, unless that currency is gone.
+  sel.value = curs.includes(prev) ? prev : '';
+}
+
 function populateCategoryFilter() {
   const sel = document.getElementById('filter-cat');
   if (!sel) return;
-  const cats = [...new Set(state.transactions.map(t => t.category))].sort();
+  // Budget categories belong here even with nothing spent yet: drilling into an
+  // empty budget must select that category and show nothing, not silently fall
+  // back to "All Categories" and present the whole month as if it were Health.
+  const cats = [...new Set([
+    ...state.transactions.map(t => t.category),
+    ...state.budgets.map(b => b.category)
+  ].filter(Boolean))].sort();
   sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${esc(c)}">${catIcon(c)} ${esc(c)}</option>`).join('');
 }
 
@@ -3228,18 +3300,22 @@ function clearFilters() {
   const si = document.getElementById('search-input');
   const ft = document.getElementById('filter-type');
   const fc = document.getElementById('filter-cat');
+  const fu = document.getElementById('filter-cur');
   if (si) si.value = '';
   if (ft) ft.value = '';
   if (fc) fc.value = '';
+  if (fu) fu.value = '';
   renderTransactions();
 }
 
 function renderTransactions() {
+  populateCurrencyFilter();
   const typeF   = document.getElementById('filter-type')?.value || '';
   const catF    = document.getElementById('filter-cat')?.value  || '';
+  const curF    = document.getElementById('filter-cur')?.value  || '';
   const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
   const clearBtn = document.getElementById('clear-filters-btn');
-  if (clearBtn) clearBtn.style.display = (typeF || catF || searchF) ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = (typeF || catF || curF || searchF) ? 'inline-flex' : 'none';
 
   let txns = state.transactions.filter(t => {
     if (!t.date.startsWith(state.filterMonth))               return false;
@@ -3260,6 +3336,10 @@ function renderTransactions() {
       if (t.type !== typeF || t.transferGroup) return false;
     }
     if (catF    && t.category !== catF)                      return false;
+    // Matches the row's own currency. A cross-currency transfer therefore
+    // appears under each side — the SGD leg under SGD, the MYR leg under MYR —
+    // which is the truth: each side really is money in that currency.
+    if (curF    && (t.currency || state.currency) !== curF)  return false;
     if (searchF && !t.description.toLowerCase().includes(searchF)) return false;
     return true;
   });
@@ -3476,7 +3556,13 @@ function renderBudgets() {
     const over  = spent > b.amount;
     const near  = pct >= b.alertPct && !over;
     const color = over ? 'var(--coral)' : near ? 'var(--amber)' : 'var(--jade)';
-    return `<div class="budget-item">
+    // Data attributes rather than inline string args — category names contain
+    // "&" and spaces, and quoting those into an onclick is a bug waiting to happen.
+    return `<div class="budget-item budget-clickable" role="button" tabindex="0"
+         data-cat="${esc(b.category)}" data-cur="${esc(b.currency || state.currency)}"
+         title="${t('budget_view_txns')}"
+         onclick="showBudgetTransactions(this)"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBudgetTransactions(this);}">
       <div class="budget-header">
         <div class="budget-name">
           ${catIcon(b.category)} ${esc(b.category)}
@@ -3485,8 +3571,8 @@ function renderBudgets() {
           ${!isMultiCurBudget ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>` : ''}
         </div>
         <div class="budget-actions">
-          <button class="icon-btn edit" onclick="openBudgetModal('${b.id}')" title="Edit budget">✏️</button>
-          <button class="icon-btn del"  onclick="deleteBudget('${b.id}')"    title="Delete budget">🗑️</button>
+          <button class="icon-btn edit" onclick="event.stopPropagation();openBudgetModal('${b.id}')" title="Edit budget">✏️</button>
+          <button class="icon-btn del"  onclick="event.stopPropagation();deleteBudget('${b.id}')"    title="Delete budget">🗑️</button>
         </div>
       </div>
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
@@ -4264,6 +4350,49 @@ STRICT RULES — follow exactly:
  * @param requires {{ok:boolean, msg:string}} data precondition — when not ok,
  *        the model is never called and msg (a translation key) is shown instead.
  */
+// Providers retire model IDs without warning — a hardcoded one eventually
+// 404s and takes every AI feature down with a raw provider error. Ask the
+// provider what it currently serves and cache the answer.
+const AI_MODEL_CANDIDATES = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile'];
+// Non-chat models would 400 on a chat completion, so they can never be picked.
+const AI_MODEL_EXCLUDE = /whisper|tts|guard|embed|vision|distil/i;
+
+async function resolveAIModel(key, force = false) {
+  if (!force && state.aiModel) return state.aiModel;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { 'Authorization': `Bearer ${key}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const live = (data.data || []).map(m => m.id).filter(Boolean);
+      const pick = AI_MODEL_CANDIDATES.find(c => live.includes(c))
+                || live.find(id => !AI_MODEL_EXCLUDE.test(id));
+      if (pick) {
+        state.aiModel = pick;
+        saveState();
+        return pick;
+      }
+    }
+  } catch (_) {
+    // Offline or blocked: fall through to the first candidate rather than
+    // failing here — the chat call itself will surface a real error.
+  }
+  return state.aiModel || AI_MODEL_CANDIDATES[0];
+}
+
+// A retired model comes back as a 400/404 naming the model, not as a 401.
+async function isModelGoneResponse(res) {
+  if (res.status !== 400 && res.status !== 404) return false;
+  try {
+    const e = await res.clone().json();
+    const msg = e.error?.message || '';
+    return /model/i.test(msg) && /(exist|decommission|deprecat|not found|no longer)/i.test(msg);
+  } catch (_) {
+    return false;
+  }
+}
+
 async function callAI(prompt, targetId, requires) {
   const el = document.getElementById(targetId);
   if (!el) return;
@@ -4284,14 +4413,26 @@ async function callAI(prompt, targetId, requires) {
   }
   el.innerHTML = '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
 
-  const ask = key => fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const model = await resolveAIModel(state.geminiKey);
+
+  const ask = (key, mdl) => fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 1000, messages: [{ role: 'user', content: prompt + AI_RULES }] })
+    body: JSON.stringify({ model: mdl || model, max_tokens: 1000, messages: [{ role: 'user', content: prompt + AI_RULES }] })
   });
 
   try {
     let res = await ask(state.geminiKey);
+
+    // Groq retires model IDs on its own schedule — llama-3.1-8b-instant was
+    // hardcoded here and simply stopped existing one day, breaking every AI
+    // feature with a raw provider error. Treat that as recoverable: forget the
+    // cached choice, ask the provider what it actually serves now, and retry.
+    if (!res.ok && await isModelGoneResponse(res)) {
+      state.aiModel = '';
+      const fresh = await resolveAIModel(state.geminiKey, true);
+      if (fresh && fresh !== model) res = await ask(state.geminiKey, fresh);
+    }
 
     // A key saved on this device takes priority, which is normally right — but a
     // stale one would then shadow the account's good key forever. If the provider
@@ -4317,6 +4458,10 @@ async function callAI(prompt, targetId, requires) {
       catch(_) { msg = `HTTP ${res.status}`; }
       if (res.status === 401) {
         el.innerHTML = `<span style="color:#F59E0B;">Your API key was rejected. Open <strong>Settings → AI Configuration</strong> and paste a valid Groq key — it will then sync to your other devices.</span>`;
+        return;
+      }
+      if (/model/i.test(msg) && /(exist|decommission|deprecat|not found)/i.test(msg)) {
+        el.innerHTML = `<span style="color:#F59E0B;">Groq has retired the model this app was using, and no replacement was available on your account. This usually fixes itself on the next try — if it keeps happening, check <a href="https://console.groq.com/docs/models" target="_blank" style="color:var(--sky);">the model list ↗</a>.</span>`;
         return;
       }
       throw new Error(msg);
