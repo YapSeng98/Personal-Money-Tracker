@@ -261,12 +261,19 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--sky);}
 .chart-bar-val{width:64px;text-align:right;font-family:var(--fm);font-size:12px;color:var(--muted);flex-shrink:0;}
 
 /* ── BUDGET BARS ── */
-.budget-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;transition:box-shadow .2s;}
+.budget-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin-bottom:8px;transition:box-shadow .2s;}
+.type-tab.payback.active{background:var(--amber-s);border-color:var(--amber);color:var(--amber);}
+.bcur-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.bcur-tab{font-family:var(--fm);font-size:12px;font-weight:700;letter-spacing:.4px;padding:6px 14px;border-radius:99px;
+  border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;}
+.bcur-tab:hover{border-color:var(--sky);color:var(--sky);}
+.bcur-tab.active{background:var(--sky);border-color:var(--sky);color:#fff;}
+.bcur-tab .bcur-n{opacity:.7;font-weight:600;margin-left:5px;}
 .budget-item:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);}
-.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px;}
 .budget-name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;}
 .budget-actions{display:flex;gap:6px;}
-.budget-track{background:var(--surface);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;}
+.budget-track{background:var(--surface);border-radius:99px;height:7px;overflow:hidden;margin-bottom:5px;}
 .budget-fill{height:100%;border-radius:99px;transition:width .4s;}
 .budget-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
 .budget-pct{font-weight:700;}
@@ -790,6 +797,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <option value="expense" data-lkey="filter_expenses">Expenses</option>
             <option value="income" data-lkey="filter_income">Income</option>
             <option value="asset" data-lkey="filter_assets">Assets</option>
+            <option value="payback" data-lkey="filter_paybacks">Paybacks</option>
             <option value="transfer" data-lkey="filter_transfers">Transfers</option>
           </select>
           <select class="form-input" id="filter-period" onchange="renderTransactions()">
@@ -1154,6 +1162,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <button class="type-tab income" id="tab-income" onclick="setType('income',this)">Income</button>
       <button class="type-tab transfer" id="tab-transfer" onclick="setType('transfer',this)">Transfer</button>
       <button class="type-tab asset" id="tab-asset" onclick="setType('asset',this)">Asset</button>
+      <button class="type-tab payback" id="tab-payback" onclick="setType('payback',this)">Payback</button>
     </div>
     <div class="form-group">
       <label class="form-label" id="txn-amount-label">Amount</label>
@@ -1449,7 +1458,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
     search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
-    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_all_currencies:'All Currencies', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
+    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_paybacks:'Paybacks', badge_payback:'PAYBACK', payback_hint:'Money someone paid you back — reduces what this category cost you, and is never counted as income', filter_all_currencies:'All Currencies', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
     panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
@@ -1553,7 +1562,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
     search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
-    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_all_currencies:'全部货币', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
+    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_paybacks:'还款', badge_payback:'还款', payback_hint:'他人还给你的钱 — 会抵扣该类别的支出，不计为收入', filter_all_currencies:'全部货币', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
     panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
@@ -1664,6 +1673,7 @@ let state = {
   filterMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   geminiKey: '',
   aiModel: '',   // resolved at runtime; providers retire model IDs
+  budgetCur: '', // which currency tab the budgets page is showing
 
   snInstance: DEFAULT_SN_INSTANCE,
   snUsername: 'admin',
@@ -1704,6 +1714,7 @@ function saveState() {
       filterMonth: state.filterMonth,
       geminiKey: state.geminiKey,
       aiModel: state.aiModel,
+      budgetCur: state.budgetCur,
       snInstance: state.snInstance,
       snUsername: state.snUsername,
       snPassword: state.snPassword,
@@ -1920,7 +1931,8 @@ function setType(type, el) {
   const saveBtn = document.getElementById('save-txn-btn');
   if (!document.getElementById('txn-edit-id').value) {
     saveBtn.className = type === 'expense' ? 'btn btn-coral' : type === 'income' ? 'btn btn-jade'
-                      : type === 'asset'   ? 'btn btn-purple' : 'btn btn-primary';
+                      : type === 'asset'   ? 'btn btn-purple' : type === 'payback' ? 'btn btn-amber'
+                      : 'btn btn-primary';
   }
   const catSel = document.getElementById('txn-cat');
   const income  = ['Salary','Freelance','Investment','Other'];
@@ -1930,6 +1942,8 @@ function setType(type, el) {
   const asset   = ['Investment','Property','Gold','Vehicle','Other'];
   const transferCats = ['Transfer'];
   const opts = type === 'income' ? income : type === 'asset' ? asset : type === 'transfer' ? transferCats : expense;
+  // 'payback' deliberately falls through to the expense list: it gives back part
+  // of something you spent, so it belongs to a spending category.
   const prev = catSel.value;
   catSel.innerHTML = opts.map(o => `<option value="${o}">${catIcon(o)} ${o}</option>`).join('');
   if (opts.includes(prev)) catSel.value = prev;
@@ -2840,6 +2854,11 @@ function curStats(cur, txns) {
   const mine = txns.filter(t => (t.currency || state.currency) === cur);
   let inc = 0, exp = 0, xIn = 0, xOut = 0;
   mine.forEach(t => {
+    // A payback is money returned by someone else for something you already
+    // paid — a friend settling their share. Counting it as income would inflate
+    // both earnings and the savings rate, so it comes off what you spent
+    // instead, leaving the figure equal to what you actually bore.
+    if (t.type === 'payback') { exp -= t.amount; return; }
     if (t.type !== 'income' && t.type !== 'expense') return;
     if (isFlow(t)) {
       if (t.type === 'income') inc += t.amount; else exp += t.amount;
@@ -2849,6 +2868,7 @@ function curStats(cur, txns) {
     // same-currency transfer legs and asset-funding legs move no money in or
     // out of this currency, so they contribute nothing.
   });
+  exp = Math.round(exp * 100) / 100;
   return {
     inc, exp, xIn, xOut,
     net        : inc - exp + xIn - xOut,
@@ -2872,15 +2892,24 @@ function calcStats() {
 }
 
 function getBudgetSpent(category, currency) {
-  const cur = currency || state.currency;
-  return getMonthTxns().filter(t => t.type==='expense' && isFlow(t) && t.category===category && (t.currency||state.currency) === cur)
-    .reduce((s,t)=>s+t.amount, 0);
+  const cur  = currency || state.currency;
+  const mine = getMonthTxns().filter(t => t.category===category && (t.currency||state.currency) === cur);
+  const spent = mine.filter(t => t.type==='expense' && isFlow(t)).reduce((s,t)=>s+t.amount, 0);
+  // Money paid back to you for this category was never really your cost.
+  const back  = mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
+  return Math.round((spent - back) * 100) / 100;
 }
 
 function getCategorySpend() {
   const map = {};
-  getMonthTxns().filter(t=>t.type==='expense' && isFlow(t)).forEach(t => { map[t.category] = (map[t.category]||0) + t.amount; });
-  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  getMonthTxns().forEach(t => {
+    if (t.type === 'expense' && isFlow(t)) map[t.category] = (map[t.category]||0) + t.amount;
+    else if (t.type === 'payback')         map[t.category] = (map[t.category]||0) - t.amount;
+  });
+  return Object.entries(map)
+    .map(([c,v]) => [c, Math.round(v*100)/100])
+    .filter(([,v]) => v > 0)          // fully repaid categories cost you nothing
+    .sort((a,b)=>b[1]-a[1]);
 }
 
 function applyLanguage() {
@@ -3108,6 +3137,8 @@ function dayTotalHTML(rows) {
   const byCur = {};
   rows.filter(isFlow).forEach(t => {
     const cur = t.currency || state.currency;
+    if (t.type === 'asset') return;                       // moves into a holding, not a daily flow
+    // A payback reduces the day's outgoings rather than adding to what came in.
     byCur[cur] = (byCur[cur] || 0) + (t.type === 'expense' ? -t.amount : t.amount);
   });
   const parts = Object.entries(byCur).map(([cur, raw]) => {
@@ -3193,6 +3224,7 @@ function collapseTransfers(arr) {
 function txnRowHTML(txn, showActions = true, forceBadge = false) {
   const isPos = txn.type === 'income';
   const isAsset = txn.type === 'asset';
+  const isPayback = txn.type === 'payback';
   const showBadge = forceBadge || (txn.currency && txn.currency !== state.currency);
 
   if (txn.transferGroup) {
@@ -3229,12 +3261,12 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
   }
 
   return `<div class="txn-row">
-    <div class="txn-ico" style="background:${catBg(txn.category)}">${catIcon(txn.category)}</div>
+    <div class="txn-ico" style="background:${isPayback?'var(--amber-s)':catBg(txn.category)}">${isPayback?'↩️':catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
-      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
-    <div class="txn-amt ${isPos||isAsset?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':''}>${isPos||isAsset?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
+    <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
       <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit">✏️</button>
       <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete">🗑️</button>
@@ -3344,7 +3376,7 @@ function renderTransactions() {
       if (t.transferGroup && isAssetGroup(t)) return true; // its funding leg
       return false;
     } else if (typeF) {
-      if (t.type !== typeF || t.transferGroup) return false;
+      if (t.type !== typeF || t.transferGroup) return false;   // covers expense, income and payback
     }
     if (catF    && t.category !== catF)                      return false;
     // Matches the row's own currency. A cross-currency transfer therefore
@@ -3368,18 +3400,13 @@ function renderTransactions() {
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))];
   const isMultiCurTxn = currencies.length > 1;
 
-  if (!isMultiCurTxn) {
-    document.getElementById('all-txns').innerHTML = txnListByDate(txns, false, true);
-  } else {
-    document.getElementById('all-txns').innerHTML = currencies.map((cur, i) => {
-      const curTxns = txns.filter(t => (t.currency || state.currency) === cur);
-      if (!curTxns.length) return '';
-      return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
-        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
-        <div style="flex:1;height:1px;background:var(--border);"></div>
-      </div>${txnListByDate(curTxns, true, true)}`;
-    }).join('');
-  }
+  // One chronological list whatever the currency. Splitting into per-currency
+  // sections buried the second currency below a full screen of the first, and
+  // hid the fact that they happened on the same day. Each row already carries
+  // its own currency badge and symbol, and dayTotalHTML emits one figure per
+  // currency rather than adding them, so nothing is ambiguous. Use the currency
+  // filter to isolate one.
+  document.getElementById('all-txns').innerHTML = txnListByDate(txns, isMultiCurTxn, true);
 }
 
 /* ── SALARY PLANNER ── */
@@ -3553,6 +3580,12 @@ async function applySalaryPlanToBudgets() {
 }
 
 /* ── BUDGETS VIEW ── */
+function setBudgetCur(cur) {
+  state.budgetCur = cur;
+  saveState();
+  renderBudgets();
+}
+
 function renderBudgets() {
   if (!state.budgets.length) {
     document.getElementById('budget-list').innerHTML    = `<div class="empty"><div class="icon">📊</div><p>${t('empty_no_budgets')}</p></div>`;
@@ -3588,6 +3621,7 @@ function renderBudgets() {
           ${over ? `<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
           ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
           ${!isMultiCurBudget ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>` : ''}
+          ${'' /* with tabs on, the active tab already states the currency */}
         </div>
         <div class="budget-actions">
           <button class="icon-btn edit" onclick="event.stopPropagation();openBudgetModal('${b.id}')" title="Edit budget">✏️</button>
@@ -3602,13 +3636,23 @@ function renderBudgets() {
     </div>`;
   };
 
-  document.getElementById('budget-list').innerHTML = Object.entries(budgetsByCur).map(([cur, budgets], i) => `
-    ${isMultiCurBudget ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
-      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>` : ''}
-    ${budgets.map(budgetCardHTML).join('')}
-  `).join('');
+  // Stacked per-currency sections pushed the second currency below a screenful
+  // of the first. Tabs put one tap between them instead of a scroll.
+  const curKeys = Object.keys(budgetsByCur).sort();
+  if (!curKeys.includes(state.budgetCur)) {
+    state.budgetCur = curKeys.includes(state.currency) ? state.currency : curKeys[0];
+  }
+  const activeCur = state.budgetCur;
+
+  const tabsHTML = isMultiCurBudget
+    ? `<div class="bcur-tabs">` + curKeys.map(cur =>
+        `<button class="bcur-tab${cur===activeCur?' active':''}" onclick="setBudgetCur('${esc(cur)}')">
+           ${esc(cur)}<span class="bcur-n">${budgetsByCur[cur].length}</span>
+         </button>`).join('') + `</div>`
+    : '';
+
+  document.getElementById('budget-list').innerHTML =
+    tabsHTML + (budgetsByCur[activeCur] || []).map(budgetCardHTML).join('');
 
   // Group budgets by currency for overview
   const budgetByCur = {};
@@ -3921,7 +3965,7 @@ function monthlyInOut() {
     // cross currencies — an asset purchase or a same-currency transfer is money
     // moving inside one book, not in or out of it.
     if (!cross && !isFlow(t)) return;
-    if (t.type !== 'income' && t.type !== 'expense') return;
+    if (t.type !== 'income' && t.type !== 'expense' && t.type !== 'payback') return;
     const mk = t.date.slice(0, 7);
     if (!months.includes(mk)) return;
     const cur = t.currency || state.currency;
@@ -3931,6 +3975,7 @@ function monthlyInOut() {
     // same money twice made "Money In" of RM3,173.30 look like MYR earnings
     // when nothing was earned in MYR, and made SGD spending read 2,800 on this
     // page while the dashboard said 1,800 for the same month.
+    if (t.type === 'payback') { byCur[cur][mk].exp -= t.amount; return; }
     if (cross) {
       if (t.type === 'income') byCur[cur][mk].xIn  += t.amount;
       else                     byCur[cur][mk].xOut += t.amount;
@@ -4107,7 +4152,10 @@ function effectiveBal(acc) {
   // the balance like income but is deliberately kept out of the income/expense
   // KPIs and budgets — it is not earnings and not spending.
   const asset   = linked.filter(t => t.type === 'asset').reduce((s, t) => s + t.amount, 0);
-  return Math.round((acc.balance + income + asset - expense) * 100) / 100;
+  // Someone settling their share really does put money back in the account, so
+  // it moves the balance like income even though it is not earnings.
+  const payback = linked.filter(t => t.type === 'payback').reduce((s, t) => s + t.amount, 0);
+  return Math.round((acc.balance + income + asset + payback - expense) * 100) / 100;
 }
 
 // A goal linked to an account tracks that account's live balance instead of a

@@ -174,6 +174,25 @@ Transfers don't count as income or spending, and don't consume a budget.
 
 The **category is set to Transfer automatically** — there's nothing to pick. Older transfers made before this existed kept whatever category was chosen at the time (usually *Other*), which made them look like ordinary spending in the category breakdown. **Settings → Data → Retag Transfers** fixes those in one go; it also runs by itself the next time your data syncs. Asset purchases keep their real category, since *Investment* or *Gold* is meaningful there.
 
+### Payback — money someone returns to you
+
+You pay for the group on Friday; two of them settle up on Monday. That money is **not income** — it's part of your own spending coming back.
+
+Pick the **Payback** type, enter the amount, and choose the category it relates to (Sport, for the badminton court). Then:
+
+- Your account goes **up** — the money really did arrive
+- **Income is untouched** — counting it would inflate both your earnings and your savings rate
+- That category's spending goes **down** — pay S$20 and get S$8.40 back and Sport reads S$11.60, which is what the evening actually cost you
+- A category repaid in full drops out of the breakdown entirely rather than sitting at zero
+
+Paybacks have their own row style (↩️ with a PAYBACK badge) and their own filter, so they're never mistaken for income at a glance.
+
+One thing to know: a payback counts in the month it **arrives**. Pay in one month and get repaid in the next, and the first month shows the full cost while the next shows the credit. Within one month — the usual case — it nets out exactly.
+
+Transactions are listed in one run, newest first, whatever the currency — an MYR row on the 17th sits between the SGD rows of the 17th rather than in a separate block further down. Each row states its own currency, and a day's total shows one figure per currency, never added together. Use the currency filter to see just one.
+
+Budgets with more than one currency get **tabs** instead of stacked sections, so the second currency is one tap away rather than a screen of scrolling.
+
 ### Seeing what makes up a budget
 
 Click any budget card (or focus it and press Enter) to open the transaction list filtered to that category — the real list, with its usual edit and delete, so the rows always agree with the figure on the card. Budgets track spending, so income and transfers are left out. A category-and-currency pair drills in exactly: an MYR *Food & Drink* budget shows only the MYR rows, never the SGD ones.
@@ -191,7 +210,7 @@ Transfers can be edited like anything else — including swapping the direction 
 - **Search box** — filters by description as you type
 - **Type filter** — Expenses, Income, Assets, or Transfers
 - **Period** — *This Month* (the default, following the month bar) or *All Time*. Pick All Time to see every transaction you've ever recorded in one list; the month bar dims, since it no longer applies
-- **Currency filter** — only appears when you actually hold more than one currency. A cross-currency transfer shows under *both* sides, because each leg really is money in that currency
+- **Currency filter** — only appears when you actually hold more than one currency
 - **Category filter** — show one category
 - **Month bar** — step to any month
 - **Clear** — reset all filters at once
