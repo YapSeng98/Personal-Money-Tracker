@@ -383,6 +383,20 @@ Rows display a small badge showing their sync state: **SN** (synced to ServiceNo
 - **⬇ CSV** — download all transactions as a spreadsheet-friendly CSV
 - **⬇ SN JSON** — download a ServiceNow-format JSON backup of everything
 
+### Automatic weekly backups
+
+Three backups run on their own once set up, and they cover each other's gaps:
+
+- **Emailed CSVs** — lands in your inbox weekly
+- **Stored in ServiceNow** — a dated backup record with a full JSON plus CSVs attached, keeping the last 12 weeks. Runs server-side, so it happens whether or not any of your devices are on
+- **A folder on your Mac** — `~/Documents/PFMT_Backups/2026-08-17/`, real files you own outright. Only runs while the Mac is awake; if it's asleep at the scheduled time the backup happens on the next wake rather than being skipped
+
+The JSON is the restore file — it keeps every field, including the `transferGroup` that pairs the two legs of a transfer. Restore accounts before transactions, since transactions refer to accounts by name.
+
+An empty or failed pull will never overwrite a good backup: the job stops and leaves the previous one in place, because a network glitch shouldn't be indistinguishable from having deleted everything.
+
+Setup is a one-time job, documented in `backup/README.md`.
+
 ---
 
 ## 13. Troubleshooting

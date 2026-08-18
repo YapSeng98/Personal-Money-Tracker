@@ -667,6 +667,7 @@ Persisted to `localStorage` key `pfmt_state_v2`.
 | Name | Schedule | Purpose |
 |---|---|---|
 | `SCHED_WeeklyBackupEmail` | Weekly (pick a day/time) | Email each user their accounts/transactions/budgets/goals as CSV attachments |
+| `SCHED_WeeklyFullBackup` | Weekly (recommend Sunday 02:00) | Store a dated full backup as a record with JSON + CSV attachments; prunes to the last 12. **Needs the `x_887486_0_backup` table created first** — see [`backup/README.md`](backup/README.md) |
 
 Paste into **System Definition → Scheduled Jobs → New → "Automatically run a script of your choosing"**. Users with no data yet are skipped — nothing is sent until there's something to back up. Uses each user's `email` field on `user_profile`, so make sure that's filled in (set at registration, editable from **Settings**).
 
@@ -764,6 +765,8 @@ Import `FLOW_MonthlyBudgetReset.js` and `FLOW_RecurringTransactions.js` in Flow 
 ### Step 5b — Scheduled Jobs
 
 Create a Scheduled Job from `SCHED_WeeklyBackupEmail.js` as described in [Scheduled Jobs](#scheduled-jobs). Optional, but recommended once real data is on the instance.
+
+For a dated backup history rather than just an inbox copy, also set up `SCHED_WeeklyFullBackup.js` — and optionally the Mac-side job that pulls those backups into a local folder every week. Both are documented in [`backup/README.md`](backup/README.md); the ServiceNow half needs a new `x_887486_0_backup` table, which that guide specifies field by field.
 
 ---
 

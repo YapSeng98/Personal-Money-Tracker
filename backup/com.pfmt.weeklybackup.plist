@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pfmt.weeklybackup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__SCRIPT_PATH__</string>
+  </array>
+
+  <!-- Sunday 09:00. StartCalendarInterval fires on the next wake if the Mac
+       was asleep at the scheduled time, so a closed lid only delays the run
+       rather than skipping the week. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__LOG_DIR__/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_DIR__/launchd.err.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
