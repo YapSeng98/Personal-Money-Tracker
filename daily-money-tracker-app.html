@@ -3201,6 +3201,14 @@ function migrateTransferCategories() {
 
 function isAssetGroup(t) {
   if (!t.transferGroup) return false;
+  // The group id itself records what kind of pair this is: asset purchases are
+  // stamped ag_, transfers tg_. Reading that first means the pair survives even
+  // if the holding leg's type does not round-trip — if ServiceNow's
+  // transaction_type has no 'asset' choice, that leg comes back as something
+  // else and the purchase would otherwise masquerade as a plain transfer.
+  if (t.transferGroup.indexOf('ag_') === 0) return true;
+  if (t.transferGroup.indexOf('tg_') === 0) return false;
+  // Older rows predate the prefixes, so fall back to looking for the holding leg.
   return state.transactions.some(x => x.transferGroup === t.transferGroup && x.type === 'asset');
 }
 
@@ -3233,7 +3241,9 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
     const diffCur = peer && (peer.currency || state.currency) !== (txn.currency || state.currency);
     // An asset purchase is a pair too, but it reads as "bought a holding",
     // not "shuffled cash" — so it keeps the asset styling and badge.
-    const isAssetPair = peer && peer.type === 'asset';
+    // Same reasoning as isAssetGroup: trust the group's own prefix first so a
+    // purchase never renders as a transfer just because a type failed to survive.
+    const isAssetPair = isAssetGroup(txn) || (peer && peer.type === 'asset');
     const tint  = isAssetPair ? 'var(--violet-s)' : 'var(--sky-s)';
     const inkC  = isAssetPair ? 'var(--violet)'   : 'var(--sky)';
     const icon  = isAssetPair ? '📈' : '🔄';
