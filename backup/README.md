@@ -2,9 +2,24 @@
 
 ## Which backup do you want?
 
+**Easiest by far: the emailed system backup.** It runs inside ServiceNow, which already has system rights, so there is no login to store anywhere and nothing to install on any machine. Paste one script into a Scheduled Job and a complete backup of every user lands in your inbox weekly.
+
+```
+System Definition → Scheduled Jobs → New → "Automatically run a script of your choosing"
+  Name: PFMT System Backup Email
+  Run:  Weekly
+  Script: paste ../SCHED_SystemBackupEmail.js   (set OWNER_EMAIL at the top first)
+```
+
+You get two attachments: `pfmt_system_<date>.json` — the restore file, every table, every user — and a CSV of all transactions. The email body lists per-user row counts so you can see at a glance whose data is in it.
+
+Choose one of the others only if you want the files on your own disk rather than in email.
+
+
 | | Covers | Reads via | Setup |
 |---|---|---|---|
-| **System backup** | **Every user's data** | ServiceNow Table API, admin login | `setup_admin_keychain.sh` → `install_schedule.sh --admin` |
+| **Emailed system backup** | **Every user's data** | Runs inside ServiceNow — no login at all | Paste `SCHED_SystemBackupEmail.js` into a Scheduled Job |
+| System backup to disk | **Every user's data** | ServiceNow Table API, admin login | `setup_admin_keychain.sh` → `install_schedule.sh --admin` |
 | Personal backup | One account — yours | PFMT API, your PFMT login | `setup_keychain.sh` → `install_schedule.sh` |
 
 **As the system owner, you want the system backup.** The personal one authenticates as a single PFMT user, and every endpoint filters to that user's profile:

@@ -667,6 +667,7 @@ Persisted to `localStorage` key `pfmt_state_v2`.
 | Name | Schedule | Purpose |
 |---|---|---|
 | `SCHED_WeeklyBackupEmail` | Weekly (pick a day/time) | Email each user their accounts/transactions/budgets/goals as CSV attachments |
+| `SCHED_SystemBackupEmail` | Weekly | **Every user's data in one emailed file.** Runs with system rights, so no credentials are stored anywhere and nothing is installed on a laptop. Needs no new table — set `OWNER_EMAIL` at the top and schedule it |
 | `SCHED_WeeklyFullBackup` | Weekly (recommend Sunday 02:00) | Store a dated full backup as a record with JSON + CSV attachments; prunes to the last 12. **Needs the `x_887486_0_backup` table created first** — see [`backup/README.md`](backup/README.md) |
 
 Paste into **System Definition → Scheduled Jobs → New → "Automatically run a script of your choosing"**. Users with no data yet are skipped — nothing is sent until there's something to back up. Uses each user's `email` field on `user_profile`, so make sure that's filled in (set at registration, editable from **Settings**).
