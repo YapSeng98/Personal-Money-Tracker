@@ -1,6 +1,65 @@
 # PFMT Weekly Backup
 
-**The Mac backup works on its own. ServiceNow setup is optional.**
+## Which backup do you want?
+
+| | Covers | Reads via | Setup |
+|---|---|---|---|
+| **System backup** | **Every user's data** | ServiceNow Table API, admin login | `setup_admin_keychain.sh` → `install_schedule.sh --admin` |
+| Personal backup | One account — yours | PFMT API, your PFMT login | `setup_keychain.sh` → `install_schedule.sh` |
+
+**As the system owner, you want the system backup.** The personal one authenticates as a single PFMT user, so the API only ever returns that user's records — it cannot see anyone else's. The system backup reads the tables directly, so it captures everybody in one folder.
+
+Both can run side by side; they use separate credentials, labels and folders.
+
+---
+
+# System backup — every user, one folder
+
+```bash
+cd backup
+./setup_admin_keychain.sh          # instance + a ServiceNow login that can read x_887486_0_*
+./admin_backup.sh                  # try it once
+./install_schedule.sh --admin      # weekly, Sunday 09:00
+```
+
+Produces:
+
+```
+~/Documents/PFMT_System_Backups/2026-08-19/
+    user_profile.json      account.json     transaction.json
+    budget.json            savings_goal.json category.json
+    manifest.json
+```
+
+`manifest.json` is the summary you'd check first — row counts per table and **per user**:
+
+```json
+{
+  "exportedOn": "2026-08-19",
+  "totalRows": 1511,
+  "tables": { "user_profile": 2, "account": 3, "transaction": 1503, ... },
+  "perUser": [
+    { "username": "ycs",   "account": 2, "transaction": 1500, "budget": 1, "savings_goal": 0 },
+    { "username": "wendy", "account": 1, "transaction": 3,    "budget": 0, "savings_goal": 1 }
+  ],
+  "secretsIncluded": false,
+  "redactedFields": ["ai_api_key", "password_hash", "token"]
+}
+```
+
+### What it deliberately leaves out
+
+- **Password hashes and AI API keys are redacted by default**, replaced with `__REDACTED__`. A folder of user password hashes is a liability, and you rarely need them. Pass `--include-secrets` if you are taking a true disaster-recovery copy — it warns in the log and records the choice in the manifest.
+- **`x_887486_0_session` is never backed up.** It holds live auth tokens, is rebuilt on login, and restoring it would archive credentials for no benefit.
+- **`x_887486_0_backup` is never backed up** — it holds copies of the other tables, so including it would nest backups inside backups.
+
+### Requirements
+
+The ServiceNow account needs **read access to the `x_887486_0_*` tables**. A `403` fails loudly and names the table, rather than writing a partial folder. Rows are paged 1,000 at a time, so table size is not a limit.
+
+---
+
+**The personal backup below is optional if you are taking the system backup.**
 
 The Mac job pulls everything through the PFMT API and writes real files you own outright — that is a complete backup by itself. The ServiceNow job exists only so a backup still happens on a week your laptop never wakes up. Set up Part 1 and stop there if that is enough.
 
@@ -11,6 +70,8 @@ The Mac job pulls everything through the PFMT API and writes real files you own 
 | **Email** *(already set up)* | CSVs in your inbox | Always |
 
 ---
+
+# Personal backup — your account only
 
 ## Part 1 — Your Mac
 
@@ -151,4 +212,5 @@ The ServiceNow copy of the same file is attached to its backup record if you'd r
 | `login failed` | Password changed, or wrong instance — re-run `./setup_keychain.sh` |
 | `refusing to write an empty backup` | Working as intended; check the instance is reachable and the account still has data |
 | Scheduled run never fires | `launchctl list \| grep pfmt`; if absent, re-run `./install_schedule.sh` |
+| `refused the request ... HTTP 403` | The ServiceNow account cannot read that table — grant read on `x_887486_0_*` |
 | Table error in the SN log | The `x_887486_0_backup` table hasn't been created — see Part 2 (or skip ServiceNow entirely) |
