@@ -4642,25 +4642,31 @@ function buildSummary() {
 function exportCSV() {
   if (!state.transactions.length) { showToast(t('toast_no_txns_export'), 'info'); return; }
   const q = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
-  const hdr = ['Date','Type','Description','Category','Account','Currency','Amount','Notes'];
+  const hdr = ['Date','Type','Description','Category','Account','Currency','Amount','Notes','TransferGroup','TransferPeer'];
   const rows = state.transactions.map(t =>
-    [t.date, t.type, q(t.description), q(t.category), q(t.account), t.currency || state.currency, t.amount.toFixed(2), q(t.notes)]
+    [t.date, t.type, q(t.description), q(t.category), q(t.account), t.currency || state.currency, t.amount.toFixed(2), q(t.notes),
+     q(t.transferGroup || ''), q(t.transferPeer || '')]
   );
   const csv = [hdr, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `pfmt_transactions_${state.filterMonth}.csv`;
+  a.download = `pfmt_transactions_all_${localDateStr()}.csv`;   // every row, not just the filtered month
   a.click();
   showToast(t('toast_csv_downloaded'), 'success');
 }
 
 function exportSNJSON() {
   const payload = {
+    // transfer_group is what pairs the two legs of a transfer or a funded asset.
+    // Without it a restore produces two unrelated rows, the balances stop
+    // reconciling, and an asset purchase comes back as a plain transfer — so an
+    // export missing it is not a backup you could actually restore from.
     x_pfmt_transaction: state.transactions.map(t => ({
       transaction_type: t.type, amount: t.amount, description: t.description,
       category: t.category, account: t.account, transaction_date: t.date,
-      currency: t.currency || state.currency, notes: t.notes || ''
+      currency: t.currency || state.currency, notes: t.notes || '',
+      transfer_group: t.transferGroup || '', transfer_peer: t.transferPeer || ''
     })),
     x_pfmt_budget: state.budgets.map(b => ({
       category: b.category, budget_amount: b.amount, currency: b.currency || state.currency,
@@ -4679,7 +4685,7 @@ function exportSNJSON() {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `pfmt_sn_export_${state.filterMonth}.json`;
+  a.download = `pfmt_sn_export_all_${localDateStr()}.json`;     // every row, not just the filtered month
   a.click();
   showToast(t('toast_sn_exported'), 'success');
 }
