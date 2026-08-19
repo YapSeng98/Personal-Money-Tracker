@@ -6,6 +6,9 @@ A full-featured personal finance web app that syncs with ServiceNow as its cloud
 
 ---
 
+> **Setting up backups?** Follow [BACKUP_STEPS.md](BACKUP_STEPS.md) — step by step, every method.
+> **Want the data model?** [PFMT_System_Structure.pdf](PFMT_System_Structure.pdf) — all 8 tables, fields and relationships on one page.
+
 ## Table of Contents
 
 1. [Tech Stack](#tech-stack)

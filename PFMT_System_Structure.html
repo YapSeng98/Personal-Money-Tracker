@@ -1,0 +1,226 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PFMT — System Structure</title>
+<style>
+  @page { size: A3 landscape; margin: 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+         color: #0D1117; margin: 0; font-size: 11px; }
+  h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: -.3px; }
+  .sub { color: #6B7280; font-size: 11px; margin-bottom: 14px; }
+  .legend { display: flex; gap: 18px; font-size: 10px; color: #6B7280; margin-bottom: 14px;
+            padding-bottom: 10px; border-bottom: 1px solid #E2E8F0; }
+  .legend b { color: #0D1117; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start; }
+  .ent { border: 1.5px solid #0F2A50; border-radius: 7px; overflow: hidden; break-inside: avoid; background: #fff; }
+  .ent.core { border-color: #00A087; }
+  .ent.aux  { border-color: #94A3B8; }
+  .ent > h2 { margin: 0; font-size: 11.5px; padding: 6px 9px; background: #0F2A50; color: #fff;
+              font-family: ui-monospace, Menlo, monospace; letter-spacing: .2px; }
+  .ent.core > h2 { background: #00A087; }
+  .ent.aux  > h2 { background: #94A3B8; }
+  .ent h2 span { float: right; font-weight: 400; opacity: .75; font-size: 9.5px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 3px 9px; border-top: 1px solid #EEF2F7; font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; }
+  td.t { color: #6B7280; text-align: right; white-space: nowrap; font-size: 9px; }
+  .pk { color: #B45309; font-weight: 700; }
+  .fk { color: #2563EB; font-weight: 700; }
+  .sec { color: #DC2626; }
+  .note { font-size: 9px; color: #6B7280; padding: 5px 9px; background: #F8FAFC; border-top: 1px solid #EEF2F7; line-height: 1.45; }
+
+  .rels { margin-top: 16px; break-inside: avoid; }
+  .rels h3 { font-size: 12px; margin: 0 0 7px; }
+  .rels table { border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; }
+  .rels td { font-family: inherit; font-size: 10px; padding: 5px 9px; }
+  .rels tr:first-child td { background: #F8FAFC; font-weight: 700; font-size: 9.5px;
+                            text-transform: uppercase; letter-spacing: .5px; color: #6B7280;
+                            font-family: -apple-system, sans-serif; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #F1F5F9; padding: 1px 4px; border-radius: 3px; font-size: 9.5px; }
+  .rules { margin-top: 14px; break-inside: avoid; }
+  .rules h3 { font-size: 12px; margin: 0 0 7px; }
+  .rules ul { margin: 0; padding-left: 16px; line-height: 1.65; font-size: 10px; }
+  .rules li { margin-bottom: 3px; }
+  .foot { margin-top: 14px; padding-top: 8px; border-top: 1px solid #E2E8F0;
+          font-size: 9px; color: #94A3B8; }
+</style>
+
+<h1>PFMT — System Structure</h1>
+<div class="sub">Personal Finance Money Tracker · ServiceNow scope <code>x_887486_0</code> · every table, field and relationship</div>
+
+<div class="legend">
+  <span><span class="key" style="background:#00A087"></span><b>Core</b> — the money</span>
+  <span><span class="key" style="background:#0F2A50"></span><b>Supporting</b></span>
+  <span><span class="key" style="background:#94A3B8"></span><b>Infrastructure</b></span>
+  <span><span class="pk">PK</span> primary key</span>
+  <span><span class="fk">FK</span> reference</span>
+  <span><span class="sec">red</span> sensitive — redacted in backups</span>
+</div>
+
+<div class="grid">
+
+  <div class="ent core">
+    <h2>x_887486_0_user_profile <span>1</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td>username</td><td class="t">String</td></tr>
+      <tr><td class="sec">password_hash</td><td class="t">String</td></tr>
+      <tr><td>display_name</td><td class="t">String</td></tr>
+      <tr><td>email</td><td class="t">String</td></tr>
+      <tr><td>currency_preference</td><td class="t">String</td></tr>
+      <tr><td>language_preference</td><td class="t">String</td></tr>
+      <tr><td class="sec">ai_api_key</td><td class="t">String</td></tr>
+      <tr><td>monthly_income_target</td><td class="t">Decimal</td></tr>
+      <tr><td>avatar_color</td><td class="t">String</td></tr>
+      <tr><td>last_login</td><td class="t">DateTime</td></tr>
+    </table>
+    <div class="note">Owns everything below. Every REST endpoint resolves the caller's token to one profile and filters on it — which is why the API can never return another user's data.</div>
+  </div>
+
+  <div class="ent core">
+    <h2>x_887486_0_transaction <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td class="fk">user_profile</td><td class="t">→ user_profile</td></tr>
+      <tr><td class="fk">account</td><td class="t">→ account</td></tr>
+      <tr><td class="fk">category</td><td class="t">→ category</td></tr>
+      <tr><td>transaction_type</td><td class="t">Choice</td></tr>
+      <tr><td>amount</td><td class="t">Decimal</td></tr>
+      <tr><td>currency</td><td class="t">String</td></tr>
+      <tr><td>transaction_date</td><td class="t">Date</td></tr>
+      <tr><td>description</td><td class="t">String</td></tr>
+      <tr><td>notes</td><td class="t">String</td></tr>
+      <tr><td><b>transfer_group</b></td><td class="t">String</td></tr>
+      <tr><td>is_recurring</td><td class="t">Boolean</td></tr>
+      <tr><td>recurring_frequency</td><td class="t">Choice</td></tr>
+      <tr><td>next_run_date</td><td class="t">Date</td></tr>
+      <tr><td>state</td><td class="t">Choice</td></tr>
+      <tr><td>sys_created_on</td><td class="t">DateTime</td></tr>
+    </table>
+    <div class="note"><b>transaction_type:</b> expense · income · transfer · asset · payback.<br>
+      <b>transfer_group</b> is the self-join that pairs two rows into one movement — <code>tg_</code> a transfer, <code>ag_</code> an asset purchase.</div>
+  </div>
+
+  <div class="ent core">
+    <h2>x_887486_0_account <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td class="fk">user_profile</td><td class="t">→ user_profile</td></tr>
+      <tr><td>account_name</td><td class="t">String</td></tr>
+      <tr><td>account_type</td><td class="t">Choice</td></tr>
+      <tr><td>institution_name</td><td class="t">String</td></tr>
+      <tr><td>current_balance</td><td class="t">Decimal</td></tr>
+      <tr><td>currency</td><td class="t">String</td></tr>
+    </table>
+    <div class="note">The account's currency is authoritative: a transaction whose currency differs from its account moves no money, so the form binds one to the other.</div>
+  </div>
+
+  <div class="ent">
+    <h2>x_887486_0_budget <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td class="fk">user_profile</td><td class="t">→ user_profile</td></tr>
+      <tr><td class="fk">category</td><td class="t">→ category</td></tr>
+      <tr><td>budget_amount</td><td class="t">Decimal</td></tr>
+      <tr><td>spent_amount</td><td class="t">Decimal</td></tr>
+      <tr><td>remaining_amount</td><td class="t">Decimal</td></tr>
+      <tr><td>currency</td><td class="t">String</td></tr>
+      <tr><td>alert_threshold</td><td class="t">Integer</td></tr>
+      <tr><td>period_start</td><td class="t">Date</td></tr>
+      <tr><td>period_end</td><td class="t">Date</td></tr>
+    </table>
+    <div class="note">Keyed by category <i>and</i> currency — an SGD and an MYR budget for the same category are separate rows and never combine.</div>
+  </div>
+
+  <div class="ent">
+    <h2>x_887486_0_savings_goal <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td class="fk">user_profile</td><td class="t">→ user_profile</td></tr>
+      <tr><td class="fk">account</td><td class="t">→ account</td></tr>
+      <tr><td>goal_name</td><td class="t">String</td></tr>
+      <tr><td>target_amount</td><td class="t">Decimal</td></tr>
+      <tr><td>current_amount</td><td class="t">Decimal</td></tr>
+      <tr><td>monthly_contribution</td><td class="t">Decimal</td></tr>
+      <tr><td>target_date</td><td class="t">Date</td></tr>
+      <tr><td>currency</td><td class="t">String</td></tr>
+      <tr><td>goal_icon</td><td class="t">String</td></tr>
+      <tr><td>goal_status</td><td class="t">Choice</td></tr>
+      <tr><td>remarks</td><td class="t">String</td></tr>
+    </table>
+    <div class="note">An optional <code>account</code> link makes the goal track that account's live balance instead of a manually kept figure.</div>
+  </div>
+
+  <div class="ent">
+    <h2>x_887486_0_category <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td>category_name</td><td class="t">String</td></tr>
+      <tr><td>category_type</td><td class="t">Choice</td></tr>
+      <tr><td>icon_emoji</td><td class="t">String</td></tr>
+      <tr><td>color_hex</td><td class="t">String</td></tr>
+      <tr><td>is_system_default</td><td class="t">Boolean</td></tr>
+    </table>
+    <div class="note">Shared reference data, not owned by a user. Transactions and budgets both point at it.</div>
+  </div>
+
+  <div class="ent aux">
+    <h2>x_887486_0_session <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td class="fk">user_profile</td><td class="t">→ user_profile</td></tr>
+      <tr><td class="sec">token</td><td class="t">String</td></tr>
+      <tr><td>expires_at</td><td class="t">DateTime</td></tr>
+      <tr><td>device_hint</td><td class="t">String</td></tr>
+    </table>
+    <div class="note">Live auth tokens, rebuilt on every login. Deliberately excluded from backups — archiving it would store credentials for no restore value.</div>
+  </div>
+
+  <div class="ent aux">
+    <h2>x_887486_0_backup <span>n</span></h2>
+    <table>
+      <tr><td class="pk">sys_id</td><td class="t">PK</td></tr>
+      <tr><td class="fk">user_profile</td><td class="t">→ user_profile</td></tr>
+      <tr><td>run_on</td><td class="t">DateTime</td></tr>
+      <tr><td>record_count</td><td class="t">Integer</td></tr>
+      <tr><td>summary</td><td class="t">String</td></tr>
+      <tr><td>status</td><td class="t">String</td></tr>
+    </table>
+    <div class="note">Optional. Holds dated copies of the other tables as attachments. Excluded from backups so they cannot nest.</div>
+  </div>
+
+</div>
+
+<div class="rels">
+  <h3>Relationships</h3>
+  <table>
+    <tr><td>From</td><td>To</td><td>Card.</td><td>Meaning</td></tr>
+    <tr><td><code>account.user_profile</code></td><td><code>user_profile</code></td><td>n : 1</td><td>Each account belongs to one user</td></tr>
+    <tr><td><code>transaction.user_profile</code></td><td><code>user_profile</code></td><td>n : 1</td><td>Owner — the filter every API call applies</td></tr>
+    <tr><td><code>transaction.account</code></td><td><code>account</code></td><td>n : 1</td><td>Which account the money moved in or out of</td></tr>
+    <tr><td><code>transaction.category</code></td><td><code>category</code></td><td>n : 1</td><td>What it was for</td></tr>
+    <tr><td><code>transaction.transfer_group</code></td><td><code>transaction</code></td><td>1 : 1</td><td><b>Self-join.</b> Two rows sharing this value are one movement</td></tr>
+    <tr><td><code>budget.user_profile</code></td><td><code>user_profile</code></td><td>n : 1</td><td>Owner</td></tr>
+    <tr><td><code>budget.category</code></td><td><code>category</code></td><td>n : 1</td><td>What is being capped</td></tr>
+    <tr><td><code>savings_goal.user_profile</code></td><td><code>user_profile</code></td><td>n : 1</td><td>Owner</td></tr>
+    <tr><td><code>savings_goal.account</code></td><td><code>account</code></td><td>n : 1</td><td>Optional — goal tracks that account's balance</td></tr>
+    <tr><td><code>session.user_profile</code></td><td><code>user_profile</code></td><td>n : 1</td><td>One row per signed-in device</td></tr>
+  </table>
+</div>
+
+<div class="rules">
+  <h3>Rules the structure encodes</h3>
+  <ul>
+    <li><b>No exchange rate exists anywhere.</b> Currency is a plain string on each row; amounts in different currencies are never added. Every total is computed per currency.</li>
+    <li><b>A movement between accounts is two rows, not one.</b> A transfer writes an <code>expense</code> leg and an <code>income</code> leg sharing a <code>transfer_group</code>, so both balances move through the ordinary logic. Cross-currency legs keep their own amounts — S$1,000 out and RM3,173.30 in — with no rate invented between them.</li>
+    <li><b>The group prefix records what kind of pair it is:</b> <code>tg_</code> a transfer, <code>ag_</code> an asset purchase. Reading the prefix rather than the peer's type means the pair survives even if a type fails to round-trip.</li>
+    <li><b>Neither leg is earning or spending.</b> Analytics excludes paired rows from income and expense; a cross-currency pair is reported separately as exchanged in / out.</li>
+    <li><b>A <code>payback</code> reduces spending rather than adding income</b> — money returned by someone else was never earnings.</li>
+    <li><b>Balance is derived, not stored as truth.</b> <code>current_balance</code> is the opening figure; the live balance is that plus income and assets, less expenses, counting only rows whose currency matches the account's.</li>
+  </ul>
+</div>
+
+<div class="foot">
+  Generated from the ServiceNow scripts in this repository — field names and references read from the REST APIs, business rules and scheduled jobs rather than transcribed by hand.
+</div>
