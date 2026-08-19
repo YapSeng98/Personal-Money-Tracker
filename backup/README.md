@@ -1,18 +1,85 @@
 # PFMT Weekly Backup
 
-Two backups run every week, and they cover each other's weak spot:
+**The Mac backup works on its own. ServiceNow setup is optional.**
+
+The Mac job pulls everything through the PFMT API and writes real files you own outright — that is a complete backup by itself. The ServiceNow job exists only so a backup still happens on a week your laptop never wakes up. Set up Part 1 and stop there if that is enough.
 
 | | Where | Runs when |
 |---|---|---|
-| **ServiceNow** | Dated backup records with files attached | Always — server-side, nothing of yours needs to be on |
-| **Your Mac** | `~/Documents/PFMT_Backups/2026-08-17/` | Only while your Mac is awake |
+| **Your Mac** *(all you need)* | `~/Documents/PFMT_Backups/2026-08-19/` | Whenever the Mac is awake; a missed slot runs on the next wake |
+| **ServiceNow** *(optional)* | Dated records with files attached | Always — server-side, nothing of yours needs to be on |
 | **Email** *(already set up)* | CSVs in your inbox | Always |
-
-The Mac one gives you real files you own outright. The ServiceNow one keeps running when your laptop is shut. Neither replaces the other, which is the point.
 
 ---
 
-## Part 1 — ServiceNow (do this first)
+## Part 1 — Your Mac
+
+### 1. Store your credentials
+
+```bash
+cd backup
+./setup_keychain.sh
+```
+
+Asks for your instance, username and password and puts them in the **macOS Keychain**. Nothing is written to any file, the password prompt does not echo, and neither the password nor the session token ever reaches a log.
+
+### 2. Install the weekly run
+
+```bash
+./install_schedule.sh
+```
+
+This registers a launchd agent and then **fires one run immediately**, so a broken setup shows up in seconds instead of next Sunday. You should see:
+
+```
+Installed: weekly backup every Sunday 09:00
+Running it once now to check the setup...
+  ✅ wrote /Users/you/Documents/PFMT_Backups/2026-08-19/
+```
+
+Which gives you:
+
+```
+~/Documents/PFMT_Backups/2026-08-19/
+    accounts.csv  transactions.csv  budgets.csv  goals.csv
+    full_backup.json
+```
+
+`full_backup.json` is the restore file — every field, including the `transferGroup` that pairs the two legs of a transfer. The CSVs are for reading in a spreadsheet.
+
+### 3. Check on it later
+
+```bash
+launchctl list | grep pfmt                    # is it scheduled?
+ls ~/Documents/PFMT_Backups/                  # dated folders
+tail ~/Documents/PFMT_Backups/.logs/*.log     # what the last run did
+./install_schedule.sh --remove                # stop it (keeps existing backups)
+```
+
+Keeps the last **12** runs. Override either setting in `~/.zshrc` so the scheduled run sees it too:
+
+```bash
+export PFMT_BACKUP_DIR="$HOME/Dropbox/PFMT_Backups"
+export PFMT_KEEP_RUNS=26
+```
+
+### Why Sunday 09:00 and not "every 7 days"
+
+`StartCalendarInterval` is used rather than `StartInterval`, which matters for a laptop. From `man launchd.plist`:
+
+> **StartCalendarInterval** — "Unlike cron which skips job invocations when the computer is asleep, launchd will start the job the next time the computer wakes up."
+>
+> **StartInterval** — "If the system is asleep during the time of the next scheduled interval firing, that interval will be missed due to shortcomings in kqueue(3)."
+
+So a closed lid delays the backup to the next wake; it does not skip the week. An elapsed-time interval would drop it. A fixed time also makes "did Sunday's backup run?" a question you can actually answer.
+
+`RunAtLoad` is deliberately off: it fires on every login, not just at install, which would mean a backup every time you log in. The installer triggers one run with `launchctl kickstart` instead — same immediate feedback, no repetition.
+
+---
+
+## Part 2 — ServiceNow (optional)
+
+Skip this unless you want a backup on weeks your Mac never wakes.
 
 ### 1. Create the backup table
 
@@ -53,60 +120,6 @@ Keeps the last **12** weekly backups per user and prunes older ones — change `
 
 ---
 
-## Part 2 — Your Mac
-
-### 1. Store your credentials
-
-```bash
-cd backup
-./setup_keychain.sh
-```
-
-Asks for your instance, username and password, and puts them in the **macOS Keychain**. Nothing is written to any file, the password prompt doesn't echo, and neither the password nor the session token ever reaches a log.
-
-### 2. Try it once, by hand
-
-```bash
-./pfmt_backup.sh
-```
-
-You should get:
-
-```
-~/Documents/PFMT_Backups/2026-08-17/
-    accounts.csv
-    transactions.csv
-    budgets.csv
-    goals.csv
-    full_backup.json
-```
-
-`full_backup.json` is the restore file — it holds every field including `transferGroup`, which is what pairs the two legs of a transfer. The CSVs are for reading in a spreadsheet.
-
-### 3. Make it weekly
-
-```bash
-./install_schedule.sh
-```
-
-Installs a launchd agent that runs every **Sunday at 09:00**. If your Mac is asleep at that moment the run happens on the next wake, so a closed lid delays the week's backup rather than skipping it.
-
-```bash
-launchctl list | grep pfmt          # confirm it's registered
-./install_schedule.sh --remove      # stop the schedule (keeps existing backups)
-```
-
-Keeps the last **12** runs. Override either setting:
-
-```bash
-export PFMT_BACKUP_DIR="$HOME/Dropbox/PFMT_Backups"   # somewhere else
-export PFMT_KEEP_RUNS=26                              # keep half a year
-```
-
-Set them in `~/.zshrc` so the scheduled run sees them too.
-
----
-
 ## What it refuses to do
 
 The backup deliberately fails rather than writing something misleading:
@@ -138,4 +151,4 @@ The ServiceNow copy of the same file is attached to its backup record if you'd r
 | `login failed` | Password changed, or wrong instance — re-run `./setup_keychain.sh` |
 | `refusing to write an empty backup` | Working as intended; check the instance is reachable and the account still has data |
 | Scheduled run never fires | `launchctl list \| grep pfmt`; if absent, re-run `./install_schedule.sh` |
-| Table error in the SN log | The `x_887486_0_backup` table hasn't been created — see Part 1 |
+| Table error in the SN log | The `x_887486_0_backup` table hasn't been created — see Part 2 (or skip ServiceNow entirely) |

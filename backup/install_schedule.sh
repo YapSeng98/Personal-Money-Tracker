@@ -53,7 +53,7 @@ sed -e "s|__SCRIPT_PATH__|$SCRIPT|g" -e "s|__LOG_DIR__|$LOG_DIR|g" \
 
 unload
 if launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST" 2>/dev/null \
-   || launchctl load "$PLIST_DEST" 2>/dev/null; then
+   || launchctl load -w "$PLIST_DEST" 2>/dev/null; then
   echo "Installed: weekly backup every Sunday 09:00"
 else
   echo "ERROR: launchctl refused to load $PLIST_DEST"
@@ -64,6 +64,24 @@ echo "  script : $SCRIPT"
 echo "  folder : ${PFMT_BACKUP_DIR:-$HOME/Documents/PFMT_Backups}"
 echo "  logs   : $LOG_DIR"
 echo
-echo "Run it now to confirm:  $SCRIPT"
+
+# Fire it once now through launchd itself, so a broken setup surfaces in
+# seconds rather than next Sunday. Deliberately not RunAtLoad, which would
+# repeat this on every login rather than only at install.
+echo "Running it once now to check the setup..."
+if launchctl kickstart -k "gui/$(id -u)/$LABEL" 2>/dev/null; then
+  sleep 6
+  LATEST=$(ls -1dt "${PFMT_BACKUP_DIR:-$HOME/Documents/PFMT_Backups}"/20*-*-*/ 2>/dev/null | head -1)
+  if [ -n "$LATEST" ] && [ -s "$LATEST/full_backup.json" ]; then
+    echo "  ✅ wrote $LATEST"
+  else
+    echo "  ⚠️  no backup folder appeared yet — check the log:"
+    echo "     tail $LOG_DIR/../.logs/backup_\$(date +%Y-%m-%d).log"
+  fi
+else
+  echo "  (could not trigger a test run; try it by hand: $SCRIPT)"
+fi
+
+echo
 echo "Check it is scheduled:  launchctl list | grep pfmt"
 echo "Remove the schedule:    ./install_schedule.sh --remove"
