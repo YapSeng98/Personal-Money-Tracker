@@ -74,8 +74,14 @@ DEST="$BACKUP_ROOT/$STAMP"
 TMP=$(mktemp -d) || die "cannot create temp dir"
 trap 'rm -rf "$TMP"' EXIT
 
+# /transactions defaults to 500 rows when no limit is given, so a backup that
+# omitted it would silently stop at 500 and still look successful. The endpoint
+# takes no offset, so there is nothing to page with — ask for far more than any
+# real book holds, and check below whether we came back on the boundary.
+ROW_LIMIT="${PFMT_ROW_LIMIT:-100000}"
+
 fetch() { # $1 = endpoint path
-  curl -sS --max-time 120 "$BASE/$1" \
+  curl -sS --max-time 180 "$BASE/$1?limit=$ROW_LIMIT" \
     -H "X-PFMT-Token: $TOKEN" -H 'X-HTTP-Method: GET' -H 'Accept: application/json' 2>>"$LOG"
 }
 
@@ -85,7 +91,7 @@ for ep in accounts transactions budgets goals; do
 done
 
 # ── convert to CSV + one combined JSON, and verify before publishing ──
-python3 - "$TMP" "$STAMP" <<'PY' || die "backup did not pass its own checks — nothing written"
+PFMT_ROW_LIMIT="$ROW_LIMIT" python3 - "$TMP" "$STAMP" <<'PY' || die "backup did not pass its own checks — nothing written"
 import csv, json, os, sys
 
 tmp, stamp = sys.argv[1], sys.argv[2]
@@ -109,6 +115,18 @@ for name in ("accounts", "transactions", "budgets", "goals"):
     counts[name] = len(rows)
 
 total = sum(counts.values())
+
+# Landing exactly on the limit almost certainly means the server truncated the
+# result. Publishing that would quietly replace a complete backup with a
+# partial one, which is worse than failing.
+limit = int(os.environ.get("PFMT_ROW_LIMIT", "100000"))
+for name, n in counts.items():
+    if n >= limit:
+        sys.stderr.write(
+            "refusing to write a possibly truncated backup: %s returned %d rows, "
+            "the requested limit. Raise PFMT_ROW_LIMIT and run again.\n" % (name, n))
+        sys.exit(1)
+
 if total == 0:
     # Never overwrite a good backup history with an empty one — an auth or
     # network failure that still returns 200 would otherwise look like

@@ -7,7 +7,14 @@
 | **System backup** | **Every user's data** | ServiceNow Table API, admin login | `setup_admin_keychain.sh` → `install_schedule.sh --admin` |
 | Personal backup | One account — yours | PFMT API, your PFMT login | `setup_keychain.sh` → `install_schedule.sh` |
 
-**As the system owner, you want the system backup.** The personal one authenticates as a single PFMT user, so the API only ever returns that user's records — it cannot see anyone else's. The system backup reads the tables directly, so it captures everybody in one folder.
+**As the system owner, you want the system backup.** The personal one authenticates as a single PFMT user, and every endpoint filters to that user's profile:
+
+```js
+var profileSysId = helper.validateToken(token);   // token → exactly one profile
+gr.addQuery('user_profile', profileSysId);        // every query filtered to it
+```
+
+There is no parameter that widens it, which is correct for a multi-user app — but it means the PFMT API cannot return anyone else's records whatever credentials you use. Reading the tables directly is the only way to see across users, and that is what needs a ServiceNow login rather than a PFMT one.
 
 Both can run side by side; they use separate credentials, labels and folders.
 
