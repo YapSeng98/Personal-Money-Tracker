@@ -124,6 +124,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .btn-jade:hover{background:var(--jade-d);}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
 .btn-ghost:hover{background:var(--white);color:var(--ink);}
+.btn-ghost.active{background:var(--jade-s);color:var(--jade-d);border-color:var(--jade);}
 .btn-coral{background:var(--coral);color:white;}
 .btn-coral:hover{background:#e04a4a;}
 .btn-amber{background:var(--amber);color:white;}
@@ -217,6 +218,10 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .trend-range-tabs{display:flex;gap:4px;}
 .trend-range-btn{font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;border:none;background:var(--surface);color:var(--muted);cursor:pointer;}
 .trend-range-btn.active{background:var(--coral);color:#fff;}
+.trend-metric-tabs{display:flex;gap:6px;margin:10px 0 4px;}
+.trend-metric-btn{font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;}
+.trend-metric-btn.active[data-metric="expense"]{background:var(--coral-s);border-color:var(--coral);color:var(--coral);}
+.trend-metric-btn.active[data-metric="income"]{background:var(--jade-s);border-color:var(--jade);color:var(--jade-d);}
 .trend-detail{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px;min-height:18px;}
 .trend-bars{display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 2px;}
 .trend-bar-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;}
@@ -277,6 +282,9 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--sky);}
 .budget-fill{height:100%;border-radius:99px;transition:width .4s;}
 .budget-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
 .budget-pct{font-weight:700;}
+.budget-rollover-badge{margin-top:6px;font-size:10px;font-weight:700;color:var(--jade-d);background:var(--jade-s);display:inline-block;padding:2px 8px;border-radius:6px;}
+.rollover-toggle{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted);cursor:pointer;}
+.rollover-toggle input{width:14px;height:14px;cursor:pointer;accent-color:var(--jade);flex-shrink:0;}
 
 /* ── GOALS ── */
 .goal-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:14px;transition:box-shadow .2s;}
@@ -395,6 +403,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .toast.success::before{content:'✅';}
 .toast.error::before{content:'❌';}
 .toast.info::before{content:'💡';}
+.toast.has-action::before{content:'🗑️';}
+.toast-undo-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:8px;cursor:pointer;font-family:var(--ff);flex-shrink:0;white-space:nowrap;}
+.toast-undo-btn:hover{background:rgba(255,255,255,.32);}
 
 /* ── CONFIRM DIALOG ── */
 .confirm-box{background:var(--card);border-radius:16px;padding:24px 28px;width:360px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,.2);animation:fadeUp .2s ease;}
@@ -407,6 +418,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
 .filter-bar .form-input{width:auto;flex:1;min-width:140px;padding:8px 14px;font-size:13px;}
 .search-input{flex:2!important;}
+.bulk-action-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;font-weight:600;}
+.bulk-action-bar .form-input{width:auto;padding:7px 12px;font-size:12px;}
+.bulk-action-bar .btn[disabled]{opacity:.4;cursor:not-allowed;}
+.bulk-check{width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--jade);}
 
 /* ── RESPONSIVE VISIBILITY ── */
 .mobile-only{display:none;}
@@ -788,7 +803,19 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">All Transactions</div>
-          <button class="btn btn-jade btn-sm" onclick="openTxnModal()">+ Add</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="bulk-toggle-btn" onclick="toggleBulkMode()" data-lkey="bulk_select_btn">☑️ Select</button>
+            <button class="btn btn-jade btn-sm" onclick="openTxnModal()">+ Add</button>
+          </div>
+        </div>
+        <div id="bulk-action-bar" class="bulk-action-bar" style="display:none;">
+          <span><span id="bulk-count">0</span> <span data-lkey="bulk_selected_suffix">selected</span></span>
+          <button class="btn btn-ghost btn-sm" onclick="bulkSelectAllVisible()" data-lkey="bulk_select_all">Select all</button>
+          <button class="btn btn-ghost btn-sm" onclick="bulkClearSelection()" data-lkey="bulk_clear">Clear</button>
+          <select class="form-input" id="bulk-cat-select" style="width:auto;flex:1;min-width:140px;"></select>
+          <button class="btn btn-ghost btn-sm" id="bulk-apply-cat-btn" onclick="bulkApplyCategory()" disabled data-lkey="bulk_apply_category">Apply category</button>
+          <button class="btn btn-sm" id="bulk-delete-btn" onclick="bulkDeleteSelected()" disabled style="background:var(--coral);color:#fff;" data-lkey="bulk_delete_selected">Delete selected</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleBulkMode()" data-lkey="bulk_cancel">Cancel</button>
         </div>
         <div class="filter-bar">
           <input class="form-input search-input" type="text" id="search-input" placeholder="🔍 Search description…" oninput="renderTransactions()">
@@ -919,13 +946,17 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       </div>
       <div class="panel" style="margin-bottom:20px;">
         <div class="panel-header">
-          <div class="panel-title">Spending Trend</div>
+          <div class="panel-title" id="trend-panel-title">Spending Trend</div>
           <div class="trend-range-tabs" id="trend-range-tabs">
             <button class="trend-range-btn" data-months="3" onclick="setTrendRange(3)">3M</button>
             <button class="trend-range-btn" data-months="6" onclick="setTrendRange(6)">6M</button>
             <button class="trend-range-btn" data-months="9" onclick="setTrendRange(9)">9M</button>
             <button class="trend-range-btn" data-months="12" onclick="setTrendRange(12)">12M</button>
           </div>
+        </div>
+        <div class="trend-metric-tabs" id="trend-metric-tabs">
+          <button class="trend-metric-btn" data-metric="expense" onclick="setTrendMetric('expense')">📉 Spending</button>
+          <button class="trend-metric-btn" data-metric="income" onclick="setTrendMetric('income')">📈 Income</button>
         </div>
         <div class="trend-detail" id="trend-detail">&nbsp;</div>
         <div id="trend-chart"></div>
@@ -1484,6 +1515,7 @@ const TRANSLATIONS = {
     ai_title_accounts:'Wealth Coach',
     ai_placeholder_accounts:'Get AI advice on optimising your account balances and savings strategy.',
     ai_btn_accounts:'💰 Analyse My Accounts', empty_add_accounts:'Add accounts to see insights',
+    empty_no_accounts:'No accounts yet. Add one to start tracking balances.',
     acc_total_assets:'Total Assets', acc_total_debt:'Total Debt', acc_net_worth:'Net Worth',
     acc_asset_allocation:'Asset Allocation', acc_debt_ratio:'Debt Ratio', acc_accounts:'Accounts',
     acc_no_pos_bal:'No positive balances',
@@ -1522,6 +1554,7 @@ const TRANSLATIONS = {
     confirm_del_txn:'Delete transaction?', confirm_del_budget:'Delete budget?',
     confirm_del_goal:'Delete goal?', confirm_del_account:'Delete account?',
     confirm_del_account_msg:'This will remove the account from your records.',
+    confirm_bulk_del_txn:'Delete {n} transactions?',
     toast_txn_saved:'Transaction saved', toast_txn_updated:'Transaction updated ✓',
     toast_txn_deleted:'Transaction deleted', toast_no_txns_export:'No transactions to export',
     toast_csv_downloaded:'CSV downloaded', toast_sn_exported:'SN JSON exported',
@@ -1529,6 +1562,13 @@ const TRANSLATIONS = {
     toast_budget_deleted:'Budget deleted', toast_budget_exists:'Budget for this category already exists',
     toast_goal_saved:'Goal saved', toast_goal_updated:'Goal updated ✓',
     toast_goal_deleted:'Goal deleted',
+    toast_undone:'Restored', btn_undo:'Undo',
+    toast_bulk_txn_deleted:'{n} transactions deleted', toast_bulk_cat_applied:'Category updated for {n} transactions',
+    bulk_select_btn:'☑️ Select', bulk_cancel:'Cancel', bulk_select_all:'Select all', bulk_clear:'Clear',
+    bulk_apply_category:'Apply category', bulk_delete_selected:'Delete selected', bulk_choose_category:'Choose category…',
+    bulk_selected_suffix:'selected',
+    rollover_toggle:'↻ Roll over unused from last month', rollover_hint:'Adds what you did not spend last month to this month\'s limit. Local to this device.',
+    rollover_badge:'+{amt} rolled over',
     toast_account_saved:'Account saved', toast_account_deleted:'Account deleted',
     toast_data_cleared:'All data cleared', toast_pin_updated:'PIN updated successfully',
     toast_groq_saved:'✓ Groq key saved', toast_groq_toast:'Groq API key saved',
@@ -1588,6 +1628,7 @@ const TRANSLATIONS = {
     ai_title_accounts:'财富顾问',
     ai_placeholder_accounts:'获取 AI 建议，优化账户余额和储蓄策略。',
     ai_btn_accounts:'💰 分析我的账户', empty_add_accounts:'添加账户以查看洞察',
+    empty_no_accounts:'暂无账户。添加一个以开始追踪余额。',
     acc_total_assets:'总资产', acc_total_debt:'总负债', acc_net_worth:'净资产',
     acc_asset_allocation:'资产配置', acc_debt_ratio:'负债比率', acc_accounts:'账户数',
     acc_no_pos_bal:'无正余额',
@@ -1626,12 +1667,20 @@ const TRANSLATIONS = {
     confirm_del_txn:'删除交易？', confirm_del_budget:'删除预算？',
     confirm_del_goal:'删除目标？', confirm_del_account:'删除账户？',
     confirm_del_account_msg:'这将从记录中删除该账户。',
+    confirm_bulk_del_txn:'删除 {n} 笔交易？',
     toast_txn_saved:'交易已保存', toast_txn_updated:'交易已更新 ✓',
     toast_txn_deleted:'交易已删除', toast_no_txns_export:'没有可导出的交易',
     toast_csv_downloaded:'CSV 已下载', toast_sn_exported:'SN JSON 已导出',
     toast_budget_saved:'预算已保存', toast_budget_updated:'预算已更新 ✓',
     toast_budget_deleted:'预算已删除', toast_budget_exists:'该类别的预算已存在',
     toast_goal_saved:'目标已保存', toast_goal_updated:'目标已更新 ✓',
+    toast_undone:'已恢复', btn_undo:'撤销',
+    toast_bulk_txn_deleted:'已删除 {n} 笔交易', toast_bulk_cat_applied:'已为 {n} 笔交易更新类别',
+    bulk_select_btn:'☑️ 选择', bulk_cancel:'取消', bulk_select_all:'全选', bulk_clear:'清除',
+    bulk_apply_category:'应用类别', bulk_delete_selected:'删除所选', bulk_choose_category:'选择类别…',
+    bulk_selected_suffix:'已选择',
+    rollover_toggle:'↻ 结转上月未用余额', rollover_hint:'将上月未花完的预算加到本月额度中。仅保存在此设备。',
+    rollover_badge:'+{amt} 结转',
     toast_goal_deleted:'目标已删除',
     toast_account_saved:'账户已保存', toast_account_deleted:'账户已删除',
     toast_data_cleared:'全部数据已清除', toast_pin_updated:'PIN 更新成功',
@@ -1692,6 +1741,7 @@ let state = {
   appLockEnabled: false,
   appLockPinHash: '',
   trendMonths: 6,
+  trendMetric: 'expense',  // 'expense' | 'income'
   theme: 'auto',   // 'auto' | 'light' | 'dark'
   // SN custom auth
   snToken: null,
@@ -1727,6 +1777,7 @@ function saveState() {
       appLockEnabled: state.appLockEnabled,
       appLockPinHash: state.appLockPinHash,
       trendMonths: state.trendMonths,
+      trendMetric: state.trendMetric,
       theme: state.theme,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
@@ -2432,21 +2483,35 @@ async function deleteTransaction(id) {
   const ok = await showConfirm(t('confirm_del_txn'), detail);
   if (!ok) return;
 
-  const ids = legs.map(l => l.id);
-  state.transactions = state.transactions.filter(x => !ids.includes(x.id));
+  removeTransactionsWithUndo(legs, t('toast_txn_deleted'));
+}
+
+// Shared by single delete and bulk delete: the local list updates instantly,
+// and the ServiceNow DELETE calls only actually fire once the undo window
+// in undoToast() passes with no undo — see the UNDO section below.
+function removeTransactionsWithUndo(legs, msg) {
+  const snapshot = legs.slice();
+  const ids = new Set(legs.map(l => l.id));
+  state.transactions = state.transactions.filter(x => !ids.has(x.id));
   saveState();
   renderAll();
-  showToast(t('toast_txn_deleted'), 'info');
-
-  if (state.snToken) {
-    legs.forEach(leg => {
-      const snIdDel = _snId(leg);
-      if (snIdDel) {
-        snAPI.call('/transactions', 'DELETE', { sys_id: snIdDel })
-          .catch(e => showToast('SN delete: ' + e.message, 'warning'));
-      }
-    });
-  }
+  undoToast(msg,
+    () => {
+      state.transactions.push(...snapshot);
+      saveState();
+      renderAll();
+    },
+    () => {
+      if (!state.snToken) return;
+      snapshot.forEach(leg => {
+        const snIdDel = _snId(leg);
+        if (snIdDel) {
+          snAPI.call('/transactions', 'DELETE', { sys_id: snIdDel })
+            .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+        }
+      });
+    }
+  );
 }
 
 
@@ -2529,12 +2594,16 @@ async function deleteBudget(id) {
   state.budgets = state.budgets.filter(x => x.id != id);
   saveState();
   renderAll();
-  showToast(t('toast_budget_deleted'), 'info');
-  const sysId = _snId(b);
-  if (state.snToken && sysId) {
-    snAPI.call('/budgets', 'DELETE', { sys_id: sysId })
-      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
-  }
+  undoToast(t('toast_budget_deleted'),
+    () => { state.budgets.push(b); saveState(); renderAll(); },
+    () => {
+      const sysId = _snId(b);
+      if (state.snToken && sysId) {
+        snAPI.call('/budgets', 'DELETE', { sys_id: sysId })
+          .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+      }
+    }
+  );
 }
 
 // ═══════════════════════════════════════════════
@@ -2669,12 +2738,16 @@ async function deleteGoal(id) {
   state.goals = state.goals.filter(x => x.id != id);
   saveState();
   renderAll();
-  showToast(t('toast_goal_deleted'), 'info');
-  const sysId = _snId(g);
-  if (state.snToken && sysId) {
-    snAPI.call('/goals', 'DELETE', { sys_id: sysId })
-      .catch(e => showToast('SN delete: ' + e.message, 'warning'));
-  }
+  undoToast(t('toast_goal_deleted'),
+    () => { state.goals.push(g); saveState(); renderAll(); },
+    () => {
+      const sysId = _snId(g);
+      if (state.snToken && sysId) {
+        snAPI.call('/goals', 'DELETE', { sys_id: sysId })
+          .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+      }
+    }
+  );
 }
 
 // Account
@@ -2891,13 +2964,30 @@ function calcStats() {
   };
 }
 
-function getBudgetSpent(category, currency) {
+function getBudgetSpent(category, currency, month) {
   const cur  = currency || state.currency;
-  const mine = getMonthTxns().filter(t => t.category===category && (t.currency||state.currency) === cur);
+  const mine = getMonthTxns(month).filter(t => t.category===category && (t.currency||state.currency) === cur);
   const spent = mine.filter(t => t.type==='expense' && isFlow(t)).reduce((s,t)=>s+t.amount, 0);
   // Money paid back to you for this category was never really your cost.
   const back  = mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
   return Math.round((spent - back) * 100) / 100;
+}
+
+function prevMonthKey(ym) {
+  const [y, m] = (ym || state.filterMonth).split('-').map(Number);
+  const d = new Date(y, m - 2, 1); // Date normalizes month -1 into December of the prior year.
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// Budgets have no month of their own — the same limit applies every month —
+// so "last month's leftover" is computed on the fly from transaction history
+// rather than stored anywhere. Opt-in per budget via b.rollover, and kept out
+// of the ServiceNow payload: it is a local display preference, not data that
+// needs to survive on another device.
+function getBudgetRollover(b) {
+  if (!b.rollover) return 0;
+  const prevSpent = getBudgetSpent(b.category, b.currency, prevMonthKey(state.filterMonth));
+  return Math.max(0, Math.round((b.amount - prevSpent) * 100) / 100);
 }
 
 function getCategorySpend() {
@@ -2997,6 +3087,10 @@ function applyLanguage() {
   });
   const curAll = document.querySelector('#filter-cur option[data-lkey]');
   if (curAll) curAll.textContent = t(curAll.dataset.lkey);
+  // Bulk-select bar
+  document.querySelectorAll('#bulk-toggle-btn[data-lkey], #bulk-action-bar [data-lkey]').forEach(el => {
+    el.textContent = t(el.dataset.lkey);
+  });
   // Transaction modal tabs
   const tabExpense = document.getElementById('tab-expense');
   const tabIncome  = document.getElementById('tab-income');
@@ -3151,14 +3245,14 @@ function dayTotalHTML(rows) {
 
 // showTotals is off by default: the dashboard shows only the latest few rows, so
 // a "day total" there could quietly leave part of the day out.
-function txnListByDate(arr, forceBadge = false, showTotals = false) {
+function txnListByDate(arr, forceBadge = false, showTotals = false, selectMode = false) {
   const byDate = {};
   sortTxnsDesc(arr).forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
     .map(d => {
       // Build the rows first: collapsing can empty a day out, and a date header
       // with nothing under it just looks like a rendering fault.
-      const rows = collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge)).join('');
+      const rows = collapseTransfers(byDate[d]).map(t => txnRowHTML(t, true, forceBadge, selectMode)).join('');
       if (!rows) return '';
       return `<div class="txn-date-group"><span>${fmtDate(d)}</span>${showTotals ? dayTotalHTML(byDate[d]) : ''}</div>${rows}`;
     })
@@ -3229,11 +3323,14 @@ function collapseTransfers(arr) {
   });
 }
 
-function txnRowHTML(txn, showActions = true, forceBadge = false) {
+function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = false) {
   const isPos = txn.type === 'income';
   const isAsset = txn.type === 'asset';
   const isPayback = txn.type === 'payback';
   const showBadge = forceBadge || (txn.currency && txn.currency !== state.currency);
+  const checkHTML = selectMode
+    ? `<input type="checkbox" class="bulk-check" data-id="${txn.id}" ${bulkSelected.has(String(txn.id))?'checked':''} onclick="event.stopPropagation();toggleBulkRow('${txn.id}',this.checked)">`
+    : '';
 
   if (txn.transferGroup) {
     const peer = state.transactions.find(x => x.transferGroup === txn.transferGroup && x !== txn);
@@ -3257,6 +3354,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
     // A lone leg shows its own amount; a collapsed pair shows sent → received.
     const showsPair = peer && !incoming;
     return `<div class="txn-row">
+      ${checkHTML}
       <div class="txn-ico" style="background:${tint}">${icon}</div>
       <div class="txn-body">
         <div class="txn-name">${esc(txn.description)}</div>
@@ -3271,6 +3369,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false) {
   }
 
   return `<div class="txn-row">
+    ${checkHTML}
     <div class="txn-ico" style="background:${isPayback?'var(--amber-s)':catBg(txn.category)}">${isPayback?'↩️':catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
@@ -3416,7 +3515,122 @@ function renderTransactions() {
   // its own currency badge and symbol, and dayTotalHTML emits one figure per
   // currency rather than adding them, so nothing is ambiguous. Use the currency
   // filter to isolate one.
-  document.getElementById('all-txns').innerHTML = txnListByDate(txns, isMultiCurTxn, true);
+  document.getElementById('all-txns').innerHTML = txnListByDate(txns, isMultiCurTxn, true, bulkMode);
+  updateBulkBar();
+}
+
+/* ── BULK SELECT (Transactions) ── */
+// Selection lives outside `state` on purpose — it is view UI, not data, and
+// has no business surviving a reload or syncing to ServiceNow.
+let bulkMode = false;
+const bulkSelected = new Set();
+
+function toggleBulkMode() {
+  bulkMode = !bulkMode;
+  if (bulkMode) populateBulkCategorySelect(); else bulkSelected.clear();
+  document.getElementById('bulk-toggle-btn')?.classList.toggle('active', bulkMode);
+  renderTransactions();
+}
+
+function toggleBulkRow(id, checked) {
+  if (checked) bulkSelected.add(String(id)); else bulkSelected.delete(String(id));
+  updateBulkBar();
+}
+
+function bulkSelectAllVisible() {
+  document.querySelectorAll('#all-txns .bulk-check').forEach(cb => {
+    cb.checked = true;
+    bulkSelected.add(cb.dataset.id);
+  });
+  updateBulkBar();
+}
+
+function bulkClearSelection() {
+  bulkSelected.clear();
+  document.querySelectorAll('#all-txns .bulk-check').forEach(cb => cb.checked = false);
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-action-bar');
+  if (!bar) return;
+  bar.style.display = bulkMode ? 'flex' : 'none';
+  const n = bulkSelected.size;
+  const countEl = document.getElementById('bulk-count');
+  if (countEl) countEl.textContent = n;
+  const applyBtn = document.getElementById('bulk-apply-cat-btn');
+  const delBtn   = document.getElementById('bulk-delete-btn');
+  if (applyBtn) applyBtn.disabled = n === 0;
+  if (delBtn)   delBtn.disabled   = n === 0;
+}
+
+// Same category list drilling into a budget already uses: every category with
+// either transactions or a budget against it.
+function populateBulkCategorySelect() {
+  const sel = document.getElementById('bulk-cat-select');
+  if (!sel) return;
+  const cats = [...new Set([
+    ...state.transactions.map(t => t.category),
+    ...state.budgets.map(b => b.category)
+  ].filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">${t('bulk_choose_category')}</option>` +
+    cats.map(c => `<option value="${esc(c)}">${catIcon(c)} ${esc(c)}</option>`).join('');
+}
+
+async function bulkDeleteSelected() {
+  if (!bulkSelected.size) return;
+  // A transfer or asset purchase is two rows sharing a transferGroup; deleting
+  // only the selected leg would strand its pair the same way a single delete
+  // would, so the selection expands to whole groups before anything happens.
+  const ids = new Set(bulkSelected);
+  const groups = new Set();
+  const legs = [];
+  state.transactions.forEach(txn => {
+    if (!ids.has(String(txn.id))) return;
+    if (txn.transferGroup) groups.add(txn.transferGroup); else legs.push(txn);
+  });
+  if (groups.size) {
+    state.transactions.forEach(txn => { if (txn.transferGroup && groups.has(txn.transferGroup)) legs.push(txn); });
+  }
+  if (!legs.length) return;
+
+  const ok = await showConfirm(t('confirm_bulk_del_txn').replace('{n}', legs.length), '');
+  if (!ok) return;
+
+  bulkMode = false;
+  bulkSelected.clear();
+  removeTransactionsWithUndo(legs, t('toast_bulk_txn_deleted').replace('{n}', legs.length));
+}
+
+async function bulkApplyCategory() {
+  const cat = document.getElementById('bulk-cat-select')?.value;
+  if (!cat || !bulkSelected.size) return;
+  const ids = new Set(bulkSelected);
+  let changed = 0, skipped = 0;
+  state.transactions.forEach(txn => {
+    if (!ids.has(String(txn.id))) return;
+    // Transfers keep the fixed "Transfer" category, and an asset leg's
+    // category names the holding rather than a spend — bulk recategorize
+    // leaves both alone rather than corrupting what they mean.
+    if (txn.transferGroup) { skipped++; return; }
+    txn.category = cat;
+    changed++;
+    const sysId = _snId(txn);
+    if (state.snToken && sysId) {
+      snAPI.call('/transactions', 'PUT', { sys_id: sysId, category_name: cat })
+        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    }
+  });
+  if (changed) saveState();
+
+  bulkMode = false;
+  bulkSelected.clear();
+  renderAll();
+  showToast(
+    skipped ? `${t('toast_bulk_cat_applied').replace('{n}', changed)} (${skipped} transfer/asset skipped)`
+            : t('toast_bulk_cat_applied').replace('{n}', changed),
+    'success'
+  );
 }
 
 /* ── SALARY PLANNER ── */
@@ -3596,6 +3810,16 @@ function setBudgetCur(cur) {
   renderBudgets();
 }
 
+// Local-only preference — see the note on getBudgetRollover(). Not sent to
+// ServiceNow, so it will not follow this budget to another device.
+function toggleBudgetRollover(id, checked) {
+  const b = state.budgets.find(x => x.id == id);
+  if (!b) return;
+  b.rollover = checked;
+  saveState();
+  renderBudgets();
+}
+
 function renderBudgets() {
   if (!state.budgets.length) {
     document.getElementById('budget-list').innerHTML    = `<div class="empty"><div class="icon">📊</div><p>${t('empty_no_budgets')}</p></div>`;
@@ -3612,10 +3836,12 @@ function renderBudgets() {
   const isMultiCurBudget = Object.keys(budgetsByCur).length > 1;
 
   const budgetCardHTML = b => {
-    const spent   = getBudgetSpent(b.category, b.currency);
-    const pctReal = b.amount > 0 ? (spent/b.amount)*100 : 0;
-    const pct     = Math.min(pctReal, 100); // capped — bar width only
-    const over  = spent > b.amount;
+    const spent    = getBudgetSpent(b.category, b.currency);
+    const rollover = getBudgetRollover(b);
+    const effAmt   = b.amount + rollover;
+    const pctReal  = effAmt > 0 ? (spent/effAmt)*100 : 0;
+    const pct      = Math.min(pctReal, 100); // capped — bar width only
+    const over  = spent > effAmt;
     const near  = pct >= b.alertPct && !over;
     const color = over ? 'var(--coral)' : near ? 'var(--amber)' : 'var(--jade)';
     // Data attributes rather than inline string args — category names contain
@@ -3640,9 +3866,14 @@ function renderBudgets() {
       </div>
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <div class="budget-stats">
-        <span>${fmtWithCur(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(b.amount, b.currency)}</span>
-        <span class="budget-pct" style="color:${color}">${pctReal.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-b.amount, b.currency)+' over)' : ' ('+fmtWithCur(b.amount-spent, b.currency)+' '+t('budget_left')+')'}</span>
+        <span>${fmtWithCur(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(effAmt, b.currency)}</span>
+        <span class="budget-pct" style="color:${color}">${pctReal.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-effAmt, b.currency)+' over)' : ' ('+fmtWithCur(effAmt-spent, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
+      ${rollover > 0 ? `<div class="budget-rollover-badge">${t('rollover_badge').replace('{amt}', fmtWithCur(rollover, b.currency))}</div>` : ''}
+      <label class="rollover-toggle" onclick="event.stopPropagation()" title="${esc(t('rollover_hint'))}">
+        <input type="checkbox" ${b.rollover ? 'checked' : ''} onchange="toggleBudgetRollover('${b.id}', this.checked)">
+        <span>${t('rollover_toggle')}</span>
+      </label>
     </div>`;
   };
 
@@ -3938,6 +4169,12 @@ function setTrendRange(n) {
   renderMonthlySummary();
 }
 
+function setTrendMetric(metric) {
+  state.trendMetric = metric;
+  saveState();
+  renderSpendingTrend();
+}
+
 // Month keys for the selected range, newest first. Relative to today rather
 // than the month bar — Analytics has no month bar of its own.
 function summaryMonthKeys() {
@@ -4096,6 +4333,15 @@ function renderSpendingTrend() {
   document.querySelectorAll('.trend-range-btn').forEach(b =>
     b.classList.toggle('active', parseInt(b.dataset.months) === n));
 
+  // 'expense' was the only mode this chart ever had; 'income' reuses the exact
+  // same monthly-bucket mechanic to answer the other half of "am I doing
+  // better over time" that the all-time Savings Rate card can't show.
+  const metric = state.trendMetric === 'income' ? 'income' : 'expense';
+  document.querySelectorAll('.trend-metric-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.metric === metric));
+  const titleEl = document.getElementById('trend-panel-title');
+  if (titleEl) titleEl.textContent = metric === 'income' ? 'Income Trend' : 'Spending Trend';
+
   const now = new Date();
   const months = [];
   for (let i = n - 1; i >= 0; i--) {
@@ -4103,10 +4349,11 @@ function renderSpendingTrend() {
     months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  // Expense only, transfers excluded (isFlow) — this is spending, not net cash movement.
+  // Transfers excluded (isFlow) either way — this tracks earning or spending,
+  // not cash moving between your own accounts.
   const byMonthCur = {};
   state.transactions.forEach(t => {
-    if (t.type !== 'expense' || !isFlow(t)) return;
+    if (t.type !== metric || !isFlow(t)) return;
     const mk = t.date.slice(0, 7);
     if (!months.includes(mk)) return;
     const cur = t.currency || state.currency;
@@ -4117,7 +4364,8 @@ function renderSpendingTrend() {
   const el = document.getElementById('trend-chart');
   const currencies = Object.keys(byMonthCur);
   if (!currencies.length) {
-    el.innerHTML = `<div class="empty"><div class="icon">📈</div><p>No spending in the last ${n} months</p></div>`;
+    const noun = metric === 'income' ? 'income' : 'spending';
+    el.innerHTML = `<div class="empty"><div class="icon">📈</div><p>No ${noun} in the last ${n} months</p></div>`;
     document.getElementById('trend-detail').innerHTML = '&nbsp;';
     return;
   }
@@ -4261,6 +4509,15 @@ function setMaskBtnIcon() {
 
 function renderAccounts() {
   setMaskBtnIcon();
+
+  // Every downstream block here assumes at least one account (currency
+  // grouping, net worth, allocation) — without this guard, zero accounts
+  // rendered an empty box with no icon or message instead of a real empty state.
+  if (!state.accounts.length) {
+    document.getElementById('accounts-list').innerHTML = `<div class="empty"><div class="icon">🏦</div><p>${t('empty_no_accounts')}</p></div>`;
+    document.getElementById('account-insights-body').innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_accounts')}</p></div>`;
+    return;
+  }
 
   // ── Group by currency for the summary panel ──
   const byCur = {};
@@ -4969,6 +5226,39 @@ function showToast(msg, type='success') {
   el.className = `toast ${type} show`;
   setTimeout(()=>el.classList.remove('show'), 3200);
 }
+
+// ═══════════════════════════════════════════════
+// UNDO — a delete removes the row from view immediately, but the ServiceNow
+// DELETE call itself waits behind this window. Undo just cancels that call;
+// nothing ever has to be re-created because nothing remote happened yet.
+// ═══════════════════════════════════════════════
+let _pendingUndo = null;
+function undoToast(msg, restoreFn, commitFn, delayMs = 6000) {
+  // A second delete arriving while one is still waiting commits the first
+  // right away rather than leaving two timers racing each other.
+  if (_pendingUndo) { clearTimeout(_pendingUndo.timer); _pendingUndo.commit(); _pendingUndo = null; }
+  const el = document.getElementById('toast');
+  el.innerHTML = `<span>${esc(msg)}</span><button type="button" class="toast-undo-btn" onclick="_runPendingUndo()">${t('btn_undo')}</button>`;
+  el.className = 'toast info show has-action';
+  const timer = setTimeout(() => {
+    el.classList.remove('show');
+    if (_pendingUndo && _pendingUndo.timer === timer) { _pendingUndo.commit(); _pendingUndo = null; }
+  }, delayMs);
+  _pendingUndo = { timer, commit: commitFn, restore: restoreFn };
+}
+function _runPendingUndo() {
+  if (!_pendingUndo) return;
+  clearTimeout(_pendingUndo.timer);
+  document.getElementById('toast').classList.remove('show');
+  _pendingUndo.restore();
+  _pendingUndo = null;
+}
+// Closing the tab mid-window would otherwise leave the item removed locally
+// but never actually deleted on ServiceNow — commit immediately rather than
+// let that drift happen silently.
+window.addEventListener('pagehide', () => {
+  if (_pendingUndo) { clearTimeout(_pendingUndo.timer); _pendingUndo.commit(); _pendingUndo = null; }
+});
 
 // ═══════════════════════════════════════════════
 // MOBILE SIDEBAR
