@@ -4227,14 +4227,10 @@ function renderMonthlyReview() {
     if (!expByCur[c]) expByCur[c] = {};
     expByCur[c][t.category] = (expByCur[c][t.category] || 0) + (t.type === 'payback' ? -t.amount : t.amount);
   });
-  // A category fully offset by a payback cost nothing this month — drop it
-  // rather than show a zero or negative bar.
-  Object.keys(expByCur).forEach(c => {
-    Object.keys(expByCur[c]).forEach(cat => { if (expByCur[c][cat] <= 0) delete expByCur[c][cat]; });
-    if (!Object.keys(expByCur[c]).length) delete expByCur[c];
-  });
 
-  const expCurs = Object.keys(expByCur);
+  // A currency with nothing left costing money this month — every category a
+  // payback fully offset — has no rows to show at all.
+  const expCurs = Object.keys(expByCur).filter(c => Object.values(expByCur[c]).some(v => v > 0));
   if (!expCurs.length) {
     summaryEl.innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`;
     return;
@@ -4243,8 +4239,14 @@ function renderMonthlyReview() {
   const prevMk = prevMonthKey(mk);
 
   summaryEl.innerHTML = expCurs.map(cur => {
-    const cs    = Object.entries(expByCur[cur]).sort((a,b) => b[1]-a[1]);
-    const total = cs.reduce((s,[,v]) => s+v, 0);
+    const all = Object.entries(expByCur[cur]);
+    // The grand total sums EVERY category, including one a payback drove to
+    // zero or negative — dropping it here (as the rows below do) previously
+    // left this total higher than the SGD Expenses stat tile above it,
+    // because that tile's curStats() lets the same payback reduce the
+    // overall figure instead of erasing just one category's slice of it.
+    const total = all.reduce((s,[,v]) => s+v, 0);
+    const cs    = all.filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
     const rows = cs.map(([cat, amt]) => {
       const pct = total > 0 ? (amt/total*100) : 0;
       // Same spend-minus-payback figure, one month earlier — a real trend
