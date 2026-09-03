@@ -223,6 +223,27 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .trend-metric-btn.active[data-metric="expense"]{background:var(--coral-s);border-color:var(--coral);color:var(--coral);}
 .trend-metric-btn.active[data-metric="income"]{background:var(--jade-s);border-color:var(--jade);color:var(--jade-d);}
 .trend-detail{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px;min-height:18px;}
+.review-month-nav{display:flex;align-items:center;gap:8px;}
+.review-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:18px;}
+.review-stat{background:var(--surface);border-radius:10px;padding:10px 12px;}
+.review-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px;}
+.review-stat-val{font-family:var(--fd);font-size:16px;font-weight:700;}
+.review-cur-heading{display:flex;align-items:center;gap:10px;margin:16px 0 10px;}
+.review-cur-heading:first-child{margin-top:0;}
+.review-cur-heading span{font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;}
+.review-cur-heading .rule{flex:1;height:1px;background:var(--border);}
+.review-cat-row{padding:9px 0;border-top:1px solid var(--border);}
+.review-cat-row:first-of-type{border-top:none;}
+.review-cat-top{display:flex;align-items:center;gap:8px;}
+.review-cat-label{flex:1;min-width:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.review-cat-pct{font-size:11px;color:var(--muted);font-weight:600;flex-shrink:0;}
+.review-cat-amt{font-family:var(--fm);font-size:13px;font-weight:700;flex-shrink:0;min-width:70px;text-align:right;}
+.review-cat-delta{font-size:10px;font-weight:700;flex-shrink:0;padding:1px 6px;border-radius:5px;}
+.review-cat-delta.up{background:var(--coral-s);color:var(--coral);}
+.review-cat-delta.down{background:var(--jade-s);color:var(--jade-d);}
+.review-cat-bar{background:var(--surface);border-radius:99px;height:6px;overflow:hidden;margin-top:6px;}
+.review-cat-fill{height:100%;border-radius:99px;}
+.review-cat-budget{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px;}
 .trend-bars{display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 2px;}
 .trend-bar-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;}
 .trend-bar{width:100%;max-width:28px;background:linear-gradient(180deg,var(--coral),var(--coral-s));border-radius:4px 4px 0 0;min-height:2px;transition:height .3s;}
@@ -941,7 +962,16 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="stat-card"><div class="stat-card-label">Savings Rate</div><div id="an-savings">—</div><div class="stat-card-sub">(Income − Expenses) / Income</div></div>
       </div>
       <div class="panel" style="margin-bottom:20px;">
-        <div class="panel-header"><div class="panel-title">Category Breakdown</div></div>
+        <div class="panel-header">
+          <div class="panel-title">Monthly Review</div>
+          <div class="review-month-nav">
+            <button class="month-nav-btn" onclick="reviewMonthShift(-1)" title="Previous month">‹</button>
+            <span class="month-nav-label" id="review-month-label">—</span>
+            <button class="month-nav-btn" onclick="reviewMonthShift(1)" title="Next month">›</button>
+            <button class="month-today-btn" id="review-today-btn" onclick="reviewMonthToday()" style="display:none;">Today</button>
+          </div>
+        </div>
+        <div id="review-summary" class="review-summary"></div>
         <div class="chart-bar-wrap" id="analytics-chart"><div class="empty"><div class="icon">📊</div><p>Add transactions to see breakdown</p></div></div>
       </div>
       <div class="panel" style="margin-bottom:20px;">
@@ -1742,6 +1772,7 @@ let state = {
   appLockPinHash: '',
   trendMonths: 6,
   trendMetric: 'expense',  // 'expense' | 'income'
+  reviewMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   theme: 'auto',   // 'auto' | 'light' | 'dark'
   // SN custom auth
   snToken: null,
@@ -1778,6 +1809,7 @@ function saveState() {
       appLockPinHash: state.appLockPinHash,
       trendMonths: state.trendMonths,
       trendMetric: state.trendMetric,
+      reviewMonth: state.reviewMonth,
       theme: state.theme,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
@@ -2978,6 +3010,11 @@ function prevMonthKey(ym) {
   const d = new Date(y, m - 2, 1); // Date normalizes month -1 into December of the prior year.
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
+function nextMonthKey(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m, 1); // Date normalizes month 12 into January of the next year.
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
 
 // Budgets have no month of their own — the same limit applies every month —
 // so "last month's leftover" is computed on the fly from transaction history
@@ -4134,31 +4171,114 @@ function renderAnalytics() {
     document.getElementById('an-largest-desc').innerHTML = largestCurs.map(cur =>
       `<div>${esc(largestByCur[cur].description)}</div>`).join('');
   }
-  const monthTxns = getMonthTxns().filter(t => t.type === 'expense' && isFlow(t));
-  if (!monthTxns.length) { document.getElementById('analytics-chart').innerHTML=`<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`; return; }
+  renderMonthlyReview();
+}
 
-  // Group by currency → category
+// A month picker of its own — independent of state.filterMonth (which
+// Transactions owns) — so paging through past months here never fights with
+// what Transactions is showing, and vice versa.
+function reviewMonthShift(delta) {
+  const [y, m] = state.reviewMonth.split('-').map(Number);
+  state.reviewMonth = localYM(new Date(y, m - 1 + delta, 1));
+  saveState();
+  renderMonthlyReview();
+}
+function reviewMonthToday() {
+  state.reviewMonth = localYM();
+  saveState();
+  renderMonthlyReview();
+}
+
+function renderMonthlyReview() {
+  const mk = state.reviewMonth;
+  const labelEl = document.getElementById('review-month-label');
+  if (labelEl) labelEl.textContent = getMonthLabel(mk);
+  const todayBtn = document.getElementById('review-today-btn');
+  if (todayBtn) todayBtn.style.display = mk === localYM() ? 'none' : 'inline-flex';
+
+  const reviewTxns = getMonthTxns(mk);
+  const summaryEl  = document.getElementById('analytics-chart');
+  const currencies = [...new Set(reviewTxns.map(t => t.currency || state.currency))].sort();
+
+  const statsEl = document.getElementById('review-summary');
+  if (!currencies.length) {
+    if (statsEl) statsEl.innerHTML = '';
+    summaryEl.innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`;
+    return;
+  }
+
+  // Same per-currency stats function the dashboard uses, so this panel can
+  // never disagree with it on what counts as income vs. a transfer.
+  if (statsEl) {
+    statsEl.innerHTML = currencies.map(cur => {
+      const st = curStats(cur, reviewTxns);
+      return `<div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_income')}</div><div class="review-stat-val" style="color:var(--jade-d)">${fmtWithCur(st.inc, cur)}</div></div>
+        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_expenses')}</div><div class="review-stat-val" style="color:var(--coral)">${fmtWithCur(st.exp, cur)}</div></div>
+        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} Net</div><div class="review-stat-val" style="color:${st.net>=0?'var(--jade-d)':'var(--coral)'}">${fmtSigned(st.net, cur)}</div></div>`;
+    }).join('') + `<div class="review-stat"><div class="review-stat-lbl">Transactions</div><div class="review-stat-val">${reviewTxns.filter(isFlow).length}</div></div>`;
+  }
+
+  // Category breakdown, net of paybacks — matches what the Budgets page calls
+  // "spent" for the same category, rather than a second, disagreeing number.
   const expByCur = {};
-  monthTxns.forEach(t => {
+  reviewTxns.forEach(t => {
+    if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
-    expByCur[c][t.category] = (expByCur[c][t.category] || 0) + t.amount;
+    expByCur[c][t.category] = (expByCur[c][t.category] || 0) + (t.type === 'payback' ? -t.amount : t.amount);
   });
-  const isMultiCurAn = Object.keys(expByCur).length > 1;
+  // A category fully offset by a payback cost nothing this month — drop it
+  // rather than show a zero or negative bar.
+  Object.keys(expByCur).forEach(c => {
+    Object.keys(expByCur[c]).forEach(cat => { if (expByCur[c][cat] <= 0) delete expByCur[c][cat]; });
+    if (!Object.keys(expByCur[c]).length) delete expByCur[c];
+  });
 
-  document.getElementById('analytics-chart').innerHTML = Object.entries(expByCur).map(([cur, cats], i) => {
-    const cs = Object.entries(cats).sort((a,b) => b[1]-a[1]);
-    const max2 = cs[0][1];
-    const bars = cs.map(([cat, amt]) =>
-      `<div class="chart-bar-row">
-        <div class="chart-bar-label">${catIcon(cat)} ${esc(cat)}</div>
-        <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(amt/max2*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'}"></div></div>
-        <div class="chart-bar-val">${fmtWithCur(amt, cur)}</div>
-      </div>`).join('');
-    return `${isMultiCurAn ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'20px':0} 0 10px;">
-      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>` : ''}${bars}`;
+  const expCurs = Object.keys(expByCur);
+  if (!expCurs.length) {
+    summaryEl.innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`;
+    return;
+  }
+  const isMultiCurAn = expCurs.length > 1;
+  const prevMk = prevMonthKey(mk);
+
+  summaryEl.innerHTML = expCurs.map(cur => {
+    const cs    = Object.entries(expByCur[cur]).sort((a,b) => b[1]-a[1]);
+    const total = cs.reduce((s,[,v]) => s+v, 0);
+    const rows = cs.map(([cat, amt]) => {
+      const pct = total > 0 ? (amt/total*100) : 0;
+      // Same spend-minus-payback figure, one month earlier — a real trend
+      // comparison, not just "biggest slice of this month's pie".
+      const prevAmt = getBudgetSpent(cat, cur, prevMk);
+      const delta = prevAmt > 0 ? ((amt - prevAmt) / prevAmt * 100) : null;
+      // Rounds to 0% when spend barely moved — flagging that as a red "▲ 0%"
+      // increase would read as an alarm for something that didn't happen.
+      const deltaHTML = (delta === null || Math.round(delta) === 0) ? '' :
+        `<span class="review-cat-delta ${delta>=0?'up':'down'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(0)}%</span>`;
+
+      const budget = state.budgets.find(b => b.category === cat && (b.currency||state.currency) === cur);
+      let barHTML;
+      if (budget) {
+        const limit  = budget.amount + getBudgetRollover(budget);
+        const over   = amt > limit;
+        const bpct   = limit > 0 ? Math.min(amt/limit*100, 100) : 0;
+        const bcolor = over ? 'var(--coral)' : bpct >= (budget.alertPct||80) ? 'var(--amber)' : 'var(--jade)';
+        barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${bpct.toFixed(1)}%;background:${bcolor};"></div></div>
+          <div class="review-cat-budget"><span>${t('budget_spent_of')} ${fmtWithCur(limit,cur)} budget</span><span style="color:${bcolor};font-weight:700;">${over?t('badge_over'):Math.round(bpct)+'%'}</span></div>`;
+      } else {
+        barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${Math.min(pct,100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'};"></div></div>`;
+      }
+      return `<div class="review-cat-row">
+        <div class="review-cat-top">
+          <div class="review-cat-label">${catIcon(cat)} ${esc(cat)}</div>
+          ${deltaHTML}
+          <span class="review-cat-pct">${pct.toFixed(0)}%</span>
+          <div class="review-cat-amt">${fmtWithCur(amt, cur)}</div>
+        </div>
+        ${barHTML}
+      </div>`;
+    }).join('');
+    return `${isMultiCurAn ? `<div class="review-cur-heading"><span>${esc(cur)}</span><div class="rule"></div><span style="color:var(--muted);font-weight:600;">${fmtWithCur(total,cur)}</span></div>` : ''}${rows}`;
   }).join('');
 }
 
