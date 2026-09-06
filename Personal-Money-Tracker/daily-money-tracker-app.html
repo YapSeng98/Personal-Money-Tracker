@@ -1198,6 +1198,31 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
 
+        <!-- Export & Backup -->
+        <div class="settings-section">
+          <h3>Export &amp; Backup</h3>
+          <div id="export-summary" style="font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
+          <div class="setting-row">
+            <div><div class="setting-label">Complete backup</div><div class="setting-sub">Every account, transaction, budget and goal, plus your preferences — one file</div></div>
+            <button class="btn btn-jade" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportFullBackup()">⬇ JSON</button>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Transactions</div><div class="setting-sub">Every row, all months, opens in Excel or Sheets</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportCSV()">⬇ CSV</button>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Accounts</div><div class="setting-sub">Starting and effective balances, with row counts</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportAccountsCSV()">⬇ CSV</button>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">ServiceNow import file</div><div class="setting-sub">The same data shaped for the x_pfmt tables</div></div>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportSNJSON()">⬇ JSON</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
+            Files download to this device only — nothing is uploaded anywhere. Backups never include your password, AI key or app-lock PIN, so a copied file can't be used to sign in as you.
+          </div>
+        </div>
+
         <!-- Data -->
         <div class="settings-section">
           <h3 data-lkey="settings_data">Data</h3>
@@ -3236,6 +3261,7 @@ function renderAll() {
   renderGoals();
   renderAnalytics();
   renderAccounts();
+  renderExportSummary();
   _renderProfileView();
   _updateSNLinks();
   _updateSNConnCard();
@@ -5179,21 +5205,130 @@ function buildSummary() {
 // ═══════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════
+// Shared by every export: hands the file to the browser, then releases the
+// object URL — without the revoke each export leaks its blob for the life of
+// the page, which adds up for anyone taking a backup habitually.
+const csvCell = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function exportCSV() {
   if (!state.transactions.length) { showToast(t('toast_no_txns_export'), 'info'); return; }
-  const q = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const q = csvCell;
   const hdr = ['Date','Type','Description','Category','Account','Currency','Amount','Notes','TransferGroup','TransferPeer'];
   const rows = state.transactions.map(t =>
-    [t.date, t.type, q(t.description), q(t.category), q(t.account), t.currency || state.currency, t.amount.toFixed(2), q(t.notes),
+    [t.date, t.type, q(t.description), q(t.category), q(t.account), t.currency || state.currency, (+t.amount || 0).toFixed(2), q(t.notes),
      q(t.transferGroup || ''), q(t.transferPeer || '')]
   );
   const csv = [hdr, ...rows].map(r => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `pfmt_transactions_all_${localDateStr()}.csv`;   // every row, not just the filtered month
-  a.click();
+  // every row, not just the filtered month
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), `pfmt_transactions_all_${localDateStr()}.csv`);
   showToast(t('toast_csv_downloaded'), 'success');
+}
+
+// Both figures, because they answer different questions: the starting balance
+// is what you typed when you opened the account, the effective balance is what
+// it holds once every linked row is applied. A backup carrying only one of them
+// cannot be checked against the app.
+function exportAccountsCSV() {
+  if (!state.accounts.length) { showToast('No accounts to export', 'info'); return; }
+  const q = csvCell;
+  const hdr = ['Account','Type','Institution','Currency','Starting Balance','Effective Balance','Transactions'];
+  const rows = state.accounts.map(a => {
+    const cur = a.currency || state.currency;
+    const n = state.transactions.filter(t => t.account === a.name && (t.currency || state.currency) === cur).length;
+    return [q(a.name), q(a.type), q(a.institution || ''), cur,
+            (+a.balance || 0).toFixed(2), effectiveBal(a).toFixed(2), n];
+  });
+  const csv = [hdr.map(q), ...rows].map(r => r.join(',')).join('\n');
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), `pfmt_accounts_${localDateStr()}.csv`);
+  showToast(`${state.accounts.length} account${state.accounts.length>1?'s':''} exported`, 'success');
+}
+
+// A complete copy of this account's book — every table plus the preferences
+// that change how it reads, in one file.
+//
+// Deliberately carries no ServiceNow password or token, no AI key and no
+// app-lock PIN hash. A backup gets copied to places a credential should never
+// follow, and reissuing a login costs far less than containing a leaked one.
+// sys_ids are kept so a restore can be matched against existing records rather
+// than blindly duplicating them.
+function exportFullBackup() {
+  if (!state.transactions.length && !state.accounts.length) {
+    showToast('Nothing to back up yet', 'info'); return;
+  }
+  const payload = {
+    pfmt_backup: {
+      format_version : 2,
+      exported_at    : new Date().toISOString(),
+      user           : state.snUserProfile?.username || '',
+      base_currency  : state.currency,
+      counts         : { accounts: state.accounts.length, transactions: state.transactions.length,
+                         budgets: state.budgets.length,  goals: state.goals.length },
+      secrets_included: false
+    },
+    accounts: state.accounts.map(a => ({
+      name: a.name, type: a.type, institution: a.institution || '',
+      currency: a.currency || state.currency,
+      starting_balance : +a.balance || 0,
+      effective_balance: effectiveBal(a),
+      icon: a.icon || '', sys_id: _snId(a) || ''
+    })),
+    // transfer_group is what pairs the two legs of a transfer or a funded asset
+    // purchase. Without it a restore produces two unrelated rows, the balances
+    // stop reconciling, and an asset purchase returns as a plain transfer.
+    transactions: state.transactions.map(t => ({
+      date: t.date, type: t.type, amount: +t.amount || 0,
+      description: t.description, category: t.category, account: t.account,
+      currency: t.currency || state.currency, notes: t.notes || '',
+      transfer_group: t.transferGroup || '', transfer_peer: t.transferPeer || '',
+      created: t.created || '', sys_id: _snId(t) || ''
+    })),
+    budgets: state.budgets.map(b => ({
+      category: b.category, amount: +b.amount || 0,
+      currency: b.currency || state.currency,
+      alert_threshold_pct: b.alertPct || 80,
+      rollover: !!b.rollover,
+      spent_this_month: getBudgetSpent(b.category, b.currency),
+      sys_id: _snId(b) || ''
+    })),
+    goals: state.goals.map(g => ({
+      name: g.name, icon: g.icon || '', target: +g.target || 0, current: +g.current || 0,
+      monthly_contribution: +g.monthly || 0, target_date: g.date || '',
+      remarks: g.remarks || '', currency: g.currency || state.currency,
+      linked_account: g.linkedAccount || '', sys_id: _snId(g) || ''
+    })),
+    preferences: {
+      currency: state.currency, language: state.language, theme: state.theme,
+      budget_alerts: state.budgetAlerts, now_assist: state.nowAssist,
+      trend_months: state.trendMonths, trend_metric: state.trendMetric
+    }
+  };
+  const c = payload.pfmt_backup.counts;
+  downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+               `pfmt_backup_${localDateStr()}.json`);
+  showToast(`Backup saved — ${c.transactions} transactions, ${c.accounts} accounts, ${c.budgets} budgets, ${c.goals} goals`, 'success');
+}
+
+// Says what a backup would actually contain, so the button isn't a leap of
+// faith — and makes an empty or half-synced book obvious before you rely on it.
+function renderExportSummary() {
+  const el = document.getElementById('export-summary');
+  if (!el) return;
+  const curs = [...new Set(state.accounts.map(a => a.currency || state.currency))].sort();
+  const bits = [
+    `${state.accounts.length} account${state.accounts.length===1?'':'s'}`,
+    `${state.transactions.length} transaction${state.transactions.length===1?'':'s'}`,
+    `${state.budgets.length} budget${state.budgets.length===1?'':'s'}`,
+    `${state.goals.length} goal${state.goals.length===1?'':'s'}`
+  ];
+  el.textContent = `In this book: ${bits.join(' · ')}${curs.length ? ' · ' + curs.join(', ') : ''}`;
 }
 
 function exportSNJSON() {
