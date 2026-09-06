@@ -1203,7 +1203,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <h3>Export &amp; Backup</h3>
           <div id="export-summary" style="font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
           <div class="setting-row">
-            <div><div class="setting-label">Complete backup</div><div class="setting-sub">Every account, transaction, budget and goal, plus your preferences — one file</div></div>
+            <div><div class="setting-label">Complete backup</div><div class="setting-sub">All six tables — accounts, transactions, budgets, goals, categories and your profile — in one file</div></div>
             <button class="btn btn-jade" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportFullBackup()">⬇ JSON</button>
           </div>
           <div class="setting-row">
@@ -1824,7 +1824,8 @@ let state = {
   // SN custom auth
   snToken: null,
   snProfileSysId: null,
-  snUserProfile: {}  // {username, display_name, email, currency, language, avatar_color, stats}
+  snUserProfile: {},  // {username, display_name, email, currency, language, avatar_color, stats}
+  txnFetchTruncated: false
 };
 
 // ═══════════════════════════════════════════════
@@ -1860,7 +1861,10 @@ function saveState() {
       theme: state.theme,
       snToken: state.snToken,
       snProfileSysId: state.snProfileSysId,
-      snUserProfile: state.snUserProfile
+      snUserProfile: state.snUserProfile,
+      // Survives a reload: the data in localStorage is whatever that truncated
+      // sync returned, so the warning has to outlive the page that raised it.
+      txnFetchTruncated: state.txnFetchTruncated
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -1877,6 +1881,11 @@ function loadState() {
     return true;
   } catch(e) { return false; }
 }
+
+// Ceiling on one transactions fetch. Comfortably covers a heavy year, and the
+// backup checks whether a load came back exactly on it — a full page is the
+// signal that older rows were left behind.
+const TXN_FETCH_LIMIT = 3000;
 
 const CAT_COLORS = {
   'Food & Drink':'#8B5CF6','Transport':'#00C896','Groceries':'#3B82F6',
@@ -5259,9 +5268,19 @@ function exportAccountsCSV() {
 // follow, and reissuing a login costs far less than containing a leaked one.
 // sys_ids are kept so a restore can be matched against existing records rather
 // than blindly duplicating them.
-function exportFullBackup() {
+async function exportFullBackup() {
   if (!state.transactions.length && !state.accounts.length) {
     showToast('Nothing to back up yet', 'info'); return;
+  }
+  // Refuse rather than write a file that looks complete but isn't — the same
+  // rule the scheduled backups follow. A partial copy is more dangerous than
+  // no copy, because it is the one you would restore from.
+  if (state.txnFetchTruncated) {
+    const go = await showConfirm(
+      'This copy would be incomplete',
+      `The last sync returned ${TXN_FETCH_LIMIT} transactions, which is the maximum one request sends — older rows were almost certainly left behind. Use the scheduled ServiceNow backup for a complete copy. Save this partial file anyway?`,
+      'Save anyway', 'btn-amber');
+    if (!go) return;
   }
   const payload = {
     pfmt_backup: {
@@ -5271,13 +5290,40 @@ function exportFullBackup() {
       base_currency  : state.currency,
       counts         : { accounts: state.accounts.length, transactions: state.transactions.length,
                          budgets: state.budgets.length,  goals: state.goals.length },
-      secrets_included: false
+      secrets_included: false,
+      // Says plainly whether this file is the whole book, so a restore is never
+      // started on the assumption that it is.
+      complete       : !state.txnFetchTruncated,
+      truncated_at   : state.txnFetchTruncated ? TXN_FETCH_LIMIT : null
     },
+    // The profile row, minus anything that authenticates as this user.
+    user_profile: {
+      username    : state.snUserProfile?.username     || '',
+      display_name: state.snUserProfile?.display_name || '',
+      email       : state.snUserProfile?.email        || '',
+      currency    : state.currency,
+      language    : state.language,
+      avatar_color: state.snUserProfile?.avatar_color || '',
+      sys_id      : state.snProfileSysId || ''
+    },
+    // Rebuilt from the categories actually in use plus the app's own icon and
+    // colour table. The category table is never loaded into the app, and the
+    // import API recreates a category by name, so this is a faithful record of
+    // what the rows refer to rather than a copy of the table's sys_ids.
+    categories: [...new Set([
+      ...state.transactions.map(t => t.category),
+      ...state.budgets.map(b => b.category)
+    ])].filter(Boolean).sort().map(name => ({
+      category_name: name,
+      icon_emoji   : catIcon(name),
+      color_hex    : CAT_COLORS[name] || '#6B7280'
+    })),
     accounts: state.accounts.map(a => ({
       name: a.name, type: a.type, institution: a.institution || '',
       currency: a.currency || state.currency,
       starting_balance : +a.balance || 0,
       effective_balance: effectiveBal(a),
+      is_active: a.isActive !== false,
       icon: a.icon || '', sys_id: _snId(a) || ''
     })),
     // transfer_group is what pairs the two legs of a transfer or a funded asset
@@ -5288,7 +5334,11 @@ function exportFullBackup() {
       description: t.description, category: t.category, account: t.account,
       currency: t.currency || state.currency, notes: t.notes || '',
       transfer_group: t.transferGroup || '', transfer_peer: t.transferPeer || '',
-      created: t.created || '', sys_id: _snId(t) || ''
+      created: t.created || '', sys_id: _snId(t) || '',
+      state: t.snState || '2',
+      is_recurring: !!t.isRecurring,
+      recurring_frequency: t.recurringFrequency || '',
+      next_run_date: t.nextRunDate || ''
     })),
     budgets: state.budgets.map(b => ({
       category: b.category, amount: +b.amount || 0,
@@ -5296,6 +5346,7 @@ function exportFullBackup() {
       alert_threshold_pct: b.alertPct || 80,
       rollover: !!b.rollover,
       spent_this_month: getBudgetSpent(b.category, b.currency),
+      period_start: b.periodStart || '', period_end: b.periodEnd || '',
       sys_id: _snId(b) || ''
     })),
     goals: state.goals.map(g => ({
@@ -6120,7 +6171,7 @@ async function snLoadAll() {
       // this only affects payload size for people who actually have that many —
       // a light user's fetch is unchanged since the number is a ceiling, not a
       // target. Needed so the spending-trend chart isn't quietly missing months.
-      snAPI.call('/transactions?limit=3000'),
+      snAPI.call(`/transactions?limit=${TXN_FETCH_LIMIT}`),
       snAPI.call('/budgets'),
       snAPI.call('/goals'),
       snAPI.call('/accounts')
@@ -6134,6 +6185,12 @@ async function snLoadAll() {
       if (key && t.transferGroup) knownGroups[key] = { g: t.transferGroup, peer: t.transferPeer || '' };
     });
 
+    // The transactions endpoint caps at TXN_FETCH_LIMIT. Coming back exactly on
+    // the limit means there is almost certainly more that wasn't sent, and a
+    // backup taken from a truncated book would look complete while missing the
+    // oldest rows — so record it and let the export refuse.
+    state.txnFetchTruncated = (txns || []).length >= TXN_FETCH_LIMIT;
+
     state.transactions = (txns  || []).map(t => ({
       id         : t.sys_id,
       type       : t.type,
@@ -6146,7 +6203,14 @@ async function snLoadAll() {
       currency   : t.currency || state.currency,
       transferGroup: t.transfer_group || (knownGroups[t.sys_id]?.g || ''),
       transferPeer : knownGroups[t.sys_id]?.peer || '',
-      created    : t.created || ''
+      created    : t.created || '',
+      // Carried through rather than dropped: without these a restore loses the
+      // recurring schedules entirely, and a future-dated row comes back
+      // Confirmed when ServiceNow had deliberately held it as a Draft.
+      snState    : t.state || '2',
+      isRecurring: !!t.is_recurring,
+      recurringFrequency: t.recurring_frequency || '',
+      nextRunDate: t.next_run_date || ''
     }));
 
     // Rebuild each transfer leg's peer-account label from its partner row.
@@ -6166,7 +6230,11 @@ async function snLoadAll() {
       amount   : b.budget_amount,
       spent    : b.spent_amount,
       alertPct : b.alert_threshold || 80,
-      currency : b.currency || state.currency
+      currency : b.currency || state.currency,
+      // The period the ServiceNow row belongs to. The app applies a budget to
+      // every month, but a restore has to put the row back in its own period.
+      periodStart: b.period_start || '',
+      periodEnd  : b.period_end   || ''
     }));
     state.goals = (goals || []).map(g => ({
       id       : g.sys_id,
@@ -6187,7 +6255,10 @@ async function snLoadAll() {
       type       : a.account_type,
       institution: a.institution_name || '',
       balance    : a.current_balance,
-      currency   : a.currency || 'SGD'
+      currency   : a.currency || 'SGD',
+      // Absent on an instance running the older Accounts API, which did not
+      // return the field — treat that as active rather than closing everything.
+      isActive   : a.is_active !== false
     }));
     // Retag legacy transfers now that their real category is known.
     const retagged = migrateTransferCategories();

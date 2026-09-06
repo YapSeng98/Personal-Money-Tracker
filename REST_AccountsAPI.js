@@ -45,7 +45,11 @@
         account_type     : gr.getValue('acount_type')     || gr.getValue('type') || 'checking',
         institution_name : gr.getValue('institution_name') || gr.getValue('bank_name') || '',
         current_balance  : parseFloat(gr.getValue('current_balance') || gr.getValue('balance') || '0') || 0,
-        currency         : gr.getValue('currency')         || 'SGD'
+        currency         : gr.getValue('currency')         || 'SGD',
+        // Returned so a backup can record it: BR_ValidateTransaction refuses to
+        // post to an inactive account, so a restore that loses this flag can
+        // reopen an account the owner had deliberately closed.
+        is_active        : gr.getValue('is_active') !== 'false'
       });
     }
 
