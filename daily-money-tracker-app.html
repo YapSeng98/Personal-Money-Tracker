@@ -3318,11 +3318,20 @@ function renderDashboard() {
     : `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_month')} ${getMonthLabel(state.filterMonth)}.<br>${t('empty_add_first')}</p></div>`;
 
   // Category chart — per-currency sections when mixed
+  // Net of paybacks, like the budget cards and the Monthly Review breakdown —
+  // counting gross here showed Food & Drink at S$1,000 on the dashboard while
+  // the budget for that same category, on the same month, read S$200.
   const expByCur = {};
-  monthTxns.filter(t=>t.type==='expense' && isFlow(t)).forEach(t => {
+  monthTxns.forEach(t => {
+    if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
-    expByCur[c][t.category] = (expByCur[c][t.category]||0) + t.amount;
+    expByCur[c][t.category] = Math.round(((expByCur[c][t.category]||0) + (t.type === 'payback' ? -t.amount : t.amount)) * 100) / 100;
+  });
+  // A category a payback fully repaid cost nothing this month, so it earns no bar.
+  Object.keys(expByCur).forEach(c => {
+    Object.keys(expByCur[c]).forEach(cat => { if (expByCur[c][cat] <= 0) delete expByCur[c][cat]; });
+    if (!Object.keys(expByCur[c]).length) delete expByCur[c];
   });
   if (!Object.keys(expByCur).length) {
     document.getElementById('category-chart').innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_expenses_chart')}</p></div>`;
