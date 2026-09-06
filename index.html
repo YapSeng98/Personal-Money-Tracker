@@ -1318,7 +1318,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       </div>
       <div class="form-group">
         <label class="form-label">Currency</label>
-        <select class="form-input" id="txn-currency" onchange="updateTransferUI()">
+        <select class="form-input" id="txn-currency" onchange="updateTransferUI();populateFundAccounts();">
           <option value="SGD">SGD</option>
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
@@ -2472,6 +2472,15 @@ async function saveTransaction() {
     if (fundFrom && fundFrom === acct) {
       showToast('Funding account must differ from the holding', 'error'); return;
     }
+    // The guard above only covered the holding account. Both legs of an asset
+    // pair are written in this one currency, so a funding account in another
+    // currency produced an expense leg effectiveBal() ignores: the holding rose
+    // and nothing was ever deducted — money created out of nothing.
+    const fundObj = fundFrom ? state.accounts.find(a => a.name === fundFrom) : null;
+    if (fundObj && (fundObj.currency || state.currency) !== currency) {
+      showToast(`${fundFrom} is a ${fundObj.currency || state.currency} account — it can't fund a ${currency} holding.`, 'error');
+      return;
+    }
     if (editId === '') {
       if (fundFrom) {
         await saveAssetPair({ amt, desc, cat, from: fundFrom, to: acct, currency, date, notes });
@@ -2844,7 +2853,29 @@ async function saveAccount() {
   if (_editingAccountId !== null) {
     const idx = state.accounts.findIndex(a => a.id == _editingAccountId);
     if (idx !== -1) {
+      const prevName = state.accounts[idx].name;
       state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon, currency };
+      // Transactions and linked goals point at an account by NAME. Without
+      // repointing them here a rename silently detached the account's entire
+      // history: its balance fell back to the starting figure and any goal
+      // tracking it stopped updating, with nothing on screen to say why.
+      // ServiceNow stores the transaction→account link as a reference, so only
+      // the local rows and the goal's account_name need saying.
+      if (prevName && prevName !== name) {
+        state.transactions.forEach(txn => {
+          if (txn.account === prevName)      txn.account = name;
+          if (txn.transferPeer === prevName) txn.transferPeer = name;
+        });
+        state.goals.forEach(g => {
+          if (g.linkedAccount !== prevName) return;
+          g.linkedAccount = name;
+          const gSysId = _snId(g);
+          if (state.snToken && gSysId) {
+            snAPI.call('/goals', 'PUT', { sys_id: gSysId, account_name: name })
+              .catch(e => console.warn('goal relink:', e.message));
+          }
+        });
+      }
       const sysId = _snId(state.accounts[idx]);
       if (state.snToken && sysId) {
         snAPI.call('/accounts', 'PUT', { sys_id: sysId, ...snPayload })
@@ -2954,9 +2985,34 @@ function getMonthTxns(month) {
   return sortTxnsDesc(state.transactions.filter(t => t.date.startsWith(month || state.filterMonth)));
 }
 
-function daysInFilterMonth() {
-  const [y, m] = state.filterMonth.split('-');
-  return new Date(+y, +m, 0).getDate();
+function daysInMonth(mk) {
+  const [y, m] = (mk || state.filterMonth).split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+// Days to divide a month's spending by. A finished month is its full length,
+// but the month in progress has only run so far: dividing five days of spending
+// by thirty reported a sixth of what was actually going out, and made the
+// figure climb all month even when the spending habit never changed.
+function daysSoFarIn(mk) {
+  const month = mk || state.filterMonth;
+  const total = daysInMonth(month);
+  return month === localYM() ? Math.min(new Date().getDate(), total) : total;
+}
+
+// One user action, not one stored row. A transfer or asset purchase is saved as
+// two legs sharing a group, so counting rows reported two transactions for what
+// the list itself shows as a single line.
+function countEvents(txns) {
+  const seen = new Set();
+  let n = 0;
+  txns.forEach(t => {
+    if (!t.transferGroup) { n++; return; }
+    if (seen.has(t.transferGroup)) return;
+    seen.add(t.transferGroup);
+    n++;
+  });
+  return n;
 }
 
 // A transfer is stored as a matched expense+income pair so that both account
@@ -2977,7 +3033,11 @@ const isFlow = t => !t.transferGroup;
 // rate, but ignoring it entirely (what isFlow does) leaves the currency's net
 // disagreeing with its accounts. So it is tracked separately as exchange and
 // folded into net only.
-function curStats(cur, txns) {
+// `month` is the month these txns come from — it only drives avgDaily, but
+// without it the figure was always divided by state.filterMonth's length, so
+// Monthly Review (which browses its own month) and the all-time Analytics
+// totals were dividing by a month they weren't showing.
+function curStats(cur, txns, month) {
   const mine = txns.filter(t => (t.currency || state.currency) === cur);
   let inc = 0, exp = 0, xIn = 0, xOut = 0;
   mine.forEach(t => {
@@ -3001,7 +3061,7 @@ function curStats(cur, txns) {
     net        : inc - exp + xIn - xOut,
     earned     : inc - exp,
     savingsRate: inc > 0 ? ((inc - exp) / inc * 100) : null,
-    avgDaily   : exp > 0 ? exp / daysInFilterMonth() : 0,
+    avgDaily   : (exp > 0 && month) ? exp / daysSoFarIn(month) : 0,
     hasExchange: xIn > 0 || xOut > 0
   };
 }
@@ -3010,11 +3070,11 @@ function calcStats() {
   const txns = getMonthTxns();
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))].sort();
   const byCur = {};
-  currencies.forEach(c => { byCur[c] = curStats(c, txns); });
+  currencies.forEach(c => { byCur[c] = curStats(c, txns, state.filterMonth); });
   return {
     txns, currencies, byCur,
-    count     : txns.length,
-    overBudget: state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length
+    count     : countEvents(txns),
+    overBudget: state.budgets.filter(b => isBudgetOver(b)).length
   };
 }
 
@@ -3043,22 +3103,26 @@ function nextMonthKey(ym) {
 // rather than stored anywhere. Opt-in per budget via b.rollover, and kept out
 // of the ServiceNow payload: it is a local display preference, not data that
 // needs to survive on another device.
-function getBudgetRollover(b) {
+// `month` is which month's bar is being drawn: the leftover comes from the
+// month before THAT one. Defaulting to state.filterMonth was wrong for Monthly
+// Review, which browses a month of its own — paging it back to March took the
+// rollover from whatever month Transactions happened to be showing.
+function getBudgetRollover(b, month) {
   if (!b.rollover) return 0;
-  const prevSpent = getBudgetSpent(b.category, b.currency, prevMonthKey(state.filterMonth));
+  const prevSpent = getBudgetSpent(b.category, b.currency, prevMonthKey(month || state.filterMonth));
   return Math.max(0, Math.round((b.amount - prevSpent) * 100) / 100);
 }
 
-function getCategorySpend() {
-  const map = {};
-  getMonthTxns().forEach(t => {
-    if (t.type === 'expense' && isFlow(t)) map[t.category] = (map[t.category]||0) + t.amount;
-    else if (t.type === 'payback')         map[t.category] = (map[t.category]||0) - t.amount;
-  });
-  return Object.entries(map)
-    .map(([c,v]) => [c, Math.round(v*100)/100])
-    .filter(([,v]) => v > 0)          // fully repaid categories cost you nothing
-    .sort((a,b)=>b[1]-a[1]);
+// The limit a budget is actually judged against. Every over-budget test has to
+// go through this: the budget card allowed for rollover while the counters
+// beside it compared against b.amount alone, so one card could read "S$50 left"
+// while the panel next to it called the same budget exceeded.
+function getBudgetLimit(b, month) {
+  return Math.round((b.amount + getBudgetRollover(b, month)) * 100) / 100;
+}
+
+function isBudgetOver(b, month) {
+  return getBudgetSpent(b.category, b.currency, month) > getBudgetLimit(b, month);
 }
 
 function applyLanguage() {
@@ -3205,7 +3269,7 @@ function renderDashboard() {
   if (!isMulti) {
     // One currency: the original layout, with income/expense in the side column.
     const cur = currencies[0];
-    const st  = s.byCur[cur] || curStats(cur, monthTxns);
+    const st  = s.byCur[cur] || curStats(cur, monthTxns, state.filterMonth);
     if (heroSide) heroSide.style.display = '';
     heroBal.innerHTML = `<span style="font-family:var(--fd);font-size:clamp(28px,5vw,52px);font-weight:800;">${fmtSigned(st.net, cur)}</span>${xNote(cur, st)}`;
     heroInc.textContent = '+' + fmtWithCur(st.inc, cur);
@@ -3245,7 +3309,7 @@ function renderDashboard() {
     srEl.style.color = '';
   }
 
-  document.getElementById('kpi-txn-count').textContent = monthTxns.length;
+  document.getElementById('kpi-txn-count').textContent = countEvents(monthTxns);
   document.getElementById('kpi-budgets-over').textContent = s.overBudget;
 
   const recent = monthTxns.slice(0,8);
@@ -3934,7 +3998,7 @@ function renderBudgets() {
   const budgetCardHTML = b => {
     const spent    = getBudgetSpent(b.category, b.currency);
     const rollover = getBudgetRollover(b);
-    const effAmt   = b.amount + rollover;
+    const effAmt   = getBudgetLimit(b);
     const pctReal  = effAmt > 0 ? (spent/effAmt)*100 : 0;
     const pct      = Math.min(pctReal, 100); // capped — bar width only
     const over  = spent > effAmt;
@@ -3996,11 +4060,13 @@ function renderBudgets() {
   state.budgets.forEach(b => {
     const c = b.currency || state.currency;
     if (!budgetByCur[c]) budgetByCur[c] = { total: 0, spent: 0 };
-    budgetByCur[c].total += b.amount;
+    // Rollover counts here too, or this panel's "spent of total" contradicts
+    // the per-budget cards it sits beside.
+    budgetByCur[c].total += getBudgetLimit(b);
     budgetByCur[c].spent += getBudgetSpent(b.category, b.currency);
   });
   const budgetCurEntries = Object.entries(budgetByCur);
-  const overBudgetCount  = state.budgets.filter(b => getBudgetSpent(b.category, b.currency) > b.amount).length;
+  const overBudgetCount  = state.budgets.filter(b => isBudgetOver(b)).length;
 
   const budgetTotalHTML = budgetCurEntries.map(([cur, d]) => {
     const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
@@ -4054,13 +4120,17 @@ function renderGoals() {
     const achieved = g.current >= g.target;
     const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
-    let monthsLeftLabel = '';
+    let monthsLeftLabel = '', overdue = false;
     if (!achieved) {
       if (g.date) {
-        const now = new Date(), td = new Date(g.date);
+        const now = new Date(), td = new Date(g.date + 'T12:00:00');
         const diff = (td.getFullYear()-now.getFullYear())*12+(td.getMonth()-now.getMonth());
-        const ml = Math.max(diff, 0);
-        monthsLeftLabel = ml === 0 ? 'Due this month' : `~${ml}${t('goal_mo_left')}`;
+        // A past target date used to be clamped to zero, so a goal months
+        // overdue sat there reading "Due this month" indefinitely.
+        overdue = diff < 0;
+        monthsLeftLabel = overdue ? `${Math.abs(diff)}mo overdue`
+                        : diff === 0 ? 'Due this month'
+                        : `~${diff}${t('goal_mo_left')}`;
       } else if (g.monthly > 0) {
         monthsLeftLabel = `~${Math.ceil(remaining/g.monthly)}${t('goal_mo_left')}`;
       }
@@ -4082,7 +4152,7 @@ function renderGoals() {
       <div class="goal-footer">
         <span>${pct.toFixed(0)}% · ${achieved ? t('goal_done') : fmtWithCur(remaining, g.currency)+' '+t('goal_to_go')}</span>
         <div style="display:flex;align-items:center;gap:8px;">
-          ${monthsLeftLabel ? `<span style="font-size:11px;color:var(--sky);">${monthsLeftLabel}</span>` : ''}
+          ${monthsLeftLabel ? `<span style="font-size:11px;color:${overdue?'var(--coral)':'var(--sky)'};font-weight:${overdue?'700':'400'};">${monthsLeftLabel}</span>` : ''}
           <div class="goal-actions">
             <button class="icon-btn edit" onclick="openGoalModal('${g.id}')" title="Edit / Add contribution">✏️</button>
             <button class="icon-btn del"  onclick="deleteGoal('${g.id}')"    title="Delete goal">🗑️</button>
@@ -4270,11 +4340,11 @@ function renderMonthlyReview() {
   // never disagree with it on what counts as income vs. a transfer.
   if (statsEl) {
     statsEl.innerHTML = currencies.map(cur => {
-      const st = curStats(cur, reviewTxns);
+      const st = curStats(cur, reviewTxns, mk);
       return `<div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_income')}</div><div class="review-stat-val" style="color:var(--jade-d)">${fmtWithCur(st.inc, cur)}</div></div>
         <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_expenses')}</div><div class="review-stat-val" style="color:var(--coral)">${fmtWithCur(st.exp, cur)}</div></div>
         <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} Net</div><div class="review-stat-val" style="color:${st.net>=0?'var(--jade-d)':'var(--coral)'}">${fmtSigned(st.net, cur)}</div></div>`;
-    }).join('') + `<div class="review-stat"><div class="review-stat-lbl">Transactions</div><div class="review-stat-val">${reviewTxns.filter(isFlow).length}</div></div>`;
+    }).join('') + `<div class="review-stat"><div class="review-stat-lbl">Transactions</div><div class="review-stat-val">${countEvents(reviewTxns)}</div></div>`;
   }
 
   // Category breakdown, net of paybacks — matches what the Budgets page calls
@@ -4306,8 +4376,13 @@ function renderMonthlyReview() {
     // overall figure instead of erasing just one category's slice of it.
     const total = all.reduce((s,[,v]) => s+v, 0);
     const cs    = all.filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+    // Two denominators on purpose. The heading total above keeps every category
+    // so it reconciles with the Expenses stat tile, but a row's share is taken
+    // against the rows actually drawn — dividing by a total that a payback had
+    // pushed near zero rendered a single category as "1000%".
+    const shownTotal = cs.reduce((s,[,v]) => s+v, 0);
     const rows = cs.map(([cat, amt]) => {
-      const pct = total > 0 ? (amt/total*100) : 0;
+      const pct = shownTotal > 0 ? (amt/shownTotal*100) : 0;
       // Same spend-minus-payback figure, one month earlier — a real trend
       // comparison, not just "biggest slice of this month's pie".
       const prevAmt = getBudgetSpent(cat, cur, prevMk);
@@ -4320,7 +4395,7 @@ function renderMonthlyReview() {
       const budget = state.budgets.find(b => b.category === cat && (b.currency||state.currency) === cur);
       let barHTML;
       if (budget) {
-        const limit  = budget.amount + getBudgetRollover(budget);
+        const limit  = getBudgetLimit(budget, mk);
         const over   = amt > limit;
         const bpct   = limit > 0 ? Math.min(amt/limit*100, 100) : 0;
         const bcolor = over ? 'var(--coral)' : bpct >= (budget.alertPct||80) ? 'var(--amber)' : 'var(--jade)';
@@ -4538,12 +4613,18 @@ function renderSpendingTrend() {
   // not cash moving between your own accounts.
   const byMonthCur = {};
   state.transactions.forEach(t => {
-    if (t.type !== metric || !isFlow(t)) return;
+    if (!isFlow(t)) return;
+    // A payback is money returned for something you already paid, so it comes
+    // off that month's spending — the same basis budgets, the summary table and
+    // the dashboard use. Counting it gross made this chart read S$1,000 for a
+    // month the table directly beneath it reported as S$200.
+    const offsets = metric === 'expense' && t.type === 'payback';
+    if (t.type !== metric && !offsets) return;
     const mk = t.date.slice(0, 7);
     if (!months.includes(mk)) return;
     const cur = t.currency || state.currency;
     if (!byMonthCur[cur]) byMonthCur[cur] = {};
-    byMonthCur[cur][mk] = (byMonthCur[cur][mk] || 0) + t.amount;
+    byMonthCur[cur][mk] = Math.round(((byMonthCur[cur][mk] || 0) + (offsets ? -t.amount : t.amount)) * 100) / 100;
   });
 
   const el = document.getElementById('trend-chart');
@@ -4561,7 +4642,9 @@ function renderSpendingTrend() {
     const max  = Math.max(...vals, 0.01);
     const bars = months.map((mk, i) => {
       const v = vals[i];
-      const h = (v / max * 100).toFixed(1);
+      // A month whose spending was more than repaid nets below zero; draw it
+      // flat rather than as a bar growing downwards out of the chart.
+      const h = Math.max(0, v / max * 100).toFixed(1);
       const [y, m] = mk.split('-');
       const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
       return `<div class="trend-bar-col" onclick="showTrendDetail('${mk}','${cur}',${v},this)">
@@ -4712,10 +4795,9 @@ function renderAccounts() {
     const b = effectiveBal(a);
     if (b > 0) byCur[c].assets += b; else byCur[c].debt += Math.abs(b);
   });
+  // Deliberately no cross-currency total here: adding S$ to RM produces a
+  // number that means nothing, and every figure below is rendered per currency.
   const curEntries  = Object.entries(byCur);
-  const totalAssets = curEntries.reduce((s,[,d])=>s+d.assets,0);
-  const totalDebt   = curEntries.reduce((s,[,d])=>s+d.debt,0);
-  const netWorth    = totalAssets - totalDebt;
 
   // Summary block — per-currency rows like goals summary
   const summaryHTML = curEntries.length === 1
@@ -5042,18 +5124,24 @@ async function fetchAccountAIKey() {
 function buildSummary() {
   // Per-currency breakdown — never merge currencies into one total for the AI
   const monthTxns = getMonthTxns();
-  const days = daysInFilterMonth();
+  const days = daysInMonth();
   const curs = [...new Set(monthTxns.map(t => t.currency || state.currency))];
+  // Derived from curStats — the same function the dashboard renders from. Built
+  // separately, this block ignored paybacks and cross-currency exchange, so the
+  // model was told an income, expense and savings rate that contradicted the
+  // figures on screen and then advised against its own version of them.
   const perCur = curs.map(cur => {
-    const inc = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='income'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
-    const exp = monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t)).reduce((s,t)=>s+t.amount,0);
-    const rate = inc > 0 ? ((inc-exp)/inc*100).toFixed(1)+'%' : 'N/A';
+    const st   = curStats(cur, monthTxns, state.filterMonth);
+    const rate = st.savingsRate === null ? 'N/A' : st.savingsRate.toFixed(1) + '%';
     const cats = {};
-    monthTxns.filter(t=>(t.currency||state.currency)===cur&&t.type==='expense'&&isFlow(t))
-      .forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
-    const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5)
+    monthTxns.filter(t => (t.currency||state.currency)===cur && isFlow(t) && (t.type==='expense' || t.type==='payback'))
+      .forEach(t => { cats[t.category] = (cats[t.category]||0) + (t.type==='payback' ? -t.amount : t.amount); });
+    const topCats = Object.entries(cats).filter(([,a])=>a>0).sort((a,b)=>b[1]-a[1]).slice(0,5)
       .map(([c,a])=>`${c} ${fmtWithCur(a,cur)}`).join(', ') || 'none';
-    return `${cur}: Balance ${fmtSigned(inc-exp,cur)}, Income ${fmtWithCur(inc,cur)}, Expenses ${fmtWithCur(exp,cur)}, Savings rate ${rate}, Daily avg ${fmtWithCur(exp/days,cur)}. Top categories: ${topCats}`;
+    const exch = st.hasExchange
+      ? ` Exchanged in ${fmtWithCur(st.xIn,cur)}, exchanged out ${fmtWithCur(st.xOut,cur)} (transfers between currencies, not earnings or spending).`
+      : '';
+    return `${cur}: Net ${fmtSigned(st.net,cur)}, Income ${fmtWithCur(st.inc,cur)}, Expenses ${fmtWithCur(st.exp,cur)} (already net of any paybacks), Savings rate ${rate}, Daily avg so far ${fmtWithCur(st.avgDaily,cur)}.${exch} Top categories: ${topCats}`;
   }).join(' | ') || 'no transactions this month';
   const multiNote = curs.length > 1 ? ' IMPORTANT: amounts are in multiple currencies — never add different currencies together; advise per currency.' : '';
 
@@ -5062,8 +5150,9 @@ function buildSummary() {
   const budgetsLine = state.budgets.length
     ? `${state.budgets.length} budget${state.budgets.length>1?'s':''} — ` + state.budgets.map(b => {
         const spent = getBudgetSpent(b.category, b.currency);
-        const pct = b.amount > 0 ? Math.round(spent/b.amount*100) : 0;
-        return `"${b.category}": ${fmtWithCur(spent, b.currency)} spent against a ${fmtWithCur(b.amount, b.currency)} monthly limit (${pct}% used)`;
+        const limit = getBudgetLimit(b);   // includes rollover, as the cards do
+        const pct = limit > 0 ? Math.round(spent/limit*100) : 0;
+        return `"${b.category}": ${fmtWithCur(spent, b.currency)} spent against a ${fmtWithCur(limit, b.currency)} monthly limit (${pct}% used)`;
       }).join('; ')
     : 'none';
 

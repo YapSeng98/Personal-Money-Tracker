@@ -4,6 +4,26 @@
 // When     : After · Insert + Update
 // Condition: current.state == '2' (Confirmed)
 // ============================================================
+//
+// ⚠️  DO NOT ACTIVATE THIS ALONGSIDE THE APP — IT DOUBLE-COUNTS.
+//
+// The app treats account.current_balance as a STARTING balance: effectiveBal()
+// in the tracker reads that field and then applies every linked transaction on
+// top of it. This rule treats the same field as a RUNNING balance and applies
+// each transaction to it server-side. With both live, every transaction lands
+// twice and an account reads start + 2 × movement.
+//
+// The tracker is the more complete of the two — it also handles 'asset' and
+// 'payback' rows and both legs of a transfer, none of which this rule touches.
+// So the app owns the balance, and this rule should stay inactive.
+//
+// To check whether it is running: note an account's balance, add a S$100
+// expense, then sync. A S$200 drop means this rule is active — deactivate it
+// (System Definition → Business Rules) and correct the affected accounts'
+// current_balance back to their true starting figures.
+//
+// Kept in the repo for reference and for anyone running the ServiceNow-native
+// UI *without* the tracker app, where it is the only thing maintaining a balance.
 
 (function executeRule(current, previous) {
 
