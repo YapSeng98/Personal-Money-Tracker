@@ -436,6 +436,15 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .sn-mapping-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface);border-radius:12px;margin-bottom:8px;font-size:12px;}
 .sn-field-name{font-family:var(--fm);color:var(--indigo);}
 
+/* ── BACKUP REMINDER ── */
+.backup-note{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--amber);
+  border-radius:14px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;
+  gap:16px;flex-wrap:wrap;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+.backup-note-body{flex:1;min-width:200px;}
+.backup-note-title{font-size:13px;font-weight:700;margin-bottom:2px;}
+.backup-note-sub{font-size:12px;color:var(--muted);line-height:1.5;}
+.backup-note-actions{display:flex;gap:8px;flex-shrink:0;}
+
 /* ── EMPTY / TOAST ── */
 .empty{text-align:center;padding:40px 20px;color:var(--muted);}
 .empty .icon{font-size:40px;margin-bottom:12px;}
@@ -806,6 +815,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
     <!-- ════ DASHBOARD ════ -->
     <div class="view active" id="view-dashboard">
+      <div id="backup-reminder"></div>
       <div class="balance-hero">
         <div class="balance-grid">
           <div>
@@ -1825,7 +1835,8 @@ let state = {
   snToken: null,
   snProfileSysId: null,
   snUserProfile: {},  // {username, display_name, email, currency, language, avatar_color, stats}
-  txnFetchTruncated: false
+  txnFetchTruncated: false,
+  lastBackupAt: ''    // ISO date of the last complete backup taken from this app
 };
 
 // ═══════════════════════════════════════════════
@@ -1864,7 +1875,8 @@ function saveState() {
       snUserProfile: state.snUserProfile,
       // Survives a reload: the data in localStorage is whatever that truncated
       // sync returned, so the warning has to outlive the page that raised it.
-      txnFetchTruncated: state.txnFetchTruncated
+      txnFetchTruncated: state.txnFetchTruncated,
+      lastBackupAt: state.lastBackupAt
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -3270,6 +3282,7 @@ function renderAll() {
   renderGoals();
   renderAnalytics();
   renderAccounts();
+  renderBackupReminder();
   renderExportSummary();
   _renderProfileView();
   _updateSNLinks();
@@ -5364,7 +5377,61 @@ async function exportFullBackup() {
   const c = payload.pfmt_backup.counts;
   downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
                `pfmt_backup_${localDateStr()}.json`);
+  // Only a complete file resets the clock — a partial one saved past the
+  // warning should not buy another month of silence.
+  if (payload.pfmt_backup.complete) {
+    state.lastBackupAt = new Date().toISOString();
+    saveState();
+    _backupNoticeDismissed = false;
+    renderBackupReminder();
+    renderExportSummary();
+  }
   showToast(`Backup saved — ${c.transactions} transactions, ${c.accounts} accounts, ${c.budgets} budgets, ${c.goals} goals`, 'success');
+}
+
+/* ── BACKUP REMINDER ── */
+// A month between backups. Long enough not to nag, short enough that losing
+// the gap since the last one would not be painful.
+const BACKUP_DUE_DAYS = 30;
+let _backupNoticeDismissed = false;   // this session only — not worth persisting
+
+function daysSinceLastBackup() {
+  if (!state.lastBackupAt) return null;             // never taken one
+  const then = new Date(state.lastBackupAt);
+  if (isNaN(then)) return null;
+  return Math.floor((Date.now() - then.getTime()) / 86400000);
+}
+
+// The unattended alternative needs a stored ServiceNow login and a scheduled
+// job on this Mac. This asks nothing of either: you are already signed in, so
+// a reminder plus one click is the whole mechanism.
+function renderBackupReminder() {
+  const el = document.getElementById('backup-reminder');
+  if (!el) return;
+  const days = daysSinceLastBackup();
+  const due  = days === null || days >= BACKUP_DUE_DAYS;
+  const haveData = state.transactions.length || state.accounts.length;
+
+  if (!due || !haveData || _backupNoticeDismissed) { el.innerHTML = ''; return; }
+
+  const msg = days === null
+    ? "You haven't backed up yet — one click saves every account, transaction, budget and goal to this device."
+    : `Last backup was ${days} days ago. One click saves everything to this device again.`;
+  el.innerHTML = `<div class="backup-note">
+      <div class="backup-note-body">
+        <div class="backup-note-title">Time for a backup</div>
+        <div class="backup-note-sub">${msg}</div>
+      </div>
+      <div class="backup-note-actions">
+        <button class="btn btn-jade btn-sm" onclick="exportFullBackup()">Back up now</button>
+        <button class="btn btn-ghost btn-sm" onclick="dismissBackupReminder()">Later</button>
+      </div>
+    </div>`;
+}
+
+function dismissBackupReminder() {
+  _backupNoticeDismissed = true;
+  renderBackupReminder();
 }
 
 // Says what a backup would actually contain, so the button isn't a leap of
@@ -5379,7 +5446,11 @@ function renderExportSummary() {
     `${state.budgets.length} budget${state.budgets.length===1?'':'s'}`,
     `${state.goals.length} goal${state.goals.length===1?'':'s'}`
   ];
-  el.textContent = `In this book: ${bits.join(' · ')}${curs.length ? ' · ' + curs.join(', ') : ''}`;
+  const days = daysSinceLastBackup();
+  const last = days === null ? 'never backed up'
+             : days === 0    ? 'backed up today'
+             : `last backup ${days} day${days === 1 ? '' : 's'} ago`;
+  el.textContent = `In this book: ${bits.join(' · ')}${curs.length ? ' · ' + curs.join(', ') : ''} — ${last}`;
 }
 
 function exportSNJSON() {
