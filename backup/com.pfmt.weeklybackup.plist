@@ -10,12 +10,22 @@
     <string>__SCRIPT_PATH__</string>
   </array>
 
-  <!-- Sunday 09:00. StartCalendarInterval fires on the next wake if the Mac
-       was asleep at the scheduled time, so a closed lid only delays the run
-       rather than skipping the week. -->
+  <!-- A launchd job does NOT inherit your shell environment, so the destination
+       has to be handed to it here. Without this, exporting PFMT_BACKUP_DIR in
+       .zshrc changed nothing: the installer reported the new folder while every
+       scheduled run kept writing to the script's built-in default. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>__ENV_KEY__</key><string>__BACKUP_DIR__</string>
+  </dict>
+
+  <!-- Weekly fills __PERIOD_KEY__ with Weekday (0 = Sunday); monthly fills it
+       with Day (1 = the 1st of the month). StartCalendarInterval fires on the
+       next wake if the Mac was asleep at the scheduled time, so a closed lid
+       only delays the run rather than skipping the period. -->
   <key>StartCalendarInterval</key>
   <dict>
-    <key>Weekday</key><integer>0</integer>
+    <key>__PERIOD_KEY__</key><integer>__PERIOD_VAL__</integer>
     <key>Hour</key><integer>9</integer>
     <key>Minute</key><integer>0</integer>
   </dict>
