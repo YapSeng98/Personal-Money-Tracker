@@ -4375,6 +4375,23 @@ function reviewMonthToday() {
   renderMonthlyReview();
 }
 
+// Whole-number shares that still add up to 100. Rounding each share on its own
+// left the column reading 99% or 101% — which, on a panel whose point is that
+// the figures reconcile, reads as an arithmetic fault rather than as rounding.
+// Largest remainder: floor everything, then hand each leftover point to the row
+// with the biggest discarded fraction.
+function wholePercents(values, total) {
+  if (!(total > 0)) return values.map(() => 0);
+  const exact  = values.map(v => v / total * 100);
+  const shares = exact.map(Math.floor);
+  const spare  = 100 - shares.reduce((a, b) => a + b, 0);
+  exact.map((v, i) => [v - shares[i], i])
+       .sort((a, b) => b[0] - a[0])
+       .slice(0, Math.max(0, spare))
+       .forEach(([, i]) => shares[i]++);
+  return shares;
+}
+
 function renderMonthlyReview() {
   const mk = state.reviewMonth;
   const labelEl = document.getElementById('review-month-label');
@@ -4438,8 +4455,12 @@ function renderMonthlyReview() {
     // against the rows actually drawn — dividing by a total that a payback had
     // pushed near zero rendered a single category as "1000%".
     const shownTotal = cs.reduce((s,[,v]) => s+v, 0);
-    const rows = cs.map(([cat, amt]) => {
+    const pctLabels  = wholePercents(cs.map(([,v]) => v), shownTotal);
+    const rows = cs.map(([cat, amt], rowIdx) => {
+      // Exact share drives the bar width; the printed label uses the
+      // largest-remainder figure so the column adds up.
       const pct = shownTotal > 0 ? (amt/shownTotal*100) : 0;
+      const pctLabel = pctLabels[rowIdx];
       // Same spend-minus-payback figure, one month earlier — a real trend
       // comparison, not just "biggest slice of this month's pie".
       const prevAmt = getBudgetSpent(cat, cur, prevMk);
@@ -4469,7 +4490,7 @@ function renderMonthlyReview() {
         <div class="review-cat-top">
           <div class="review-cat-label">${catIcon(cat)} ${esc(cat)}</div>
           ${deltaHTML}
-          <span class="review-cat-pct">${pct.toFixed(0)}%</span>
+          <span class="review-cat-pct">${pctLabel}%</span>
           <div class="review-cat-amt">${fmtWithCur(amt, cur)}</div>
         </div>
         ${barHTML}
