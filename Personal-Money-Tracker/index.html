@@ -3112,6 +3112,34 @@ function curStats(cur, txns, month) {
   };
 }
 
+// A savings rate stops meaning anything once spending dwarfs income: dividing
+// by a near-zero denominator produced "−47392.5%", which reads as a fault
+// rather than as the arithmetic it is. Past this multiple, state the multiple
+// itself — "spent 475× income" is the fact behind the number and the one a
+// reader can act on.
+const SAVINGS_RATE_MAX_MULTIPLE = 10;
+
+// Both the dashboard and Analytics render through this, so the same month can
+// never read −47392.5% on one page and N/A on the other. Previously only
+// Analytics guarded the case, and only when the money arrived by currency
+// exchange — which missed a currency funded out of savings instead.
+function savingsRateDisplay(st) {
+  if (st.inc > 0 && st.exp > st.inc * SAVINGS_RATE_MAX_MULTIPLE) {
+    return { text:'N/A', note:`spent ${Math.round(st.exp / st.inc)}× income`, tone:'bad' };
+  }
+  if (st.inc > 0) {
+    const r = st.savingsRate;
+    return { text:r.toFixed(1) + '%', note:'',
+             tone: r >= 20 ? 'good' : r >= 10 ? 'warn' : 'bad' };
+  }
+  if (st.exp > 0) return { text:'N/A', note:'no income recorded', tone:'muted' };
+  return { text:'—', note:'', tone:'muted' };
+}
+
+const toneColor = t => t === 'good' ? 'var(--jade-d)'
+                     : t === 'warn' ? 'var(--amber)'
+                     : t === 'bad'  ? 'var(--coral)' : 'var(--muted)';
+
 function calcStats() {
   const txns = getMonthTxns();
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))].sort();
@@ -3323,10 +3351,10 @@ function renderDashboard() {
     heroInc.textContent = '+' + fmtWithCur(st.inc, cur);
     heroExp.textContent = '−' + fmtWithCur(st.exp, cur);
     avgEl.textContent   = fmtWithCur(st.avgDaily, cur);
-    srEl.textContent    = st.savingsRate === null ? 'N/A' : st.savingsRate.toFixed(1) + '%';
-    srEl.style.color    = st.savingsRate === null ? 'var(--muted)'
-                        : st.savingsRate >= 20 ? 'var(--jade-d)'
-                        : st.savingsRate >= 10 ? 'var(--amber)' : 'var(--coral)';
+    const sr = savingsRateDisplay(st);
+    srEl.innerHTML = esc(sr.text) + (sr.note
+      ? `<div style="font-size:11px;font-weight:500;color:var(--muted);margin-top:2px;">${esc(sr.note)}</div>` : '');
+    srEl.style.color = toneColor(sr.tone);
   } else {
     // Several currencies: a separate self-contained card each. Splitting the
     // net into one column and its income/expense into another made the two
@@ -3350,9 +3378,9 @@ function renderDashboard() {
     avgEl.innerHTML = currencies.map(c =>
       `<div class="kpi-multi">${fmtWithCur(s.byCur[c].avgDaily,c)}</div>`).join('');
     srEl.innerHTML = currencies.map(c => {
-      const r = s.byCur[c].savingsRate;
-      const col = r===null?'var(--muted)':r>=20?'var(--jade-d)':r>=10?'var(--amber)':'var(--coral)';
-      return `<div class="kpi-multi" style="color:${col};">${c} ${r!==null?r.toFixed(1)+'%':'N/A'}</div>`;
+      const d = savingsRateDisplay(s.byCur[c]);
+      return `<div class="kpi-multi" style="color:${toneColor(d.tone)};">${c} ${esc(d.text)}${
+        d.note ? `<span style="color:var(--muted);font-weight:500;margin-left:6px;">${esc(d.note)}</span>` : ''}</div>`;
     }).join('');
     srEl.style.color = '';
   }
@@ -4309,18 +4337,14 @@ function renderAnalytics() {
   // figures shown above it.
   document.getElementById('an-savings').innerHTML = currencies.map(cur => {
     const st   = statsByCur[cur];
-    // A savings rate is income minus spending over income. When a currency is
-    // funded mainly by exchanging money in rather than earning it, that
-    // denominator is not representative and the ratio explodes: RM522 earned
-    // against RM3,026 spent reads −479%, which looks like a fault rather than
-    // the arithmetic it is. Say so instead of printing a number nobody can use.
-    const fundedByExchange = st.xIn > st.inc;
-    const rate = fundedByExchange ? null : st.savingsRate;
-    const col  = rate===null ? 'var(--muted)' : rate>=20 ? 'var(--jade-d)' : rate>=0 ? 'var(--amber)' : 'var(--coral)';
-    const val  = fundedByExchange ? 'N/A'
-               : rate===null ? (st.exp>0?'N/A':'—')
-               : rate.toFixed(1)+'%';
-    const hint = fundedByExchange
+    // Same rule as the dashboard, via the shared helper — the two pages used to
+    // disagree, one printing N/A where the other printed −47392.5%.
+    const d   = savingsRateDisplay(st);
+    const col = toneColor(d.tone);
+    const val = d.text + (d.note ? ` <span style="font-size:11px;color:var(--muted);font-weight:500;">${esc(d.note)}</span>` : '');
+    // Where the currency was funded by exchanging money in rather than earning
+    // it, name that — it explains why there is no rate worth showing.
+    const hint = (d.text === 'N/A' && st.xIn > 0)
       ? ` title="Most of the ${cur} here arrived as a transfer from another currency rather than income, so a savings rate would not mean anything. Earned ${fmtWithCur(st.inc,cur)}, exchanged in ${fmtWithCur(st.xIn,cur)}."`
       : '';
     return isMultiCurStat
