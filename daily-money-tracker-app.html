@@ -5318,6 +5318,21 @@ function exportAccountsCSV() {
   showToast(`${state.accounts.length} account${state.accounts.length>1?'s':''} exported`, 'success');
 }
 
+// Rebuilt from the categories actually in use plus the app's own icon and
+// colour table. The category table is never loaded into the app, and the
+// import API recreates a category by name, so this is a faithful record of
+// what the rows refer to rather than a copy of the table's sys_ids.
+function buildCategoriesList() {
+  return [...new Set([
+    ...state.transactions.map(t => t.category),
+    ...state.budgets.map(b => b.category)
+  ])].filter(Boolean).sort().map(name => ({
+    category_name: name,
+    icon_emoji   : catIcon(name),
+    color_hex    : CAT_COLORS[name] || '#6B7280'
+  }));
+}
+
 // A complete copy of this account's book — every table plus the preferences
 // that change how it reads, in one file.
 //
@@ -5362,20 +5377,10 @@ async function exportFullBackup() {
       currency    : state.currency,
       language    : state.language,
       avatar_color: state.snUserProfile?.avatar_color || '',
+      monthly_income_target: +state.snUserProfile?.monthly_income_target || 0,
       sys_id      : state.snProfileSysId || ''
     },
-    // Rebuilt from the categories actually in use plus the app's own icon and
-    // colour table. The category table is never loaded into the app, and the
-    // import API recreates a category by name, so this is a faithful record of
-    // what the rows refer to rather than a copy of the table's sys_ids.
-    categories: [...new Set([
-      ...state.transactions.map(t => t.category),
-      ...state.budgets.map(b => b.category)
-    ])].filter(Boolean).sort().map(name => ({
-      category_name: name,
-      icon_emoji   : catIcon(name),
-      color_hex    : CAT_COLORS[name] || '#6B7280'
-    })),
+    categories: buildCategoriesList(),
     accounts: state.accounts.map(a => ({
       name: a.name, type: a.type, institution: a.institution || '',
       currency: a.currency || state.currency,
@@ -5498,8 +5503,29 @@ function renderExportSummary() {
   el.textContent = `In this book: ${bits.join(' · ')}${curs.length ? ' · ' + curs.join(', ') : ''} — ${last}`;
 }
 
-function exportSNJSON() {
+async function exportSNJSON() {
+  // Same rule as the complete backup — a truncated transaction fetch makes
+  // this file silently partial, which is worse than no file at all.
+  if (state.txnFetchTruncated) {
+    const go = await showConfirm(
+      'This copy would be incomplete',
+      `The last sync returned ${TXN_FETCH_LIMIT} transactions, which is the maximum one request sends — older rows were almost certainly left behind. Use the scheduled ServiceNow backup for a complete copy. Save this partial file anyway?`,
+      'Save anyway', 'btn-amber');
+    if (!go) return;
+  }
   const payload = {
+    // No password hash, AI key or session token — same rule as the complete
+    // backup, so a copied import file can't be used to sign in as this user.
+    x_pfmt_user_profile: {
+      username    : state.snUserProfile?.username     || '',
+      display_name: state.snUserProfile?.display_name || '',
+      email       : state.snUserProfile?.email        || '',
+      currency_preference : state.currency,
+      language_preference : state.language,
+      avatar_color: state.snUserProfile?.avatar_color || '',
+      monthly_income_target: +state.snUserProfile?.monthly_income_target || 0
+    },
+    x_pfmt_category: buildCategoriesList(),
     // transfer_group is what pairs the two legs of a transfer or a funded asset.
     // Without it a restore produces two unrelated rows, the balances stop
     // reconciling, and an asset purchase comes back as a plain transfer — so an
