@@ -701,6 +701,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   .l-footer{gap:4px;}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -718,24 +719,22 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="l-badge" id="login-badge">PERSONAL FINANCE</div>
     <div class="l-icon">💰</div>
     <div class="l-appname">PFMT</div>
-    <div class="l-tagline">Money Tracker · ServiceNow PDI</div>
+    <div class="l-tagline">Money Tracker · Cloud Sync</div>
     <div class="l-divider"></div>
 
-    <!-- ── Panel A: SN Login ── -->
+    <!-- ── Panel A: Login ── -->
     <div class="sn-login-panel active" id="panel-login">
-      <input class="sn-login-input" id="sn-li-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNLogin()"/>
+      <input class="sn-login-input" id="sn-li-username" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNLogin()"/>
       <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSNLogin()"/>
       <div class="sn-login-err" id="sn-li-err"></div>
       <button class="sn-login-btn" id="sn-li-btn" onclick="doSNLogin()">Sign In</button>
       <button class="sn-login-toggle" onclick="showAuthPanel('register')">No account? <span>Create one</span></button>
     </div>
 
-    <!-- ── Panel B: SN Register ── -->
+    <!-- ── Panel B: Register ── -->
     <div class="sn-login-panel" id="panel-register">
-      <input class="sn-login-input" id="sn-reg-instance" type="text" value="dev405150.service-now.com" placeholder="instance.service-now.com" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name" onkeydown="if(event.key==='Enter')doSNRegister()"/>
-      <input class="sn-login-input" id="sn-reg-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNRegister()"/>
-      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email (optional)" autocomplete="email" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email" autocomplete="email" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <input class="sn-login-input" id="sn-reg-password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <input class="sn-login-input" id="sn-reg-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <div class="sn-login-err" id="sn-reg-err"></div>
@@ -753,7 +752,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
       <div id="pin-recovery-block" style="display:none;margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);">
         <div style="text-align:center;color:rgba(255,255,255,.5);font-size:11px;margin-bottom:10px;">Sign in with your account password to reset the PIN</div>
-        <input class="sn-login-input" id="pin-recovery-username" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"/>
+        <input class="sn-login-input" id="pin-recovery-username" type="email" placeholder="Email" autocomplete="email" autocapitalize="off"/>
         <input class="sn-login-input" id="pin-recovery-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPinRecovery()"/>
         <div class="sn-login-err" id="pin-recovery-err"></div>
         <button class="sn-login-btn" onclick="submitPinRecovery()">Verify &amp; Reset PIN</button>
@@ -766,7 +765,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="l-spinner"></div>
         <span id="login-connecting-msg">Connecting…</span>
       </div>
-      <div class="l-version">PFMT v2.0 · PDI</div>
+      <div class="l-version">PFMT v2.0 · Supabase</div>
     </div>
   </div>
 </div>
@@ -797,7 +796,6 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="topbar-actions">
       <button class="btn btn-ghost btn-sm" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch theme" style="min-width:34px;">🌙</button>
       <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
-      <button class="btn btn-ghost btn-sm desktop-only" onclick="exportSNJSON()" title="Export SN-ready JSON">⬇ SN JSON</button>
       <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
       <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
     </div>
@@ -1068,14 +1066,14 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="view" id="view-settings">
       <div style="max-width:640px;">
 
-        <!-- ServiceNow Connection -->
+        <!-- Supabase Account -->
         <div class="settings-section">
-          <h3 data-lkey="settings_sn_conn">ServiceNow Connection</h3>
+          <h3 data-lkey="settings_sn_conn">Account</h3>
           <div id="sn-conn-status-card" style="background:linear-gradient(135deg,#0D1117,#1a2744);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <div>
-                <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">Instance</div>
-                <div id="sn-conn-instance" style="font-family:var(--fm);font-size:13px;font-weight:700;color:#00C896;">—</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">Cloud Sync</div>
+                <div id="sn-conn-instance" style="font-family:var(--fm);font-size:13px;font-weight:700;color:#00C896;">Supabase</div>
               </div>
               <div id="sn-conn-badge" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border-radius:8px;padding:5px 10px;">
                 <div id="sn-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#6B7280;"></div>
@@ -1086,8 +1084,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               Signed in as <span id="sn-conn-username" style="color:#fff;font-weight:600;"></span>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="testSNAPIConnection()" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">⚡ Test Connection</button>
-              <button onclick="snLoadAll().then(()=>showToast('Synced from ServiceNow','success')).catch(e=>showToast(e.message,'error'))" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">🔄 Sync Data</button>
+              <button onclick="snLoadAll().then(()=>showToast('Synced from Supabase','success')).catch(e=>showToast(e.message,'error'))" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">🔄 Sync Data</button>
+              <button onclick="snLogout()" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">Sign Out</button>
             </div>
           </div>
         </div>
@@ -1223,10 +1221,6 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div class="setting-row">
             <div><div class="setting-label">Accounts</div><div class="setting-sub">Starting and effective balances, with row counts</div></div>
             <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportAccountsCSV()">⬇ CSV</button>
-          </div>
-          <div class="setting-row">
-            <div><div class="setting-label">ServiceNow import file</div><div class="setting-sub">The same data shaped for the x_pfmt tables</div></div>
-            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportSNJSON()">⬇ JSON</button>
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
             Files download to this device only — nothing is uploaded anywhere. Backups never include your password, AI key or app-lock PIN, so a copied file can't be used to sign in as you.
@@ -1607,7 +1601,7 @@ const TRANSLATIONS = {
     acc_asset_allocation:'Asset Allocation', acc_debt_ratio:'Debt Ratio', acc_accounts:'Accounts',
     acc_no_pos_bal:'No positive balances',
     acc_risk_high:'High', acc_risk_moderate:'Moderate', acc_risk_low:'Low', acc_risk_suffix:'risk',
-    settings_sn_conn:'ServiceNow Connection',
+    settings_sn_conn:'Account',
     settings_account_details:'Account Details', settings_ai_config:'AI Configuration',
     settings_edit_profile:'Edit Profile', settings_change_password:'Change Password',
     settings_app_lock:'App Lock', settings_appearance:'Appearance',
@@ -1720,7 +1714,7 @@ const TRANSLATIONS = {
     acc_asset_allocation:'资产配置', acc_debt_ratio:'负债比率', acc_accounts:'账户数',
     acc_no_pos_bal:'无正余额',
     acc_risk_high:'高', acc_risk_moderate:'中', acc_risk_low:'低', acc_risk_suffix:'风险',
-    settings_sn_conn:'ServiceNow 连接',
+    settings_sn_conn:'账户',
     settings_account_details:'账户详情', settings_ai_config:'AI 配置',
     settings_edit_profile:'编辑资料', settings_change_password:'修改密码',
     settings_app_lock:'应用锁', settings_appearance:'外观',
@@ -1797,7 +1791,9 @@ const DEFAULT_ACCOUNTS = [
 
 // Prefilled on the register form so a new user never has to type it.
 // Keep in sync with the value attribute on #sn-reg-instance.
-const DEFAULT_SN_INSTANCE = 'dev405150.service-now.com';
+const SUPABASE_URL = 'https://oqsqfrpblinvsizitmgl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_hlOJjm-R-R58RLqRw273rQ_jxJUSjJc';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let state = {
   transactions: [],
@@ -1811,9 +1807,8 @@ let state = {
   aiModel: '',   // resolved at runtime; providers retire model IDs
   budgetCur: '', // which currency tab the budgets page is showing
 
-  snInstance: DEFAULT_SN_INSTANCE,
-  snUsername: 'admin',
-  snPassword: '',
+  userId: null,
+  userEmail: '',
   lastSync: null,
   currency: 'SGD',
   language: 'en',
@@ -1831,10 +1826,9 @@ let state = {
   trendMetric: 'expense',  // 'expense' | 'income'
   reviewMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   theme: 'auto',   // 'auto' | 'light' | 'dark'
-  // SN custom auth
-  snToken: null,
-  snProfileSysId: null,
-  snUserProfile: {},  // {username, display_name, email, currency, language, avatar_color, stats}
+  displayName: '',
+  avatarColor: '#8B5CF6',
+  monthlyIncomeTarget: 0,
   txnFetchTruncated: false,
   lastBackupAt: ''    // ISO date of the last complete backup taken from this app
 };
@@ -1855,9 +1849,6 @@ function saveState() {
       geminiKey: state.geminiKey,
       aiModel: state.aiModel,
       budgetCur: state.budgetCur,
-      snInstance: state.snInstance,
-      snUsername: state.snUsername,
-      snPassword: state.snPassword,
       lastSync: state.lastSync,
       currency: state.currency,
       language: state.language,
@@ -1870,9 +1861,9 @@ function saveState() {
       trendMetric: state.trendMetric,
       reviewMonth: state.reviewMonth,
       theme: state.theme,
-      snToken: state.snToken,
-      snProfileSysId: state.snProfileSysId,
-      snUserProfile: state.snUserProfile,
+      displayName: state.displayName,
+      avatarColor: state.avatarColor,
+      monthlyIncomeTarget: state.monthlyIncomeTarget,
       // Survives a reload: the data in localStorage is whatever that truncated
       // sync returned, so the warning has to outlive the page that raised it.
       txnFetchTruncated: state.txnFetchTruncated,
@@ -2279,6 +2270,20 @@ function _snId(item) {
   return item.sys_id || (typeof item.id === 'string' && item.id.length > 20 ? item.id : null);
 }
 
+function newId() { return crypto.randomUUID(); }
+async function dbInsert(table, row) {
+  const { error } = await sb.from(table).insert(row);
+  if (error) throw error;
+}
+async function dbUpdate(table, id, patch) {
+  const { error } = await sb.from(table).update(patch).eq('id', id);
+  if (error) throw error;
+}
+async function dbDelete(table, id) {
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) throw error;
+}
+
 // Writes the two legs of a transfer and links them with a shared group id so the
 // list can render them as one item and delete can remove both.
 // Asset purchase funded from a tracked account: expense on the source, asset on
@@ -2293,7 +2298,7 @@ async function saveAssetPair({ amt, desc, cat, from, to, currency, date, notes }
   ];
   const created = [];
   legs.forEach(leg => {
-    const txn = { id: state.nextId++, type: leg.type, amount: amt, description: desc,
+    const txn = { id: newId(), type: leg.type, amount: amt, description: desc,
       category: cat, account: leg.account, date, notes, currency,
       transferGroup: group, transferPeer: leg.peer, created: nowStamp() };
     state.transactions.unshift(txn);
@@ -2301,14 +2306,13 @@ async function saveAssetPair({ amt, desc, cat, from, to, currency, date, notes }
   });
   saveState();
 
-  if (state.snToken) {
+  if (state.userId) {
     await Promise.all(created.map(txn =>
-      snAPI.call('/transactions', 'POST', {
-        type: txn.type, amount: txn.amount, description: txn.description,
-        category_name: txn.category, account_name: txn.account, date: txn.date,
+      dbInsert('transactions', {
+        id: txn.id, user_id: state.userId, type: txn.type, amount: txn.amount, description: txn.description,
+        category: txn.category, account: txn.account, date: txn.date,
         notes: txn.notes, currency: txn.currency, transfer_group: group
-      }).then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync failed: ' + e.message, 'error'))
+      }).catch(e => showToast('Sync failed: ' + e.message, 'error'))
     ));
   } else {
     showToast('Not signed in — saved locally only. Please sign in to sync.', 'error');
@@ -2333,13 +2337,13 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
   Object.assign(assetRow, { type:'asset', amount:amt, description:desc, category:cat,
                             account:to, currency, date, notes });
 
-  const syncSN = (row, extra={}) => {
-    const sysId = _snId(row);
-    if (!state.snToken || !sysId) return Promise.resolve();
-    return snAPI.call('/transactions', 'PUT', { sys_id: sysId, type: row.type, amount: row.amount,
-      description: row.description, category_name: row.category, account_name: row.account,
+  const syncRow = (row, extra={}) => {
+    const rid = _snId(row);
+    if (!state.userId || !rid) return Promise.resolve();
+    return dbUpdate('transactions', rid, { type: row.type, amount: row.amount,
+      description: row.description, category: row.category, account: row.account,
       date: row.date, notes: row.notes, currency: row.currency, ...extra })
-      .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      .catch(e => showToast('Sync: ' + e.message, 'warning'));
   };
 
   if (fundFrom && expenseLeg) {
@@ -2347,36 +2351,34 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
                                 account:fundFrom, currency, date, notes });
     assetRow.transferPeer   = fundFrom;
     expenseLeg.transferPeer = to;
-    await Promise.all([syncSN(assetRow), syncSN(expenseLeg)]);
+    await Promise.all([syncRow(assetRow), syncRow(expenseLeg)]);
 
   } else if (fundFrom && !expenseLeg) {
     const g = group || ('ag_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
     assetRow.transferGroup = g;
     assetRow.transferPeer  = fundFrom;
-    const leg = { id: state.nextId++, type:'expense', amount:amt, description:desc, category:cat,
+    const leg = { id: newId(), type:'expense', amount:amt, description:desc, category:cat,
                   account:fundFrom, date, notes, currency, transferGroup:g, transferPeer:to,
                   created: nowStamp() };
     state.transactions.unshift(leg);
-    await syncSN(assetRow, { transfer_group: g });
-    if (state.snToken) {
-      await snAPI.call('/transactions', 'POST', { type:'expense', amount:amt, description:desc,
-        category_name:cat, account_name:fundFrom, date, notes, currency, transfer_group:g })
-        .then(res => { if (res?.sys_id) leg.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    await syncRow(assetRow, { transfer_group: g });
+    if (state.userId) {
+      await dbInsert('transactions', { id: leg.id, user_id: state.userId, type:'expense', amount:amt,
+        description:desc, category:cat, account:fundFrom, date, notes, currency, transfer_group:g })
+        .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     }
 
   } else if (!fundFrom && expenseLeg) {
     state.transactions = state.transactions.filter(t => t.id !== expenseLeg.id);
     delete assetRow.transferGroup; delete assetRow.transferPeer;
-    const sysId = _snId(expenseLeg);
-    if (state.snToken && sysId) {
-      snAPI.call('/transactions', 'DELETE', { sys_id: sysId })
-        .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+    const rid = _snId(expenseLeg);
+    if (state.userId && rid) {
+      dbDelete('transactions', rid).catch(e => showToast('Delete: ' + e.message, 'warning'));
     }
-    await syncSN(assetRow, { transfer_group: '' });
+    await syncRow(assetRow, { transfer_group: '' });
 
   } else {
-    await syncSN(assetRow);
+    await syncRow(assetRow);
   }
 
   saveState();
@@ -2394,7 +2396,7 @@ async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, to
   ];
   const created = [];
   legs.forEach(leg => {
-    const txn = { id: state.nextId++, type: leg.type, amount: leg.amount, description: desc,
+    const txn = { id: newId(), type: leg.type, amount: leg.amount, description: desc,
       category: cat, account: leg.account, date, notes, currency: leg.currency,
       transferGroup: group, transferPeer: leg.peer, created: nowStamp() };
     state.transactions.unshift(txn);
@@ -2402,14 +2404,13 @@ async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, to
   });
   saveState();
 
-  if (state.snToken) {
+  if (state.userId) {
     await Promise.all(created.map(txn =>
-      snAPI.call('/transactions', 'POST', {
-        type: txn.type, amount: txn.amount, description: txn.description,
-        category_name: txn.category, account_name: txn.account, date: txn.date,
+      dbInsert('transactions', {
+        id: txn.id, user_id: state.userId, type: txn.type, amount: txn.amount, description: txn.description,
+        category: txn.category, account: txn.account, date: txn.date,
         notes: txn.notes, currency: txn.currency, transfer_group: group
-      }).then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync failed: ' + e.message, 'error'))
+      }).catch(e => showToast('Sync failed: ' + e.message, 'error'))
     ));
   } else {
     showToast('Not signed in — transfer saved locally only. Please sign in to sync.', 'error');
@@ -2441,15 +2442,15 @@ async function updateTransferPair(editId, { amt, recvAmt, desc, cat, from, to, f
                        description: desc, category: cat, date, notes });
   saveState();
 
-  if (state.snToken) {
+  if (state.userId) {
     await Promise.all([out, inc].map(leg => {
-      const sysId = _snId(leg);
-      if (!sysId) return Promise.resolve();
-      return snAPI.call('/transactions', 'PUT', {
-        sys_id: sysId, type: leg.type, amount: leg.amount, description: leg.description,
-        category_name: leg.category, account_name: leg.account, date: leg.date,
+      const rid = _snId(leg);
+      if (!rid) return Promise.resolve();
+      return dbUpdate('transactions', rid, {
+        type: leg.type, amount: leg.amount, description: leg.description,
+        category: leg.category, account: leg.account, date: leg.date,
         notes: leg.notes, currency: leg.currency, transfer_group: leg.transferGroup
-      }).catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      }).catch(e => showToast('Sync: ' + e.message, 'warning'));
     }));
   }
 
@@ -2541,8 +2542,8 @@ async function saveTransaction() {
     }
   }
 
-  const snPayload = { type: state.currentType, amount: amt, description: desc,
-    category_name: cat, account_name: acct, date, notes, currency };
+  const dbPayload = { type: state.currentType, amount: amt, description: desc,
+    category: cat, account: acct, date, notes, currency };
 
   if (editId !== '') {
     const idx = state.transactions.findIndex(tx => tx.id == editId);
@@ -2550,21 +2551,20 @@ async function saveTransaction() {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
         description: desc, category: cat, account: acct, date, notes, currency };
-      const snIdTxn = _snId(old);
-      if (state.snToken && snIdTxn) {
-        snAPI.call('/transactions', 'PUT', { sys_id: snIdTxn, ...snPayload })
-          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      const rid = _snId(old);
+      if (state.userId && rid) {
+        dbUpdate('transactions', rid, dbPayload)
+          .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_txn_updated'), 'success');
     }
   } else {
-    const txn = { id: state.nextId++, type: state.currentType, amount: amt,
+    const txn = { id: newId(), type: state.currentType, amount: amt,
       description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp() };
     state.transactions.unshift(txn);
-    if (state.snToken) {
-      snAPI.call('/transactions', 'POST', snPayload)
-        .then(res => { if (res?.sys_id) txn.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    if (state.userId) {
+      dbInsert('transactions', { id: txn.id, user_id: state.userId, ...dbPayload })
+        .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     } else {
       showToast('Not signed in — transaction saved locally only. Please sign in to sync.', 'error');
     }
@@ -2611,12 +2611,12 @@ function removeTransactionsWithUndo(legs, msg) {
       renderAll();
     },
     () => {
-      if (!state.snToken) return;
+      if (!state.userId) return;
       snapshot.forEach(leg => {
-        const snIdDel = _snId(leg);
-        if (snIdDel) {
-          snAPI.call('/transactions', 'DELETE', { sys_id: snIdDel })
-            .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+        const rid = _snId(leg);
+        if (rid) {
+          dbDelete('transactions', rid)
+            .catch(e => showToast('Delete: ' + e.message, 'warning'));
         }
       });
     }
@@ -2671,22 +2671,21 @@ async function saveBudget() {
     if (idx >= 0) {
       state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert, currency };
       saveState();
-      const sysId = _snId(state.budgets[idx]);
-      if (state.snToken && sysId) {
-        snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amt, alert_threshold: alert, currency })
-          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      const rid = _snId(state.budgets[idx]);
+      if (state.userId && rid) {
+        dbUpdate('budgets', rid, { amount: amt, alert_pct: alert, currency })
+          .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_budget_updated'), 'success');
     }
   } else {
     if (state.budgets.find(b => b.category === cat && (b.currency || state.currency) === currency)) { showToast(t('toast_budget_exists'), 'error'); return; }
-    const bgt = { id: state.nextId++, category: cat, amount: amt, spent, alertPct: alert, currency };
+    const bgt = { id: newId(), category: cat, amount: amt, spent, alertPct: alert, currency };
     state.budgets.push(bgt);
     saveState();
-    if (state.snToken) {
-      snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amt, alert_threshold: alert, currency })
-        .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    if (state.userId) {
+      dbInsert('budgets', { id: bgt.id, user_id: state.userId, category: cat, amount: amt, spent, alert_pct: alert, currency })
+        .catch(e => showToast('Sync: ' + e.message, 'warning'));
     }
     showToast(t('toast_budget_saved'), 'success');
   }
@@ -2706,10 +2705,10 @@ async function deleteBudget(id) {
   undoToast(t('toast_budget_deleted'),
     () => { state.budgets.push(b); saveState(); renderAll(); },
     () => {
-      const sysId = _snId(b);
-      if (state.snToken && sysId) {
-        snAPI.call('/budgets', 'DELETE', { sys_id: sysId })
-          .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+      const rid = _snId(b);
+      if (state.userId && rid) {
+        dbDelete('budgets', rid)
+          .catch(e => showToast('Delete: ' + e.message, 'warning'));
       }
     }
   );
@@ -2805,30 +2804,28 @@ async function saveGoal() {
   if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
   if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
-  const snPayload = { goal_name: name, goal_icon: icon, target_amount: target,
-    current_amount: current, monthly_contribution: monthly, target_date: date, remarks, currency,
-    account_name: linkedAccount };
+  const dbPayload = { name, icon, target, current, monthly, target_date: date, remarks, currency,
+    linked_account: linkedAccount || null };
 
   if (editId !== '') {
     const idx = state.goals.findIndex(g => g.id == editId);
     if (idx >= 0) {
       state.goals[idx] = { ...state.goals[idx], name, icon, target, current, monthly, date, remarks, currency, linkedAccount };
       saveState();
-      const sysId = _snId(state.goals[idx]);
-      if (state.snToken && sysId) {
-        snAPI.call('/goals', 'PUT', { sys_id: sysId, ...snPayload })
-          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      const rid = _snId(state.goals[idx]);
+      if (state.userId && rid) {
+        dbUpdate('goals', rid, dbPayload)
+          .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_goal_updated'), 'success');
     }
   } else {
-    const goal = { id: state.nextId++, name, icon, target, current, monthly, date, remarks, currency, linkedAccount };
+    const goal = { id: newId(), name, icon, target, current, monthly, date, remarks, currency, linkedAccount };
     state.goals.push(goal);
     saveState();
-    if (state.snToken) {
-      snAPI.call('/goals', 'POST', snPayload)
-        .then(res => { if (res?.sys_id) goal.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    if (state.userId) {
+      dbInsert('goals', { id: goal.id, user_id: state.userId, ...dbPayload })
+        .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     } else {
       showToast('Not signed in — goal saved locally only. Please sign in to sync.', 'error');
     }
@@ -2850,10 +2847,10 @@ async function deleteGoal(id) {
   undoToast(t('toast_goal_deleted'),
     () => { state.goals.push(g); saveState(); renderAll(); },
     () => {
-      const sysId = _snId(g);
-      if (state.snToken && sysId) {
-        snAPI.call('/goals', 'DELETE', { sys_id: sysId })
-          .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+      const rid = _snId(g);
+      if (state.userId && rid) {
+        dbDelete('goals', rid)
+          .catch(e => showToast('Delete: ' + e.message, 'warning'));
       }
     }
   );
@@ -2893,8 +2890,7 @@ async function saveAccount() {
   const currency    = document.getElementById('acc-currency').value;
   if (!name) { showToast(t('toast_enter_account_name'), 'error'); return; }
   const icon = type === 'Credit Card' ? '💳' : type === 'Cash' ? '💵' : '🏦';
-  const snPayload = { account_name: name, account_type: type, institution_name: institution,
-    current_balance: balance, currency };
+  const dbPayload = { name, type, institution, starting_balance: balance, currency };
 
   if (_editingAccountId !== null) {
     const idx = state.accounts.findIndex(a => a.id == _editingAccountId);
@@ -2905,8 +2901,6 @@ async function saveAccount() {
       // repointing them here a rename silently detached the account's entire
       // history: its balance fell back to the starting figure and any goal
       // tracking it stopped updating, with nothing on screen to say why.
-      // ServiceNow stores the transaction→account link as a reference, so only
-      // the local rows and the goal's account_name need saying.
       if (prevName && prevName !== name) {
         state.transactions.forEach(txn => {
           if (txn.account === prevName)      txn.account = name;
@@ -2915,26 +2909,25 @@ async function saveAccount() {
         state.goals.forEach(g => {
           if (g.linkedAccount !== prevName) return;
           g.linkedAccount = name;
-          const gSysId = _snId(g);
-          if (state.snToken && gSysId) {
-            snAPI.call('/goals', 'PUT', { sys_id: gSysId, account_name: name })
+          const gRid = _snId(g);
+          if (state.userId && gRid) {
+            dbUpdate('goals', gRid, { linked_account: name })
               .catch(e => console.warn('goal relink:', e.message));
           }
         });
       }
-      const sysId = _snId(state.accounts[idx]);
-      if (state.snToken && sysId) {
-        snAPI.call('/accounts', 'PUT', { sys_id: sysId, ...snPayload })
-          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      const rid = _snId(state.accounts[idx]);
+      if (state.userId && rid) {
+        dbUpdate('accounts', rid, dbPayload)
+          .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
     }
   } else {
-    const acc = { id: state.nextId++, name, type, institution, balance, icon, currency };
+    const acc = { id: newId(), name, type, institution, balance, icon, currency };
     state.accounts.push(acc);
-    if (state.snToken) {
-      snAPI.call('/accounts', 'POST', snPayload)
-        .then(res => { if (res?.sys_id) acc.sys_id = res.sys_id; })
-        .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+    if (state.userId) {
+      dbInsert('accounts', { id: acc.id, user_id: state.userId, ...dbPayload, icon })
+        .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     } else {
       showToast('Not signed in — account saved locally only. Please sign in to sync.', 'error');
     }
@@ -2955,10 +2948,10 @@ async function deleteAccount(id) {
   renderAll();
   showToast(t('toast_account_deleted'), 'info');
   if (acc) {
-    const sysId = _snId(acc);
-    if (state.snToken && sysId) {
-      snAPI.call('/accounts', 'DELETE', { sys_id: sysId })
-        .catch(e => showToast('SN delete: ' + e.message, 'warning'));
+    const rid = _snId(acc);
+    if (state.userId && rid) {
+      dbDelete('accounts', rid)
+        .catch(e => showToast('Delete: ' + e.message, 'warning'));
     }
   }
 }
@@ -3313,7 +3306,6 @@ function renderAll() {
   renderBackupReminder();
   renderExportSummary();
   _renderProfileView();
-  _updateSNLinks();
   _updateSNConnCard();
   saveState();
 }
@@ -3491,10 +3483,9 @@ function migrateTransferCategories() {
     if (t.category === 'Transfer') return;
     t.category = 'Transfer';
     changed++;
-    const sysId = _snId(t);
-    if (state.snToken && sysId) {
-      snAPI.call('/transactions', 'PUT', { sys_id: sysId, category_name: 'Transfer' })
-        .catch(e => console.warn('transfer category sync:', e.message));
+    if (state.userId && t.id) {
+      sb.from('transactions').update({ category: 'Transfer' }).eq('id', t.id)
+        .then(({error}) => { if (error) console.warn('transfer category sync:', error.message); });
     }
   });
   if (changed) { saveState(); }
@@ -3860,10 +3851,10 @@ async function bulkApplyCategory() {
     if (txn.transferGroup) { skipped++; return; }
     txn.category = cat;
     changed++;
-    const sysId = _snId(txn);
-    if (state.snToken && sysId) {
-      snAPI.call('/transactions', 'PUT', { sys_id: sysId, category_name: cat })
-        .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+    const rid = _snId(txn);
+    if (state.userId && rid) {
+      dbUpdate('transactions', rid, { category: cat })
+        .catch(e => showToast('Sync: ' + e.message, 'warning'));
     }
   });
   if (changed) saveState();
@@ -4024,19 +4015,18 @@ async function applySalaryPlanToBudgets() {
     if (idx >= 0) {
       const existing = state.budgets[idx];
       existing.amount = amount;
-      const sysId = _snId(existing);
-      if (state.snToken && sysId) {
-        snAPI.call('/budgets', 'PUT', { sys_id: sysId, budget_amount: amount, alert_threshold: existing.alertPct || 80, currency: cur })
-          .catch(e => showToast('SN sync: ' + e.message, 'warning'));
+      const rid = _snId(existing);
+      if (state.userId && rid) {
+        dbUpdate('budgets', rid, { amount, alert_pct: existing.alertPct || 80, currency: cur })
+          .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       updated++;
     } else {
-      const bgt = { id: state.nextId++, category: cat, amount, spent: 0, alertPct: 80, currency: cur };
+      const bgt = { id: newId(), category: cat, amount, spent: 0, alertPct: 80, currency: cur };
       state.budgets.push(bgt);
-      if (state.snToken) {
-        snAPI.call('/budgets', 'POST', { category_name: cat, budget_amount: amount, alert_threshold: 80, currency: cur })
-          .then(res => { if (res?.sys_id) bgt.sys_id = res.sys_id; })
-          .catch(e => showToast('SN sync failed: ' + e.message, 'error'));
+      if (state.userId) {
+        dbInsert('budgets', { id: bgt.id, user_id: state.userId, category: cat, amount, spent: 0, alert_pct: 80, currency: cur })
+          .catch(e => showToast('Sync failed: ' + e.message, 'error'));
       }
       created++;
     }
@@ -4798,9 +4788,9 @@ function syncLinkedGoals() {
     if (newCurrent === g.current) return;
     g.current = newCurrent;
     g.status = g.current >= g.target ? 'achieved' : 'in_progress';
-    const sysId = _snId(g);
-    if (state.snToken && sysId) {
-      snAPI.call('/goals', 'PUT', { sys_id: sysId, current_amount: g.current })
+    const rid = _snId(g);
+    if (state.userId && rid) {
+      dbUpdate('goals', rid, { current: g.current })
         .catch(e => console.warn('goal sync:', e.message));
     }
   });
@@ -5205,7 +5195,7 @@ async function callAI(prompt, targetId, requires) {
 // Manual override for a device holding a stale key — overwrites the local copy
 // with whatever the account has, without waiting for a request to be rejected.
 async function pullAccountAIKey() {
-  if (!state.snToken) { showToast('Sign in first to load the key from your account', 'error'); return; }
+  if (!state.userId) { showToast('Sign in first to load the key from your account', 'error'); return; }
   const accKey = await fetchAccountAIKey();
   if (!accKey) { showToast('No API key is saved on your account yet — paste one here and Save', 'warning'); return; }
   if (accKey === state.geminiKey) { showToast('This device is already using your account key', 'info'); return; }
@@ -5218,9 +5208,11 @@ async function pullAccountAIKey() {
 
 // The key currently stored against the account, or '' if unavailable.
 async function fetchAccountAIKey() {
-  if (!state.snToken) return '';
-  try { const prof = await snAPI.call('/profile'); return (prof && prof.ai_api_key) || ''; }
-  catch(_) { return ''; }
+  if (!state.userId) return '';
+  try {
+    const { data } = await sb.from('preferences').select('ai_api_key').eq('user_id', state.userId).maybeSingle();
+    return (data && data.ai_api_key) || '';
+  } catch(_) { return ''; }
 }
 
 function buildSummary() {
@@ -5266,7 +5258,7 @@ function buildSummary() {
       }).join('; ')
     : 'none';
 
-  return `Reporting period: ${getMonthLabel(state.filterMonth)}, a ${days}-day month.${multiNote} ${perCur}. Budgets: ${budgetsLine}. Goals: ${goalsLine}. Context: ServiceNow PDI app.`;
+  return `Reporting period: ${getMonthLabel(state.filterMonth)}, a ${days}-day month.${multiNote} ${perCur}. Budgets: ${budgetsLine}. Goals: ${goalsLine}. Context: PFMT money tracker app.`;
 }
 
 // ═══════════════════════════════════════════════
@@ -5351,7 +5343,7 @@ async function exportFullBackup() {
   if (state.txnFetchTruncated) {
     const go = await showConfirm(
       'This copy would be incomplete',
-      `The last sync returned ${TXN_FETCH_LIMIT} transactions, which is the maximum one request sends — older rows were almost certainly left behind. Use the scheduled ServiceNow backup for a complete copy. Save this partial file anyway?`,
+      `The last sync returned ${TXN_FETCH_LIMIT} transactions, which is the maximum one request sends — older rows were almost certainly left behind. Sign in on a fresh device and re-sync for a complete copy. Save this partial file anyway?`,
       'Save anyway', 'btn-amber');
     if (!go) return;
   }
@@ -5359,7 +5351,7 @@ async function exportFullBackup() {
     pfmt_backup: {
       format_version : 2,
       exported_at    : new Date().toISOString(),
-      user           : state.snUserProfile?.username || '',
+      user           : state.userEmail || '',
       base_currency  : state.currency,
       counts         : { accounts: state.accounts.length, transactions: state.transactions.length,
                          budgets: state.budgets.length,  goals: state.goals.length },
@@ -5371,14 +5363,12 @@ async function exportFullBackup() {
     },
     // The profile row, minus anything that authenticates as this user.
     user_profile: {
-      username    : state.snUserProfile?.username     || '',
-      display_name: state.snUserProfile?.display_name || '',
-      email       : state.snUserProfile?.email        || '',
+      display_name: state.displayName || '',
+      email       : state.userEmail   || '',
       currency    : state.currency,
       language    : state.language,
-      avatar_color: state.snUserProfile?.avatar_color || '',
-      monthly_income_target: +state.snUserProfile?.monthly_income_target || 0,
-      sys_id      : state.snProfileSysId || ''
+      avatar_color: state.avatarColor || '',
+      monthly_income_target: +state.monthlyIncomeTarget || 0
     },
     categories: buildCategoriesList(),
     accounts: state.accounts.map(a => ({
@@ -5503,86 +5493,6 @@ function renderExportSummary() {
   el.textContent = `In this book: ${bits.join(' · ')}${curs.length ? ' · ' + curs.join(', ') : ''} — ${last}`;
 }
 
-async function exportSNJSON() {
-  // Same rule as the complete backup — a truncated transaction fetch makes
-  // this file silently partial, which is worse than no file at all.
-  if (state.txnFetchTruncated) {
-    const go = await showConfirm(
-      'This copy would be incomplete',
-      `The last sync returned ${TXN_FETCH_LIMIT} transactions, which is the maximum one request sends — older rows were almost certainly left behind. Use the scheduled ServiceNow backup for a complete copy. Save this partial file anyway?`,
-      'Save anyway', 'btn-amber');
-    if (!go) return;
-  }
-  const payload = {
-    // No password hash, AI key or session token — same rule as the complete
-    // backup, so a copied import file can't be used to sign in as this user.
-    x_pfmt_user_profile: {
-      username    : state.snUserProfile?.username     || '',
-      display_name: state.snUserProfile?.display_name || '',
-      email       : state.snUserProfile?.email        || '',
-      currency_preference : state.currency,
-      language_preference : state.language,
-      avatar_color: state.snUserProfile?.avatar_color || '',
-      monthly_income_target: +state.snUserProfile?.monthly_income_target || 0
-    },
-    x_pfmt_category: buildCategoriesList(),
-    // transfer_group is what pairs the two legs of a transfer or a funded asset.
-    // Without it a restore produces two unrelated rows, the balances stop
-    // reconciling, and an asset purchase comes back as a plain transfer — so an
-    // export missing it is not a backup you could actually restore from.
-    x_pfmt_transaction: state.transactions.map(t => ({
-      transaction_type: t.type, amount: t.amount, description: t.description,
-      category: t.category, account: t.account, transaction_date: t.date,
-      currency: t.currency || state.currency, notes: t.notes || '',
-      transfer_group: t.transferGroup || '', transfer_peer: t.transferPeer || ''
-    })),
-    x_pfmt_budget: state.budgets.map(b => ({
-      category: b.category, budget_amount: b.amount, currency: b.currency || state.currency,
-      spent_amount: getBudgetSpent(b.category, b.currency), alert_threshold_pct: b.alertPct || 80
-    })),
-    x_pfmt_savings_goal: state.goals.map(g => ({
-      goal_name: g.name, icon_emoji: g.icon, target_amount: g.target,
-      current_amount: g.current, monthly_contribution: g.monthly || 0, target_date: g.date,
-      currency: g.currency || state.currency, linked_account: g.linkedAccount || ''
-    })),
-    x_pfmt_account: state.accounts.map(a => ({
-      account_name: a.name, account_type: a.type, institution_name: a.institution,
-      current_balance: a.balance, currency: a.currency || state.currency
-    }))
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `pfmt_sn_export_all_${localDateStr()}.json`;     // every row, not just the filtered month
-  a.click();
-  showToast(t('toast_sn_exported'), 'success');
-}
-
-// ═══════════════════════════════════════════════
-// PUSH TO SERVICENOW
-// ═══════════════════════════════════════════════
-async function pushAllToSN() {
-  if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
-  const localTxns = state.transactions.filter(t => typeof t.id === 'number');
-  if (!localTxns.length) { showToast('No local records to push', 'info'); return; }
-  showToast(`Pushing ${localTxns.length} transactions…`, 'info');
-  let ok = 0, fail = 0;
-  for (const t of localTxns) {
-    try {
-      const rec = await SN.post('x_887486_0_transaction', {
-        transaction_type: t.type, amount: t.amount, description: t.description,
-        category: t.category, account: t.account, transaction_date: t.date, notes: t.notes || ''
-      });
-      t.id = rec.sys_id; // replace local id with SN sys_id
-      ok++;
-    } catch { fail++; }
-  }
-  state.lastSync = new Date().toISOString();
-  renderAll();
-  showToast(`Pushed: ${ok} ok${fail ? ', '+fail+' failed' : ''}`, ok > 0 ? 'success' : 'error');
-  updateLastSync();
-}
-
 function updateLastSync() {
   const el = document.getElementById('last-sync-label');
   if (el && state.lastSync) {
@@ -5607,62 +5517,15 @@ function getAnalyticsAI() {
     'analytics-ai-output', { ok: state.transactions.length > 0, msg: 'ai_need_txns' });
 }
 
-// ═══════════════════════════════════════════════
-// SERVICENOW TABLE API LAYER
-// ═══════════════════════════════════════════════
-const SN = {
-  get base() { return `https://${state.snInstance}/api/now/table`; },
-  connected: false,
-  authHeader() {
-    const u = state.snUsername || document.getElementById('sn-username')?.value || 'admin';
-    const p = state.snPassword || document.getElementById('sn-password')?.value || '';
-    return 'Basic ' + btoa(u + ':' + p);
-  },
-  async get(table, params={}) {
-    const qs = new URLSearchParams({ sysparm_display_value:'true', sysparm_limit:100, ...params }).toString();
-    const res = await fetch(`${SN.base}/${table}?${qs}`, { headers:{'Authorization':SN.authHeader(),'Accept':'application/json'} });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return (await res.json()).result || [];
-  },
-  async post(table, body) {
-    const res = await fetch(`${SN.base}/${table}`, { method:'POST', headers:{'Authorization':SN.authHeader(),'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body) });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return (await res.json()).result;
-  }
-};
-
-function saveSNCredentials() {
-  const u = document.getElementById('sn-username')?.value.trim();
-  const p = document.getElementById('sn-password')?.value;
-  if (u) state.snUsername = u;
-  if (p !== undefined) state.snPassword = p;
-  saveState();
-}
-
-function _updateSNLinks() {
-  if (!state.snInstance) return;
-  const base = 'https://' + state.snInstance;
-  document.querySelectorAll('.sn-quick-link').forEach(a => {
-    const path = a.dataset.snPath;
-    a.href = base + (path || '');
-  });
-}
-
-function saveSNInstance() {
-  const val = document.getElementById('sn-instance-input')?.value.trim();
-  if (!val) { showToast('Enter an instance URL', 'error'); return; }
-  state.snInstance = val.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  saveSNCredentials();
-  showToast(`Instance set to ${state.snInstance}`, 'success');
-  _updateSNLinks();
-}
-
 async function syncPreferencesToSN() {
-  if (!state.snToken) return;
+  if (!state.userId) return;
   try {
-    await snAPI.call('/profile', 'PUT', { currency: state.currency, language: state.language });
+    const { error } = await sb.from('preferences')
+      .update({ currency: state.currency, language: state.language })
+      .eq('user_id', state.userId);
+    if (error) throw error;
   } catch(e) {
-    console.warn('Could not sync preferences to SN:', e.message);
+    console.warn('Could not sync preferences:', e.message);
   }
 }
 function changeLanguage(lang) {
@@ -5688,9 +5551,12 @@ function saveAIKey() {
 
   // Store it against the account too, so the key follows the user to their phone
   // instead of having to be re-entered on every device.
-  if (state.snToken) {
-    snAPI.call('/profile', 'PUT', { ai_api_key: val })
-      .then(() => showToast('API key saved and synced to your account', 'success'))
+  if (state.userId) {
+    sb.from('preferences').update({ ai_api_key: val }).eq('user_id', state.userId)
+      .then(({error}) => {
+        if (error) throw error;
+        showToast('API key saved and synced to your account', 'success');
+      })
       .catch(e => showToast('Saved on this device only — sync failed: ' + e.message, 'warning'));
   } else {
     showToast('Saved on this device only — sign in to sync it to your account', 'warning');
@@ -5708,80 +5574,23 @@ function applyProfileAIKey(prof) {
   }
 }
 
-function setConnStatus(status) {
-  const inst = state.snInstance || 'Not connected';
-  const cfg = { connected:{color:'#00C896',text:inst+' · Live',ctext:'Connected'}, connecting:{color:'#F59E0B',text:'Connecting…',ctext:'Connecting…'}, disconnected:{color:'#6B7280',text:'Not connected',ctext:'Not connected'}, error:{color:'#FF5B5B',text:'Connection error',ctext:'Error'} }[status];
-  // sn-dot/sn-status-text/conn-dot/conn-label are leftover from a since-removed
-  // status indicator — guarded like sync-btn below so a missing element degrades
-  // silently instead of throwing and aborting whatever called this (it used to:
-  // every fresh boot's very first statement was an unguarded call to this).
-  const snDot = document.getElementById('sn-dot');
-  if (snDot) snDot.style.background = cfg.color;
-  const snText = document.getElementById('sn-status-text');
-  if (snText) snText.textContent = cfg.text;
-  const connDot = document.getElementById('conn-dot');
-  if (connDot) connDot.style.background = cfg.color;
-  const connLabel = document.getElementById('conn-label');
-  if (connLabel) connLabel.textContent = cfg.ctext;
-  SN.connected = status === 'connected';
-  const sb = document.getElementById('sync-btn');
-  if (sb) sb.disabled = !SN.connected;
-}
-
-async function testSNAPIConnection() {
-  if (!state.snToken) {
-    showToast('Not signed in — use the login screen first', 'error');
-    return;
-  }
-  try {
-    const prof = await snAPI.call('/profile', 'GET');
-    showToast('✅ Connected as ' + (prof.display_name || prof.username), 'success');
-    _updateSNConnCard();
-  } catch(e) {
-    showToast('Connection failed: ' + e.message, 'error');
-  }
-}
-
 function _updateSNConnCard() {
   const dot = document.getElementById('sn-conn-dot');
   const lbl = document.getElementById('sn-conn-lbl');
-  const inst = document.getElementById('sn-conn-instance');
   const userRow = document.getElementById('sn-conn-user');
   const uname = document.getElementById('sn-conn-username');
   if (!dot) return;
-  if (state.snToken) {
+  if (state.userId) {
     dot.style.background = '#00C896';
     lbl.style.color = '#00C896';
     lbl.textContent = 'Connected';
-    inst.textContent = state.snInstance || '—';
     userRow.style.display = 'block';
-    uname.textContent = state.snUserProfile?.display_name || state.snUserProfile?.username || '';
+    uname.textContent = state.displayName || state.userEmail || '';
   } else {
     dot.style.background = '#6B7280';
     lbl.style.color = 'rgba(255,255,255,.5)';
     lbl.textContent = 'Not signed in';
-    inst.textContent = state.snInstance || '—';
     userRow.style.display = 'none';
-  }
-}
-
-async function syncFromSN() {
-  if (!SN.connected) { showToast('Not connected — test connection first', 'error'); return; }
-  try {
-    const [txns, accounts] = await Promise.all([
-      SN.get('x_887486_0_transaction', {}).catch(()=>[]),
-      SN.get('x_887486_0_account', {}).catch(()=>[])
-    ]);
-    if (txns.length) {
-      state.transactions = txns.map(r=>({ id:r.sys_id, type:r.transaction_type?.value||r.transaction_type||'expense', amount:parseFloat(r.amount?.value||r.amount)||0, description:r.description||'', category:r.category?.display_value||r.category||'Other', account:r.account?.display_value||r.account||'', date:(r.transaction_date?.value||r.transaction_date||'').substring(0,10), notes:r.notes||'' }));
-    }
-    if (accounts.length) {
-      state.accounts = accounts.map(r=>({ id:r.sys_id, name:r.account_name||'', type:r.account_type?.display_value||r.account_type||'', institution:r.institution_name||'', balance:parseFloat(r.current_balance?.value||r.current_balance)||0, currency:r.currency||state.currency, icon:(r.account_type||'').toLowerCase().includes('credit')?'💳':(r.account_type||'').toLowerCase().includes('cash')?'💵':'🏦' }));
-    }
-    renderAll();
-    showToast(`Synced: ${txns.length} transactions, ${accounts.length} accounts`, 'success');
-  } catch(e) {
-    showToast('Sync failed: ' + e.message, 'error');
   }
 }
 
@@ -5899,55 +5708,8 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
 
 
 // ═══════════════════════════════════════════════
-// SN CUSTOM AUTH — login / register / sync
+// SUPABASE AUTH — login / register / sync
 // ═══════════════════════════════════════════════
-
-const snAPI = {
-  base() {
-    const inst = (state.snInstance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return `https://${inst}/api/x_887486_0/pfmt`;
-  },
-  headers() {
-    const h = { 'Content-Type': 'application/json' };
-    if (state.snToken) h['X-PFMT-Token'] = state.snToken;
-    return h;
-  },
-  async call(path, method = 'GET', body = null) {
-    const h = this.headers();
-    h['X-HTTP-Method'] = method;
-    // DELETE is sent as HTTP POST to avoid SN blocking body access on HTTP DELETE;
-    // X-HTTP-Method: DELETE tells the server script which handler to run.
-    // GET uses query params (SN also blocks body on GET).
-    const httpVerb = method === 'DELETE' ? 'POST' : method;
-    const opts = { method: httpVerb, headers: h };
-    let url = this.base() + path;
-    if (body) {
-      if (method === 'GET') {
-        const qs = Object.entries(body).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-        if (qs) url += (url.includes('?') ? '&' : '?') + qs;
-      } else {
-        h['Content-Type'] = 'application/json';
-        opts.body = JSON.stringify(body);
-      }
-    }
-    const res = await fetch(url, opts);
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); }
-    catch (e) { throw new Error(`SN HTTP ${res.status}: ${text.substring(0, 300)}`); }
-    if (!res.ok) {
-      const outer = json.result || {};
-      const msg = (typeof outer.error === 'object')
-        ? (outer.error.message || JSON.stringify(outer.error))
-        : (outer.error || `HTTP ${res.status}`);
-      throw new Error(msg);
-    }
-    // SN Scripted REST auto-wraps setBody() in {"result":...}; our scripts also wrap in {result:{...}},
-    // so success responses are double-nested: {"result":{"result":{...actual data...}}}
-    const r = json.result;
-    return (r && typeof r === 'object' && !Array.isArray(r) && 'result' in r) ? r.result : r;
-  }
-};
 
 function showAuthPanel(panel) {
   ['panel-login','panel-register','panel-pinlock'].forEach(id => {
@@ -5958,10 +5720,6 @@ function showAuthPanel(panel) {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
-  // A new user shouldn't have to know the instance URL — prefill it whenever
-  // the field is empty (this runs on every panel switch, unlike _showSNLogin).
-  const reg = document.getElementById('sn-reg-instance');
-  if (reg && !reg.value.trim()) reg.value = state.snInstance || DEFAULT_SN_INSTANCE;
 }
 
 // ═══════════════════════════════════════════════
@@ -6066,8 +5824,11 @@ function resetIdleTimer() {
   _idleTimer = setTimeout(lockAppNow, APP_LOCK_IDLE_MS);
 }
 
-['mousedown','keydown','touchstart','scroll','click'].forEach(ev =>
+['mousedown','keydown','touchstart','click','mousemove'].forEach(ev =>
   document.addEventListener(ev, resetIdleTimer, { passive: true }));
+// scroll doesn't bubble — .main and modals scroll themselves, not the
+// document — so this has to be a capturing listener to see it at all.
+document.addEventListener('scroll', resetIdleTimer, { passive: true, capture: true });
 
 document.addEventListener('visibilitychange', () => {
   if (!state.appLockEnabled || !state.appLockPinHash) return;
@@ -6087,7 +5848,7 @@ function showPinRecovery() {
   const block = document.getElementById('pin-recovery-block');
   if (block) block.style.display = 'block';
   const u = document.getElementById('pin-recovery-username');
-  if (u && !u.value) u.value = state.snUsername || '';
+  if (u && !u.value) u.value = state.userEmail || '';
   const p = document.getElementById('pin-recovery-password');
   if (p) p.focus();
 }
@@ -6096,20 +5857,19 @@ function showPinRecovery() {
 // the PIN only gates this device's UI, it was never the thing actually
 // protecting your data, so this doesn't need a separate recovery channel.
 async function submitPinRecovery() {
-  const username = (document.getElementById('pin-recovery-username')?.value || '').trim();
+  const email    = (document.getElementById('pin-recovery-username')?.value || '').trim();
   const password = document.getElementById('pin-recovery-password')?.value || '';
-  const errEl     = document.getElementById('pin-recovery-err');
-  if (!username || !password) { errEl.textContent = 'Enter your username and password'; return; }
+  const errEl    = document.getElementById('pin-recovery-err');
+  if (!email || !password) { errEl.textContent = 'Enter your email and password'; return; }
   errEl.textContent = '';
   _setLoginLoading(true, 'Verifying…');
   try {
-    const result = await snAPI.call('/auth/login', 'POST', { username, password });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
     state.appLockEnabled = false;
     state.appLockPinHash = '';
-    state.snUsername = username;
-    state.snPassword = password;
     saveState();
-    await _onSNAuthSuccess(result);
+    await _onSNAuthSuccess(data.session);
     _populateSettingsUI();
     showToast('PIN removed — set a new one anytime in Settings', 'info');
   } catch(e) {
@@ -6126,25 +5886,22 @@ function _setLoginLoading(on, msg) {
 }
 
 async function doSNLogin() {
-  const instance  = state.snInstance || DEFAULT_SN_INSTANCE;
-  const username  = (document.getElementById('sn-li-username')?.value || '').trim();
+  const email     = (document.getElementById('sn-li-username')?.value || '').trim();
   const password  = document.getElementById('sn-li-password')?.value || '';
   const errEl     = document.getElementById('sn-li-err');
   const btn       = document.getElementById('sn-li-btn');
 
-  if (!username) { errEl.textContent = 'Enter your username'; return; }
+  if (!email)    { errEl.textContent = 'Enter your email'; return; }
   if (!password) { errEl.textContent = 'Enter your password'; return; }
 
-  state.snInstance = instance;
-  state.snUsername = username;
-  state.snPassword = password;
   errEl.textContent = '';
   btn.disabled = true;
   _setLoginLoading(true, 'Signing in…');
 
   try {
-    const result = await snAPI.call('/auth/login', 'POST', { username, password });
-    _onSNAuthSuccess(result);
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await _onSNAuthSuccess(data.session);
   } catch(e) {
     errEl.textContent = e.message || 'Login failed. Check your details.';
     _setLoginLoading(false);
@@ -6152,57 +5909,38 @@ async function doSNLogin() {
   }
 }
 
-// Attempt a silent login using saved credentials. Falls back to the login screen on failure.
-async function _tryAutoLogin() {
-  if (state.snInstance && state.snUsername && state.snPassword) {
-    _setLoginLoading(true, 'Connecting…');
-    try {
-      const result = await snAPI.call('/auth/login', 'POST', {
-        username: state.snUsername, password: state.snPassword
-      });
-      await _onSNAuthSuccess(result);
-      return true;
-    } catch(e) {
-      _setLoginLoading(false);
-      _showSNLogin();
-      const errEl = document.getElementById('sn-li-err');
-      if (errEl) errEl.textContent = 'Auto sign-in failed — please sign in again.';
-      return false;
-    }
-  }
-  _showSNLogin();
-  return false;
-}
-
 async function doSNRegister() {
-  const instance     = (document.getElementById('sn-reg-instance')?.value || '').trim();
   const displayName  = (document.getElementById('sn-reg-displayname')?.value || '').trim();
-  const username     = (document.getElementById('sn-reg-username')?.value || '').trim();
   const email        = (document.getElementById('sn-reg-email')?.value || '').trim();
   const password     = document.getElementById('sn-reg-password')?.value || '';
   const confirm      = document.getElementById('sn-reg-confirm')?.value || '';
   const errEl        = document.getElementById('sn-reg-err');
   const btn          = document.getElementById('sn-reg-btn');
 
-  if (!instance)    { errEl.textContent = 'Enter your ServiceNow instance URL'; return; }
   if (!displayName) { errEl.textContent = 'Enter your display name'; return; }
-  if (!username)    { errEl.textContent = 'Enter a username'; return; }
+  if (!email)       { errEl.textContent = 'Enter your email'; return; }
   if (!password)    { errEl.textContent = 'Enter a password'; return; }
   if (password !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
 
-  state.snInstance = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  state.snUsername = username;
-  state.snPassword = password;
   errEl.textContent = '';
   btn.disabled = true;
   _setLoginLoading(true, 'Creating account…');
 
   try {
-    const result = await snAPI.call('/auth/register', 'POST', {
-      username, password, display_name: displayName, email,
-      currency: state.currency, language: state.language
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) throw error;
+    if (!data.session) {
+      _setLoginLoading(false);
+      btn.disabled = false;
+      showToast('Check your email to confirm your account, then sign in.', 'info');
+      showAuthPanel('login');
+      return;
+    }
+    await sb.from('preferences').upsert({
+      user_id: data.session.user.id, currency: state.currency, language: state.language,
+      display_name: displayName
     });
-    _onSNAuthSuccess(result);
+    await _onSNAuthSuccess(data.session);
   } catch(e) {
     errEl.textContent = e.message || 'Registration failed.';
     _setLoginLoading(false);
@@ -6210,36 +5948,16 @@ async function doSNRegister() {
   }
 }
 
-async function _onSNAuthSuccess(result) {
-  state.snToken        = result.token;
-  state.snProfileSysId = result.user_profile_sys_id;
-  state.snUserProfile  = {
-    username    : result.username,
-    display_name: result.display_name,
-    email       : result.email       || '',
-    currency    : result.currency    || 'SGD',
-    language    : result.language    || 'en',
-    avatar_color: result.avatar_color || '#8B5CF6'
-  };
-  // Apply profile preferences
-  state.currency = state.snUserProfile.currency;
-  state.language = state.snUserProfile.language;
+async function _onSNAuthSuccess(session) {
+  state.userId    = session.user.id;
+  state.userEmail = session.user.email || '';
   saveState();
 
   _setLoginLoading(true, 'Loading your data…');
   await snLoadAll();
-  // Fetch fresh profile so display_name/email/currency reflect current SN values
-  try {
-    const prof = await snAPI.call('/profile');
-    if (prof) {
-      state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
-      applyProfileAIKey(prof);
-      saveState();
-    }
-  } catch(_) {}
   _setLoginLoading(false);
   renderAll();
-  _revealAppAfterAuth(state.snUserProfile.display_name || state.snUserProfile.username);
+  _revealAppAfterAuth(state.displayName || state.userEmail);
 }
 
 // Authentication has succeeded — either reveal the app, or interpose the PIN
@@ -6264,18 +5982,14 @@ function _revealAppAfterAuth(welcomeName) {
 }
 
 async function snLogout() {
-  if (state.snToken) {
-    try { await snAPI.call('/auth/logout', 'POST'); } catch(_) {}
-  }
-  state.snToken        = null;
-  state.snProfileSysId = null;
-  state.snUserProfile  = {};
-  state.snUsername     = null;
-  state.snPassword     = null;
-  state.transactions   = [];
-  state.budgets        = [];
-  state.goals          = [];
-  state.accounts       = [];
+  try { await sb.auth.signOut(); } catch(_) {}
+  state.userId       = null;
+  state.userEmail    = '';
+  state.displayName  = '';
+  state.transactions = [];
+  state.budgets      = [];
+  state.goals        = [];
+  state.accounts     = [];
   saveState();
   _showSNLogin();
   showToast('Signed out', 'info');
@@ -6285,8 +5999,6 @@ function _showSNLogin() {
   const ol = document.getElementById('login-overlay');
   if (ol) ol.style.display = 'flex';
   showAuthPanel('login');
-  const reg = document.getElementById('sn-reg-instance');
-  if (reg && state.snInstance) reg.value = state.snInstance;
   // doSNLogin() disables the button while signing in and only re-enables it on
   // failure — a successful login left it disabled forever. That went unnoticed
   // while the overlay was only ever dismissed for good, but signing out brings
@@ -6305,51 +6017,49 @@ function _hideSNLogin() {
   if (ol) ol.style.display = 'none';
 }
 
-// ── Load all data from SN ────────────────────────────────────
+// ── Load all data from Supabase ────────────────────────────────
 async function snLoadAll() {
   try {
-    const [txns, budgets, goals, accounts] = await Promise.all([
+    const uid = state.userId;
+    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes] = await Promise.all([
       // 3000 comfortably covers a full year even for a heavy multi-account user;
       // this only affects payload size for people who actually have that many —
       // a light user's fetch is unchanged since the number is a ceiling, not a
       // target. Needed so the spending-trend chart isn't quietly missing months.
-      snAPI.call(`/transactions?limit=${TXN_FETCH_LIMIT}`),
-      snAPI.call('/budgets'),
-      snAPI.call('/goals'),
-      snAPI.call('/accounts')
+      sb.from('transactions').select('*').eq('user_id', uid).order('date', { ascending: false }).limit(TXN_FETCH_LIMIT),
+      sb.from('budgets').select('*').eq('user_id', uid),
+      sb.from('goals').select('*').eq('user_id', uid),
+      sb.from('accounts').select('*').eq('user_id', uid),
+      sb.from('preferences').select('*').eq('user_id', uid).maybeSingle()
     ]);
-    // Remember locally-known transfer pairings before the refresh overwrites them.
-    // If ServiceNow has no transfer_group field yet, this keeps transfers paired
-    // on the device that created them instead of splitting into two loose rows.
-    const knownGroups = {};
-    state.transactions.forEach(t => {
-      const key = _snId(t);
-      if (key && t.transferGroup) knownGroups[key] = { g: t.transferGroup, peer: t.transferPeer || '' };
-    });
+    for (const r of [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes]) {
+      if (r.error) throw r.error;
+    }
+    const txns     = txnsRes.data     || [];
+    const budgets  = budgetsRes.data  || [];
+    const goals    = goalsRes.data    || [];
+    const accounts = accountsRes.data || [];
+    const pref     = prefRes.data;
 
-    // The transactions endpoint caps at TXN_FETCH_LIMIT. Coming back exactly on
+    // The transactions fetch caps at TXN_FETCH_LIMIT. Coming back exactly on
     // the limit means there is almost certainly more that wasn't sent, and a
     // backup taken from a truncated book would look complete while missing the
     // oldest rows — so record it and let the export refuse.
-    state.txnFetchTruncated = (txns || []).length >= TXN_FETCH_LIMIT;
+    state.txnFetchTruncated = txns.length >= TXN_FETCH_LIMIT;
 
-    state.transactions = (txns  || []).map(t => ({
-      id         : t.sys_id,
+    state.transactions = txns.map(t => ({
+      id         : t.id,
       type       : t.type,
-      amount     : t.amount,
+      amount     : +t.amount,
       description: t.description,
       category   : t.category,
       account    : t.account,
       date       : t.date,
       notes      : t.notes || '',
       currency   : t.currency || state.currency,
-      transferGroup: t.transfer_group || (knownGroups[t.sys_id]?.g || ''),
-      transferPeer : knownGroups[t.sys_id]?.peer || '',
-      created    : t.created || '',
-      // Carried through rather than dropped: without these a restore loses the
-      // recurring schedules entirely, and a future-dated row comes back
-      // Confirmed when ServiceNow had deliberately held it as a Draft.
-      snState    : t.state || '2',
+      transferGroup: t.transfer_group || '',
+      transferPeer : t.transfer_peer  || '',
+      created    : t.created_at || '',
       isRecurring: !!t.is_recurring,
       recurringFrequency: t.recurring_frequency || '',
       nextRunDate: t.next_run_date || ''
@@ -6364,44 +6074,57 @@ async function snLoadAll() {
         pair[1].transferPeer = pair[0].account;
       }
     });
-    state.budgets = (budgets || []).map(b => ({
-      id       : b.sys_id,
+    state.budgets = budgets.map(b => ({
+      id       : b.id,
       category : b.category,
-      icon     : sanitizeIcon(b.category_icon, '📦'),
-      color    : b.category_color || '#6B7280',
-      amount   : b.budget_amount,
-      spent    : b.spent_amount,
-      alertPct : b.alert_threshold || 80,
+      amount   : +b.amount,
+      spent    : +b.spent,
+      alertPct : b.alert_pct || 80,
       currency : b.currency || state.currency,
-      // The period the ServiceNow row belongs to. The app applies a budget to
-      // every month, but a restore has to put the row back in its own period.
+      rollover : !!b.rollover,
       periodStart: b.period_start || '',
       periodEnd  : b.period_end   || ''
     }));
-    state.goals = (goals || []).map(g => ({
-      id       : g.sys_id,
-      name     : g.goal_name,
-      icon     : sanitizeIcon(g.goal_icon, '🎯'),
-      target   : g.target_amount,
-      current  : g.current_amount,
-      monthly  : g.monthly_contribution || 0,
+    state.goals = goals.map(g => ({
+      id       : g.id,
+      name     : g.name,
+      icon     : sanitizeIcon(g.icon, '🎯'),
+      target   : +g.target,
+      current  : +g.current,
+      monthly  : +g.monthly || 0,
       date     : g.target_date || '',
-      status   : g.goal_status,
       remarks  : g.remarks || '',
       currency : g.currency || state.currency,
-      linkedAccount: g.account_name || ''
+      linkedAccount: g.linked_account || ''
     }));
-    state.accounts = (accounts || []).map(a => ({
-      id         : a.sys_id,
-      name       : a.account_name,
-      type       : a.account_type,
-      institution: a.institution_name || '',
-      balance    : a.current_balance,
+    state.accounts = accounts.map(a => ({
+      id         : a.id,
+      name       : a.name,
+      type       : a.type,
+      institution: a.institution || '',
+      balance    : +a.starting_balance,
       currency   : a.currency || 'SGD',
-      // Absent on an instance running the older Accounts API, which did not
-      // return the field — treat that as active rather than closing everything.
+      icon       : a.icon || '',
       isActive   : a.is_active !== false
     }));
+
+    if (pref) {
+      state.currency            = pref.currency || state.currency;
+      state.language            = pref.language || state.language;
+      state.theme               = pref.theme || state.theme;
+      state.budgetAlerts        = pref.budget_alerts !== false;
+      state.nowAssist           = pref.now_assist !== false;
+      state.trendMonths         = pref.trend_months || state.trendMonths;
+      state.trendMetric         = pref.trend_metric || state.trendMetric;
+      state.displayName         = pref.display_name || state.displayName;
+      state.avatarColor         = pref.avatar_color || state.avatarColor;
+      state.monthlyIncomeTarget = pref.monthly_income_target || 0;
+      applyProfileAIKey(pref);
+    } else {
+      // First sign-in on a fresh account: seed a preferences row.
+      await sb.from('preferences').insert({ user_id: uid, currency: state.currency, language: state.language });
+    }
+
     // Retag legacy transfers now that their real category is known.
     const retagged = migrateTransferCategories();
     if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
@@ -6410,34 +6133,27 @@ async function snLoadAll() {
     updateLastSync();
   } catch(e) {
     console.warn('snLoadAll failed:', e.message);
-    showToast('Could not load data from ServiceNow: ' + e.message, 'error');
+    showToast('Could not load data from Supabase: ' + e.message, 'error');
   }
 }
 
 // ── Refresh profile stats on profile view ───────────────────
 async function refreshProfileView() {
-  if (!state.snToken) {
-    showToast('Not signed in — sign in to load your profile from ServiceNow.', 'warning');
+  if (!state.userId) {
+    showToast('Not signed in — sign in to load your profile.', 'warning');
     return;
   }
   try {
-    const prof = await snAPI.call('/profile');
-    if (!prof) return;
-    state.snUserProfile = {
-      ...state.snUserProfile,
-      username    : prof.username,
-      display_name: prof.display_name,
-      email       : prof.email,
-      currency    : prof.currency,
-      language    : prof.language,
-      avatar_color: prof.avatar_color,
-      monthly_income_target: prof.monthly_income_target,
-      stats       : prof.stats,
-      since       : prof.sys_created_on
-    };
-    saveState();
+    const { data: pref } = await sb.from('preferences').select('*').eq('user_id', state.userId).maybeSingle();
+    if (pref) {
+      state.displayName         = pref.display_name || state.displayName;
+      state.avatarColor         = pref.avatar_color || state.avatarColor;
+      state.monthlyIncomeTarget = pref.monthly_income_target || 0;
+      if (pref.currency) state.currency = pref.currency;
+      if (pref.language) state.language = pref.language;
+      saveState();
+    }
     _renderProfileView();
-    setConnStatus('connected');
     _updateSNConnCard();
   } catch(e) {
     // silently ignore — cached profile data is already rendered
@@ -6445,47 +6161,37 @@ async function refreshProfileView() {
 }
 
 function _renderProfileView() {
-  const p = state.snUserProfile || {};
-
   const el = id => document.getElementById(id);
   const set = (id, val) => { const e = el(id); if (e) e.textContent = val; };
 
-  const username = p.username || state.snUsername || '';
-  const displayName = p.display_name || username || '';
+  const displayName = state.displayName || state.userEmail || '';
 
-  if (username || displayName) {
-    const initials = (displayName || username || '?')
+  if (displayName) {
+    const initials = displayName
       .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
     const av = el('prof-avatar');
-    if (av) { av.textContent = initials; av.style.background = p.avatar_color || '#8B5CF6'; }
+    if (av) { av.textContent = initials; av.style.background = state.avatarColor || '#8B5CF6'; }
 
     set('prof-display-name', displayName);
-    set('prof-username', username ? '@' + username : '');
-    set('prof-email', p.email || '');
+    set('prof-username', state.userEmail ? '@' + state.userEmail.split('@')[0] : '');
+    set('prof-email', state.userEmail || '');
     set('prof-detail-name', displayName || '—');
-    set('prof-detail-username', username || '—');
-    set('prof-detail-email', p.email || '—');
-    set('prof-detail-currency', p.currency || state.currency || 'SGD');
-    set('prof-detail-language', p.language === 'zh' ? '中文' : 'English');
-    set('prof-detail-instance', state.snInstance || '—');
-    set('prof-detail-since', (p.sys_created_on || p.since || '').substring(0, 10) || '—');
+    set('prof-detail-username', state.userEmail || '—');
+    set('prof-detail-email', state.userEmail || '—');
+    set('prof-detail-currency', state.currency || 'SGD');
+    set('prof-detail-language', state.language === 'zh' ? '中文' : 'English');
 
     const editName = el('prof-edit-name');
     const editEmail = el('prof-edit-email');
     const editIncome = el('prof-edit-income');
     if (editName)  editName.value  = displayName;
-    if (editEmail) editEmail.value = p.email || '';
-    if (editIncome) editIncome.value = p.monthly_income_target || '';
+    if (editEmail) editEmail.value = state.userEmail || '';
+    if (editIncome) editIncome.value = state.monthlyIncomeTarget || '';
   }
 
-  // Stats — use SN counts when connected, local counts when offline
-  const stats      = p.stats || {};
-  const localTxns  = state.transactions.length;
-  const localAccs  = state.accounts.length;
-  const localGoals = state.goals.filter(g => g.status !== 'achieved').length;
-  set('prof-stat-txn',   !state.snToken ? localTxns  : (stats.transaction_count  ?? localTxns));
-  set('prof-stat-acc',   !state.snToken ? localAccs  : (stats.account_count      ?? localAccs));
-  set('prof-stat-goals', !state.snToken ? localGoals : (stats.active_goal_count  ?? localGoals));
+  set('prof-stat-txn',   state.transactions.length);
+  set('prof-stat-acc',   state.accounts.length);
+  set('prof-stat-goals', state.goals.filter(g => g.status !== 'achieved').length);
 }
 
 async function saveProfile() {
@@ -6496,10 +6202,17 @@ async function saveProfile() {
   if (!display_name) { showToast('Enter a display name', 'error'); return; }
 
   try {
-    await snAPI.call('/profile', 'PUT', { display_name, email, monthly_income_target: monthly });
-    state.snUserProfile.display_name = display_name;
-    state.snUserProfile.email = email;
-    state.snUserProfile.monthly_income_target = monthly;
+    const { error } = await sb.from('preferences')
+      .update({ display_name, monthly_income_target: monthly })
+      .eq('user_id', state.userId);
+    if (error) throw error;
+    state.displayName = display_name;
+    state.monthlyIncomeTarget = monthly;
+    if (email && email !== state.userEmail) {
+      const { error: authErr } = await sb.auth.updateUser({ email });
+      if (authErr) throw authErr;
+      showToast('Check your new email address to confirm the change', 'info');
+    }
     saveState();
     _renderProfileView();
     showToast('Profile updated ✓', 'success');
@@ -6509,16 +6222,15 @@ async function saveProfile() {
 }
 
 async function changePassword() {
-  const current = document.getElementById('prof-pw-current')?.value || '';
   const newPw   = document.getElementById('prof-pw-new')?.value    || '';
   const confirm = document.getElementById('prof-pw-confirm')?.value || '';
 
-  if (!current) { showToast('Enter your current password', 'error'); return; }
   if (!newPw)   { showToast('Enter a new password', 'error'); return; }
   if (newPw !== confirm) { showToast('Passwords do not match', 'error'); return; }
 
   try {
-    await snAPI.call('/profile', 'PUT', { current_password: current, new_password: newPw });
+    const { error } = await sb.auth.updateUser({ password: newPw });
+    if (error) throw error;
     document.getElementById('prof-pw-current').value = '';
     document.getElementById('prof-pw-new').value     = '';
     document.getElementById('prof-pw-confirm').value = '';
@@ -6533,17 +6245,9 @@ async function changePassword() {
 // ═══════════════════════════════════════════════
 
 // Populate settings fields from persisted state. Split out from startApp() so
-// the PIN-recovery path can call it too, without re-running the SN auth branch
+// the PIN-recovery path can call it too, without re-running the auth branch
 // it would otherwise trigger a second time.
 function _populateSettingsUI() {
-  const snIn = document.getElementById('sn-instance-input');
-  if (snIn) snIn.value = state.snInstance;
-  const snUser = document.getElementById('sn-username');
-  if (snUser && state.snUsername) snUser.value = state.snUsername;
-  const snPass = document.getElementById('sn-password');
-  if (snPass && state.snPassword) snPass.value = state.snPassword;
-  if (snPass) snPass.addEventListener('change', saveSNCredentials);
-  if (snUser) snUser.addEventListener('change', saveSNCredentials);
   const aiIn = document.getElementById('gemini-key-input');
   if (aiIn && state.geminiKey) aiIn.value = state.geminiKey;
   const aiStatus = document.getElementById('ai-key-status');
@@ -6568,51 +6272,28 @@ let _hadSavedStateAtBoot = false;
 // Everything that used to run unconditionally in init() now waits behind the
 // PIN gate (if one is set) — nothing here runs, and nothing is rendered, until
 // submitPinUnlock() or submitPinRecovery() calls this.
-function startApp() {
-  setConnStatus('disconnected');
+async function startApp() {
   if (!_hadSavedStateAtBoot) loadSampleData(); else renderAll();
   _populateSettingsUI();
 
   // With App Lock on, a fresh page load always demands a full sign-in — no
-  // silent session restore, no auto-login from saved credentials. The idle
-  // re-lock is different: that keeps the session alive and only asks for the
-  // PIN, so stepping away for a minute costs a PIN, while actually reopening
-  // the app costs password + PIN.
+  // silent session restore. The idle re-lock is different: that keeps the
+  // session alive and only asks for the PIN, so stepping away for a minute
+  // costs a PIN, while actually reopening the app costs password + PIN.
   if (state.appLockEnabled && state.appLockPinHash) {
     _showSNLogin();
     return;
   }
 
-  // SN Auth flow: check for saved session token
-  if (state.snToken && state.snProfileSysId) {
-    // Token found — keep login overlay visible until validation completes
-    _setLoginLoading(true, 'Verifying session…');
-    snAPI.call('/profile').then(prof => {
-      _setLoginLoading(false);
-      if (prof) {
-        state.snUserProfile = { ...state.snUserProfile, ...prof, stats: prof.stats };
-        if (prof.currency) state.currency = prof.currency;
-        if (prof.language) state.language = prof.language;
-        applyProfileAIKey(prof);
-        saveState();
-      }
-      renderAll();
-      // Restoring a saved session counts as signing in, so it goes through the
-      // same PIN gate as a fresh login.
-      _revealAppAfterAuth('');
-      if (prof) snLoadAll().then(() => renderAll());
-    }).catch(() => {
-      // Token invalid/expired — clear stale profile identity, try auto-login
-      _setLoginLoading(false);
-      state.snToken        = null;
-      state.snProfileSysId = null;
-      state.snUserProfile  = {};
-      saveState();
-      _tryAutoLogin();
-    });
+  // Supabase persists its own session in localStorage, so restoring it here
+  // is what used to be the saved-token auto-login path.
+  _setLoginLoading(true, 'Connecting…');
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await _onSNAuthSuccess(session);
   } else {
-    // No saved session — auto-connect with saved credentials if available
-    _tryAutoLogin();
+    _setLoginLoading(false);
+    _showSNLogin();
   }
 }
 
