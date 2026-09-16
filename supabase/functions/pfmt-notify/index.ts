@@ -135,7 +135,15 @@ async function unclaim(userId: string, kind: string, key: string) {
 type Pref = {
   user_id: string; currency: string; telegram_chat_id: string;
   notify_budget: boolean; notify_bills: boolean; bill_lead_days: number;
+  display_name: string | null;
 };
+
+// Opens every message. Skipped entirely when no display name is set — "Dear ,"
+// reads worse than no greeting at all.
+function greeting(name: string | null | undefined) {
+  const n = (name ?? '').trim();
+  return n ? `Dear ${esc(n)},\n\n` : '';
+}
 
 async function runForUser(pref: Pref, mode: string, today: string, month: string) {
   const chat = (pref.telegram_chat_id ?? '').trim();
@@ -143,7 +151,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   const fallbackCur = pref.currency || 'SGD';
 
   if (mode === 'test') {
-    await sendTelegram(chat,
+    await sendTelegram(chat, greeting(pref.display_name) +
       '✅ <b>PFMT is connected.</b>\nBudget alerts and bill reminders will arrive here.');
     return { sent: 1 };
   }
@@ -215,7 +223,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
 
   if (!lines.length) return { sent: 0 };
 
-  const header = `<b>PFMT — ${month}</b>`;
+  const header = greeting(pref.display_name) + `<b>PFMT — ${month}</b>`;
   try {
     await sendTelegram(chat, [header, ...lines].join('\n'));
   } catch (e) {
@@ -246,7 +254,7 @@ Deno.serve(async (req) => {
       const today = todayInTz();
       const month = today.slice(0, 7);
       const prefs = await dbGet(
-        'preferences?select=user_id,currency,telegram_chat_id,notify_budget,notify_bills,bill_lead_days' +
+        'preferences?select=user_id,currency,telegram_chat_id,notify_budget,notify_bills,bill_lead_days,display_name' +
         '&telegram_chat_id=neq.&or=(notify_budget.eq.true,notify_bills.eq.true)') as Pref[];
       let sent = 0;
       const failures: string[] = [];
@@ -270,7 +278,7 @@ Deno.serve(async (req) => {
 
     const prefs = await dbGet(
       `preferences?user_id=eq.${user.id}` +
-      '&select=user_id,currency,telegram_chat_id,notify_budget,notify_bills,bill_lead_days') as Pref[];
+      '&select=user_id,currency,telegram_chat_id,notify_budget,notify_bills,bill_lead_days,display_name') as Pref[];
     if (!prefs.length) return json({ error: 'No preferences row for this account' }, 400);
 
     // The browser knows the user's real local date; trust it when it looks like
