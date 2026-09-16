@@ -188,13 +188,20 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   // send fails every claim is released so the next run tries again.
   const lines: string[] = [];
   const claimed: Array<[string, string]> = [];
+  // What was due to be said but already had been this month. Reported back so
+  // the app can say "already told you about Health" rather than the false
+  // "nothing is over its threshold" — which is what it said before.
+  const already: string[] = [];
 
   if (pref.notify_budget) {
     const alerts = pfmtBudgetAlerts(budgets, txns, month, fallbackCur);
     for (const a of alerts) {
       const cur = a.budget.currency || fallbackCur;
       const key = `${a.budget.category}|${cur}|${month}|${a.level}`;
-      if (!await claim(pref.user_id, 'budget', key)) continue;
+      if (!await claim(pref.user_id, 'budget', key)) {
+        already.push(a.level === 'over' ? `${a.budget.category} (over budget)` : a.budget.category);
+        continue;
+      }
       claimed.push(['budget', key]);
       lines.push(a.level === 'over'
         ? `🔴 <b>${esc(a.budget.category)}</b> is over budget — ${money(a.spent, cur)} of ${money(a.limit, cur)} (${money(a.spent - a.limit, cur)} over)`
@@ -211,7 +218,10 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
       // if it actually goes unpaid — but never a message a day.
       const level = d.days < 0 ? 'overdue' : 'due';
       const key   = `${d.bill.id}|${month}|${level}`;
-      if (!await claim(pref.user_id, 'bill', key)) continue;
+      if (!await claim(pref.user_id, 'bill', key)) {
+        already.push(`${d.bill.name} (${level === 'overdue' ? 'late' : 'due'})`);
+        continue;
+      }
       claimed.push(['bill', key]);
       const when = d.days < 0  ? `${-d.days} day${d.days === -1 ? '' : 's'} late`
                  : d.days === 0 ? 'due today'
@@ -221,7 +231,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
     }
   }
 
-  if (!lines.length) return { sent: 0 };
+  if (!lines.length) return { sent: 0, already };
 
   const header = greeting(pref.display_name) + `<b>PFMT — ${month}</b>`;
   try {
@@ -231,7 +241,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
     for (const [kind, key] of claimed) await unclaim(pref.user_id, kind, key);
     throw e;
   }
-  return { sent: lines.length };
+  return { sent: lines.length, already };
 }
 
 // ── entry point ────────────────────────────────────────────────────────────

@@ -146,6 +146,11 @@ r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09' },
 b = await r.json();
 ok(b.sent === 0 && sent.length === 0, 'running it again sends nothing — already said',
    JSON.stringify(b));
+// And it says WHY, rather than implying nothing is over its threshold.
+ok(Array.isArray(b.already) && b.already.includes('Other') &&
+   b.already.some(x => /Rent/.test(x)),
+   'it reports what was already sent, so the app can say so honestly',
+   JSON.stringify(b.already));
 
 // ── overdue is a separate, second reminder ──
 sent.length = 0;

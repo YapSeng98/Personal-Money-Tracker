@@ -6456,8 +6456,18 @@ async function runNotifyCheck(loud) {
   try {
     const r = await _callNotify('check');
     if (loud) {
-      _notifyStatus(r.sent ? `Sent ${r.sent} alert${r.sent === 1 ? '' : 's'}.`
-                           : 'Nothing to report — no budget over its threshold, no bill due.', 'ok');
+      // Three different situations that all send nothing, and they must not read
+      // alike: "nothing over its threshold" was shown even when Health was over
+      // and had simply been reported already, which is flatly untrue.
+      const already = Array.isArray(r.already) ? r.already : [];
+      if (r.sent) {
+        _notifyStatus(`Sent ${r.sent} alert${r.sent === 1 ? '' : 's'} to Telegram.`, 'ok');
+      } else if (already.length) {
+        _notifyStatus(`Nothing new to send — already reported this month: ${already.join(', ')}. ` +
+                      `Each alert goes out once a month, so you are not told the same thing twice.`, 'ok');
+      } else {
+        _notifyStatus('Nothing to report — no budget has reached its alert amount, and no bill is due.', 'ok');
+      }
     }
   } catch(e) {
     if (loud) _notifyStatus('Failed: ' + e.message, 'error');
