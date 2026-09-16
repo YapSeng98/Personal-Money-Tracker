@@ -1900,6 +1900,14 @@ const TXN_FETCH_LIMIT = 3000;
 // Netting it again where it lands would make an unrelated month look cheaper.
 const CLAIMS_CATEGORY = 'Claims';
 
+// THE definition of whether a payback comes off what a month cost you, used by
+// every spending figure in the app — the dashboard tile, the trend chart, both
+// category breakdowns and the budgets. It lives in one place because it did
+// not: the Claims rule was added to four of those five and the Analytics trend
+// kept its own copy, so the same month read S$1,886.70 on the dashboard and
+// S$1,758.50 on the chart below it.
+const paybackOffsets = t => t.type === 'payback' && t.category !== CLAIMS_CATEGORY;
+
 const CAT_COLORS = {
   'Food & Drink':'#8B5CF6','Transport':'#00C896','Groceries':'#3B82F6',
   'Shopping':'#FF5B5B','Bills':'#F59E0B','Rental':'#64748B','Health':'#EC4899',
@@ -3099,7 +3107,7 @@ function curStats(cur, txns, month) {
     // month's spending does not. Every other payback still comes off what you
     // spent, which is what makes a friend's share of this month's dinner stop
     // counting as your cost.
-    if (t.type === 'payback') { if (t.category !== CLAIMS_CATEGORY) exp -= t.amount; return; }
+    if (t.type === 'payback') { if (paybackOffsets(t)) exp -= t.amount; return; }
     if (t.type !== 'income' && t.type !== 'expense') return;
     if (isFlow(t)) {
       if (t.type === 'income') inc += t.amount; else exp += t.amount;
@@ -3169,8 +3177,7 @@ function getBudgetSpent(category, currency, month) {
   // the budget counts.
   // Claims reimbursements are neutral (see CLAIMS_CATEGORY), so they never
   // reduce a budget — not even a budget set on Claims itself.
-  const back  = category === CLAIMS_CATEGORY ? 0
-              : mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
+  const back  = mine.filter(paybackOffsets).reduce((s,t)=>s+t.amount, 0);
   // But only so much of it can be settling this month: a payback bigger than
   // everything spent in the category is covering something outside this month
   // — usually a claim for an earlier period landing now, though nothing here
@@ -3433,7 +3440,7 @@ function renderDashboard() {
   monthTxns.forEach(t => {
     if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
     // Neutral here too, so this breakdown keeps adding up to the Expenses tile.
-    if (t.type === 'payback' && t.category === CLAIMS_CATEGORY) return;
+    if (t.type === 'payback' && !paybackOffsets(t)) return;
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
     expByCur[c][t.category] = Math.round(((expByCur[c][t.category]||0) + (t.type === 'payback' ? -t.amount : t.amount)) * 100) / 100;
@@ -4500,7 +4507,7 @@ function renderMonthlyReview() {
   reviewTxns.forEach(t => {
     if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
     // Neutral here too, so this breakdown keeps adding up to the Expenses tile.
-    if (t.type === 'payback' && t.category === CLAIMS_CATEGORY) return;
+    if (t.type === 'payback' && !paybackOffsets(t)) return;
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
     expByCur[c][t.category] = (expByCur[c][t.category] || 0) + (t.type === 'payback' ? -t.amount : t.amount);
@@ -4637,7 +4644,7 @@ function monthlyInOut() {
     // same money twice made "Money In" of RM3,173.30 look like MYR earnings
     // when nothing was earned in MYR, and made SGD spending read 2,800 on this
     // page while the dashboard said 1,800 for the same month.
-    if (t.type === 'payback') { byCur[cur][mk].exp -= t.amount; return; }
+    if (t.type === 'payback') { if (paybackOffsets(t)) byCur[cur][mk].exp -= t.amount; return; }
     if (cross) {
       if (t.type === 'income') byCur[cur][mk].xIn  += t.amount;
       else                     byCur[cur][mk].xOut += t.amount;
@@ -4743,6 +4750,26 @@ function showTrendDetail(mk, cur, amt, el) {
 // Relative to today, not state.filterMonth — Analytics has no month bar of its
 // own, so "last N months" means a stable trailing window, not whatever month
 // happens to be selected elsewhere in the app.
+// Monthly buckets per currency for the trend chart. Pulled out of the render so
+// a test can hold it against curStats() and prove the chart and the dashboard
+// tile can never again disagree about what a month cost.
+// Transfers are excluded (isFlow) either way — this tracks earning and spending,
+// not cash moving between your own accounts.
+function trendTotals(months, metric) {
+  const byMonthCur = {};
+  state.transactions.forEach(t => {
+    if (!isFlow(t)) return;
+    const offsets = metric === 'expense' && paybackOffsets(t);
+    if (t.type !== metric && !offsets) return;
+    const mk = t.date.slice(0, 7);
+    if (!months.includes(mk)) return;
+    const cur = t.currency || state.currency;
+    if (!byMonthCur[cur]) byMonthCur[cur] = {};
+    byMonthCur[cur][mk] = Math.round(((byMonthCur[cur][mk] || 0) + (offsets ? -t.amount : t.amount)) * 100) / 100;
+  });
+  return byMonthCur;
+}
+
 function renderSpendingTrend() {
   const n = state.trendMonths || 6;
   document.querySelectorAll('.trend-range-btn').forEach(b =>
@@ -4764,23 +4791,7 @@ function renderSpendingTrend() {
     months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  // Transfers excluded (isFlow) either way — this tracks earning or spending,
-  // not cash moving between your own accounts.
-  const byMonthCur = {};
-  state.transactions.forEach(t => {
-    if (!isFlow(t)) return;
-    // A payback is money returned for something you already paid, so it comes
-    // off that month's spending — the same basis budgets, the summary table and
-    // the dashboard use. Counting it gross made this chart read S$1,000 for a
-    // month the table directly beneath it reported as S$200.
-    const offsets = metric === 'expense' && t.type === 'payback';
-    if (t.type !== metric && !offsets) return;
-    const mk = t.date.slice(0, 7);
-    if (!months.includes(mk)) return;
-    const cur = t.currency || state.currency;
-    if (!byMonthCur[cur]) byMonthCur[cur] = {};
-    byMonthCur[cur][mk] = Math.round(((byMonthCur[cur][mk] || 0) + (offsets ? -t.amount : t.amount)) * 100) / 100;
-  });
+  const byMonthCur = trendTotals(months, metric);
 
   const el = document.getElementById('trend-chart');
   const currencies = Object.keys(byMonthCur);
@@ -5293,7 +5304,7 @@ function buildSummary() {
     const st   = curStats(cur, monthTxns, state.filterMonth);
     const rate = st.savingsRate === null ? 'N/A' : st.savingsRate.toFixed(1) + '%';
     const cats = {};
-    monthTxns.filter(t => (t.currency||state.currency)===cur && isFlow(t) && (t.type==='expense' || t.type==='payback'))
+    monthTxns.filter(t => (t.currency||state.currency)===cur && isFlow(t) && (t.type==='expense' || paybackOffsets(t)))
       .forEach(t => { cats[t.category] = (cats[t.category]||0) + (t.type==='payback' ? -t.amount : t.amount); });
     const topCats = Object.entries(cats).filter(([,a])=>a>0).sort((a,b)=>b[1]-a[1]).slice(0,5)
       .map(([c,a])=>`${c} ${fmtWithCur(a,cur)}`).join(', ') || 'none';

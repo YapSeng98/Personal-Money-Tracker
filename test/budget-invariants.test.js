@@ -49,7 +49,7 @@ function extract(name) {
   throw new Error(`could not find ${name}() in index.html`);
 }
 
-const NAMES = ['CLAIMS_CATEGORY', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
+const NAMES = ['CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal'];
@@ -280,6 +280,62 @@ group('Financial structure — currencies never mix');
   ok(near(netWorth('SGD'), 0) && near(netWorth('MYR'), 3190.20),
      'each currency keeps its own balance, never summed together',
      `SGD=${netWorth('SGD')} MYR=${netWorth('MYR')}`);
+}
+
+
+// ── Every surface must agree about what a month cost ───────────────────────
+// The Analytics trend kept a private copy of the payback rule, so the same
+// September read S$1,886.70 on the dashboard and S$1,758.50 on the chart under
+// it. Everything now runs through paybackOffsets(); this proves it stays that
+// way, because one figure drifting from another is the bug that keeps recurring.
+group('Cross-surface agreement — one month, every page');
+{
+  const month = '2026-09';
+  const rows = [
+    txn({ type: 'income',  amount: 4001.60, category: 'Salary',       date: '2026-09-01' }),
+    txn({ type: 'expense', amount: 1000,    category: 'Food & Drink', date: '2026-09-02' }),
+    txn({ type: 'expense', amount: 40.84,   category: 'Other',        date: '2026-09-03' }),
+    txn({ type: 'payback', amount: 60,      category: 'Food & Drink', date: '2026-09-04' }),  // friend's share
+    txn({ type: 'payback', amount: 128.20,  category: 'Claims',       date: '2026-09-15' }),  // company claim
+    // a transfer pair, which must stay invisible to every spending figure
+    txn({ type: 'expense', amount: 500, account: 'A', category: 'Transfer', transferGroup: 'tg_9', transferPeer: 'B', date: '2026-09-06' }),
+    txn({ type: 'income',  amount: 500, account: 'B', category: 'Transfer', transferGroup: 'tg_9', transferPeer: 'A', date: '2026-09-06' }),
+  ];
+  state.transactions = rows;
+  state.budgets = [
+    { id: '1', category: 'Food & Drink', amount: 2000, alertPct: 80, currency: 'SGD', rollover: false },
+    { id: '2', category: 'Other',        amount: 440,  alertPct: 80, currency: 'SGD', rollover: false },
+  ];
+
+  // 1,000 − 60 friend's share + 40.84, with the Claims 128.20 and the transfer ignored
+  const expected = 980.84;
+
+  const tile  = API.curStats('SGD', API.getMonthTxns(month), month).exp;
+  const trend = API.trendTotals([month], 'expense').SGD[month];
+  const budgetSum = state.budgets.reduce((s, b) => s + API.getBudgetSpent(b.category, b.currency, month), 0);
+
+  ok(near(tile, expected),  'dashboard Expenses tile', `got ${tile}, expected ${expected}`);
+  ok(near(trend, expected), 'Analytics spending trend', `got ${trend}, expected ${expected}`);
+  ok(near(budgetSum, expected), 'budgets add up to the same figure', `got ${budgetSum}, expected ${expected}`);
+  ok(near(tile, trend) && near(tile, budgetSum),
+     'the tile, the trend and the budgets all report the SAME month',
+     `tile=${tile} trend=${trend} budgets=${budgetSum}`);
+
+  // The Monthly In/Out table on Analytics reads the same month too.
+  const io = API.monthlyInOut();
+  const ioExp = io.byCur && io.byCur.SGD && io.byCur.SGD[month] ? io.byCur.SGD[month].exp : null;
+  if (ioExp === null) {
+    ok(false, 'Monthly In/Out table covers this month', 'month missing from the table');
+  } else {
+    ok(near(ioExp, expected), 'Monthly In/Out table agrees', `got ${ioExp}, expected ${expected}`);
+  }
+
+  // And the income side, where a payback must never appear.
+  const incTile  = API.curStats('SGD', API.getMonthTxns(month), month).inc;
+  const incTrend = API.trendTotals([month], 'income').SGD[month];
+  ok(near(incTile, 4001.60) && near(incTrend, 4001.60),
+     'income agrees across tile and trend, and excludes the transfer leg',
+     `tile=${incTile} trend=${incTrend}`);
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);
