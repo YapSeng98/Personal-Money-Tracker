@@ -1578,7 +1578,7 @@ const TRANSLATIONS = {
     empty_no_budgets:'No budgets yet. Add one!', empty_no_budgets_overview:'Add budgets to see overview',
     budget_total:'Total Monthly Budget', budget_remaining:'Remaining', budget_over_lbl:'Over Budget',
     budget_used:'used', budget_spent_of:'spent of', budget_left:'left',
-    budget_paid_back:'paid back — claim for an earlier month, so it does not reduce this budget',
+    budget_paid_back:'paid back — more than was spent here this month, so it does not reduce this budget',
     badge_over:'OVER', badge_near:'NEAR', budget_cats:'cats',
     panel_savings_goals:'Savings Goals', btn_new_goal:'+ New Goal',
     panel_goals_summary:'Goals Summary', ai_title_goals:'Goal Coach',
@@ -1692,7 +1692,7 @@ const TRANSLATIONS = {
     empty_no_budgets:'暂无预算，请添加！', empty_no_budgets_overview:'添加预算以查看概览',
     budget_total:'月度预算总额', budget_remaining:'剩余', budget_over_lbl:'超支',
     budget_used:'已使用', budget_spent_of:'已花费，共', budget_left:'剩余',
-    budget_paid_back:'已退回 — 属于往月的报销，因此不抵扣本月预算',
+    budget_paid_back:'已退回 — 超过本月该类别的支出，因此不抵扣本月预算',
     badge_over:'超支', badge_near:'接近', budget_cats:'个类别',
     panel_savings_goals:'储蓄目标', btn_new_goal:'+ 新建目标',
     panel_goals_summary:'目标摘要', ai_title_goals:'目标顾问',
@@ -3155,11 +3155,12 @@ function getBudgetSpent(category, currency, month) {
   // friend settling their share of this month's dinner correctly lowers what
   // the budget counts.
   const back  = mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
-  // But a payback bigger than everything spent in the category this month
-  // cannot be settling this month's spending: it is a claim for an earlier
-  // period landing now. Netting it here reported a month you really did spend
-  // in as costing nothing — or less than nothing. Past that point it stops
-  // offsetting, and the budget shows what actually went out this month.
+  // But only so much of it can be settling this month: a payback bigger than
+  // everything spent in the category is covering something outside this month
+  // — usually a claim for an earlier period landing now, though nothing here
+  // can know that for certain. Netting the whole of it reported a month that
+  // really did have spending as costing nothing, or less than nothing. Past
+  // what was spent it stops offsetting, and the budget shows what went out.
   if (back > spent) return Math.round(spent * 100) / 100;
   return Math.round((spent - back) * 100) / 100;
 }
