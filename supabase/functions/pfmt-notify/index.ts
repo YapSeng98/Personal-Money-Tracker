@@ -142,7 +142,7 @@ type Pref = {
 // reads worse than no greeting at all.
 function greeting(name: string | null | undefined) {
   const n = (name ?? '').trim();
-  return n ? `Dear ${esc(n)},\n\n` : '';
+  return n ? `Dear ${esc(n)},\n` : '';
 }
 
 async function runForUser(pref: Pref, mode: string, today: string, month: string) {

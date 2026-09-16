@@ -116,7 +116,7 @@ let b = await r.json();
 ok(r.status === 200 && b.sent === 1, 'a test message is sent', JSON.stringify(b));
 ok(sent[0].chat_id === '12345', 'to the chat id from preferences');
 ok(/connected/i.test(sent[0].text), 'and says the connection works');
-ok(sent[0].text.startsWith('Dear YC &lt;Seng&gt;,\n\n'),
+ok(sent[0].text.startsWith('Dear YC &lt;Seng&gt;,\n\u2705'),
    'the test message opens with the greeting, HTML-escaped', sent[0].text.slice(0, 40));
 
 // ── a real check: 400 of a 440 budget is 90%, and a bill is due in 3 days ──
@@ -127,7 +127,7 @@ b = await r.json();
 ok(r.status === 200 && b.sent === 2, 'one message covering both alerts', JSON.stringify(b));
 ok(sent.length === 1, 'sent as ONE telegram message, not two', `got ${sent.length}`);
 const text = sent[0]?.text ?? '';
-ok(text.startsWith('Dear YC &lt;Seng&gt;,\n\n<b>PFMT'),
+ok(text.startsWith('Dear YC &lt;Seng&gt;,\n<b>PFMT'),
    'the alert opens with the greeting, then the header', text.slice(0, 60));
 ok(/Other/.test(text) && /has passed S\$380\.00/.test(text),
    'names the budget and the amount it passed', text);
