@@ -1505,8 +1505,12 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Alert Threshold (%)</label>
-        <input class="form-input" type="number" id="budget-alert" value="80" min="10" max="100">
+        <label class="form-label" id="lbl-budget-alert">Alert me at</label>
+        <div class="amount-input-wrap">
+          <span class="amount-prefix">$</span>
+          <input class="form-input" type="number" id="budget-alert" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div id="budget-alert-hint" style="font-size:11px;color:var(--muted);margin-top:4px;">An amount, not a percentage — warns you once you have spent this much.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Currency</label>
@@ -1763,8 +1767,8 @@ const TRANSLATIONS = {
     budget_total:'Total Monthly Budget', budget_remaining:'Remaining', budget_over_lbl:'Over Budget',
     budget_used:'used', budget_spent_of:'spent of', budget_left:'left',
     budget_paid_back:'paid back — more than was spent here this month, so it does not reduce this budget',
-    budget_alert_off:'Alerts off — threshold is {pct}%',
-    budget_alert_off_hint:'A threshold has to be between 10% and 100% of the limit to ever be reached. This one never will, so this budget never warns you. Edit the budget to set a real percentage.',
+    budget_alert_off:'Warns only at {amt} — above the limit',
+    budget_alert_off_hint:'This budget warns at an amount higher than its own limit, so going over budget will always happen first. Lower it if you want warning beforehand.',
     badge_over:'OVER', badge_near:'NEAR', budget_cats:'cats',
     panel_savings_goals:'Savings Goals', btn_new_goal:'+ New Goal',
     panel_goals_summary:'Goals Summary', ai_title_goals:'Goal Coach',
@@ -1807,7 +1811,7 @@ const TRANSLATIONS = {
     lbl_amount:'Amount', lbl_description:'Description', lbl_category:'Category',
     lbl_account:'Account', lbl_date:'Date', lbl_notes:'Notes (optional)',
     notes_placeholder:'Any additional notes…', desc_placeholder:'e.g. Grab Coffee, NTUC FairPrice',
-    lbl_budget_limit:'Monthly Limit', lbl_alert_pct:'Alert at (%)',
+    lbl_budget_limit:'Monthly Limit', lbl_alert_amount:'Alert me at',
     lbl_goal_name:'Goal Name', lbl_goal_icon:'Icon', lbl_goal_target:'Target Amount',
     lbl_goal_current:'Current Saved', lbl_goal_monthly:'Monthly Contribution',
     lbl_acc_name:'Account Name', lbl_acc_type:'Account Type',
@@ -1843,7 +1847,8 @@ const TRANSLATIONS = {
     toast_groq_saved:'✓ Groq key saved', toast_groq_toast:'Groq API key saved',
     toast_enter_amount:'Enter a valid amount', toast_enter_desc:'Enter a description',
     toast_enter_date:'Select a date', toast_enter_budget_amt:'Enter a valid budget amount',
-    toast_alert_pct_range:'Alert threshold must be between {min}% and {max}% — it is a percentage of the budget, so anything higher can never be reached',
+    toast_alert_amount:'Enter the amount you want to be warned at — e.g. 380 to hear about it once you have spent 380',
+    hint_alert_amount:'An amount, not a percentage — warns you once you have spent this much.',
     toast_enter_goal_name:'Enter a goal name', toast_enter_goal_target:'Enter a valid target amount',
     toast_enter_account_name:'Enter an account name', toast_enter_api_key:'Enter an API key',
     ai_no_key:'⚠️ Add your free Groq API key in <strong>Settings → AI Configuration</strong> to enable insights.',
@@ -1898,8 +1903,8 @@ const TRANSLATIONS = {
     budget_total:'月度预算总额', budget_remaining:'剩余', budget_over_lbl:'超支',
     budget_used:'已使用', budget_spent_of:'已花费，共', budget_left:'剩余',
     budget_paid_back:'已退回 — 超过本月该类别的支出，因此不抵扣本月预算',
-    budget_alert_off:'提醒已失效 — 阈值为 {pct}%',
-    budget_alert_off_hint:'阈值必须在预算的 10% 至 100% 之间才可能触发。当前数值永远达不到，因此此预算不会发出任何提醒。请编辑预算设置有效的百分比。',
+    budget_alert_off:'提醒金额 {amt} — 高于预算上限',
+    budget_alert_off_hint:'此预算的提醒金额高于预算上限，因此总会先超支再提醒。如需提前收到提醒，请调低该金额。',
     badge_over:'超支', badge_near:'接近', budget_cats:'个类别',
     panel_savings_goals:'储蓄目标', btn_new_goal:'+ 新建目标',
     panel_goals_summary:'目标摘要', ai_title_goals:'目标顾问',
@@ -1942,7 +1947,7 @@ const TRANSLATIONS = {
     lbl_amount:'金额', lbl_description:'描述', lbl_category:'类别',
     lbl_account:'账户', lbl_date:'日期', lbl_notes:'备注（可选）',
     notes_placeholder:'任何附加备注…', desc_placeholder:'例如：Grab 咖啡、NTUC',
-    lbl_budget_limit:'月度限额', lbl_alert_pct:'提醒百分比 (%)',
+    lbl_budget_limit:'月度限额', lbl_alert_amount:'提醒金额',
     lbl_goal_name:'目标名称', lbl_goal_icon:'图标', lbl_goal_target:'目标金额',
     lbl_goal_current:'当前储蓄', lbl_goal_monthly:'每月存入',
     lbl_acc_name:'账户名称', lbl_acc_type:'账户类型',
@@ -1978,7 +1983,8 @@ const TRANSLATIONS = {
     toast_groq_saved:'✓ Groq 密钥已保存', toast_groq_toast:'Groq API 密钥已保存',
     toast_enter_amount:'请输入有效金额', toast_enter_desc:'请输入描述',
     toast_enter_date:'请选择日期', toast_enter_budget_amt:'请输入有效预算金额',
-    toast_alert_pct_range:'提醒阈值必须在 {min}% 至 {max}% 之间 — 该数值是预算的百分比，超过此范围永远无法触发',
+    toast_alert_amount:'请输入提醒金额 — 例如输入 380，表示花费达到 380 时提醒',
+    hint_alert_amount:'这是金额而非百分比 — 花费达到此金额时提醒您。',
     toast_enter_goal_name:'请输入目标名称', toast_enter_goal_target:'请输入有效目标金额',
     toast_enter_account_name:'请输入账户名称', toast_enter_api_key:'请输入 API 密钥',
     ai_no_key:'⚠️ 请在 <strong>设置 → AI 配置</strong> 中添加免费 Groq API 密钥以启用洞察。',
@@ -2206,6 +2212,18 @@ function pfmtBudgetLimit(b, txns, month, fallbackCur) {
   return Math.round((b.amount + pfmtBudgetRollover(b, txns, month, fallbackCur)) * 100) / 100;
 }
 
+// The amount at which a budget starts warning — an amount of money in the
+// budget's own currency, typed by the user: "tell me when I've spent 380 of my
+// 400." Not a percentage of anything.
+//
+// It used to be a percentage, and that was wrong about how people actually
+// think: nobody decides to be warned at 79%, they decide to be warned at $380.
+// Falls back to 80% of the limit only when nothing has been set at all.
+function pfmtAlertAt(b) {
+  const at = Number(b.alertAmount);
+  return at > 0 ? at : Math.round(b.amount * 0.8 * 100) / 100;
+}
+
 // Which budgets have earned a warning this month. Judged against the same
 // effective limit the card draws, rollover included, so an alert can never
 // contradict the bar the user is looking at.
@@ -2216,12 +2234,12 @@ function pfmtBudgetAlerts(budgets, txns, month, fallbackCur) {
     if (!(limit > 0)) return;
     const spent = pfmtBudgetSpent(txns, b.category, b.currency, month, fallbackCur);
     const pct   = (spent / limit) * 100;
-    const at    = b.alertPct || 80;
+    const at    = pfmtAlertAt(b);
     // 'over' and 'near' are separate levels, not one escalating message, so
     // crossing the threshold notifies once and going over notifies once more —
     // rather than a message per expense for the rest of the month.
-    if (spent > limit)  out.push({ budget: b, spent: spent, limit: limit, pct: pct, level: 'over' });
-    else if (pct >= at) out.push({ budget: b, spent: spent, limit: limit, pct: pct, level: 'near' });
+    if (spent > limit)    out.push({ budget: b, spent: spent, limit: limit, pct: pct, at: at, level: 'over' });
+    else if (spent >= at) out.push({ budget: b, spent: spent, limit: limit, pct: pct, at: at, level: 'near' });
   });
   return out;
 }
@@ -2313,18 +2331,16 @@ function pfmtBillsToRemind(bills, txns, month, today, leadDays, fallbackCur) {
 const CLAIMS_CATEGORY = PFMT_CLAIMS_CATEGORY;
 const paybackOffsets  = pfmtPaybackOffsets;
 
-// A budget's alert threshold is a percentage of its own limit, so anything
-// outside this range is meaningless. It matters because an out-of-range value
-// does not fail loudly — it just means nothing ever reaches the threshold, and
-// the budget silently stops warning. The ServiceNow import landed values like
-// 400 and 150 in this field, which switched budget alerts off for months
-// without a single visible symptom.
-//
-// Deliberately NOT clamped on read: what counts as "warn me" is the user's
-// call, so a bad value is surfaced on the card rather than quietly rewritten to
-// something they never chose.
-const ALERT_PCT_MIN = 10, ALERT_PCT_MAX = 100;
-const isValidAlertPct = n => Number.isFinite(n) && n >= ALERT_PCT_MIN && n <= ALERT_PCT_MAX;
+// An alert threshold is an amount of money, so the only thing it cannot be is
+// zero or negative. It is deliberately allowed to exceed the budget's limit —
+// that is a strange thing to want, but it is the user's call, and the card says
+// so rather than the app refusing it.
+const isValidAlertAmount = n => Number.isFinite(n) && n > 0;
+
+// A threshold above the limit can never warn you *before* you go over, because
+// going over fires first. Worth pointing out on the card; not worth refusing.
+const alertAboveLimit = b => isValidAlertAmount(Number(b.alertAmount)) &&
+                             Number(b.alertAmount) > (Number(b.amount) || 0);
 
 // The spending categories, in one place: the transaction form's Expense tab and
 // the bill form both read this list, so a category can't exist on one and not
@@ -3077,6 +3093,10 @@ function removeTransactionsWithUndo(legs, msg) {
 function openBudgetModal(id = null) {
   const editing = id !== null;
   document.getElementById('budget-modal-title').textContent  = editing ? t('modal_edit_budget') : t('modal_add_budget');
+  const albl = document.getElementById('lbl-budget-alert');
+  if (albl) albl.textContent = t('lbl_alert_amount');
+  const ahint = document.getElementById('budget-alert-hint');
+  if (ahint) ahint.textContent = t('hint_alert_amount');
   document.getElementById('budget-edit-badge').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('budget-edit-id').value            = id !== null ? id : '';
   document.getElementById('budget-amount').value             = '';
@@ -3090,7 +3110,7 @@ function openBudgetModal(id = null) {
     setSelectVal('budget-cat', b.category);
     document.getElementById('budget-amount').value   = b.amount;
     document.getElementById('budget-spent').value    = getBudgetSpent(b.category, b.currency).toFixed(2);
-    document.getElementById('budget-alert').value    = b.alertPct || 80;
+    document.getElementById('budget-alert').value    = b.alertAmount || '';
     document.getElementById('budget-currency').value = b.currency || state.currency;
     document.getElementById('budget-cat').disabled = true; // can't change category on edit
   } else {
@@ -3107,7 +3127,7 @@ async function saveBudget() {
   const cat      = document.getElementById('budget-cat').value;
   const amt      = parseFloat(document.getElementById('budget-amount').value);
   const spent    = parseFloat(document.getElementById('budget-spent').value) || 0;
-  const alert    = parseInt(document.getElementById('budget-alert').value)   || 80;
+  const alert    = parseFloat(document.getElementById('budget-alert').value);
   const currency = document.getElementById('budget-currency').value;
   const editId   = document.getElementById('budget-edit-id').value;
 
@@ -3116,30 +3136,30 @@ async function saveBudget() {
   // looks fine, and then never warns about anything for the rest of the budget's
   // life. The form's min/max attributes alone don't stop it — they don't apply
   // to a value set programmatically or pasted in.
-  if (!isValidAlertPct(alert)) {
-    showToast(t('toast_alert_pct_range').replace('{min}', ALERT_PCT_MIN).replace('{max}', ALERT_PCT_MAX), 'error');
+  if (!isValidAlertAmount(alert)) {
+    showToast(t('toast_alert_amount'), 'error');
     return;
   }
 
   if (editId !== '') {
     const idx = state.budgets.findIndex(b => b.id == editId);
     if (idx >= 0) {
-      state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertPct: alert, currency };
+      state.budgets[idx] = { ...state.budgets[idx], amount: amt, spent, alertAmount: alert, currency };
       saveState();
       const rid = _snId(state.budgets[idx]);
       if (state.userId && rid) {
-        dbUpdate('budgets', rid, { amount: amt, alert_pct: alert, currency })
+        dbUpdate('budgets', rid, { amount: amt, alert_amount: alert, currency })
           .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_budget_updated'), 'success');
     }
   } else {
     if (state.budgets.find(b => b.category === cat && (b.currency || state.currency) === currency)) { showToast(t('toast_budget_exists'), 'error'); return; }
-    const bgt = { id: newId(), category: cat, amount: amt, spent, alertPct: alert, currency };
+    const bgt = { id: newId(), category: cat, amount: amt, spent, alertAmount: alert, currency };
     state.budgets.push(bgt);
     saveState();
     if (state.userId) {
-      dbInsert('budgets', { id: bgt.id, user_id: state.userId, category: cat, amount: amt, spent, alert_pct: alert, currency })
+      dbInsert('budgets', { id: bgt.id, user_id: state.userId, category: cat, amount: amt, spent, alert_amount: alert, currency })
         .catch(e => showToast('Sync: ' + e.message, 'warning'));
     }
     showToast(t('toast_budget_saved'), 'success');
@@ -4487,15 +4507,15 @@ async function applySalaryPlanToBudgets() {
       existing.amount = amount;
       const rid = _snId(existing);
       if (state.userId && rid) {
-        dbUpdate('budgets', rid, { amount, alert_pct: existing.alertPct || 80, currency: cur })
+        dbUpdate('budgets', rid, { amount, alert_amount: existing.alertAmount || Math.round(amount * 0.8 * 100) / 100, currency: cur })
           .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       updated++;
     } else {
-      const bgt = { id: newId(), category: cat, amount, spent: 0, alertPct: 80, currency: cur };
+      const bgt = { id: newId(), category: cat, amount, spent: 0, alertAmount: Math.round(amount * 0.8 * 100) / 100, currency: cur };
       state.budgets.push(bgt);
       if (state.userId) {
-        dbInsert('budgets', { id: bgt.id, user_id: state.userId, category: cat, amount, spent: 0, alert_pct: 80, currency: cur })
+        dbInsert('budgets', { id: bgt.id, user_id: state.userId, category: cat, amount, spent: 0, alert_amount: bgt.alertAmount, currency: cur })
           .catch(e => showToast('Sync failed: ' + e.message, 'error'));
       }
       created++;
@@ -4557,10 +4577,10 @@ function renderBudgets() {
     const pctShown = Math.max(0, pctReal);
     const left     = Math.min(effAmt, effAmt - spent);
     const over  = spent > effAmt;
-    const near  = pct >= b.alertPct && !over;
+    const near  = spent >= pfmtAlertAt(b) && !over;
     // A threshold outside 10–100 can never be reached, so this budget is not
     // warning anyone — say so on the card instead of letting it look healthy.
-    const badPct = !isValidAlertPct(b.alertPct);
+    const badPct = alertAboveLimit(b);
     const color = over ? 'var(--coral)' : near ? 'var(--amber)' : 'var(--jade)';
     // Data attributes rather than inline string args — category names contain
     // "&" and spaces, and quoting those into an onclick is a bug waiting to happen.
@@ -4589,7 +4609,7 @@ function renderBudgets() {
       </div>
       ${rollover > 0 ? `<div class="budget-rollover-badge">${t('rollover_badge').replace('{amt}', fmtWithCur(rollover, b.currency))}</div>` : ''}
       ${backNote > 0 ? `<div class="budget-rollover-badge">↩ ${fmtWithCur(backNote, b.currency)} ${t('budget_paid_back')}</div>` : ''}
-      ${badPct ? `<div class="budget-badpct-badge" title="${esc(t('budget_alert_off_hint'))}">⚠️ ${t('budget_alert_off').replace('{pct}', b.alertPct)}</div>` : ''}
+      ${badPct ? `<div class="budget-badpct-badge" title="${esc(t('budget_alert_off_hint'))}">⚠️ ${t('budget_alert_off').replace('{amt}', fmtWithCur(b.alertAmount, b.currency))}</div>` : ''}
       <label class="rollover-toggle" onclick="event.stopPropagation()" title="${esc(t('rollover_hint'))}">
         <input type="checkbox" ${b.rollover ? 'checked' : ''} onchange="toggleBudgetRollover('${b.id}', this.checked)">
         <span>${t('rollover_toggle')}</span>
@@ -5253,7 +5273,7 @@ function renderMonthlyReview() {
         // Floored at zero — a category whose paybacks outweigh its spending
         // has a negative amt, and a negative width draws a full bar.
         const bpct   = limit > 0 ? Math.max(0, Math.min(amt/limit*100, 100)) : 0;
-        const bcolor = over ? 'var(--coral)' : bpct >= (budget.alertPct||80) ? 'var(--amber)' : 'var(--jade)';
+        const bcolor = over ? 'var(--coral)' : amt >= pfmtAlertAt(budget) ? 'var(--amber)' : 'var(--jade)';
         barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${bpct.toFixed(1)}%;background:${bcolor};"></div></div>
           <div class="review-cat-budget"><span>${t('budget_spent_of')} ${fmtWithCur(limit,cur)} budget</span><span style="color:${bcolor};font-weight:700;">${over?t('badge_over'):Math.round(bpct)+'%'}</span></div>`;
       } else {
@@ -6166,7 +6186,7 @@ async function exportFullBackup() {
     budgets: state.budgets.map(b => ({
       category: b.category, amount: +b.amount || 0,
       currency: b.currency || state.currency,
-      alert_threshold_pct: b.alertPct || 80,
+      alert_amount: b.alertAmount || 0,
       rollover: !!b.rollover,
       spent_this_month: getBudgetSpent(b.category, b.currency),
       period_start: b.periodStart || '', period_end: b.periodEnd || '',
@@ -6526,11 +6546,11 @@ function loadSampleData() {
     {id:12,type:'expense',amount:15,    description:'Netflix',              category:'Entertainment',account:'DBS Checking', date:d(9), notes:'Monthly subscription'},
   ];
   state.budgets = [
-    {id:20,category:'Food & Drink',  amount:500, spent:52.70,  alertPct:80},
-    {id:21,category:'Transport',     amount:150, spent:20,     alertPct:80},
-    {id:22,category:'Groceries',     amount:300, spent:122.80, alertPct:80},
-    {id:23,category:'Shopping',      amount:200, spent:370,    alertPct:80},
-    {id:24,category:'Bills',         amount:400, spent:189,    alertPct:80},
+    {id:20,category:'Food & Drink',  amount:500, spent:52.70,  alertAmount:400},
+    {id:21,category:'Transport',     amount:150, spent:20,     alertAmount:120},
+    {id:22,category:'Groceries',     amount:300, spent:122.80, alertAmount:240},
+    {id:23,category:'Shopping',      amount:200, spent:370,    alertAmount:160},
+    {id:24,category:'Bills',         amount:400, spent:189,    alertAmount:320},
   ];
   state.goals = [
     {id:30,name:'Japan Trip',          icon:'✈️',target:5000,  current:3200,  monthly:500,  date:'2026-12-31'},
@@ -6995,7 +7015,7 @@ async function snLoadAll() {
       category : b.category,
       amount   : +b.amount,
       spent    : +b.spent,
-      alertPct : b.alert_pct || 80,
+      alertAmount : b.alert_amount != null ? +b.alert_amount : 0,
       currency : b.currency || state.currency,
       rollover : !!b.rollover,
       periodStart: b.period_start || '',

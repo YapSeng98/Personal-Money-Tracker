@@ -153,7 +153,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   const [txnRows, budgetRows, billRows] = await Promise.all([
     dbGet(`transactions?user_id=eq.${pref.user_id}&date=gte.${from}` +
           `&select=id,type,amount,description,category,account,date,currency,transfer_group`),
-    dbGet(`budgets?user_id=eq.${pref.user_id}&select=id,category,amount,alert_pct,currency,rollover`),
+    dbGet(`budgets?user_id=eq.${pref.user_id}&select=id,category,amount,alert_amount,currency,rollover`),
     dbGet(`bills?user_id=eq.${pref.user_id}&select=id,name,amount,currency,category,account,due_day,amount_varies,is_active`)
   ]);
 
@@ -166,7 +166,9 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   }));
   const budgets = (budgetRows as Record<string, unknown>[]).map(b => ({
     id: b.id, category: b.category, amount: +(b.amount as number),
-    alertPct: (b.alert_pct as number) || 80, currency: b.currency, rollover: !!b.rollover
+    // An amount in the budget's own currency, not a percentage — see
+    // pfmtAlertAt() in shared-money-rules.js.
+    alertAmount: +(b.alert_amount as number) || 0, currency: b.currency, rollover: !!b.rollover
   }));
   const bills = (billRows as Record<string, unknown>[]).map(b => ({
     id: b.id, name: b.name, amount: +(b.amount as number), currency: b.currency,
@@ -188,7 +190,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
       claimed.push(['budget', key]);
       lines.push(a.level === 'over'
         ? `🔴 <b>${esc(a.budget.category)}</b> is over budget — ${money(a.spent, cur)} of ${money(a.limit, cur)} (${money(a.spent - a.limit, cur)} over)`
-        : `🟠 <b>${esc(a.budget.category)}</b> is at ${Math.round(a.pct)}% — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left`);
+        : `🟠 <b>${esc(a.budget.category)}</b> has passed ${money(a.at, cur)} — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left`);
     }
   }
 

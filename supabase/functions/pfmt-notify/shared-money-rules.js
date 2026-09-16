@@ -80,6 +80,18 @@ function pfmtBudgetLimit(b, txns, month, fallbackCur) {
   return Math.round((b.amount + pfmtBudgetRollover(b, txns, month, fallbackCur)) * 100) / 100;
 }
 
+// The amount at which a budget starts warning — an amount of money in the
+// budget's own currency, typed by the user: "tell me when I've spent 380 of my
+// 400." Not a percentage of anything.
+//
+// It used to be a percentage, and that was wrong about how people actually
+// think: nobody decides to be warned at 79%, they decide to be warned at $380.
+// Falls back to 80% of the limit only when nothing has been set at all.
+function pfmtAlertAt(b) {
+  const at = Number(b.alertAmount);
+  return at > 0 ? at : Math.round(b.amount * 0.8 * 100) / 100;
+}
+
 // Which budgets have earned a warning this month. Judged against the same
 // effective limit the card draws, rollover included, so an alert can never
 // contradict the bar the user is looking at.
@@ -90,12 +102,12 @@ function pfmtBudgetAlerts(budgets, txns, month, fallbackCur) {
     if (!(limit > 0)) return;
     const spent = pfmtBudgetSpent(txns, b.category, b.currency, month, fallbackCur);
     const pct   = (spent / limit) * 100;
-    const at    = b.alertPct || 80;
+    const at    = pfmtAlertAt(b);
     // 'over' and 'near' are separate levels, not one escalating message, so
     // crossing the threshold notifies once and going over notifies once more —
     // rather than a message per expense for the rest of the month.
-    if (spent > limit)  out.push({ budget: b, spent: spent, limit: limit, pct: pct, level: 'over' });
-    else if (pct >= at) out.push({ budget: b, spent: spent, limit: limit, pct: pct, level: 'near' });
+    if (spent > limit)    out.push({ budget: b, spent: spent, limit: limit, pct: pct, at: at, level: 'over' });
+    else if (spent >= at) out.push({ budget: b, spent: spent, limit: limit, pct: pct, at: at, level: 'near' });
   });
   return out;
 }
@@ -191,6 +203,7 @@ export {
   pfmtBudgetSpent,
   pfmtBudgetRollover,
   pfmtBudgetLimit,
+  pfmtAlertAt,
   pfmtBudgetAlerts,
   pfmtBillDueDate,
   pfmtMatchBills,

@@ -44,7 +44,8 @@ const TXNS = [
     account: 'DBS Checking', date: '2026-09-04', currency: 'SGD', transfer_group: null }
 ];
 const BUDGETS = [
-  { id: 'g1', category: 'Other', amount: 440, alert_pct: 80, currency: 'SGD', rollover: false }
+  // Alert at an AMOUNT the user typed, not a percentage: warn once 380 is spent.
+  { id: 'g1', category: 'Other', amount: 440, alert_amount: 380, currency: 'SGD', rollover: false }
 ];
 const BILLS = [
   { id: 'bill-1', name: 'Rent & Utilities <flat>', amount: 1500, currency: 'SGD',
@@ -123,7 +124,8 @@ b = await r.json();
 ok(r.status === 200 && b.sent === 2, 'one message covering both alerts', JSON.stringify(b));
 ok(sent.length === 1, 'sent as ONE telegram message, not two', `got ${sent.length}`);
 const text = sent[0]?.text ?? '';
-ok(/Other/.test(text) && /91%|90%/.test(text), 'names the budget and its percentage', text);
+ok(/Other/.test(text) && /has passed S\$380\.00/.test(text),
+   'names the budget and the amount it passed', text);
 ok(/S\$400\.00/.test(text) && /S\$440\.00/.test(text), 'quotes spent of limit', text);
 ok(/Rent &amp; Utilities &lt;flat&gt;/.test(text),
    'the bill name is HTML-escaped so telegram accepts it', text);

@@ -56,7 +56,7 @@ if (!BLOCK.trim()) { console.error('could not find the shared block in index.htm
 
 const EXPORTS = ['PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
   'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
-  'pfmtBudgetAlerts', 'pfmtBillDueDate', 'pfmtMatchBills', 'pfmtBillStatus',
+  'pfmtAlertAt', 'pfmtBudgetAlerts', 'pfmtBillDueDate', 'pfmtMatchBills', 'pfmtBillStatus',
   'pfmtDaysUntil', 'pfmtBillsToRemind'];
 const R = new Function(BLOCK + `\nreturn {${EXPORTS.join(',')}};`)();
 
@@ -220,9 +220,19 @@ group('Reminders cover what is close and what is late');
 // ── 5. alerts agree with the page ──────────────────────────────────────────
 group('An alert never contradicts the bar on screen');
 {
-  // The exact shape that broke production: a payback bigger than the month's
-  // spending. The budget bar reads zero, so the alert must stay silent.
-  const budgets = [{ id: 'g1', category: 'Other', amount: 440, alertPct: 80, currency: 'SGD', rollover: false }];
+  // The threshold is an AMOUNT the user typed, not a percentage of anything:
+  // "warn me once I've spent 380 of my 400".
+  const b400 = { id: 'g0', category: 'Other', amount: 400, alertAmount: 380, currency: 'SGD', rollover: false };
+  const at = n => R.pfmtBudgetAlerts([b400], [txn({ amount: n, category: 'Other' })], '2026-09', 'SGD');
+  ok(at(381).length === 1 && at(381)[0].level === 'near', 'spent 381 against a 380 threshold fires');
+  ok(at(380).length === 1 && at(380)[0].level === 'near', 'spent exactly 380 fires — equal or more');
+  ok(at(379).length === 0, 'spent 379 stays silent');
+  ok(at(400).length === 1 && at(400)[0].level === 'near', 'spent exactly the limit is not yet over');
+  ok(at(401).length === 1 && at(401)[0].level === 'over', 'spent 401 is over budget');
+  ok(near(at(381)[0].at, 380), 'the alert carries the amount it fired at, for the message');
+
+  // The real September book: the claim must not reduce another category.
+  const budgets = [{ id: 'g1', category: 'Other', amount: 440, alertAmount: 400, currency: 'SGD', rollover: false }];
   const txns = [
     txn({ amount: 40.84, category: 'Other', date: '2026-09-04' }),
     txn({ amount: 128.20, category: 'Claims', type: 'payback', date: '2026-09-15' })
@@ -230,96 +240,64 @@ group('An alert never contradicts the bar on screen');
   const spent = R.pfmtBudgetSpent(txns, 'Other', 'SGD', '2026-09', 'SGD');
   ok(near(spent, 40.84), 'the claim does not reduce another category', `got ${spent}`);
   ok(R.pfmtBudgetAlerts(budgets, txns, '2026-09', 'SGD').length === 0,
-     'a budget at 9% raises no alert');
+     'S$40.84 against a S$400 threshold raises nothing');
 
-  // Crossing the threshold, then going over.
-  const near80 = [txn({ amount: 360, category: 'Other' })];
-  const a1 = R.pfmtBudgetAlerts(budgets, near80, '2026-09', 'SGD');
-  ok(a1.length === 1 && a1[0].level === 'near', 'crossing 80% raises one "near" alert',
-     JSON.stringify(a1.map(a => a.level)));
+  // Health, the case that started this: 432 spent, warn at 400.
+  const health = [{ id: 'h', category: 'Health', amount: 480, alertAmount: 400, currency: 'SGD', rollover: false }];
+  const hs = R.pfmtBudgetAlerts(health, [txn({ amount: 432, category: 'Health' })], '2026-09', 'SGD');
+  ok(hs.length === 1 && hs[0].level === 'near' && near(hs[0].at, 400),
+     'Health at 432 with a 400 threshold fires — the alert that was silently dead',
+     JSON.stringify(hs.map(x => [x.level, x.at])));
 
-  const over = [txn({ amount: 500, category: 'Other' })];
-  const a2 = R.pfmtBudgetAlerts(budgets, over, '2026-09', 'SGD');
-  ok(a2.length === 1 && a2[0].level === 'over', 'going over raises one "over" alert',
-     JSON.stringify(a2.map(a => a.level)));
-  ok(near(a2[0].spent, 500) && near(a2[0].limit, 440),
-     'the alert quotes the same spent and limit the card shows');
+  // Unset falls back to 80% of the limit rather than never warning.
+  const unset = [{ id: 'u', category: 'Other', amount: 400, alertAmount: 0, currency: 'SGD', rollover: false }];
+  ok(near(R.pfmtAlertAt(unset[0]), 320), 'an unset threshold falls back to 80% of the limit');
+  ok(R.pfmtBudgetAlerts(unset, [txn({ amount: 330, category: 'Other' })], '2026-09', 'SGD').length === 1,
+     'and still warns');
 
-  // Exactly on the line counts as reached, and exactly on the limit is not over.
-  const at80 = R.pfmtBudgetAlerts(budgets, [txn({ amount: 352, category: 'Other' })], '2026-09', 'SGD');
-  ok(at80.length === 1 && at80[0].level === 'near', 'exactly 80% is "near"');
-  const atLimit = R.pfmtBudgetAlerts(budgets, [txn({ amount: 440, category: 'Other' })], '2026-09', 'SGD');
-  ok(atLimit.length === 1 && atLimit[0].level === 'near', 'exactly on the limit is not yet over');
-
-  // Rollover raises the limit the alert is judged against. The same S$500 is
-  // "over" against a plain 440 budget and perfectly fine against a rolled-over
-  // one — the alert has to follow the card, not the raw budget amount.
-  const rollOn  = { id: 'g2', category: 'Other', amount: 440, alertPct: 80, currency: 'SGD', rollover: true };
-  const rollOff = { id: 'g2', category: 'Other', amount: 440, alertPct: 80, currency: 'SGD', rollover: false };
-  const ledger  = [txn({ amount: 40, category: 'Other', date: '2026-08-04' }),
-                   txn({ amount: 500, category: 'Other', date: '2026-09-04' })];
+  // Rollover raises the limit, but the threshold is an amount and does not move.
+  const rollOn = { id: 'r', category: 'Other', amount: 440, alertAmount: 400, currency: 'SGD', rollover: true };
+  const ledger = [txn({ amount: 40, category: 'Other', date: '2026-08-04' }),
+                  txn({ amount: 500, category: 'Other', date: '2026-09-04' })];
   const limit = R.pfmtBudgetLimit(rollOn, ledger, '2026-09', 'SGD');
-  ok(near(limit, 840), 'last month\'s unused 400 rolls into this month\'s limit', `got ${limit}`);
-  const aOff = R.pfmtBudgetAlerts([rollOff], ledger, '2026-09', 'SGD');
-  const aOn  = R.pfmtBudgetAlerts([rollOn],  ledger, '2026-09', 'SGD');
-  ok(aOff.length === 1 && aOff[0].level === 'over',
-     'S$500 is over a plain S$440 budget', JSON.stringify(aOff.map(a => a.level)));
-  ok(aOn.length === 0,
-     'and raises nothing once rollover has lifted the limit to S$840',
-     JSON.stringify(aOn.map(a => [a.level, a.limit])));
-  // Past the raised limit it does fire, quoting the raised limit.
-  const wayOver = ledger.concat([txn({ amount: 400, category: 'Other', date: '2026-09-20' })]);
-  const aBig = R.pfmtBudgetAlerts([rollOn], wayOver, '2026-09', 'SGD');
-  ok(aBig.length === 1 && aBig[0].level === 'over' && near(aBig[0].limit, 840),
-     'and past S$840 it fires, quoting S$840 — the figure the card shows',
-     JSON.stringify(aBig.map(a => [a.level, a.limit])));
+  const aRoll = R.pfmtBudgetAlerts([rollOn], ledger, '2026-09', 'SGD');
+  ok(near(limit, 840), "last month's unused 400 rolls into this month's limit", `got ${limit}`);
+  ok(aRoll.length === 1 && aRoll[0].level === 'near',
+     'S$500 passed the S$400 threshold but is under the rolled-over S$840 limit — near, not over',
+     JSON.stringify(aRoll.map(x => x.level)));
 
   // Currencies never mix.
-  const myr = [{ id: 'g3', category: 'Other', amount: 100, alertPct: 80, currency: 'MYR', rollover: false }];
-  const sgdOnly = [txn({ amount: 500, category: 'Other', currency: 'SGD' })];
-  ok(R.pfmtBudgetAlerts(myr, sgdOnly, '2026-09', 'SGD').length === 0,
+  const myr = [{ id: 'm', category: 'Other', amount: 100, alertAmount: 80, currency: 'MYR', rollover: false }];
+  ok(R.pfmtBudgetAlerts(myr, [txn({ amount: 500, category: 'Other', currency: 'SGD' })], '2026-09', 'SGD').length === 0,
      'SGD spending never trips an MYR budget');
 
-  // A budget of zero can't be a percentage of anything.
-  const zero = [{ id: 'g4', category: 'Other', amount: 0, alertPct: 80, currency: 'SGD', rollover: false }];
-  const az = R.pfmtBudgetAlerts(zero, over, '2026-09', 'SGD');
-  ok(az.length === 0, 'a zero budget raises no alert rather than an infinite percentage');
+  // A budget of zero can't be judged at all.
+  const zero = [{ id: 'z', category: 'Other', amount: 0, alertAmount: 0, currency: 'SGD', rollover: false }];
+  const az = R.pfmtBudgetAlerts(zero, [txn({ amount: 500, category: 'Other' })], '2026-09', 'SGD');
+  ok(az.length === 0, 'a zero budget raises no alert');
   ok(!az.some(a => Number.isNaN(a.pct)), 'and nothing is NaN');
 }
 
-// ── 5b. an unreachable threshold must not fail silently ────────────────────
-group('A threshold that can never be reached says so');
+// ── 5b. the threshold is an amount, and the app says so ────────────────────
+group('A threshold is an amount the user typed');
 {
-  const V = new Function(extract('ALERT_PCT_MIN') + '\n' + extract('isValidAlertPct') +
-                         '\nreturn {ALERT_PCT_MIN, ALERT_PCT_MAX, isValidAlertPct};')();
-  ok(V.isValidAlertPct(80),  '80 is a valid threshold');
-  ok(V.isValidAlertPct(10),  '10, the floor, is valid');
-  ok(V.isValidAlertPct(100), '100, the ceiling, is valid');
-  // The exact values the ServiceNow import left behind, which switched budget
-  // alerts off without a single visible symptom.
-  ok(!V.isValidAlertPct(400), '400 is refused — nothing reaches 400% of its own limit');
-  ok(!V.isValidAlertPct(150), '150 is refused');
-  ok(!V.isValidAlertPct(9),   '9 is refused — below the floor');
-  ok(!V.isValidAlertPct(0),   '0 is refused');
-  ok(!V.isValidAlertPct(-80), 'a negative threshold is refused');
-  ok(!V.isValidAlertPct(NaN), 'NaN is refused rather than silently passing');
-  ok(!V.isValidAlertPct(Infinity), 'Infinity is refused');
+  const V = new Function(extract('isValidAlertAmount') + '\nreturn {isValidAlertAmount};')();
+  ok(V.isValidAlertAmount(380),   '380 is a valid threshold');
+  ok(V.isValidAlertAmount(0.5),   'so is 0.50 — it is money, cents allowed');
+  ok(V.isValidAlertAmount(10000), 'and so is an amount far above any limit — the user decides');
+  ok(!V.isValidAlertAmount(0),    'zero is not a threshold');
+  ok(!V.isValidAlertAmount(-5),   'nor is a negative amount');
+  ok(!V.isValidAlertAmount(NaN),  'NaN is refused rather than silently passing');
 
-  // The real-world consequence: with 400 stored, a budget at 90% stays silent.
-  const budgets400 = [{ id: 'x', category: 'Health', amount: 480, alertPct: 400, currency: 'SGD', rollover: false }];
-  const budgets80  = [{ id: 'x', category: 'Health', amount: 480, alertPct: 80,  currency: 'SGD', rollover: false }];
-  const spend = [txn({ amount: 432, category: 'Health' })];
-  ok(R.pfmtBudgetAlerts(budgets400, spend, '2026-09', 'SGD').length === 0,
-     'a budget at 90% with a 400% threshold really does stay silent');
-  ok(R.pfmtBudgetAlerts(budgets80, spend, '2026-09', 'SGD').length === 1,
-     'and fires as soon as the threshold is a real percentage');
-
-  // The card has to mark it, or the silence is invisible.
-  ok(/const badPct = !isValidAlertPct\(b\.alertPct\)/.test(HTML),
-     'the budget card computes whether its threshold is reachable');
-  ok(/budget-badpct-badge/.test(HTML), 'and renders a badge when it is not');
-  ok(/if \(!isValidAlertPct\(alert\)\)/.test(HTML),
-     'and saving a budget refuses an out-of-range threshold outright');
+  // A threshold above the limit is allowed but pointless — the card says so.
+  ok(/const badPct = alertAboveLimit\(b\)/.test(HTML),
+     'the budget card checks whether the threshold sits above the limit');
+  ok(/budget-badpct-badge/.test(HTML), 'and renders a badge when it does');
+  ok(/if \(!isValidAlertAmount\(alert\)\)/.test(HTML),
+     'and saving refuses a zero or negative threshold');
+  // The old percentage model must be gone from the page entirely.
+  ok(!/alertPct/.test(HTML), 'no alertPct left anywhere in the page');
+  ok(!/alert_pct/.test(HTML), 'and no alert_pct column reference either');
 }
 
 // ── 6. dedupe keys ─────────────────────────────────────────────────────────
