@@ -1289,8 +1289,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           </div>
           <div id="notify-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:10px;"></div>
           <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
-            Each alert is sent once per month per budget and per bill, so crossing a
-            threshold does not produce a message for every expense after it.
+            Budget alerts come with every expense you add to a category that is at or
+            past its alert amount, showing the new total. Only that category is checked.
+            Bill reminders are sent once as a bill approaches and once more if it goes unpaid.
           </div>
         </div>
 
@@ -3034,9 +3035,9 @@ async function saveTransaction() {
   saveState();
   closeTxnModal();
   renderAll();
-  // A budget that just crossed its threshold is worth hearing about now, not at
-  // tomorrow's scheduled run.
-  if (state.currentType === 'expense' || state.currentType === 'payback') notifyAfterSpend();
+  // Every expense in a category at or past its alert amount is worth hearing
+  // about now, with the new total — not once a month, and not at a scheduled run.
+  if (state.currentType === 'expense' || state.currentType === 'payback') notifyAfterSpend(cat, currency, date);
 }
 
 async function deleteTransaction(id) {
@@ -6420,14 +6421,14 @@ async function saveNotifySettings(quiet) {
 
 // Calls the Edge Function as the signed-in user. `mode` is 'test' for a single
 // hello message, or 'check' to send whatever is actually pending right now.
-async function _callNotify(mode) {
+async function _callNotify(mode, extra) {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) throw new Error('Not signed in');
   const res = await fetch(NOTIFY_FN_URL, {
     method : 'POST',
     headers: { 'Content-Type': 'application/json',
                'Authorization': 'Bearer ' + session.access_token },
-    body   : JSON.stringify({ mode, today: localDateStr(), month: localYM() })
+    body   : JSON.stringify({ mode, today: localDateStr(), month: localYM(), ...(extra || {}) })
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -6463,8 +6464,8 @@ async function runNotifyCheck(loud) {
       if (r.sent) {
         _notifyStatus(`Sent ${r.sent} alert${r.sent === 1 ? '' : 's'} to Telegram.`, 'ok');
       } else if (already.length) {
-        _notifyStatus(`Nothing new to send — already reported this month: ${already.join(', ')}. ` +
-                      `Each alert goes out once a month, so you are not told the same thing twice.`, 'ok');
+        _notifyStatus(`Nothing new to send — already reminded you about: ${already.join(', ')}. ` +
+                      `Bill reminders go out once as a bill approaches and once if it goes unpaid.`, 'ok');
       } else {
         _notifyStatus('Nothing to report — no budget has reached its alert amount, and no bill is due.', 'ok');
       }
@@ -6478,9 +6479,16 @@ async function runNotifyCheck(loud) {
 // Fired after a expense is recorded, so a budget crossing its threshold is heard
 // about immediately rather than at the next daily run. Deliberately not awaited
 // and never surfaced as an error: saving the transaction is what mattered.
-function notifyAfterSpend() {
+function notifyAfterSpend(category, currency, date) {
   if (!state.notifyBudget || !state.telegramChatId || !state.userId) return;
-  runNotifyCheck(false);
+  // Only spending in the month in progress can push a budget past its alert
+  // amount now. Back-filling an old receipt into August should not buzz the
+  // phone about August.
+  if (!date || date.slice(0, 7) !== localYM()) return;
+  // Naming the category is what makes this the per-expense path: the notifier
+  // checks that one budget and alerts every time it is at or past its amount.
+  _callNotify('check', { category, currency })
+    .catch(e => console.warn('notify after spend failed:', e.message));
 }
 
 function saveAIKey() {

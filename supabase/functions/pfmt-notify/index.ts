@@ -145,7 +145,18 @@ function greeting(name: string | null | undefined) {
   return n ? `Dear ${esc(n)},\n` : '';
 }
 
-async function runForUser(pref: Pref, mode: string, today: string, month: string) {
+// `scope` says who is asking, because the three callers want different things:
+//   'expense' — the app, right after an expense was saved. Only that expense's
+//               category is checked, and it alerts EVERY time it is at or past its
+//               alert amount, so each new expense shows the updated total.
+//   'manual'  — the "Check my alerts now" button. Every budget and every bill.
+//   'cron'    — the daily run. Bills only: budget alerts ride on spending, and a
+//               daily run repeating an over-budget message every morning would be
+//               noise with no new expense behind it.
+type Scope = { kind: 'expense' | 'manual' | 'cron'; category?: string; currency?: string };
+
+async function runForUser(pref: Pref, mode: string, today: string, month: string,
+                          scope: Scope = { kind: 'manual' }) {
   const chat = (pref.telegram_chat_id ?? '').trim();
   if (!chat) return { sent: 0, skipped: 'no chat id' };
   const fallbackCur = pref.currency || 'SGD';
@@ -193,23 +204,27 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   // "nothing is over its threshold" — which is what it said before.
   const already: string[] = [];
 
-  if (pref.notify_budget) {
-    const alerts = pfmtBudgetAlerts(budgets, txns, month, fallbackCur);
+  // Budget alerts are NOT limited to once a month. The user asked for every
+  // expense that lands in a category at or past its alert amount to say so, with
+  // the new total — so there is no claim here, only a filter to the category
+  // that actually changed. A Transport expense must never re-send Health.
+  if (pref.notify_budget && scope.kind !== 'cron') {
+    const alerts = pfmtBudgetAlerts(budgets, txns, month, fallbackCur).filter(a =>
+      scope.kind !== 'expense' ||
+      (a.budget.category === scope.category &&
+       (a.budget.currency || fallbackCur) === (scope.currency || fallbackCur)));
     for (const a of alerts) {
       const cur = a.budget.currency || fallbackCur;
-      const key = `${a.budget.category}|${cur}|${month}|${a.level}`;
-      if (!await claim(pref.user_id, 'budget', key)) {
-        already.push(a.level === 'over' ? `${a.budget.category} (over budget)` : a.budget.category);
-        continue;
-      }
-      claimed.push(['budget', key]);
       lines.push(a.level === 'over'
         ? `🔴 <b>${esc(a.budget.category)}</b> is over budget — ${money(a.spent, cur)} of ${money(a.limit, cur)} (${money(a.spent - a.limit, cur)} over)`
         : `🟠 <b>${esc(a.budget.category)}</b> has passed ${money(a.at, cur)} — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left`);
     }
   }
 
-  if (pref.notify_bills) {
+  // Bills keep their limit — once as they approach, once if they go unpaid —
+  // or the daily run would repeat the same bill every morning. And they are not
+  // checked on the expense path: saving a coffee should not announce the rent.
+  if (pref.notify_bills && scope.kind !== 'expense') {
     const lead = Number.isFinite(pref.bill_lead_days) ? pref.bill_lead_days : 3;
     const due  = pfmtBillsToRemind(bills, txns, month, today, lead, fallbackCur);
     for (const d of due) {
@@ -270,7 +285,7 @@ Deno.serve(async (req) => {
       const failures: string[] = [];
       for (const p of prefs) {
         // One user's bad chat id must not stop everybody else's alerts.
-        try { sent += (await runForUser(p, 'check', today, month)).sent; }
+        try { sent += (await runForUser(p, 'check', today, month, { kind: 'cron' })).sent; }
         catch (e) { failures.push(`${p.user_id}: ${(e as Error).message}`); }
       }
       return json({ ok: true, users: prefs.length, sent, failures });
@@ -296,7 +311,14 @@ Deno.serve(async (req) => {
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today)) ? String(body.today) : todayInTz();
     const month = /^\d{4}-\d{2}$/.test(String(body.month)) ? String(body.month) : today.slice(0, 7);
 
-    const r = await runForUser(prefs[0], mode, today, month);
+    // The app names the category it just saved an expense in; the Settings
+    // button names none and wants the full picture.
+    const category = typeof body.category === 'string' ? body.category : '';
+    const currency = typeof body.currency === 'string' ? body.currency : '';
+    const scope: Scope = category
+      ? { kind: 'expense', category, currency }
+      : { kind: 'manual' };
+    const r = await runForUser(prefs[0], mode, today, month, scope);
     return json({ ok: true, ...r });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);

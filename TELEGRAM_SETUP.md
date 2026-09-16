@@ -137,24 +137,25 @@ the existing one. To stop it: `select cron.unschedule('pfmt-daily-bill-check');`
 One message per run, with everything pending in it — not one message per item:
 
 ```
+Dear YC,
 PFMT — 2026-09
-🟠 Food & Drink is at 86% — S$430.00 of S$500.00, S$70.00 left
+🟠 Food & Drink has passed S$400.00 — S$430.00 of S$450.00, S$20.00 left
 🔴 Shopping is over budget — S$520.00 of S$200.00 (S$320.00 over)
-📅 Singtel mobile S$42.90 — due in 2 days (2026-09-12)
-🔴 Rent S$1,800.00 — 3 days late (2026-09-01)
 ```
 
-**Each alert is sent at most once a month, per thing, per level.** A budget
-notifies once when it crosses your alert threshold and once more if it goes over;
-a bill notifies once as it approaches and once more if it actually goes unpaid.
-Crossing a threshold does not produce a message for every expense after it.
+**Budget alerts come with every expense that hits.** Add an expense to a category
+that is at or past its alert amount and a message arrives with the new total — every
+time, not once a month. Only the category you spent in is checked, so a Transport
+expense never re-sends Health.
 
-That is enforced by the `notifications_sent` table, whose primary key *is* the
-rule — so two runs overlapping cannot double-send. If you ever want to force a
-re-send, delete the row:
+**Bill reminders are limited:** once as a bill approaches, once more if it actually
+goes unpaid — otherwise the daily run would repeat the same bill every morning. That
+limit is enforced by the `notifications_sent` table, whose primary key *is* the rule,
+so two overlapping runs cannot double-send. To force a bill reminder again, delete
+its row:
 
 ```sql
-delete from public.notifications_sent where dedupe_key like '%2026-09%';
+delete from public.notifications_sent where kind = 'bill';
 ```
 
 ---

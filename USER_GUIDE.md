@@ -350,16 +350,19 @@ Once it's running, **Settings → Alerts on Telegram** controls it:
 One message with everything in it, not one per item:
 
 ```
+Dear YC,
 PFMT — 2026-09
-🟠 Food & Drink is at 86% — S$430.00 of S$500.00, S$70.00 left
-📅 Singtel mobile S$42.90 — due in 2 days (2026-09-12)
+🟠 Health has passed S$400.00 — S$432.00 of S$480.00, S$48.00 left
+🔴 Other is over budget — S$470.00 of S$440.00 (S$30.00 over)
 ```
 
-**You won't be spammed.** Each alert is sent at most once a month, per thing, per
-level: a budget tells you once when it crosses your threshold and once more if it
-goes over; a bill tells you once as it approaches and once more if it actually
-goes unpaid. Crossing a threshold does not produce a message for every expense
-after it.
+**Budget alerts come with every expense that hits.** Once a category has reached
+its alert amount, each new expense you add to it sends a message with the updated
+total — so you always see where you actually stand. Only the category you spent in
+is checked: a Transport expense never re-sends your Health alert.
+
+**Bill reminders are limited** to once as a bill approaches and once more if it
+goes unpaid, so the daily check doesn't repeat the same bill every morning.
 
 Budget alerts arrive as soon as you record the expense that crossed the line.
 Bill reminders arrive on the morning schedule, since nobody has the app open at

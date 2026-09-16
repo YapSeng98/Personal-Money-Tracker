@@ -119,7 +119,7 @@ ok(/connected/i.test(sent[0].text), 'and says the connection works');
 ok(sent[0].text.startsWith('Dear YC &lt;Seng&gt;,\n\u2705'),
    'the test message opens with the greeting, HTML-escaped', sent[0].text.slice(0, 40));
 
-// ── a real check: 400 of a 440 budget is 90%, and a bill is due in 3 days ──
+// ── the manual check: every budget at or past its amount, and bills ──
 sent.length = 0; writes.length = 0; claimed.clear();
 r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09' },
                { Authorization: 'Bearer good-jwt' });
@@ -135,39 +135,79 @@ ok(/S\$400\.00/.test(text) && /S\$440\.00/.test(text), 'quotes spent of limit', 
 ok(/Rent &amp; Utilities &lt;flat&gt;/.test(text),
    'the bill name is HTML-escaped so telegram accepts it', text);
 ok(/due in 3 days/.test(text), 'says how long until the bill is due', text);
-ok(writes.length === 2, 'two dedupe keys were claimed', writes.join(' / '));
-ok(writes.some(k => k.startsWith('budget|Other|SGD|2026-09|near')), 'budget key looks right', writes.join(' / '));
-ok(writes.some(k => k === 'bill|bill-1|2026-09|due'), 'bill key looks right', writes.join(' / '));
+// Budgets are no longer limited to once a month, so nothing is claimed for
+// them — only the bill, which keeps its limit.
+ok(writes.length === 1 && writes[0] === 'bill|bill-1|2026-09|due',
+   'only the bill is claimed — budget alerts carry no monthly limit', writes.join(' / '));
 
-// ── the same check again must say nothing ──
+// ── pressing it again: the budget repeats, the bill does not ──
 sent.length = 0;
 r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09' },
                { Authorization: 'Bearer good-jwt' });
 b = await r.json();
-ok(b.sent === 0 && sent.length === 0, 'running it again sends nothing — already said',
-   JSON.stringify(b));
-// And it says WHY, rather than implying nothing is over its threshold.
-ok(Array.isArray(b.already) && b.already.includes('Other') &&
-   b.already.some(x => /Rent/.test(x)),
-   'it reports what was already sent, so the app can say so honestly',
-   JSON.stringify(b.already));
+const again = sent[0]?.text ?? '';
+ok(b.sent === 1 && /Other/.test(again) && !/Rent/.test(again),
+   'a second check re-sends the budget with its total, but not the bill',
+   JSON.stringify(b) + ' ' + again);
+ok(Array.isArray(b.already) && b.already.some(x => /Rent/.test(x)) && !b.already.includes('Other'),
+   'and names only the bill as already reported', JSON.stringify(b.already));
 
-// ── overdue is a separate, second reminder ──
+// ── the expense path: only the category that was just spent in ──
+sent.length = 0; writes.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Other', currency: 'SGD' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+const exp1 = sent[0]?.text ?? '';
+ok(b.sent === 1 && /Other/.test(exp1) && /has passed S\$380\.00/.test(exp1),
+   'an expense in a category past its amount alerts for that category', JSON.stringify(b));
+ok(!/Rent/.test(exp1), 'and never drags a bill into it', exp1);
+ok(writes.length === 0, 'and claims nothing — it can fire again', writes.join(' / '));
+
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Other', currency: 'SGD' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+ok(b.sent === 1 && sent.length === 1,
+   'the NEXT expense in that category alerts again — every expense that hits',
+   JSON.stringify(b));
+
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Transport', currency: 'SGD' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+ok(b.sent === 0 && sent.length === 0,
+   'an expense in a quiet category sends nothing, even while Other is past its amount',
+   JSON.stringify(b));
+
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Other', currency: 'MYR' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+ok(b.sent === 0, 'the same category in another currency is a different budget', JSON.stringify(b));
+
+// ── overdue is a separate, second bill reminder ──
 sent.length = 0;
 r = await post({ mode: 'check', today: '2026-09-20', month: '2026-09' },
                { Authorization: 'Bearer good-jwt' });
 b = await r.json();
-ok(b.sent === 1 && /8 days late/.test(sent[0]?.text ?? ''),
-   'once it is actually late, one more reminder goes out',
+ok(/8 days late/.test(sent[0]?.text ?? ''),
+   'once a bill is actually late, one more reminder goes out',
    JSON.stringify(b) + ' ' + (sent[0]?.text ?? ''));
 
-// ── the cron path, no user token at all ──
+// ── the cron path: bills only ──
 sent.length = 0; claimed.clear(); writes.length = 0;
 r = await post({}, { 'x-pfmt-cron-secret': 'cron-secret' });
 b = await r.json();
 ok(r.status === 200 && b.users === 1 && b.sent > 0,
    'the cron path runs for every subscribed user with no JWT', JSON.stringify(b));
 ok(Array.isArray(b.failures) && b.failures.length === 0, 'and reports no failures', JSON.stringify(b.failures));
+ok(!/Other/.test(sent[0]?.text ?? '') && /Rent/.test(sent[0]?.text ?? ''),
+   'the daily run sends bills, never a budget with no new expense behind it',
+   sent[0]?.text ?? '');
 
 // ── a failed telegram send must release its claims ──
 sent.length = 0; claimed.clear(); writes.length = 0;

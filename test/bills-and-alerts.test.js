@@ -306,8 +306,13 @@ group('The same alert is never sent twice');
   // The keys are built in the Edge Function; this checks the SHAPE the
   // notifications_sent primary key relies on — one row per level per month.
   const FN = fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'pfmt-notify', 'index.ts'), 'utf8');
-  ok(/\$\{a\.budget\.category\}\|\$\{cur\}\|\$\{month\}\|\$\{a\.level\}/.test(FN),
-     'a budget key carries category, currency, month and level');
+  // Budget alerts deliberately have NO monthly key: every expense in a category
+  // at or past its alert amount sends the new total. Guard that it stays so,
+  // and that the expense path is filtered to the one category that changed.
+  ok(!/claim\(pref\.user_id, 'budget'/.test(FN),
+     'budget alerts are never claimed — every expense that hits is announced');
+  ok(/a\.budget\.category === scope\.category/.test(FN),
+     'and the expense path checks only the category that was just spent in');
   ok(/\$\{d\.bill\.id\}\|\$\{month\}\|\$\{level\}/.test(FN),
      'a bill key carries the bill, the month and whether it is late');
   ok(/if \(!await claim\(/.test(FN), 'nothing is sent without claiming the key first');

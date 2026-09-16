@@ -225,7 +225,7 @@ One row per user: `currency`, `language`, `theme`, `budget_alerts`, `now_assist`
 `telegram_chat_id`, `notify_budget`, `notify_bills`, `bill_lead_days`.
 
 ### `notifications_sent`
-`(user_id, kind, dedupe_key)` — and that primary key *is* the "once per month"
+`(user_id, kind, dedupe_key)` — used for bill reminders only; that primary key *is* the "once as due, once if late"
 rule. See [Telegram alerts](#telegram-alerts).
 
 ---
@@ -321,18 +321,23 @@ chat id — an address, which grants nothing.
 
 ### What is sent, and how often
 
-Everything pending goes out as **one message**, never one per item. Each alert is
-claimed in `notifications_sent` *before* it is sent, and a failed send releases
-its claims so the next run retries.
+Everything pending goes out as **one message**, never one per item.
 
-| Kind | Dedupe key | Effect |
+| Kind | Fires | Limit |
 |---|---|---|
-| Budget | `category｜currency｜month｜near\|over` | one message on crossing the alert %, one more if it goes over |
-| Bill | `billId｜month｜due\|overdue` | one message as it approaches, one more if it actually goes unpaid |
+| Budget | every expense saved in a category at or past its alert amount — only that category is checked | **none** — each expense sends the new total |
+| Bill | once as it approaches, once more if it goes unpaid | `billId｜month｜due\|overdue` in `notifications_sent` |
 
-So crossing a threshold produces one message — not one per expense for the rest
-of the month. Because the de-duplication is a **primary key**, two overlapping
-runs cannot double-send.
+Budget alerts were once limited to one per month per level; the owner asked for
+every expense that hits to say so instead, so the latest total is always in front
+of them. Bill reminders keep a limit because the daily run has no new spending
+behind it and would otherwise repeat the same bill every morning. A bill reminder
+is claimed in `notifications_sent` *before* it is sent — the primary key is the
+rule, so overlapping runs cannot double-send — and a failed send releases the claim.
+
+The three callers are scoped: the **expense** path (the app, after a save) checks
+only that category's budget; the **manual** check (Settings) checks every budget and
+bill; the **daily run** checks bills only.
 
 Budget alerts are judged against the same effective limit the budget card draws,
 rollover included, so an alert can never contradict the bar you are looking at.

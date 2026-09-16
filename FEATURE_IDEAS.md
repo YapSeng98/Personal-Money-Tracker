@@ -44,7 +44,7 @@ When an expense pushes a budget past its alert %, notify the user outside the ap
 **How the open questions were answered:**
 
 - **Bot token storage** — a shared secret, so it lives only in the Edge Function's environment (`TELEGRAM_BOT_TOKEN`), never per-user, never in the database, never in a backup. Only the per-user `telegram_chat_id` is stored, on `preferences` — and a chat id is an address, not a credential.
-- **Re-alert behaviour** — **once per month, per thing, per level.** A budget notifies once on crossing the alert %, and once more if it goes over. A bill notifies once as it approaches, once more if it actually goes unpaid. Enforced by the primary key on `notifications_sent`, not by application logic, so two overlapping runs can't double-send. Each alert is claimed *before* it's sent, and a failed send releases its claims so the next run retries.
+- **Re-alert behaviour** — first built as once per month per level, then changed at the owner's request: **budget alerts fire on every expense that hits**, with the new total, checking only the category just spent in. Bill reminders keep a limit (once as due, once if late), enforced by the primary key on `notifications_sent`, so the daily run can't repeat a bill.
 
 See [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md) for the one-time setup, and [README § Telegram alerts](README.md#telegram-alerts).
 
