@@ -1,206 +1,165 @@
-# PFMT Backup — Setup Steps
+# PFMT Backup — what to do
 
-For the **system owner**: a complete backup of every user's data, weekly, automatically.
+Your book now lives in Supabase, not ServiceNow. That changes what a backup is
+and how you take one.
 
-There are three ways to get one. Do **Method A** — it needs no credentials stored anywhere and nothing installed on any machine.
-
----
-
-## Before anything: take a backup right now
-
-You currently have none. This takes one click and removes the risk while you set up the automation.
-
-1. Open the app
-2. Click **⬇ SN JSON** in the top bar
-3. A file lands in `~/Downloads/pfmt_sn_export_all_<date>.json`
-
-That is a complete restore point for **your own account**. It does not include other users — for that, continue below.
+> **The scripts in `backup/` no longer work.** Every one of them authenticates
+> against a ServiceNow instance and reads `x_887486_0_*` tables. They are kept
+> only as a reference for how the scheduling was wired up. Nothing in this page
+> depends on them.
 
 ---
 
-# Method A — Emailed system backup *(recommended)*
+## Take one right now — 10 seconds
 
-Runs inside ServiceNow with system rights, so it already sees every user. No password stored anywhere, nothing installed on your Mac, no new table.
+1. Open the app → **Settings → Export & Backup**
+2. Click **Complete backup ⬇ JSON**
+3. A file lands in `~/Downloads/pfmt_backup_<date>.json`
 
-### Step 1 — Check ServiceNow can send email
+That single file holds every table: accounts, transactions, budgets, bills,
+goals, categories and your profile. It is the restore file.
 
-**Personal Developer Instances have outbound email switched off by default.** If it is off, the job runs, reports success, and delivers nothing.
+**What it deliberately leaves out:** your password, your AI key, your app-lock
+PIN and the Telegram bot token. A backup gets copied to places a credential
+should never follow, and reissuing a login costs far less than containing a
+leaked one.
 
-1. In ServiceNow, navigate to **System Properties → Email**
-   *(or type `email_properties.do` in the filter navigator)*
-2. Confirm **Email sending enabled** is ticked
-3. Under **Outbound Email Configuration**, the SMTP account should show as connected
-4. If sending was off, tick it and **Save**
+**It refuses to lie to you.** If the last sync came back exactly on the 3,000-row
+fetch limit — meaning older rows were almost certainly left behind — the export
+warns you before writing, because a partial file that looks complete is more
+dangerous than no file at all. The JSON records `"complete": true/false` either
+way.
 
-> If you cannot enable email, skip to **Method B**.
-
-### Step 2 — Put your address in the script
-
-Open `SCHED_SystemBackupEmail.js` and edit the setting near the top:
-
-```js
-var OWNER_EMAIL     = 'you@example.com';   // was ''
-var INCLUDE_SECRETS = false;               // leave false
-```
-
-`INCLUDE_SECRETS` controls whether password hashes and AI API keys are written into the backup. Leave it `false` unless you specifically need a disaster-recovery copy — a leaked file of password hashes is far more expensive to deal with than reissuing a login.
-
-### Step 3 — Create the scheduled job
-
-**System Definition → Scheduled Jobs → New**, then choose **"Automatically run a script of your choosing"**.
-
-| Field | Value |
-|---|---|
-| Name | `PFMT System Backup Email` |
-| Active | ✔ ticked |
-| Run | `Weekly` |
-| Day | `Sunday` |
-| Time | `02:00:00` |
-| Script | paste the **entire** contents of `SCHED_SystemBackupEmail.js` |
-
-**Submit.**
-
-> Pushing to GitHub does **not** update ServiceNow. Pasting is the only way the script gets there — and the only way any later change to it does.
-
-### Step 4 — Test it immediately
-
-Open the job you just created and click **Execute Now**. Then check all three:
-
-1. **System Logs → All**, filter the message on `PFMT System Backup`. You want:
-   ```
-   PFMT System Backup 2026-08-20: 1511 rows across 2 user(s) sent to you@example.com [secrets redacted]
-   ```
-2. **System Mailboxes → Outbound → Sent** — the message with two attachments
-3. Your inbox
-
-### What arrives, every week
-
-```
-Subject: PFMT System Backup — 2026-08-20 (1511 rows, 2 users)
-
-  ycs:   2 accounts, 1500 transactions, 1 budgets, 0 goals
-  wendy: 1 accounts, 3 transactions, 0 budgets, 1 goals
-
-Attached:
-  pfmt_system_2026-08-20.json    ← the restore file: every table, every user
-  pfmt_system_transactions_2026-08-20.csv
-```
-
-The per-user breakdown in the body is your proof it captured everybody, not just one account.
+The Dashboard shows a reminder when it has been too long since your last one.
 
 ---
 
-# Method B — System backup to a folder on your Mac
+## The three layers you actually have
 
-Use this if email cannot be enabled, or you want the files on your own disk. Reads the ServiceNow tables directly, so it still covers every user — but it needs a ServiceNow login stored in your Keychain.
+| Layer | Covers | Effort | Gets you back from |
+|---|---|---|---|
+| **App JSON export** | your whole book | one click | deleting a row, a bad edit, wanting the data elsewhere |
+| **Supabase platform backups** | the whole database | already on | the database being lost |
+| **`pg_dump`** | the whole database, as SQL | one command | anything, including the project being deleted |
 
-### Step 1 — Store the credentials
+They cover different failures, which is the point. Supabase's own backups will
+not help you if you delete a transaction and notice three weeks later — but a
+JSON export from before then will.
+
+---
+
+## Layer 2 — Supabase's own backups
+
+Already running; nothing to set up. Check what exists at
+**[Database → Backups](https://supabase.com/dashboard/project/oqsqfrpblinvsizitmgl/database/backups)**.
+
+On the free plan these are daily and retained for a short window, restorable from
+that page. They protect against the database failing, not against you.
+
+---
+
+## Layer 3 — `pg_dump` to your own disk
+
+A real, complete, restorable copy of the database on hardware you own.
+
+### One-off
+
+1. Get your connection string: **[Project Settings → Database →
+   Connection string → URI](https://supabase.com/dashboard/project/oqsqfrpblinvsizitmgl/settings/database)**,
+   and reveal the password.
+2. Then:
 
 ```bash
-cd /Users/ycs/Downloads/PFMT_ServiceNow/backup
-./setup_admin_keychain.sh
+mkdir -p ~/Documents/PFMT_Backups
+pg_dump "postgresql://postgres.oqsqfrpblinvsizitmgl:<PASSWORD>@<HOST>:5432/postgres" \
+  --schema=public --no-owner --no-privileges \
+  -f ~/Documents/PFMT_Backups/pfmt_$(date +%F).sql
 ```
 
-You will be asked for three things:
+`pg_dump` comes with the Postgres client tools — `brew install libpq` if you
+don't have it.
 
-| Prompt | What to enter |
-|---|---|
-| ServiceNow instance | e.g. `dev405150.service-now.com` |
-| ServiceNow username | an account that can **read** the `x_887486_0_*` tables |
-| ServiceNow password | will not echo as you type — that is normal |
+### Keep the password out of the command
 
-They go straight into the macOS Keychain. Nothing is written to any file, and neither the password nor any session token ever reaches a log.
-
-> This must be run in a real terminal — Terminal.app, iTerm, or VS Code's integrated terminal (`` Ctrl+` ``). It cannot be run from a chat session, because the password prompt needs a keyboard.
-
-### Step 2 — Install the weekly run
+Putting it on the command line leaves it in your shell history. Use a `.pgpass`
+file instead:
 
 ```bash
-./install_schedule.sh --admin
+printf '%s\n' '<HOST>:5432:postgres:postgres.oqsqfrpblinvsizitmgl:<PASSWORD>' >> ~/.pgpass
+chmod 600 ~/.pgpass
 ```
 
-This registers a launchd agent **and runs one backup immediately**, so a broken setup shows up in seconds rather than next Sunday:
+Then drop the password from the URI and `pg_dump` picks it up.
 
-```
-Installed: admin backup every Sunday 09:00 (com.pfmt.systembackup)
-Running it once now to check the setup...
-  ✅ wrote /Users/ycs/Documents/PFMT_System_Backups/2026-08-20/
-```
+### Weekly, automatically
 
-### Step 3 — Confirm what you got
+Save as `~/bin/pfmt_backup.sh`:
 
 ```bash
-cat ~/Documents/PFMT_System_Backups/2026-08-20/manifest.json
+#!/bin/bash
+set -euo pipefail
+OUT=~/Documents/PFMT_Backups
+mkdir -p "$OUT"
+TMP=$(mktemp)
+# Write to a temp file first: a failed dump must never replace a good backup.
+pg_dump "postgresql://postgres.oqsqfrpblinvsizitmgl@<HOST>:5432/postgres" \
+  --schema=public --no-owner --no-privileges -f "$TMP"
+# A dump with no transactions in it is a failure wearing a success costume.
+grep -q 'COPY public.transactions' "$TMP" || { echo "dump looks empty — keeping previous"; exit 1; }
+mv "$TMP" "$OUT/pfmt_$(date +%F).sql"
+# Keep a year, drop the rest.
+ls -1t "$OUT"/pfmt_*.sql | tail -n +53 | xargs -r rm --
+echo "backed up to $OUT/pfmt_$(date +%F).sql"
 ```
-
-`perUser` lists every user and their row counts — that is the proof it captured everyone.
-
-### Checking on it later
 
 ```bash
-launchctl list | grep pfmt                              # is it scheduled?
-ls ~/Documents/PFMT_System_Backups/                     # dated folders
-tail ~/Documents/PFMT_System_Backups/.logs/*.log        # what the last run did
-./install_schedule.sh --admin --remove                  # stop it
+chmod +x ~/bin/pfmt_backup.sh
 ```
 
-Keeps the last 12 runs. Change with `export PFMT_KEEP_RUNS=26` in `~/.zshrc`.
-
----
-
-# Method C — Personal backup *(your account only)*
-
-Only backs up the account you log in as. Documented in `backup/README.md`. **Not sufficient for a system owner** — the PFMT REST API resolves your token to one profile and filters every query on it, so it cannot return anyone else's records regardless of credentials.
-
----
-
-## Why not just use the app's API for everything?
-
-Every PFMT endpoint does this:
-
-```js
-var profileSysId = helper.validateToken(token);   // token → exactly one profile
-gr.addQuery('user_profile', profileSysId);        // every query filtered to it
-```
-
-There is no parameter that widens it, and that is correct — one user's token must never return another's finances. It does mean a system-wide backup has to come from either inside ServiceNow (Method A) or the Table API (Method B).
-
----
-
-## What the backups refuse to do
-
-Both stored backups fail loudly rather than writing something misleading:
-
-- **An empty result never overwrites good history.** If every table returns zero rows — an expired session, a fault that still returns `200` — it exits non-zero and leaves the previous backup alone. Otherwise a transient failure would look identical to "everything was deleted".
-- **A truncated result is refused.** The transactions endpoint caps at 500 rows unless asked otherwise; if a dataset comes back exactly on the requested limit, the backup stops rather than quietly replacing a complete copy with a partial one.
-- **Folders are published atomically.** Files are staged and then moved, so an interrupted run cannot leave a half-written backup that looks valid.
-- **Secrets are redacted by default** — password hashes, API keys and session tokens.
+Schedule it with `launchd` — `backup/com.pfmt.weeklybackup.plist` is a working
+example of the plist shape; point its `ProgramArguments` at the script above.
+`launchd` runs a missed job on the next wake rather than skipping it, which
+`cron` does not.
 
 ---
 
 ## Restoring
 
-`pfmt_system_<date>.json` holds everything. Order matters, because rows reference each other by name:
+### From the JSON export
 
-1. `user_profile`
-2. `category`
-3. `account`
-4. `transaction` — **keep `transfer_group` intact**, or paired transfers and asset purchases restore as unrelated rows and the balances stop reconciling
-5. `budget` and `savings_goal`
+There is no import button in the app. Restore is a SQL job:
 
-The `transfer_group` prefix tells you which kind of pair each is: `tg_` a transfer, `ag_` an asset purchase.
+1. Open the JSON and confirm `"pfmt_backup": { "complete": true }`.
+2. **Accounts first, then transactions** — transactions refer to accounts by
+   name, so accounts have to exist first.
+3. Keep `transfer_group` intact. It is what pairs the two legs of a transfer or a
+   funded asset purchase; split them and balances stop reconciling and an asset
+   purchase comes back as a stray expense and income.
+4. Insert with your own `user_id`, or let the column default to `auth.uid()` when
+   running as yourself.
+
+### From a `pg_dump`
+
+```bash
+psql "postgresql://postgres.oqsqfrpblinvsizitmgl@<HOST>:5432/postgres" \
+  -f ~/Documents/PFMT_Backups/pfmt_2026-09-16.sql
+```
+
+Restore into a **fresh or empty** project unless you intend to overwrite what is
+there. Check `supabase/migrations/` has been applied first if the target is new.
+
+### From Supabase's platform backups
+
+Dashboard → Database → Backups → Restore. This replaces the whole database.
 
 ---
 
-## Troubleshooting
+## What a backup can't save you from
 
-| Symptom | Cause |
-|---|---|
-| No log line after **Execute Now** | Job is not Active, or the script was pasted into the wrong scope |
-| `no recipient` in the log | `OWNER_EMAIL` is still blank in the script |
-| Log says sent, nothing arrives | Email sending disabled — see Method A Step 1 |
-| `nothing to back up` | The job found zero rows; check the scope is `x_887486_0` |
-| `no credentials in Keychain` | `setup_admin_keychain.sh` has not been run |
-| `refused the request … HTTP 403` | That ServiceNow account cannot read the table named in the message |
-| `refusing to write an empty backup` | Working as intended — the instance was unreachable or returned nothing |
-| Scheduled Mac run never fires | `launchctl list \| grep pfmt`; if absent, re-run `install_schedule.sh --admin` |
+**Losing your password.** Supabase's free email allowance is 2 messages an hour,
+so a reset can be slow to arrive; nothing in a backup file will sign you in.
+Configure custom SMTP under Auth settings if that matters to you.
+
+**The Telegram bot token.** Not in any backup, by design. If you lose it, make a
+new bot with @BotFather and update the Edge Function secret —
+[TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).

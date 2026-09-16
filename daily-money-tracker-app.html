@@ -122,6 +122,29 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88);}
 .nav-item.active{background:linear-gradient(90deg,rgba(99,102,241,.26),rgba(0,200,150,.14));color:#fff;box-shadow:inset 3px 0 0 var(--jade),inset 0 0 0 1px rgba(255,255,255,.05);}
 .nav-item .icon{width:20px;text-align:center;font-size:15px;flex-shrink:0;}
+/* Count of bills still to pay this month — the one number worth carrying into
+   the nav, so an unpaid bill is visible without opening the page. */
+.nav-badge{margin-left:auto;min-width:18px;padding:1px 6px;border-radius:99px;background:var(--amber);color:#1a1a1a;font-size:10px;font-weight:800;text-align:center;line-height:16px;}
+.nav-badge.overdue{background:var(--coral);color:#fff;}
+/* ── BILLS ── */
+.bill-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;background:var(--card);transition:border-color .15s;}
+.bill-row:hover{border-color:var(--sky);}
+.bill-row.is-paid{opacity:.72;}
+.bill-row.is-paused{opacity:.5;}
+.bill-tick{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid var(--border);color:transparent;}
+.bill-tick.on{background:var(--jade);border-color:var(--jade);color:#fff;}
+.bill-tick.late{border-color:var(--coral);color:var(--coral);}
+.bill-main{flex:1;min-width:0;}
+.bill-name{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.bill-sub{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;}
+.bill-amt{font-family:var(--fm);font-size:13px;font-weight:700;text-align:right;white-space:nowrap;}
+.bill-chip{font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;}
+.bill-actions{display:flex;gap:4px;flex-shrink:0;}
+@media(max-width:600px){
+  .bill-row{flex-wrap:wrap;}
+  .bill-main{flex-basis:calc(100% - 100px);}
+  .bill-actions{margin-left:auto;}
+}
 .sidebar-bottom{position:relative;z-index:1;margin-top:auto;padding:0 20px;}
 .sn-status{background:rgba(99,102,241,.14);border:1px solid rgba(99,102,241,.28);border-radius:12px;padding:10px 12px;margin-bottom:10px;cursor:pointer;}
 .sn-status .dot{width:7px;height:7px;border-radius:50%;background:var(--jade);display:inline-block;margin-right:6px;animation:pulse 2s infinite;box-shadow:0 0 6px var(--jade);}
@@ -779,6 +802,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   <button class="nav-item active" onclick="showView('dashboard',this)"><span class="icon">🏠</span> Dashboard</button>
   <button class="nav-item" onclick="showView('transactions',this)"><span class="icon">💳</span> Transactions</button>
   <button class="nav-item" onclick="showView('budgets',this)"><span class="icon">📊</span> Budgets</button>
+  <button class="nav-item" onclick="showView('bills',this)"><span class="icon">🧾</span> Bills<span class="nav-badge" id="nav-bills-badge" style="display:none;"></span></button>
   <button class="nav-item" onclick="showView('goals',this)"><span class="icon">🎯</span> Goals</button>
   <button class="nav-item" onclick="showView('analytics',this)"><span class="icon">📈</span> Analytics</button>
   <div class="nav-section">Manage</div>
@@ -954,6 +978,41 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <div class="ai-header"><div class="ai-badge">Now Assist</div><div class="ai-title">Budget Coach</div></div>
             <div class="ai-output" id="budget-ai-output">Click below for AI budget recommendations.</div>
             <button class="ai-btn" onclick="getBudgetAI()">🎯 Analyse My Budgets</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ BILLS ════ -->
+    <!-- A checklist of what you pay every month, ticked off by the ledger
+         itself: nothing here is a second set of records to keep by hand. -->
+    <div class="view" id="view-bills">
+      <div class="responsive-grid" style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;">
+        <div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title" id="bills-panel-title">Monthly Bills</div>
+              <button class="btn btn-primary btn-sm" id="bills-add-btn" onclick="openBillModal()">+ Add Bill</button>
+            </div>
+            <div id="bills-list"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel" style="margin-bottom:16px;">
+            <div class="panel-header"><div class="panel-title" id="bills-overview-title">This Month</div></div>
+            <div id="bills-overview"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">How this works</div></div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7;">
+              Add each bill once. Every month the app looks through your transactions
+              for one that matches the bill's category, account and amount — when it
+              finds one, the bill ticks itself off.
+              <br><br>
+              Nothing is stored as "paid": the tick is recomputed from your ledger
+              every time this page opens, so it can never disagree with your
+              transactions. <strong>Log payment</strong> fills in the transaction for you.
+            </div>
           </div>
         </div>
       </div>
@@ -1191,6 +1250,48 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           </div>
         </div>
 
+        <!-- Telegram Alerts -->
+        <div class="settings-section">
+          <h3 data-lkey="settings_notifications">Alerts on Telegram</h3>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+            Sends a message when a budget crosses its alert threshold, and a reminder
+            before a bill is due — so you hear about it without opening the app.
+            <a href="https://github.com/yapseng98/Personal-Money-Tracker/blob/main/TELEGRAM_SETUP.md" target="_blank" style="color:var(--sky);font-weight:600;">One-time setup ↗</a>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telegram Chat ID</label>
+            <div style="display:flex;gap:8px;">
+              <input class="form-input" type="text" id="tg-chat-id" inputmode="numeric" placeholder="e.g. 123456789">
+              <button class="btn btn-primary btn-sm" onclick="saveNotifySettings()" style="white-space:nowrap;">Save</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">
+              Message <strong>@userinfobot</strong> on Telegram and it replies with your Id. Then send
+              your own bot any message once, so it is allowed to write to you.
+            </div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Budget threshold alerts</div><div class="setting-sub">When a category crosses its alert %, and again if it goes over</div></div>
+            <div class="toggle" id="toggle-notify-budget" onclick="toggleNotify('notifyBudget',this)"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Bill reminders</div><div class="setting-sub">A daily check for bills coming due or already late</div></div>
+            <div class="toggle" id="toggle-notify-bills" onclick="toggleNotify('notifyBills',this)"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Remind me this many days ahead</div><div class="setting-sub">Counting the due day itself</div></div>
+            <input class="form-input" type="number" id="tg-lead-days" min="0" max="14" style="width:70px;padding:6px 10px;font-size:13px;" onchange="saveNotifySettings()">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="sendTestNotification()">Send test message</button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="runNotifyCheck(true)">Check my alerts now</button>
+          </div>
+          <div id="notify-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:10px;"></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
+            Each alert is sent once per month per budget and per bill, so crossing a
+            threshold does not produce a message for every expense after it.
+          </div>
+        </div>
+
         <!-- AI Configuration -->
         <div class="settings-section">
           <h3 data-lkey="settings_ai_config">AI Configuration</h3>
@@ -1211,7 +1312,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <h3>Export &amp; Backup</h3>
           <div id="export-summary" style="font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
           <div class="setting-row">
-            <div><div class="setting-label">Complete backup</div><div class="setting-sub">All six tables — accounts, transactions, budgets, goals, categories and your profile — in one file</div></div>
+            <div><div class="setting-label">Complete backup</div><div class="setting-sub">All seven tables — accounts, transactions, budgets, bills, goals, categories and your profile — in one file</div></div>
             <button class="btn btn-jade" style="font-size:12px;padding:7px 14px;white-space:nowrap;" onclick="exportFullBackup()">⬇ JSON</button>
           </div>
           <div class="setting-row">
@@ -1424,6 +1525,69 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 </div>
 
 <!-- ════════════════════════════════════════════ -->
+<!-- BILL MODAL (Add + Edit)                      -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="bill-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="bill-modal-title">Add Bill</div>
+      <button class="modal-close" onclick="closeBillModal()">✕</button>
+    </div>
+    <div id="bill-edit-badge" class="modal-edit-badge" style="display:none;">✏️ Editing bill</div>
+    <div class="form-group">
+      <label class="form-label" id="lbl-bill-name">Bill name</label>
+      <input class="form-input" type="text" id="bill-name" placeholder="Phone, rent, insurance…" maxlength="60">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" id="lbl-bill-amount">Typical amount</label>
+        <div class="amount-input-wrap">
+          <span class="amount-prefix">$</span>
+          <input class="form-input" type="number" id="bill-amount" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="lbl-bill-due">Due day of month</label>
+        <input class="form-input" type="number" id="bill-due-day" value="1" min="1" max="31">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-input" id="bill-cat"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Currency</label>
+        <select class="form-input" id="bill-currency">
+          <option value="SGD">SGD</option><option value="USD">USD</option>
+          <option value="AUD">AUD</option><option value="MYR">MYR</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="lbl-bill-account">Paid from (optional)</label>
+      <select class="form-input" id="bill-account"></select>
+    </div>
+    <label class="rollover-toggle" style="margin:2px 0 10px;">
+      <input type="checkbox" id="bill-varies">
+      <span id="lbl-bill-varies">Amount changes each month</span>
+    </label>
+    <div style="font-size:11px;color:var(--muted);margin:-6px 0 12px;" id="hint-bill-varies">
+      Match on category and account only — for bills like utilities that are never the same twice.
+    </div>
+    <label class="rollover-toggle" style="margin:0 0 6px;">
+      <input type="checkbox" id="bill-active" checked>
+      <span id="lbl-bill-active">Active</span>
+    </label>
+    <input type="hidden" id="bill-edit-id" value="">
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeBillModal()">Cancel</button>
+      <button class="btn btn-jade" onclick="saveBill()">Save Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
 <!-- GOAL MODAL (Add + Edit + Contribute)         -->
 <!-- ════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="goal-modal">
@@ -1555,10 +1719,27 @@ const TRANSLATIONS = {
   en: {
     bnav_home:'Home', bnav_txns:'Txns', bnav_goals:'Goals', bnav_review:'Stats',
     nav_main:'Main', nav_manage:'Manage', nav_dashboard:'Dashboard', nav_transactions:'Transactions',
-    nav_budgets:'Budgets', nav_goals:'Goals', nav_analytics:'Analytics', nav_accounts:'Accounts',
+    nav_budgets:'Budgets', nav_bills:'Bills', nav_goals:'Goals', nav_analytics:'Analytics', nav_accounts:'Accounts',
     nav_settings:'Settings',
     topbar_dashboard:'Dashboard', topbar_transactions:'All Transactions', topbar_budgets:'Budgets',
+    topbar_bills:'Monthly Bills',
     topbar_goals:'Savings Goals', topbar_analytics:'Analytics', topbar_accounts:'Accounts', topbar_settings:'Settings',
+    bills_panel:'Monthly Bills', bills_add:'+ Add Bill', bills_overview:'This Month',
+    bills_empty:'No bills yet — add the ones you pay every month.',
+    bills_empty_hint:'Rent, phone, insurance, subscriptions. The app ticks each one off when a matching transaction appears.',
+    bills_paid:'Paid', bills_outstanding:'Still to pay', bills_committed:'Committed',
+    bills_status_paid:'Paid', bills_status_due:'Due', bills_status_overdue:'Overdue',
+    bills_status_upcoming:'Upcoming', bills_status_missed:'Missed',
+    bills_due_on:'Due', bills_matched_by:'Matched to', bills_varies:'varies',
+    bills_log:'Log payment', bills_of:'of',
+    bills_inactive:'Paused', bills_count_paid:'bills paid',
+    modal_add_bill:'Add Bill', modal_edit_bill:'Editing bill',
+    lbl_bill_name:'Bill name', lbl_bill_amount:'Typical amount', lbl_bill_due:'Due day of month',
+    lbl_bill_varies:'Amount changes each month', lbl_bill_active:'Active',
+    lbl_bill_account:'Paid from (optional)', lbl_bill_any_account:'Any account',
+    hint_bill_varies:'Match on category and account only — for bills like utilities that are never the same twice.',
+    toast_bill_saved:'Bill saved', toast_bill_deleted:'Bill deleted', toast_bill_name:'Give the bill a name',
+    confirm_del_bill:'Delete this bill?',
     btn_csv:'⬇ CSV', btn_snjson:'⬇ SN JSON', btn_ai:'✨ AI Insights', btn_add_txn:'+ Add Transaction',
     lbl_net_balance:'Net Balance', lbl_income:'Income', lbl_expenses:'Expenses',
     kpi_transactions:'Transactions', kpi_this_month:'This month', kpi_avg_daily:'Avg Daily Spend',
@@ -1605,6 +1786,7 @@ const TRANSLATIONS = {
     acc_risk_high:'High', acc_risk_moderate:'Moderate', acc_risk_low:'Low', acc_risk_suffix:'risk',
     settings_sn_conn:'Account',
     settings_account_details:'Account Details', settings_ai_config:'AI Configuration',
+    settings_notifications:'Alerts on Telegram',
     settings_edit_profile:'Edit Profile', settings_change_password:'Change Password',
     settings_app_lock:'App Lock', settings_appearance:'Appearance',
     settings_data:'Data', settings_load_samples:'Load Sample Data', settings_clear_data:'Clear All Data',
@@ -1669,10 +1851,27 @@ const TRANSLATIONS = {
   zh: {
     bnav_home:'主页', bnav_txns:'交易', bnav_goals:'目标', bnav_review:'分析',
     nav_main:'主要', nav_manage:'管理', nav_dashboard:'仪表盘', nav_transactions:'交易记录',
-    nav_budgets:'预算', nav_goals:'目标', nav_analytics:'分析', nav_accounts:'账户',
+    nav_budgets:'预算', nav_bills:'账单', nav_goals:'目标', nav_analytics:'分析', nav_accounts:'账户',
     nav_settings:'设置',
     topbar_dashboard:'仪表盘', topbar_transactions:'全部交易', topbar_budgets:'预算',
+    topbar_bills:'每月账单',
     topbar_goals:'储蓄目标', topbar_analytics:'分析', topbar_accounts:'账户', topbar_settings:'设置',
+    bills_panel:'每月账单', bills_add:'+ 添加账单', bills_overview:'本月',
+    bills_empty:'暂无账单 — 添加每月固定支出。',
+    bills_empty_hint:'房租、电话费、保险、订阅。出现匹配的交易时，应用会自动勾选。',
+    bills_paid:'已付', bills_outstanding:'待付', bills_committed:'每月固定支出',
+    bills_status_paid:'已付', bills_status_due:'待付', bills_status_overdue:'逾期',
+    bills_status_upcoming:'即将到期', bills_status_missed:'未付',
+    bills_due_on:'到期', bills_matched_by:'匹配交易', bills_varies:'金额浮动',
+    bills_log:'记录付款', bills_of:'共',
+    bills_inactive:'已暂停', bills_count_paid:'笔账单已付',
+    modal_add_bill:'添加账单', modal_edit_bill:'编辑账单',
+    lbl_bill_name:'账单名称', lbl_bill_amount:'常规金额', lbl_bill_due:'每月到期日',
+    lbl_bill_varies:'每月金额不同', lbl_bill_active:'启用',
+    lbl_bill_account:'付款账户（可选）', lbl_bill_any_account:'任意账户',
+    hint_bill_varies:'仅按类别和账户匹配 — 适用于水电费等金额不固定的账单。',
+    toast_bill_saved:'账单已保存', toast_bill_deleted:'账单已删除', toast_bill_name:'请输入账单名称',
+    confirm_del_bill:'删除此账单？',
     btn_csv:'⬇ CSV', btn_snjson:'⬇ SN JSON', btn_ai:'✨ AI 洞察', btn_add_txn:'+ 添加交易',
     lbl_net_balance:'净余额', lbl_income:'收入', lbl_expenses:'支出',
     kpi_transactions:'交易次数', kpi_this_month:'本月', kpi_avg_daily:'日均支出',
@@ -1719,6 +1918,7 @@ const TRANSLATIONS = {
     acc_risk_high:'高', acc_risk_moderate:'中', acc_risk_low:'低', acc_risk_suffix:'风险',
     settings_sn_conn:'账户',
     settings_account_details:'账户详情', settings_ai_config:'AI 配置',
+    settings_notifications:'Telegram 提醒',
     settings_edit_profile:'编辑资料', settings_change_password:'修改密码',
     settings_app_lock:'应用锁', settings_appearance:'外观',
     settings_data:'数据', settings_load_samples:'加载示例数据', settings_clear_data:'清除全部数据',
@@ -1801,6 +2001,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let state = {
   transactions: [],
   budgets: [],
+  bills: [],
   goals: [],
   accounts: [],
   currentType: 'expense',
@@ -1827,6 +2028,12 @@ let state = {
   appLockPinHash: '',
   trendMonths: 6,
   trendMetric: 'expense',  // 'expense' | 'income'
+  // Outbound alerts. The chat id is the only address involved — the bot token
+  // is a shared secret and stays in the Edge Function, never on a device.
+  telegramChatId: '',
+  notifyBudget: false,
+  notifyBills: false,
+  billLeadDays: 3,
   reviewMonth: (()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;})(),
   theme: 'auto',   // 'auto' | 'light' | 'dark'
   displayName: '',
@@ -1845,6 +2052,7 @@ function saveState() {
     const toSave = {
       transactions: state.transactions,
       budgets: state.budgets,
+      bills: state.bills,
       goals: state.goals,
       accounts: state.accounts,
       nextId: state.nextId,
@@ -1862,6 +2070,10 @@ function saveState() {
       appLockPinHash: state.appLockPinHash,
       trendMonths: state.trendMonths,
       trendMetric: state.trendMetric,
+      telegramChatId: state.telegramChatId,
+      notifyBudget: state.notifyBudget,
+      notifyBills: state.notifyBills,
+      billLeadDays: state.billLeadDays,
       reviewMonth: state.reviewMonth,
       theme: state.theme,
       displayName: state.displayName,
@@ -1893,20 +2105,211 @@ function loadState() {
 // signal that older rows were left behind.
 const TXN_FETCH_LIMIT = 3000;
 
+/* ══════════════════════════════════════════════════════════════════════════
+   THE SHARED MONEY RULES
+
+   Every line between the two BEGIN/END markers below exists VERBATIM in two
+   places: here, and supabase/functions/pfmt-notify/shared-money-rules.js. The
+   Telegram notifier has to answer the same questions this page answers — "is
+   this budget over?", "is this bill paid?" — at a time when nobody has the page
+   open, and two hand-maintained copies of money maths is exactly how the
+   Analytics trend came to disagree with the dashboard.
+
+   So the copies are not maintained by hand. This file is the source; run
+   `node tools/sync-shared-rules.js` to copy it across, and
+   test/bills-and-alerts.test.js compares the two character for character and
+   fails if anyone forgot.
+
+   Constraints that keep the same text valid in both places — plain ES2015, no
+   DOM, no `state`, no TypeScript annotations, and nothing between the markers
+   that isn't self-contained. Transactions arrive in this page's own shape
+   (camelCase, `transferGroup`); the Edge Function maps its database rows into
+   that shape before calling in.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════ PFMT SHARED MONEY RULES — v1 — BEGIN ═══════════════ */
+
 // Work money you front and later get back. The expense counts in the month you
 // paid it — you really were out of pocket then — but the reimbursement is a
 // pure in-and-out: it credits the account it lands in and touches nothing else,
 // because the spending it settles was already counted in its own month.
 // Netting it again where it lands would make an unrelated month look cheaper.
-const CLAIMS_CATEGORY = 'Claims';
+const PFMT_CLAIMS_CATEGORY = 'Claims';
+
+// A transfer or asset purchase moves money without spending or earning it, so
+// its two legs are excluded from every income/expense figure.
+function pfmtIsFlow(t) { return !t.transferGroup; }
 
 // THE definition of whether a payback comes off what a month cost you, used by
 // every spending figure in the app — the dashboard tile, the trend chart, both
-// category breakdowns and the budgets. It lives in one place because it did
-// not: the Claims rule was added to four of those five and the Analytics trend
-// kept its own copy, so the same month read S$1,886.70 on the dashboard and
-// S$1,758.50 on the chart below it.
-const paybackOffsets = t => t.type === 'payback' && t.category !== CLAIMS_CATEGORY;
+// category breakdowns, the budgets, and now the alerts. It lives in one place
+// because it did not: the Claims rule was added to four of those five and the
+// Analytics trend kept its own copy, so the same month read S$1,886.70 on the
+// dashboard and S$1,758.50 on the chart below it.
+function pfmtPaybackOffsets(t) {
+  return t.type === 'payback' && t.category !== PFMT_CLAIMS_CATEGORY;
+}
+
+// 'YYYY-MM' arithmetic done on the string, never through a Date — a Date built
+// from a month key is midnight UTC, which is the previous day in Singapore and
+// silently moved month boundaries.
+function pfmtPrevMonth(ym) {
+  const y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7));
+  const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1;
+  return py + '-' + String(pm).padStart(2, '0');
+}
+function pfmtDaysInMonth(ym) {
+  return new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate();
+}
+
+// What a category cost in one month, in one currency. The single figure behind
+// every budget bar, the dashboard tile and the alerts.
+function pfmtBudgetSpent(txns, category, currency, month, fallbackCur) {
+  const cur  = currency || fallbackCur;
+  const mine = txns.filter(function (t) {
+    return t.date.slice(0, 7) === month && t.category === category &&
+           (t.currency || fallbackCur) === cur;
+  });
+  const spent = mine.filter(function (t) { return t.type === 'expense' && pfmtIsFlow(t); })
+                    .reduce(function (s, t) { return s + t.amount; }, 0);
+  // Money paid back to you for this category was never really your cost — so a
+  // friend settling their share of this month's dinner correctly lowers what
+  // the budget counts. Claims reimbursements are neutral (see
+  // PFMT_CLAIMS_CATEGORY), so they never reduce a budget.
+  const back = mine.filter(pfmtPaybackOffsets)
+                   .reduce(function (s, t) { return s + t.amount; }, 0);
+  // But only so much of it can be settling this month: a payback bigger than
+  // everything spent in the category is covering something outside this month.
+  // Past what was spent it stops offsetting, and the budget shows what went out.
+  if (back > spent) return Math.round(spent * 100) / 100;
+  return Math.round((spent - back) * 100) / 100;
+}
+
+// Last month's unspent room, for budgets with rollover switched on. Capped at
+// the budget itself so a payback-heavy month can't raise this month's limit
+// above what was set.
+function pfmtBudgetRollover(b, txns, month, fallbackCur) {
+  if (!b.rollover) return 0;
+  const prev   = pfmtBudgetSpent(txns, b.category, b.currency, pfmtPrevMonth(month), fallbackCur);
+  const unused = Math.round((b.amount - prev) * 100) / 100;
+  return Math.min(b.amount, Math.max(0, unused));
+}
+function pfmtBudgetLimit(b, txns, month, fallbackCur) {
+  return Math.round((b.amount + pfmtBudgetRollover(b, txns, month, fallbackCur)) * 100) / 100;
+}
+
+// Which budgets have earned a warning this month. Judged against the same
+// effective limit the card draws, rollover included, so an alert can never
+// contradict the bar the user is looking at.
+function pfmtBudgetAlerts(budgets, txns, month, fallbackCur) {
+  const out = [];
+  budgets.forEach(function (b) {
+    const limit = pfmtBudgetLimit(b, txns, month, fallbackCur);
+    if (!(limit > 0)) return;
+    const spent = pfmtBudgetSpent(txns, b.category, b.currency, month, fallbackCur);
+    const pct   = (spent / limit) * 100;
+    const at    = b.alertPct || 80;
+    // 'over' and 'near' are separate levels, not one escalating message, so
+    // crossing the threshold notifies once and going over notifies once more —
+    // rather than a message per expense for the rest of the month.
+    if (spent > limit)  out.push({ budget: b, spent: spent, limit: limit, pct: pct, level: 'over' });
+    else if (pct >= at) out.push({ budget: b, spent: spent, limit: limit, pct: pct, level: 'near' });
+  });
+  return out;
+}
+
+// The day a bill falls due in a given month, clamped to months that are too
+// short for it — a 31st-of-the-month bill is due on the 30th in September.
+function pfmtBillDueDate(bill, month) {
+  const day = Math.min(Math.max(Number(bill.dueDay) || 1, 1), pfmtDaysInMonth(month));
+  return month + '-' + String(day).padStart(2, '0');
+}
+
+// Which transaction, if any, paid each bill this month.
+//
+// The bill is an expectation the user typed once; the transaction is what
+// actually left the account. Nothing is stored — matching is recomputed on
+// every render, the same way budgets and savings rate are — so there is no
+// "paid" flag that can fall out of step with the ledger.
+//
+// One transaction can only settle one bill: bills with the fewest candidates
+// are matched first, so a bill whose only possible payment is a single row is
+// never robbed of it by a looser bill that had other options.
+function pfmtMatchBills(bills, txns, month, fallbackCur) {
+  const pool = txns.filter(function (t) {
+    return t.type === 'expense' && pfmtIsFlow(t) && t.date.slice(0, 7) === month;
+  });
+  const ranked = bills.filter(function (b) { return b.isActive !== false; }).map(function (b) {
+    const cur = b.currency || fallbackCur;
+    // A fixed bill has to match its amount, within rounding and small fee
+    // drift. A bill marked as varying (utilities, phone) matches on category
+    // and account alone, because its amount is never the same twice.
+    const tol = b.amountVaries ? Infinity : Math.max(1, Math.abs(b.amount) * 0.02);
+    return { bill: b, cands: pool.filter(function (t) {
+      return (t.currency || fallbackCur) === cur && t.category === b.category &&
+             (!b.account || t.account === b.account) &&
+             Math.abs(t.amount - b.amount) <= tol;
+    }) };
+  });
+  ranked.sort(function (a, b) {
+    return a.cands.length - b.cands.length || String(a.bill.id).localeCompare(String(b.bill.id));
+  });
+  const claimed = {}, out = {};
+  ranked.forEach(function (r) {
+    let best = null;
+    r.cands.forEach(function (t) {
+      if (claimed[t.id]) return;
+      if (!best || Math.abs(t.amount - r.bill.amount) < Math.abs(best.amount - r.bill.amount)) best = t;
+    });
+    if (best) claimed[best.id] = true;
+    out[r.bill.id] = best;
+  });
+  return out;
+}
+
+// 'paid' | 'overdue' | 'due' | 'upcoming' | 'missed'.
+// A month that has already ended and never got a matching transaction reads as
+// 'missed' when you page back to it; the month in progress always starts clean,
+// because nothing about a bill is carried forward.
+function pfmtBillStatus(bill, matched, month, today) {
+  if (matched) return 'paid';
+  const thisMonth = today.slice(0, 7);
+  if (month < thisMonth) return 'missed';
+  if (month > thisMonth) return 'upcoming';
+  return pfmtBillDueDate(bill, month) < today ? 'overdue' : 'due';
+}
+
+// Days from today until a bill is due — negative once it is late.
+function pfmtDaysUntil(dateStr, today) {
+  return Math.round((Date.parse(dateStr + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);
+}
+
+// Unpaid bills close enough to due to be worth a message, soonest first.
+// Anything already late is included, however late it is.
+function pfmtBillsToRemind(bills, txns, month, today, leadDays, fallbackCur) {
+  const matched = pfmtMatchBills(bills, txns, month, fallbackCur);
+  const out = [];
+  bills.filter(function (b) { return b.isActive !== false; }).forEach(function (b) {
+    if (matched[b.id]) return;
+    const due  = pfmtBillDueDate(b, month);
+    const days = pfmtDaysUntil(due, today);
+    if (days <= leadDays) out.push({ bill: b, due: due, days: days });
+  });
+  return out.sort(function (a, b) { return a.days - b.days; });
+}
+
+/* ═══════════════ PFMT SHARED MONEY RULES — v1 — END ═══════════════ */
+
+// Names the rest of the page has always used, now pointing at the shared rules
+// above so there is exactly one copy of each.
+const CLAIMS_CATEGORY = PFMT_CLAIMS_CATEGORY;
+const paybackOffsets  = pfmtPaybackOffsets;
+
+// The spending categories, in one place: the transaction form's Expense tab and
+// the bill form both read this list, so a category can't exist on one and not
+// the other. Investment appears here and in the income list — money into a fund
+// is an outflow, returns from it are income.
+const EXPENSE_CATS = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Claims','Other'];
 
 const CAT_COLORS = {
   'Food & Drink':'#8B5CF6','Transport':'#00C896','Groceries':'#3B82F6',
@@ -1957,13 +2360,14 @@ function showView(name, el) {
   document.querySelectorAll('.bnav-item').forEach(b => b.classList.toggle('active', b.dataset.bview === name));
   const titleKeys = {
     dashboard:'topbar_dashboard', transactions:'topbar_transactions', budgets:'topbar_budgets',
+    bills:'topbar_bills',
     goals:'topbar_goals', analytics:'topbar_analytics', accounts:'topbar_accounts',
     settings:'topbar_settings'
   };
   document.getElementById('topbar-title').textContent = titleKeys[name] ? t(titleKeys[name]) : name;
   // show month nav only on views where it's relevant
   const monthBar = document.getElementById('month-nav-bar');
-  if (monthBar) monthBar.style.display = ['dashboard','budgets','transactions'].includes(name) ? 'flex' : 'none';
+  if (monthBar) monthBar.style.display = ['dashboard','budgets','bills','transactions'].includes(name) ? 'flex' : 'none';
   if (name === 'transactions') { populateCategoryFilter(); populateCurrencyFilter(); }
   if (name === 'settings') {
     _updateSNConnCard();
@@ -1973,6 +2377,7 @@ function showView(name, el) {
     const na = document.getElementById('toggle-now-assist');
     if (ba) ba.classList.toggle('on', !!state.budgetAlerts);
     if (na) na.classList.toggle('on', !!state.nowAssist);
+    renderNotifySettings();
   }
   closeSidebar();
   renderAll();
@@ -2098,7 +2503,7 @@ function setType(type, el) {
   const income  = ['Salary','Freelance','Investment','Other'];
   // Investment appears in both lists: money going into a brokerage/fund is an
   // outflow from the source account, while returns from it are income.
-  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Claims','Other'];
+  const expense = EXPENSE_CATS;
   const asset   = ['Investment','Property','Gold','Vehicle','Other'];
   const transferCats = ['Transfer'];
   const opts = type === 'income' ? income : type === 'asset' ? asset : type === 'transfer' ? transferCats : expense;
@@ -2592,6 +2997,9 @@ async function saveTransaction() {
   saveState();
   closeTxnModal();
   renderAll();
+  // A budget that just crossed its threshold is worth hearing about now, not at
+  // tomorrow's scheduled run.
+  if (state.currentType === 'expense' || state.currentType === 'payback') notifyAfterSpend();
 }
 
 async function deleteTransaction(id) {
@@ -3078,7 +3486,7 @@ function countEvents(txns) {
 // report S$1,000 of income AND S$1,000 of expenses, wrecking the savings rate and
 // consuming a budget. effectiveBal() deliberately does NOT use this: there the
 // legs must count, because that is what moves the money.
-const isFlow = t => !t.transferGroup;
+const isFlow = pfmtIsFlow;
 
 // Everything the dashboard shows for ONE currency. Summing across currencies is
 // never valid here — there is no exchange rate in the app — so this is the only
@@ -3168,24 +3576,11 @@ function calcStats() {
   };
 }
 
+// The page's view of the shared rule — see pfmtBudgetSpent() for the maths and
+// why a payback bigger than the month's spending stops offsetting.
 function getBudgetSpent(category, currency, month) {
-  const cur  = currency || state.currency;
-  const mine = getMonthTxns(month).filter(t => t.category===category && (t.currency||state.currency) === cur);
-  const spent = mine.filter(t => t.type==='expense' && isFlow(t)).reduce((s,t)=>s+t.amount, 0);
-  // Money paid back to you for this category was never really your cost — so a
-  // friend settling their share of this month's dinner correctly lowers what
-  // the budget counts.
-  // Claims reimbursements are neutral (see CLAIMS_CATEGORY), so they never
-  // reduce a budget — not even a budget set on Claims itself.
-  const back  = mine.filter(paybackOffsets).reduce((s,t)=>s+t.amount, 0);
-  // But only so much of it can be settling this month: a payback bigger than
-  // everything spent in the category is covering something outside this month
-  // — usually a claim for an earlier period landing now, though nothing here
-  // can know that for certain. Netting the whole of it reported a month that
-  // really did have spending as costing nothing, or less than nothing. Past
-  // what was spent it stops offsetting, and the budget shows what went out.
-  if (back > spent) return Math.round(spent * 100) / 100;
-  return Math.round((spent - back) * 100) / 100;
+  return pfmtBudgetSpent(state.transactions, category, currency,
+                         month || state.filterMonth, state.currency);
 }
 
 // The paybacks behind the figure above, so a card can say why a budget did not
@@ -3198,9 +3593,7 @@ function getBudgetPayback(category, currency, month) {
 }
 
 function prevMonthKey(ym) {
-  const [y, m] = (ym || state.filterMonth).split('-').map(Number);
-  const d = new Date(y, m - 2, 1); // Date normalizes month -1 into December of the prior year.
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return pfmtPrevMonth(ym || state.filterMonth);
 }
 function nextMonthKey(ym) {
   const [y, m] = ym.split('-').map(Number);
@@ -3218,13 +3611,7 @@ function nextMonthKey(ym) {
 // Review, which browses a month of its own — paging it back to March took the
 // rollover from whatever month Transactions happened to be showing.
 function getBudgetRollover(b, month) {
-  if (!b.rollover) return 0;
-  const prevSpent = getBudgetSpent(b.category, b.currency, prevMonthKey(month || state.filterMonth));
-  // Capped at the budget itself: a payback larger than last month's spending
-  // makes prevSpent negative, which would otherwise roll over MORE than the
-  // whole budget and quietly raise this month's limit above what was set.
-  const unused = Math.round((b.amount - prevSpent) * 100) / 100;
-  return Math.min(b.amount, Math.max(0, unused));
+  return pfmtBudgetRollover(b, state.transactions, month || state.filterMonth, state.currency);
 }
 
 // The limit a budget is actually judged against. Every over-budget test has to
@@ -3232,7 +3619,7 @@ function getBudgetRollover(b, month) {
 // beside it compared against b.amount alone, so one card could read "S$50 left"
 // while the panel next to it called the same budget exceeded.
 function getBudgetLimit(b, month) {
-  return Math.round((b.amount + getBudgetRollover(b, month)) * 100) / 100;
+  return pfmtBudgetLimit(b, state.transactions, month || state.filterMonth, state.currency);
 }
 
 function isBudgetOver(b, month) {
@@ -3247,13 +3634,17 @@ function applyLanguage() {
   if (navSections[0]) navSections[0].textContent = t('nav_main');
   if (navSections[1]) navSections[1].textContent = t('nav_manage');
   const navItems = document.querySelectorAll('.nav-item');
-  const navKeys = ['nav_dashboard','nav_transactions','nav_budgets','nav_goals','nav_analytics','nav_accounts','nav_settings'];
+  const navKeys = ['nav_dashboard','nav_transactions','nav_budgets','nav_bills','nav_goals','nav_analytics','nav_accounts','nav_settings'];
   navItems.forEach((btn, i) => {
     if (i >= navKeys.length) return;
-    const icon = btn.querySelector('.icon');
+    const icon  = btn.querySelector('.icon');
+    // The count badge is a child of the button, so wiping textContent would
+    // delete it on every language pass — it goes back in after the label.
+    const badge = btn.querySelector('.nav-badge');
     btn.textContent = '';
     if (icon) btn.appendChild(icon);
     btn.appendChild(document.createTextNode(' ' + t(navKeys[i])));
+    if (badge) btn.appendChild(badge);
   });
   // Topbar buttons
   const desktopAI = document.querySelector('.btn.btn-ghost.desktop-only[onclick="openAI()"]');
@@ -3347,6 +3738,7 @@ function renderAll() {
   renderDashboard();
   renderTransactions();
   renderBudgets();
+  renderBills();
   renderGoals();
   renderAnalytics();
   renderAccounts();
@@ -4233,6 +4625,274 @@ function renderBudgets() {
         <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral)">${overBudgetCount} ${t('budget_cats')}</div>
       </div>
     </div>`;
+}
+
+/* ── BILLS VIEW ── */
+
+// The page's view of the shared matcher — which transaction, if any, paid each
+// bill in the month being shown.
+function billMatches(month) {
+  return pfmtMatchBills(state.bills, state.transactions, month || state.filterMonth, state.currency);
+}
+
+const BILL_CHIP = {
+  paid    : { key:'bills_status_paid',     bg:'var(--jade-s)',  fg:'var(--jade-d)' },
+  due     : { key:'bills_status_due',      bg:'var(--sky-s)',   fg:'var(--sky)'    },
+  overdue : { key:'bills_status_overdue',  bg:'var(--coral-s)', fg:'var(--coral)'  },
+  upcoming: { key:'bills_status_upcoming', bg:'var(--surface)', fg:'var(--muted)'  },
+  missed  : { key:'bills_status_missed',   bg:'var(--coral-s)', fg:'var(--coral)'  }
+};
+
+function renderBills() {
+  const listEl = document.getElementById('bills-list');
+  const overEl = document.getElementById('bills-overview');
+  if (!listEl || !overEl) return;
+
+  // Static labels that live in the panel headers rather than in a render string.
+  const panelTitle = document.getElementById('bills-panel-title');
+  if (panelTitle) panelTitle.textContent = t('bills_panel');
+  const addBtn = document.getElementById('bills-add-btn');
+  if (addBtn) addBtn.textContent = t('bills_add');
+  const overTitle = document.getElementById('bills-overview-title');
+  if (overTitle) overTitle.textContent = t('bills_overview') + ' — ' + getMonthLabel(state.filterMonth);
+
+  updateBillsBadge();
+
+  if (!state.bills.length) {
+    listEl.innerHTML = `<div class="empty"><div class="icon">🧾</div><p>${t('bills_empty')}</p>
+      <p style="font-size:11px;max-width:320px;margin:6px auto 0;">${t('bills_empty_hint')}</p></div>`;
+    overEl.innerHTML = `<div class="empty" style="padding:14px 0;"><p style="font-size:12px;">—</p></div>`;
+    return;
+  }
+
+  const month   = state.filterMonth;
+  const today   = localDateStr();
+  const matched = billMatches(month);
+
+  // Unpaid and late first, then unpaid, then what's already settled — the page
+  // is a to-do list, so anything still needing money belongs at the top.
+  const ORDER = { overdue:0, missed:1, due:2, upcoming:3, paid:4 };
+  const rows = state.bills.map(b => {
+    const m  = b.isActive === false ? null : matched[b.id];
+    const st = b.isActive === false ? 'upcoming' : pfmtBillStatus(b, m, month, today);
+    return { bill: b, match: m, status: st, due: pfmtBillDueDate(b, month) };
+  }).sort((a, b) =>
+    (a.bill.isActive === false) - (b.bill.isActive === false) ||
+    ORDER[a.status] - ORDER[b.status] ||
+    a.due.localeCompare(b.due) ||
+    a.bill.name.localeCompare(b.bill.name));
+
+  listEl.innerHTML = rows.map(r => {
+    const b     = r.bill;
+    const cur   = b.currency || state.currency;
+    const paid  = r.status === 'paid';
+    const late  = r.status === 'overdue' || r.status === 'missed';
+    const chip  = BILL_CHIP[r.status];
+    const paused= b.isActive === false;
+    // The amount shown is what actually left the account once a payment is
+    // matched; until then it is the bill's own typical figure.
+    const amt   = paid ? r.match.amount : b.amount;
+    const dueDay= Number(r.due.slice(8, 10));
+    const sub   = paid
+      ? `${t('bills_matched_by')} “${esc(r.match.description)}” · ${r.match.date}`
+      : `${t('bills_due_on')} ${dueDay} ${getMonthLabel(month)}${b.account ? ' · ' + esc(b.account) : ''}${b.amountVaries ? ' · ' + t('bills_varies') : ''}`;
+    return `<div class="bill-row${paid ? ' is-paid' : ''}${paused ? ' is-paused' : ''}">
+      <div class="bill-tick${paid ? ' on' : late ? ' late' : ''}">${paid ? '✓' : late ? '!' : ''}</div>
+      <div class="bill-main">
+        <div class="bill-name">
+          ${catIcon(b.category)} ${esc(b.name)}
+          <span class="bill-chip" style="background:${chip.bg};color:${chip.fg};">${paused ? t('bills_inactive') : t(chip.key)}</span>
+        </div>
+        <div class="bill-sub">${sub}</div>
+      </div>
+      <div class="bill-amt">${fmtWithCur(amt, cur)}</div>
+      <div class="bill-actions">
+        ${!paid && !paused ? `<button class="icon-btn" onclick="logBillPayment('${b.id}')" title="${esc(t('bills_log'))}">➕</button>` : ''}
+        <button class="icon-btn edit" onclick="openBillModal('${b.id}')" title="Edit bill">✏️</button>
+        <button class="icon-btn del"  onclick="deleteBill('${b.id}')"    title="Delete bill">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Overview, per currency — bills in different currencies are never added up,
+  // the same rule the rest of the app follows.
+  const byCur = {};
+  rows.forEach(r => {
+    if (r.bill.isActive === false) return;
+    const cur = r.bill.currency || state.currency;
+    const d = byCur[cur] || (byCur[cur] = { due: 0, paid: 0, n: 0, nPaid: 0 });
+    d.n++;
+    if (r.status === 'paid') { d.paid += r.match.amount; d.nPaid++; }
+    else d.due += r.bill.amount;
+  });
+  const curs = Object.keys(byCur).sort();
+  overEl.innerHTML = curs.length ? curs.map(cur => {
+    const d   = byCur[cur];
+    const tot = d.paid + d.due;
+    const pct = tot > 0 ? (d.paid / tot) * 100 : 0;
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
+        <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${fmtWithCur(d.paid, cur)} / ${fmtWithCur(tot, cur)}</span>
+      </div>
+      <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;">
+        <div style="background:var(--jade);width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);font-weight:700;">${d.nPaid} ${t('bills_of')} ${d.n} ${t('bills_count_paid')}</div>
+    </div>`;
+  }).join('') + `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+      <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
+        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('bills_paid')}</div>
+        <div style="font-size:12px;color:var(--jade-d);font-weight:700;">${curs.map(c=>fmtWithCur(byCur[c].paid,c)).join('<br>')}</div>
+      </div>
+      <div style="background:var(--amber-s);border-radius:10px;padding:12px;">
+        <div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('bills_outstanding')}</div>
+        <div style="font-size:12px;color:var(--amber);font-weight:700;">${curs.map(c=>fmtWithCur(byCur[c].due,c)).join('<br>')}</div>
+      </div>
+    </div>` : `<div class="empty" style="padding:14px 0;"><p style="font-size:12px;">${t('bills_inactive')}</p></div>`;
+}
+
+// The count in the sidebar: bills this month still waiting for money. Red once
+// any of them is past its due date.
+function updateBillsBadge() {
+  const el = document.getElementById('nav-bills-badge');
+  if (!el) return;
+  const month = localYM();   // always the real current month, not the month being browsed
+  const today = localDateStr();
+  const matched = billMatches(month);
+  let open = 0, late = 0;
+  state.bills.forEach(b => {
+    if (b.isActive === false || matched[b.id]) return;
+    open++;
+    if (pfmtBillStatus(b, null, month, today) === 'overdue') late++;
+  });
+  el.textContent = String(open);
+  el.className   = 'nav-badge' + (late ? ' overdue' : '');
+  el.style.display = open ? 'inline-block' : 'none';
+}
+
+function openBillModal(id = null) {
+  const editing = id !== null;
+  const bill    = editing ? state.bills.find(b => b.id == id) : null;
+  if (editing && !bill) return;
+
+  document.getElementById('bill-modal-title').textContent  = editing ? t('modal_edit_bill') : t('modal_add_bill');
+  document.getElementById('bill-edit-badge').textContent   = '✏️ ' + t('modal_edit_bill');
+  document.getElementById('bill-edit-badge').style.display = editing ? 'inline-flex' : 'none';
+  document.getElementById('bill-edit-id').value            = editing ? id : '';
+
+  // Labels, so the form follows the language setting like every other modal.
+  [['lbl-bill-name','lbl_bill_name'], ['lbl-bill-amount','lbl_bill_amount'],
+   ['lbl-bill-due','lbl_bill_due'], ['lbl-bill-account','lbl_bill_account'],
+   ['lbl-bill-varies','lbl_bill_varies'], ['lbl-bill-active','lbl_bill_active'],
+   ['hint-bill-varies','hint_bill_varies']].forEach(([elId, key]) => {
+    const el = document.getElementById(elId);
+    if (el) el.textContent = t(key);
+  });
+
+  const catSel = document.getElementById('bill-cat');
+  catSel.innerHTML = EXPENSE_CATS.map(c => `<option value="${esc(c)}">${catIcon(c)} ${esc(c)}</option>`).join('');
+  const accSel = document.getElementById('bill-account');
+  accSel.innerHTML = `<option value="">${t('lbl_bill_any_account')}</option>` +
+    state.accounts.filter(a => a.isActive !== false)
+      .map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+
+  document.getElementById('bill-name').value       = bill ? bill.name : '';
+  document.getElementById('bill-amount').value     = bill ? bill.amount : '';
+  document.getElementById('bill-due-day').value    = bill ? bill.dueDay : 1;
+  document.getElementById('bill-currency').value   = bill ? (bill.currency || state.currency) : state.currency;
+  document.getElementById('bill-varies').checked   = bill ? !!bill.amountVaries : false;
+  document.getElementById('bill-active').checked   = bill ? bill.isActive !== false : true;
+  setSelectVal('bill-cat', bill ? bill.category : 'Bills');
+  setSelectVal('bill-account', bill ? bill.account : '');
+
+  document.getElementById('bill-modal').classList.add('open');
+  setTimeout(() => document.getElementById('bill-name').focus(), 100);
+}
+function closeBillModal() { document.getElementById('bill-modal').classList.remove('open'); }
+
+async function saveBill() {
+  const name   = document.getElementById('bill-name').value.trim();
+  const amount = parseFloat(document.getElementById('bill-amount').value) || 0;
+  const dueRaw = parseInt(document.getElementById('bill-due-day').value, 10) || 1;
+  const dueDay = Math.min(31, Math.max(1, dueRaw));
+  const cat    = document.getElementById('bill-cat').value;
+  const acct   = document.getElementById('bill-account').value;
+  const cur    = document.getElementById('bill-currency').value;
+  const varies = document.getElementById('bill-varies').checked;
+  const active = document.getElementById('bill-active').checked;
+  const editId = document.getElementById('bill-edit-id').value;
+
+  if (!name) { showToast(t('toast_bill_name'), 'error'); return; }
+  // A fixed bill is matched on its amount, so it needs one. A varying bill is
+  // matched on category and account, and its figure is only a rough estimate.
+  if (!varies && amount <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
+  // An account in another currency can never produce a matching transaction —
+  // the same rule the transaction form enforces.
+  const accObj = acct ? state.accounts.find(a => a.name === acct) : null;
+  if (accObj && (accObj.currency || state.currency) !== cur) {
+    showToast(`${acct} is a ${accObj.currency || state.currency} account — set the currency to match, or choose Any account.`, 'error');
+    return;
+  }
+
+  const row = { name, amount, currency: cur, category: cat, account: acct || null,
+                due_day: dueDay, amount_varies: varies, is_active: active };
+  const local = { name, amount, currency: cur, category: cat, account: acct,
+                  dueDay, amountVaries: varies, isActive: active, notes: '' };
+
+  if (editId) {
+    const idx = state.bills.findIndex(b => b.id == editId);
+    if (idx >= 0) state.bills[idx] = { ...state.bills[idx], ...local };
+    if (state.userId) dbUpdate('bills', editId, row).catch(e => showToast('Sync: ' + e.message, 'warning'));
+  } else {
+    const bill = { id: newId(), ...local };
+    state.bills.push(bill);
+    if (state.userId) {
+      dbInsert('bills', { id: bill.id, user_id: state.userId, ...row })
+        .catch(e => showToast('Sync failed: ' + e.message, 'error'));
+    } else {
+      showToast('Not signed in — bill saved locally only. Please sign in to sync.', 'error');
+    }
+  }
+  showToast(t('toast_bill_saved'), 'success');
+  saveState();
+  closeBillModal();
+  renderAll();
+}
+
+async function deleteBill(id) {
+  const bill = state.bills.find(b => b.id == id);
+  if (!bill) return;
+  const ok = await showConfirm(t('confirm_del_bill'),
+    `${esc(bill.name)} — ${fmtWithCur(bill.amount, bill.currency)}. Your transactions are not touched.`);
+  if (!ok) return;
+  state.bills = state.bills.filter(b => b.id != id);
+  if (state.userId) dbDelete('bills', id).catch(e => showToast('Delete: ' + e.message, 'warning'));
+  showToast(t('toast_bill_deleted'), 'success');
+  saveState();
+  renderAll();
+}
+
+// "Log payment" doesn't invent a transaction — it opens the normal form with
+// the bill's details filled in, so the payment lands in the ledger the same way
+// every other expense does, and the tick then follows from the ledger itself.
+function logBillPayment(id) {
+  const bill = state.bills.find(b => b.id == id);
+  if (!bill) return;
+  openTxnModal();
+  setType('expense', document.getElementById('tab-expense'));
+  document.getElementById('txn-desc').value     = bill.name;
+  document.getElementById('txn-amount').value   = bill.amountVaries ? '' : bill.amount;
+  document.getElementById('txn-currency').value = bill.currency || state.currency;
+  setSelectVal('txn-cat', bill.category);
+  if (bill.account) setSelectVal('txn-account', bill.account);
+  // Dated to the due day when that day has already arrived, so a bill paid late
+  // still lands in the month it was for; otherwise today.
+  const due   = pfmtBillDueDate(bill, state.filterMonth);
+  const today = localDateStr();
+  document.getElementById('txn-date').value = due <= today ? due : today;
+  setTimeout(() => document.getElementById('txn-amount').focus(), 120);
 }
 
 /* ── GOALS VIEW ── */
@@ -5430,7 +6090,8 @@ async function exportFullBackup() {
       user           : state.userEmail || '',
       base_currency  : state.currency,
       counts         : { accounts: state.accounts.length, transactions: state.transactions.length,
-                         budgets: state.budgets.length,  goals: state.goals.length },
+                         budgets: state.budgets.length,  goals: state.goals.length,
+                         bills: state.bills.length },
       secrets_included: false,
       // Says plainly whether this file is the whole book, so a restore is never
       // started on the assumption that it is.
@@ -5484,10 +6145,23 @@ async function exportFullBackup() {
       remarks: g.remarks || '', currency: g.currency || state.currency,
       linked_account: g.linkedAccount || '', sys_id: _snId(g) || ''
     })),
+    // Bills carry no "paid" state — whether one is settled is recomputed from
+    // the transactions above — so a bill is only ever the standing expectation.
+    bills: state.bills.map(b => ({
+      name: b.name, amount: +b.amount || 0, currency: b.currency || state.currency,
+      category: b.category, account: b.account || '', due_day: b.dueDay || 1,
+      amount_varies: !!b.amountVaries, is_active: b.isActive !== false,
+      notes: b.notes || '', sys_id: _snId(b) || ''
+    })),
     preferences: {
       currency: state.currency, language: state.language, theme: state.theme,
       budget_alerts: state.budgetAlerts, now_assist: state.nowAssist,
-      trend_months: state.trendMonths, trend_metric: state.trendMetric
+      trend_months: state.trendMonths, trend_metric: state.trendMetric,
+      // Where alerts go, but never the bot token — that lives only in the Edge
+      // Function's secrets, and a backup should not carry a credential.
+      telegram_chat_id: state.telegramChatId || '',
+      notify_budget: !!state.notifyBudget, notify_bills: !!state.notifyBills,
+      bill_lead_days: +state.billLeadDays || 3
     }
   };
   const c = payload.pfmt_backup.counts;
@@ -5562,6 +6236,7 @@ function renderExportSummary() {
     `${state.budgets.length} budget${state.budgets.length===1?'':'s'}`,
     `${state.goals.length} goal${state.goals.length===1?'':'s'}`
   ];
+  if (state.bills.length) bits.push(`${state.bills.length} bill${state.bills.length===1?'':'s'}`);
   const days = daysSinceLastBackup();
   const last = days === null ? 'never backed up'
              : days === 0    ? 'backed up today'
@@ -5615,6 +6290,134 @@ function toggleSetting(key, el) {
   state[key] = !state[key];
   el.classList.toggle('on', state[key]);
   saveState();
+}
+
+// ═══════════════════════════════════════════════
+// TELEGRAM ALERTS
+//
+// The page never holds the bot token — it only knows which chat to send to, and
+// asks the pfmt-notify Edge Function to do the sending. That keeps the one
+// credential involved server-side, where a shared token belongs, and means the
+// same code path serves both the instant check after an expense and the daily
+// cron run that nobody is present for.
+// ═══════════════════════════════════════════════
+const NOTIFY_FN_URL = SUPABASE_URL + '/functions/v1/pfmt-notify';
+
+function _notifyStatus(msg, kind) {
+  const el = document.getElementById('notify-status');
+  if (!el) return;
+  const c = kind === 'error' ? ['var(--coral-s)', 'var(--coral)']
+          : kind === 'warn'  ? ['var(--amber-s)', 'var(--amber)']
+          :                    ['var(--jade-s)',  'var(--jade-d)'];
+  el.style.display = 'block';
+  el.style.background = c[0];
+  el.style.color = c[1];
+  el.textContent = msg;
+}
+
+// Reflects saved settings back into the Settings controls.
+function renderNotifySettings() {
+  const id = document.getElementById('tg-chat-id');
+  if (id) id.value = state.telegramChatId || '';
+  const lead = document.getElementById('tg-lead-days');
+  if (lead) lead.value = state.billLeadDays || 3;
+  const tb = document.getElementById('toggle-notify-budget');
+  if (tb) tb.classList.toggle('on', !!state.notifyBudget);
+  const tl = document.getElementById('toggle-notify-bills');
+  if (tl) tl.classList.toggle('on', !!state.notifyBills);
+}
+
+function toggleNotify(key, el) {
+  state[key] = !state[key];
+  el.classList.toggle('on', state[key]);
+  saveNotifySettings(true);
+}
+
+// One write covers all four fields, so a toggle can never be saved while the
+// chat id sitting in the box beside it is not.
+async function saveNotifySettings(quiet) {
+  const chat = (document.getElementById('tg-chat-id')?.value || '').trim();
+  const lead = parseInt(document.getElementById('tg-lead-days')?.value, 10);
+  state.telegramChatId = chat;
+  state.billLeadDays   = isNaN(lead) ? 3 : Math.min(14, Math.max(0, lead));
+  saveState();
+  renderNotifySettings();
+
+  if ((state.notifyBudget || state.notifyBills) && !chat) {
+    _notifyStatus('Add your Telegram Chat ID — there is nowhere to send alerts yet.', 'warn');
+  } else if (!quiet) {
+    _notifyStatus('Saved.', 'ok');
+  }
+  if (!state.userId) {
+    if (!quiet) _notifyStatus('Saved on this device only — sign in to sync.', 'warn');
+    return;
+  }
+  try {
+    const { error } = await sb.from('preferences').update({
+      telegram_chat_id: chat,
+      notify_budget   : !!state.notifyBudget,
+      notify_bills    : !!state.notifyBills,
+      bill_lead_days  : state.billLeadDays
+    }).eq('user_id', state.userId);
+    if (error) throw error;
+  } catch(e) {
+    _notifyStatus('Could not save to your account: ' + e.message, 'error');
+  }
+}
+
+// Calls the Edge Function as the signed-in user. `mode` is 'test' for a single
+// hello message, or 'check' to send whatever is actually pending right now.
+async function _callNotify(mode) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+  const res = await fetch(NOTIFY_FN_URL, {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json',
+               'Authorization': 'Bearer ' + session.access_token },
+    body   : JSON.stringify({ mode, today: localDateStr(), month: localYM() })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  return body;
+}
+
+async function sendTestNotification() {
+  if (!state.telegramChatId) {
+    _notifyStatus('Add your Telegram Chat ID first, then Save.', 'warn'); return;
+  }
+  _notifyStatus('Sending…', 'ok');
+  try {
+    await _callNotify('test');
+    _notifyStatus('Sent — check Telegram. If nothing arrives, message your bot once so it may reply to you.', 'ok');
+  } catch(e) {
+    _notifyStatus('Failed: ' + e.message, 'error');
+  }
+}
+
+// `loud` is true when the user pressed the button and is waiting for an answer;
+// the automatic call after saving an expense stays silent either way.
+async function runNotifyCheck(loud) {
+  if (!state.userId || !state.telegramChatId) { if (loud) _notifyStatus('Add your Chat ID first.', 'warn'); return; }
+  if (!state.notifyBudget && !state.notifyBills) { if (loud) _notifyStatus('Both alert types are switched off.', 'warn'); return; }
+  if (loud) _notifyStatus('Checking…', 'ok');
+  try {
+    const r = await _callNotify('check');
+    if (loud) {
+      _notifyStatus(r.sent ? `Sent ${r.sent} alert${r.sent === 1 ? '' : 's'}.`
+                           : 'Nothing to report — no budget over its threshold, no bill due.', 'ok');
+    }
+  } catch(e) {
+    if (loud) _notifyStatus('Failed: ' + e.message, 'error');
+    else console.warn('notify check failed:', e.message);
+  }
+}
+
+// Fired after a expense is recorded, so a budget crossing its threshold is heard
+// about immediately rather than at the next daily run. Deliberately not awaited
+// and never surfaced as an error: saving the transaction is what mattered.
+function notifyAfterSpend() {
+  if (!state.notifyBudget || !state.telegramChatId || !state.userId) return;
+  runNotifyCheck(false);
 }
 
 function saveAIKey() {
@@ -5709,7 +6512,7 @@ function loadSampleData() {
 function clearData() {
   showConfirm(t('confirm_clear_title'), t('confirm_clear_msg'), t('confirm_clear_ok'), 'btn-coral').then(ok => {
     if (!ok) return;
-    state.transactions = []; state.budgets = []; state.goals = []; state.accounts = []; state.nextId = 100;
+    state.transactions = []; state.budgets = []; state.bills = []; state.goals = []; state.accounts = []; state.nextId = 100;
     saveState();
     renderAll();
     showToast(t('toast_data_cleared'), 'info');
@@ -6097,7 +6900,7 @@ function _hideSNLogin() {
 async function snLoadAll() {
   try {
     const uid = state.userId;
-    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes] = await Promise.all([
+    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes] = await Promise.all([
       // 3000 comfortably covers a full year even for a heavy multi-account user;
       // this only affects payload size for people who actually have that many —
       // a light user's fetch is unchanged since the number is a ceiling, not a
@@ -6106,11 +6909,15 @@ async function snLoadAll() {
       sb.from('budgets').select('*').eq('user_id', uid),
       sb.from('goals').select('*').eq('user_id', uid),
       sb.from('accounts').select('*').eq('user_id', uid),
-      sb.from('preferences').select('*').eq('user_id', uid).maybeSingle()
+      sb.from('preferences').select('*').eq('user_id', uid).maybeSingle(),
+      sb.from('bills').select('*').eq('user_id', uid)
     ]);
     for (const r of [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes]) {
       if (r.error) throw r.error;
     }
+    // Bills are the newest table — an account whose database hasn't had the
+    // migration run yet still loads everything else rather than failing outright.
+    if (billsRes.error) console.warn('bills not loaded:', billsRes.error.message);
     const txns     = txnsRes.data     || [];
     const budgets  = budgetsRes.data  || [];
     const goals    = goalsRes.data    || [];
@@ -6173,6 +6980,20 @@ async function snLoadAll() {
       currency : g.currency || state.currency,
       linkedAccount: g.linked_account || ''
     }));
+    if (!billsRes.error) {
+      state.bills = (billsRes.data || []).map(b => ({
+        id          : b.id,
+        name        : b.name,
+        amount      : +b.amount,
+        currency    : b.currency || state.currency,
+        category    : b.category || 'Bills',
+        account     : b.account || '',
+        dueDay      : b.due_day || 1,
+        amountVaries: !!b.amount_varies,
+        isActive    : b.is_active !== false,
+        notes       : b.notes || ''
+      }));
+    }
     state.accounts = accounts.map(a => ({
       id         : a.id,
       name       : a.name,
@@ -6192,6 +7013,10 @@ async function snLoadAll() {
       state.nowAssist           = pref.now_assist !== false;
       state.trendMonths         = pref.trend_months || state.trendMonths;
       state.trendMetric         = pref.trend_metric || state.trendMetric;
+      state.telegramChatId      = pref.telegram_chat_id || '';
+      state.notifyBudget        = pref.notify_budget === true;
+      state.notifyBills         = pref.notify_bills  === true;
+      state.billLeadDays        = pref.bill_lead_days || 3;
       state.displayName         = pref.display_name || state.displayName;
       state.avatarColor         = pref.avatar_color || state.avatarColor;
       state.monthlyIncomeTarget = pref.monthly_income_target || 0;

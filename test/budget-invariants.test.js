@@ -49,7 +49,9 @@ function extract(name) {
   throw new Error(`could not find ${name}() in index.html`);
 }
 
-const NAMES = ['CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
+const NAMES = ['PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
+  'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
+  'CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal'];

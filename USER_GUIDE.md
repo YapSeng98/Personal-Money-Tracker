@@ -1,6 +1,6 @@
 # PFMT — User Guide
 
-**Personal Finance Money Tracker** · Track spending, budgets, savings goals, and accounts — synced to ServiceNow, working offline, in your browser.
+**Personal Finance Money Tracker** · Track spending, budgets, bills, savings goals and accounts — synced to your own Supabase account, working offline, in your browser.
 
 ---
 
@@ -11,14 +11,16 @@
 3. [Dashboard](#3-dashboard)
 4. [Transactions](#4-transactions)
 5. [Budgets](#5-budgets)
-6. [Savings Goals](#6-savings-goals)
-7. [Analytics](#7-analytics)
-8. [Accounts](#8-accounts)
-9. [Multi-Currency](#9-multi-currency)
-10. [AI Insights](#10-ai-insights)
-11. [Settings & Profile](#11-settings--profile)
-12. [Data, Sync & Export](#12-data-sync--export)
-13. [Troubleshooting](#13-troubleshooting)
+6. [Monthly Bills](#6-monthly-bills)
+7. [Alerts on Telegram](#7-alerts-on-telegram)
+8. [Savings Goals](#8-savings-goals)
+9. [Analytics](#9-analytics)
+10. [Accounts](#10-accounts)
+11. [Multi-Currency](#11-multi-currency)
+12. [AI Insights](#12-ai-insights)
+13. [Settings & Profile](#13-settings--profile)
+14. [Data, Sync & Export](#14-data-sync--export)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -30,20 +32,22 @@ Open the app URL in any modern browser (Chrome, Safari, Edge, Firefox) on deskto
 
 ### Creating an account
 
-1. On the login screen, tap **Register**
-2. Fill in:
-   - **Instance** — your ServiceNow instance (e.g. `dev405150.service-now.com`); pre-filled if provided
-   - **Username** — lowercase, unique
-   - **Display name** and **email**
-   - **Password** (entered twice)
-3. Tap **Create Account** — you're logged in immediately
+1. On the login screen, tap **Create one**
+2. Fill in your **email** and a **password** (at least 6 characters)
+3. Tap **Create Account**
+
+> Supabase's free email allowance is **2 messages an hour**. If a confirmation or
+> password-reset email doesn't arrive, that limit is usually why — wait an hour
+> rather than requesting it repeatedly.
 
 ### Logging in
 
-1. Enter your **username** and **password**
+1. Enter your **email** and **password**
 2. Press **Enter** or tap **Sign In**
 
-The app remembers your credentials and **auto-connects on your next visit** — you'll skip the login screen entirely. Because credentials are stored in the browser, avoid using shared/public computers.
+Your session is remembered, so your next visit **skips the login screen**. The
+session lives in this browser only — signing in on your phone is a separate sign-in,
+and both then see the same data. Sign out on any device you don't control.
 
 ### App Lock (PIN)
 
@@ -67,7 +71,7 @@ For a layer of privacy on top of auto-connect — a PIN prompt on every reopen, 
    - **🔒 Lock Now** in Settings locks it immediately if you'd rather not wait
 3. **Forgot it?** Tap **Forgot PIN?** on the lock screen and verify with your account username/password — that clears the PIN so you can set a new one
 
-The PIN is stored only on this device (like the balance mask) — it's never sent to ServiceNow, and doesn't sync to your other devices. Each device you use it on needs its own PIN set separately.
+The PIN is stored only on this device (like the balance mask) — it never reaches Supabase, and doesn't sync to your other devices. Each device you use it on needs its own PIN set separately.
 
 ### Light & dark theme
 
@@ -80,7 +84,7 @@ The choice is saved per device, so your phone can run dark while your laptop sta
 
 ### Working offline
 
-If ServiceNow is unreachable, the app still works: everything is saved to your browser's local storage and re-synced when the connection returns. The connection status dot in the sidebar shows your sync state.
+If Supabase is unreachable, the app still works: everything is saved to your browser's local storage first and pushed when the connection returns. A write that fails raises a warning rather than losing your edit.
 
 ---
 
@@ -88,13 +92,12 @@ If ServiceNow is unreachable, the app still works: everything is saved to your b
 
 ### Desktop (wide screens)
 
-- **Left sidebar** — navigate between Dashboard, Transactions, Budgets, Goals, Analytics, Accounts, and Settings
+- **Left sidebar** — navigate between Dashboard, Transactions, Budgets, Bills, Goals, Analytics, Accounts, and Settings. The **Bills** item carries a badge counting what you still owe this month, in red once anything is late
 - **Top bar** — page title plus quick actions:
   - **⬇ CSV** — export transactions to a CSV file
-  - **⬇ SN JSON** — export a ServiceNow-ready JSON backup
   - **✨ AI Insights** — open the AI analysis panel
   - **+ Add Transaction** — the fastest way to record spending
-- **Month bar** (Dashboard, Transactions, Budgets) — step between months with **‹ ›**, or tap **Today** to jump back to the current month
+- **Month bar** (Dashboard, Transactions, Budgets, Bills) — step between months with **‹ ›**, or tap **Today** to jump back to the current month
 
 ### Mobile (phones & tablets)
 
@@ -254,7 +257,120 @@ Percentages don't need to add up to 100 — anything left over is shown as unall
 
 ---
 
-## 6. Savings Goals
+## 6. Monthly Bills
+
+The things you pay every month — rent, phone, insurance, subscriptions — kept as
+a checklist that **ticks itself off from your transactions**.
+
+You add each bill once. From then on the app looks through your real spending for
+a payment that matches, and marks the bill paid when it finds one. There is no
+"mark as paid" button and nothing is stored as paid: the tick is worked out again
+every time the page opens, so it can never disagree with your ledger. Page back
+to an earlier month and you see what that month really did.
+
+### Adding a bill
+
+**Bills → + Add Bill**
+
+| Field | What to put |
+|---|---|
+| Bill name | What you call it — "Singtel mobile", "Rent" |
+| Typical amount | What it usually is. For a fixed bill this is what gets matched |
+| Due day of month | 1–31. A bill due on the 31st falls on the 30th in September, and the 28th in February — the app handles that |
+| Category | Must be the category you actually file the payment under |
+| Currency | Must match the account it's paid from |
+| Paid from | Optional. Leave as **Any account** unless you always pay it from one place |
+| Amount changes each month | Tick for utilities, phone bills — anything never the same twice |
+| Active | Untick to pause a bill without deleting its history |
+
+### How a bill gets ticked off
+
+A transaction counts as paying a bill when it is an expense, in the month shown,
+in the same currency, the same category, from the same account if you named one,
+**and** the amount is within about 2% of the bill.
+
+Tick **amount changes each month** and the amount stops mattering — the bill then
+matches on category and account alone, and shows you the real figure that was
+paid rather than your estimate.
+
+**One payment can only ever tick off one bill.** If two bills could both claim
+the same transaction, the one with fewer options gets it.
+
+### Reading the page
+
+| Chip | Meaning |
+|---|---|
+| **PAID** | Found a matching payment. The line underneath names it, so you can check |
+| **DUE** | Not paid yet, due date still to come |
+| **OVERDUE** | Not paid, due date has passed |
+| **MISSED** | A month that has already ended and never got paid |
+| **PAUSED** | Switched off — ignored entirely |
+
+The right-hand panel totals what you've paid and what's still outstanding, per
+currency. The **Bills** badge in the sidebar counts what's still unpaid *this*
+month, whichever month you're looking at, and turns red once anything is late.
+
+### Log payment
+
+The **+** button on an unpaid bill opens the normal Add Transaction form with the
+name, amount, category and account already filled in, dated to the due day if
+that day has passed. Save it and the bill ticks itself off — because the payment
+is now a real transaction like any other, counting towards your budgets and your
+month's spending exactly as it should.
+
+> **If the wrong transaction ticks a bill:** it will be one marked "amount changes
+> each month", which matches on category alone and can absorb another bill's
+> payment. The row always names what it matched, so you can see it. Tying one of
+> the two bills to a specific account separates them.
+
+---
+
+## 7. Alerts on Telegram
+
+PFMT can message you when a budget crosses its alert threshold and when a bill is
+coming due — so you hear about it without opening the app.
+
+**Setting it up is a one-time job: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).** It
+needs a Telegram bot, which takes about ten minutes to create, and it only has to
+be done once.
+
+Once it's running, **Settings → Alerts on Telegram** controls it:
+
+| Setting | What it does |
+|---|---|
+| Telegram Chat ID | Where messages go. Just an address — on its own it lets nobody message you |
+| Budget threshold alerts | Tells you when a category crosses its alert %, and again if it goes over |
+| Bill reminders | A daily check for bills coming due or already late |
+| Remind me this many days ahead | How much warning you want on a bill. Default 3 |
+| Send test message | Proves the whole path works |
+| Check my alerts now | Sends whatever is actually pending, right now |
+
+### What you'll get
+
+One message with everything in it, not one per item:
+
+```
+PFMT — 2026-09
+🟠 Food & Drink is at 86% — S$430.00 of S$500.00, S$70.00 left
+📅 Singtel mobile S$42.90 — due in 2 days (2026-09-12)
+```
+
+**You won't be spammed.** Each alert is sent at most once a month, per thing, per
+level: a budget tells you once when it crosses your threshold and once more if it
+goes over; a bill tells you once as it approaches and once more if it actually
+goes unpaid. Crossing a threshold does not produce a message for every expense
+after it.
+
+Budget alerts arrive as soon as you record the expense that crossed the line.
+Bill reminders arrive on the morning schedule, since nobody has the app open at
+9am to notice a bill is due.
+
+The figures in an alert are the same ones on the budget card, rollover included —
+an alert can never tell you something the app itself disagrees with.
+
+---
+
+## 8. Savings Goals
 
 ### Creating a goal
 
@@ -282,7 +398,7 @@ Instead of typing your saved amount by hand, you can link a goal to one of your 
 
 ---
 
-## 7. Analytics
+## 9. Analytics
 
 Deeper insight into the selected month:
 
@@ -303,7 +419,7 @@ If a currency received more through exchange than it earned, its savings rate re
 
 ---
 
-## 8. Accounts
+## 10. Accounts
 
 Track where your money lives.
 
@@ -329,7 +445,7 @@ Below the list, the Insights panel shows **per currency**:
 
 ---
 
-## 9. Multi-Currency
+## 11. Multi-Currency
 
 PFMT supports **SGD, USD, AUD, and MYR** side by side, with one golden rule:
 
@@ -347,7 +463,7 @@ Your **default currency** (Settings → Preferences) is what new transactions pr
 
 ---
 
-## 10. AI Insights
+## 12. AI Insights
 
 Get personalised, AI-written analysis of your finances — free.
 
@@ -376,7 +492,7 @@ The **Now Assist** toggle in Settings turns AI features on/off. Your financial s
 
 ---
 
-## 11. Settings & Profile
+## 13. Settings & Profile
 
 **Settings** (⚙️ in the sidebar / hamburger drawer) contains everything else:
 
@@ -388,39 +504,47 @@ The **Now Assist** toggle in Settings turns AI features on/off. Your financial s
   - **Language** — English or 中文 (the whole interface switches instantly)
   - **Budget Alerts** — toggle threshold notifications
   - **Now Assist** — toggle AI features
-- **ServiceNow Connection** — instance, connected user, connection test, and **Sign Out**
+- **Account** — the Supabase project, who you're signed in as, a manual **Sync Data**, and **Sign Out**
+- **Alerts on Telegram** — chat id, which alerts to send, how far ahead to warn about bills, and a test button ([section 7](#7-alerts-on-telegram))
 - **Data tools**
   - **Load Sample Data** — fill the app with demo data to explore
   - **Retag Transfers** — sets older transfer rows to the **Transfer** category so they stop showing up as ordinary spending. Safe to run twice; it reports how many it changed
-- **Clear All Data** — wipe everything local (asks for confirmation; does not delete ServiceNow records)
+- **Clear All Data** — wipe everything on this device (asks for confirmation; your Supabase records are not deleted, and the next sync brings them back)
 
 ---
 
-## 12. Data, Sync & Export
+## 14. Data, Sync & Export
 
 ### How your data is stored
 
 | Layer | What | When |
 |---|---|---|
 | Browser localStorage | Full app state | Instantly, on every change |
-| ServiceNow | Transactions, budgets, goals, accounts, profile | Pushed automatically in the background when connected |
+| Supabase | Transactions, budgets, bills, goals, accounts, preferences | Pushed in the background, immediately after each change |
 
-On page load the app pulls fresh data from ServiceNow, so you can switch devices freely — just log in with the same account.
+On page load the app pulls everything fresh from Supabase, so you can switch
+devices freely — just sign in with the same account.
 
-Rows display a small badge showing their sync state: **SN** (synced to ServiceNow) or **local** (not yet pushed).
+Your rows are visible only to you. Every table has a rule at the database level
+saying a row can only be read or written by the account that owns it, so even
+holding the app's public key, a stranger's queries return nothing.
 
 ### Exporting
 
 - **⬇ CSV** — download all transactions as a spreadsheet-friendly CSV
-- **⬇ SN JSON** — download a ServiceNow-format JSON backup of everything
+- **Complete backup (JSON)** — every table in one file: accounts, transactions,
+  budgets, bills, goals, categories and your profile
+
+Backups deliberately carry **no** password, AI key, app-lock PIN or Telegram bot
+token, so a copied file can never be used to sign in as you.
 
 ### Automatic weekly backups
 
 Three backups run on their own once set up, and they cover each other's gaps:
 
-- **Emailed CSVs** — lands in your inbox weekly
-- **Stored in ServiceNow** — a dated backup record with a full JSON plus CSVs attached, keeping the last 12 weeks. Runs server-side, so it happens whether or not any of your devices are on
 - **A folder on your Mac** — `~/Documents/PFMT_Backups/2026-08-17/`, real files you own outright. Only runs while the Mac is awake; if it's asleep at the scheduled time the backup happens on the next wake rather than being skipped
+- **Supabase's own daily backups** — taken by the platform, restored from the dashboard. These cover the database being lost, not you deleting a row by accident
+- **The in-app reminder** — the Dashboard nags when it has been too long since your last complete backup
 
 The JSON is the restore file — it keeps every field, including the `transferGroup` that pairs the two legs of a transfer. Restore accounts before transactions, since transactions refer to accounts by name.
 
@@ -430,19 +554,22 @@ Setup is a one-time job, documented in `backup/README.md`.
 
 ---
 
-## 13. Troubleshooting
+## 15. Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| **"Invalid or expired session"** | Sessions last 7 days. The app usually re-logs you in automatically; if not, sign in again. |
-| **Can't log in** | Check the instance URL has no `https://` prefix and no trailing slash (e.g. `dev405150.service-now.com`). Verify username/password. If your ServiceNow PDI was hibernating, wake it at developer.servicenow.com and retry. |
+| **"Invalid or expired session"** | Your session lapsed. Sign in again. |
+| **Can't log in** | Check the email and password. If you asked for a reset email and nothing came, it's almost certainly the **2 emails an hour** limit on Supabase's free mail — wait an hour rather than requesting again. |
 | **"Budget for this category and currency already exists"** | You already have a budget for that category in that currency. Edit the existing one, or pick a different currency. |
-| **Changes not appearing on another device** | Reload the page — data is pulled from ServiceNow on load. Check the sidebar connection dot is green. |
+| **Changes not appearing on another device** | Reload the page — data is pulled fresh on load. Or use **Settings → Sync Data**. |
 | **Old version showing after an update** | Hard-refresh: `Cmd/Ctrl+Shift+R` on desktop; on mobile, clear the site from browser cache. |
 | **Numbers look mixed between currencies** | They never are — check the blue currency section headers; each section's totals are independent. |
 | **AI buttons say a key is needed** | Add your free Groq API key under **Settings → AI Configuration**. |
 | **"Your API key was rejected" on one device** | That device holds an older key. Use an AI button once and it switches to your account's key automatically, or tap **use the key from my account ↻** in Settings to force it. |
-| **Started fresh by accident (sample data everywhere)** | Sample data loads only when no saved data exists. Log in to restore your real data from ServiceNow, or use **Clear All Data** then reload. |
+| **Started fresh by accident (sample data everywhere)** | Sample data loads only when no saved data exists. Sign in to restore your real data, or use **Clear All Data** then reload. |
+| **A bill won't tick off** | The payment has to match on category, account and amount. Open the transaction and check its category matches the bill's; or set the bill to "amount changes each month" if it's a utility. |
+| **The wrong transaction ticked a bill** | A bill marked "amount varies" matches on category alone, so it can absorb another bill's payment. Tie one of them to a specific account. |
+| **No Telegram messages** | See [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md) § Troubleshooting. Most often: you never messaged your own bot, so Telegram won't let it reply. |
 
 ---
 

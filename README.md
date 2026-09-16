@@ -1,877 +1,433 @@
 # Personal Finance Money Tracker (PFMT)
 
-A full-featured personal finance web app that syncs with ServiceNow as its cloud backend. Track transactions, manage budgets, set savings goals, and analyse spending — all from a single HTML file hosted on GitHub Pages.
+A personal finance web app backed by Supabase. Track transactions across
+currencies, hold budgets and savings goals, tick off the bills you pay every
+month, and get told on Telegram when a budget or a bill needs attention — all
+from a single HTML file hosted on GitHub Pages.
 
-> 📖 **New to the app?** See the [User Guide](USER_GUIDE.md) for step-by-step usage instructions. This README covers architecture, API, and deployment.
+**Live:** https://yapseng98.github.io/Personal-Money-Tracker/
 
----
-
-> **Setting up backups?** Follow [BACKUP_STEPS.md](BACKUP_STEPS.md) — step by step, every method.
-> **Want the data model?** [PFMT_System_Structure.pdf](PFMT_System_Structure.pdf) — all 8 tables, fields and relationships on one page.
-
-## Table of Contents
-
-1. [Tech Stack](#tech-stack)
-2. [Architecture Overview](#architecture-overview)
-3. [ServiceNow Data Model](#servicenow-data-model)
-4. [REST API Reference](#rest-api-reference)
-5. [Authentication & Sessions](#authentication--sessions)
-6. [Frontend Features](#frontend-features)
-7. [ServiceNow Components](#servicenow-components)
-8. [Deployment Guide](#deployment-guide)
-9. [Test Users](#test-users)
-10. [Known Limitations](#known-limitations)
-10. [Error Reference](#error-reference)
+> 📖 **New to the app?** [USER_GUIDE.md](USER_GUIDE.md) is the step-by-step
+> version. This README covers architecture, data model and deployment.
+> 🔔 **Setting up alerts?** [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
+> 💾 **Setting up backups?** [BACKUP_STEPS.md](BACKUP_STEPS.md).
+> 💡 **Ideas not yet built?** [FEATURE_IDEAS.md](FEATURE_IDEAS.md).
 
 ---
 
-## Tech Stack
+## Contents
+
+1. [Tech stack](#tech-stack)
+2. [Architecture](#architecture)
+3. [The two ledgers](#the-two-ledgers) ← read this before changing any money maths
+4. [Data model](#data-model)
+5. [Frontend](#frontend)
+6. [Bills](#bills)
+7. [Telegram alerts](#telegram-alerts)
+8. [Tests](#tests)
+9. [Deployment](#deployment)
+10. [Known limitations](#known-limitations)
+
+---
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Vanilla JS + HTML5 + CSS3 (single file) |
-| Backend | ServiceNow PDI — Scripted REST APIs |
-| Auth | Custom token-based (32-char hex, 7-day sessions) |
-| Local storage | Browser `localStorage` (`pfmt_state_v2`) |
-| AI insights | Groq API (optional) |
+| Frontend | Vanilla JS + HTML5 + CSS3, one file, no build step |
+| Backend | Supabase — Postgres with Row Level Security |
+| Auth | Supabase Auth (email + password), JWT sessions |
+| Server logic | One Supabase Edge Function (Deno), `pfmt-notify` |
+| Scheduling | `pg_cron` + `pg_net`, one nightly job |
+| Local cache | Browser `localStorage` (`pfmt_state_v2`) |
+| Notifications | Telegram Bot API |
+| AI insights | Groq API (optional, user's own key) |
 | Hosting | GitHub Pages |
 
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────┐
-│         GitHub Pages                │
-│    index.html  (SPA)                │
-│                                     │
-│  ┌──────────┐   ┌────────────────┐  │
-│  │  State   │   │   snAPI.call() │  │
-│  │ (memory) │   │  fetch() CORS  │  │
-│  └────┬─────┘   └───────┬────────┘  │
-│       │                 │           │
-│  localStorage        X-PFMT-Token   │
-└───────┼─────────────────┼───────────┘
-        │                 │
-        ▼                 ▼
-  pfmt_state_v2    ServiceNow PDI
-  (offline cache)  /api/x_887486_0/pfmt/v1
-                   ├── /auth/{action}
-                   ├── /transactions
-                   ├── /budgets
-                   ├── /goals
-                   ├── /accounts
-                   └── /profile
-```
-
-**Data sync model**: All changes update local state + localStorage immediately (optimistic). If a session token exists, changes are also pushed to ServiceNow asynchronously (fire-and-forget). On page load the app auto-connects with saved credentials and pulls fresh data from SN.
+There is no build, no bundler and no package manager. `index.html` is the app;
+opening it is running it. `daily-money-tracker-app.html` is a byte-identical twin
+kept for the original filename.
 
 ---
 
-## ServiceNow Data Model
+## Architecture
 
-All tables share the prefix `x_887486_0_`.
+```
+┌──────────────────────────────────────────────┐
+│  GitHub Pages — index.html (SPA)             │
+│                                              │
+│   state (memory) ──► localStorage            │
+│        │              pfmt_state_v2          │
+│        │              (offline cache)        │
+│        ▼                                     │
+│   supabase-js v2  ──────────┐                │
+└─────────────────────────────┼────────────────┘
+                              │ JWT
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  Supabase — oqsqfrpblinvsizitmgl    │
+        │                                     │
+        │  Postgres + RLS                     │
+        │   accounts · transactions · budgets │
+        │   bills · goals · preferences       │
+        │   notifications_sent                │
+        │                                     │
+        │  Auth (email/password)              │
+        │                                     │
+        │  Edge Function: pfmt-notify ───────────► Telegram Bot API
+        │        ▲                            │
+        │        │ x-pfmt-cron-secret         │
+        │  pg_cron — nightly 01:00 UTC        │
+        └─────────────────────────────────────┘
+```
 
-### `user_profile`
+**Sync model.** Every change updates local state and `localStorage` first, then
+goes to Supabase fire-and-forget. The app stays usable with a bad connection;
+a failed write raises a toast rather than losing the edit. On load, `snLoadAll()`
+pulls every table fresh and overwrites the cache.
 
-| Field | Type | Notes |
+**Row Level Security** is the whole authorisation story: every table carries a
+`user_id` and a policy of `auth.uid() = user_id` for select, insert, update and
+delete. The app holds only the publishable key, which grants nothing on its own —
+without a signed-in session, every query returns zero rows.
+
+---
+
+## The two ledgers
+
+The most important idea in the codebase, and the one that has caused every money
+bug so far. **Two different questions are asked of the same transactions:**
+
+| | Cash ledger | P&L ledger |
 |---|---|---|
-| `username` | String | Unique, lowercase |
-| `password_hash` | String | SHA-256 hex |
-| `display_name` | String | |
-| `email` | String | |
-| `currency_preference` | String | Default: `SGD` |
-| `language_preference` | String | Default: `en` |
-| `avatar_color` | String | Hex color, default `#8B5CF6` |
-| `monthly_income_target` | Decimal | |
-| `ai_api_key` | Password (2 Way Encrypted) | Groq API key, per account so it syncs across devices. Use the encrypted type, not plain String |
-| `last_login` | DateTime | Bumped on every valid token use |
+| Question | "What is in this account?" | "What did this month cost me?" |
+| Computed by | `effectiveBal()` | `curStats()`, `pfmtBudgetSpent()`, `trendTotals()` |
+| Counts | every movement | only real income and spending |
+| Transfers | **yes** — money really moved | **no** — you are no more or less well off |
+| Asset purchases | **yes** — the cash left | **no** — you swapped cash for a holding |
+| Claims reimbursements | **yes** — money landed | **no** — see below |
 
-### `session`
+A transfer and a funded asset purchase are each written as **two rows sharing a
+`transfer_group`**: an expense on the source and an income (or `asset`) on the
+destination. Both balances move through the normal cash logic, and
+`isFlow(t) => !t.transferGroup` keeps both legs out of every P&L figure. Neither
+leg can exist without the other — deleting one deletes both.
 
-| Field | Type | Notes |
+### Work claims
+
+You pay for a client dinner in June and the company pays you back in September.
+The expense counts **in June** — you really were out of pocket then. The
+September reimbursement is a pure in-and-out: it credits the account it lands in
+and touches nothing else, because the cost it settles was already counted in its
+own month. Netting it again in September would make an unrelated month look
+cheaper than it was.
+
+That is what the `Claims` category means, and it is why
+`pfmtPaybackOffsets()` exists:
+
+```js
+const PFMT_CLAIMS_CATEGORY = 'Claims';
+function pfmtPaybackOffsets(t) {
+  return t.type === 'payback' && t.category !== PFMT_CLAIMS_CATEGORY;
+}
+```
+
+A `payback` in any *other* category — a friend settling their half of dinner —
+does reduce what that month cost, because it was never really your cost.
+
+### One definition, two runtimes
+
+`pfmtPaybackOffsets` is one function in one place because it was once five
+copies. The Claims rule was added to four of them and the Analytics trend chart
+kept its own, so the same month read **S$1,886.70** on the dashboard and
+**S$1,758.50** on the chart directly below it.
+
+The notifier has to answer the same questions while nobody has the page open, so
+the rules live in a marked block in `index.html`:
+
+```
+/* ═══ PFMT SHARED MONEY RULES — v1 — BEGIN ═══ */
+   … PFMT_CLAIMS_CATEGORY, pfmtIsFlow, pfmtPaybackOffsets,
+     pfmtBudgetSpent, pfmtBudgetRollover, pfmtBudgetLimit, pfmtBudgetAlerts,
+     pfmtMatchBills, pfmtBillStatus, pfmtBillsToRemind …
+/* ═══ PFMT SHARED MONEY RULES — v1 — END ═══ */
+```
+
+`index.html` is the source. `node tools/sync-shared-rules.js` copies the block
+verbatim into `supabase/functions/pfmt-notify/shared-money-rules.js`, and
+`test/bills-and-alerts.test.js` compares the two character for character and
+fails if anyone forgot. **Never edit the generated copy.**
+
+---
+
+## Data model
+
+Seven tables, all in `public`, all with RLS on and a `user_id` referencing
+`auth.users`. Full DDL: [`supabase/migrations/`](supabase/migrations/).
+
+### `accounts`
+| Column | Type | Notes |
 |---|---|---|
-| `user_profile` | Reference | Link to `user_profile` |
-| `token` | String(40) | 32-char random hex |
-| `expires_at` | DateTime | 7 days from creation |
-| `device_hint` | String | First 100 chars of User-Agent |
+| `id` | uuid | client-generated (`crypto.randomUUID()`) |
+| `name` | text | unique per user in practice; transactions reference it by name |
+| `type` | text | Checking, Savings, Credit Card, Investment, … |
+| `institution` | text | |
+| `currency` | text | SGD · USD · AUD · MYR |
+| `starting_balance` | numeric | the balance *before* any transaction in the book |
+| `is_active` | boolean | inactive accounts stay for history, drop out of pickers |
 
-### `account`
+The displayed balance is never stored — it is `starting_balance` plus every
+transaction in that account's currency, recomputed on render.
 
-| Field | Type | Notes |
+### `transactions`
+| Column | Type | Notes |
 |---|---|---|
-| `user_profile` | Reference | |
-| `account_name` | String | |
-| `account_type` | String | `checking`, `savings`, `credit_card`, etc. |
-| `institution_name` | String | Bank / provider |
-| `current_balance` | Decimal | Updated by BR_UpdateAccountBalance |
-| `currency` | String | Default: `SGD` |
-| `is_active` | Boolean | |
+| `type` | text | `expense` · `income` · `transfer` · `asset` · `payback` |
+| `amount` | numeric | always positive; `type` carries the direction |
+| `category` | text | |
+| `account` | text | matched to `accounts.name` |
+| `date` | date | |
+| `currency` | text | never converted — each row stays in its own currency |
+| `transfer_group` | text | shared id linking the two legs of a transfer or funded asset |
+| `transfer_peer` | text | the other leg's account, rebuilt on load |
+| `is_recurring`, `recurring_frequency`, `next_run_date` | | carried, not yet acted on |
 
-### `transaction`
-
-| Field | Type | Notes |
+### `budgets`
+| Column | Type | Notes |
 |---|---|---|
-| `account` | Reference | |
-| `category` | Reference | |
-| `transaction_type` | String | `expense`, `income`, `asset`. Transfers are stored as an expense+income pair sharing `transfer_group` |
-| `amount` | Decimal | Must be > 0 |
-| `description` | String | Required |
-| `transaction_date` | Date | |
-| `notes` | String | Optional |
-| `currency` | String | Per-transaction currency (SGD/USD/AUD/MYR), default `SGD` |
-| `transfer_group` | String(40) | Shared id linking the two legs of a transfer; empty for normal rows |
-| `state` | String | `1`=Draft, `2`=Confirmed. Draft excluded from every balance/budget calculation until confirmed |
-| `is_recurring` | Boolean | Marks a template. `false` on the clones the Flow generates — a clone is a one-off instance, not itself a template |
-| `recurring_frequency` | String | `daily`, `weekly`, `monthly` |
-| `next_run_date` | Date | Set by `BR_ValidateTransaction.js` from `is_recurring`+`recurring_frequency`; advanced by `FLOW_RecurringTransactions.js` after each clone |
+| `category`, `currency` | text | unique together per user — the same category can be budgeted separately in each currency |
+| `amount` | numeric | the monthly limit |
+| `alert_pct` | int | when to warn, default 80 |
+| `rollover` | boolean | carry last month's unused room into this one |
+| `spent` | numeric | **dead column** — spend is always recomputed from transactions |
 
-`state` is also set to Draft by `BR_ValidateTransaction.js` for any transaction dated in the future — the date picker has no upper bound. The frontend does not currently distinguish Draft from Confirmed: every row returned by the API renders as a normal transaction.
-
-> **Recurring is backend-only right now.** `is_recurring`, `recurring_frequency`, and `next_run_date` are read/written by the API and the Flow, but the frontend UI for it was removed — there is no way to create a recurring template from the app today, and clones the Flow generates would render as ordinary transactions. Re-adding the UI is a frontend-only job; the schema and scripts are already in place.
-
-### `category`
-
-| Field | Type | Notes |
+### `bills`
+| Column | Type | Notes |
 |---|---|---|
-| `category_name` | String | Unique |
-| `category_type` | String | `expense`, `income` |
-| `icon_emoji` | String | e.g. `🍜` |
-| `color_hex` | String | e.g. `#8B5CF6` |
-| `is_system_default` | Boolean | |
+| `name` | text | |
+| `amount` | numeric | typical amount; an estimate when `amount_varies` |
+| `category`, `account` | text | `account` null means "any account" |
+| `due_day` | int | 1–31, clamped to short months at render time |
+| `amount_varies` | boolean | match on category and account alone |
+| `is_active` | boolean | paused bills are ignored entirely |
 
-### `budget`
+**There is deliberately no `paid` column** — see [Bills](#bills).
 
-| Field | Type | Notes |
-|---|---|---|
-| `user_profile` | Reference | |
-| `category` | Reference | |
-| `budget_amount` | Decimal | |
-| `spent_amount` | Decimal | Auto-updated by BR_UpdateBudgetSpent |
-| `remaining_amount` | Decimal | Calculated: budget − spent |
-| `alert_threshold` | Integer | Percent, default `80` |
-| `period_start` | Date | |
-| `period_end` | Date | |
-| `currency` | String | Per-budget currency (SGD/USD/AUD/MYR), default `SGD`; duplicate check is category + currency |
+### `goals`
+`name`, `icon`, `target`, `current`, `monthly`, `target_date`, `remarks`,
+`currency`, `linked_account`. A goal linked to an account tracks that account's
+live balance instead of a typed-in figure.
 
-### `savings_goal`
+### `preferences`
+One row per user: `currency`, `language`, `theme`, `budget_alerts`, `now_assist`,
+`trend_months`, `trend_metric`, `display_name`, `avatar_color`,
+`monthly_income_target`, `ai_api_key`, and the alert settings
+`telegram_chat_id`, `notify_budget`, `notify_bills`, `bill_lead_days`.
 
-| Field | Type | Notes |
-|---|---|---|
-| `user_profile` | Reference | |
-| `goal_name` | String | Required |
-| `goal_icon` | String(10) | Emoji — supplementary-plane stored as `b`+base64 |
-| `target_amount` | Decimal | Required |
-| `current_amount` | Decimal | |
-| `monthly_contribution` | Decimal | |
-| `target_date` | Date | Optional |
-| `goal_status` | String | `in_progress`, `achieved` — auto-managed |
-| `currency` | String | Per-goal currency (SGD/USD/AUD/MYR), default `SGD` |
-| `remarks` | String(1000) | Optional notes |
-| `account` | Reference | Optional linked account |
+### `notifications_sent`
+`(user_id, kind, dedupe_key)` — and that primary key *is* the "once per month"
+rule. See [Telegram alerts](#telegram-alerts).
 
 ---
 
-## REST API Reference
+## Frontend
 
-**Base URL**: `https://<instance>.service-now.com/api/x_887486_0/pfmt/v1`
-
-All endpoints except `/auth/*` require:
-```
-X-PFMT-Token: <token>
-X-HTTP-Method: GET|POST|PUT|DELETE
-Content-Type: application/json
-```
-
----
-
-### Auth — `/auth/{action}`
-
-#### POST `/auth/login`
-
-```json
-// Request
-{ "username": "john", "password": "secret123" }
-
-// Response 200
-{
-  "result": {
-    "token": "a1b2c3d4e5f6...",
-    "user_profile_sys_id": "abc123...",
-    "username": "john",
-    "display_name": "John Doe",
-    "email": "john@example.com",
-    "currency": "SGD",
-    "language": "en",
-    "avatar_color": "#8B5CF6",
-    "monthly_income_target": 5000
-  }
-}
-```
-
-#### POST `/auth/register`
-
-```json
-// Request
-{
-  "username": "john",
-  "password": "secret123",
-  "display_name": "John Doe",
-  "email": "john@example.com",
-  "currency": "SGD",
-  "language": "en"
-}
-
-// Response 201
-{ "result": { "token": "...", "user_profile_sys_id": "...", ... } }
-```
-
-#### POST `/auth/logout`
-
-```json
-// Request: token in X-PFMT-Token header or body
-// Response 200
-{ "result": { "status": "logged_out" } }
-```
-
----
-
-### Accounts — `/accounts`
-
-#### GET `/accounts`
-
-```json
-// Response 200
-{
-  "result": [
-    {
-      "sys_id": "...",
-      "account_name": "DBS Savings",
-      "account_type": "savings",
-      "institution_name": "DBS",
-      "current_balance": 12500.00,
-      "currency": "SGD"
-    }
-  ],
-  "count": 1
-}
-```
-
-#### POST `/accounts`
-
-```json
-// Request
-{
-  "account_name": "DBS Savings",
-  "account_type": "savings",
-  "institution_name": "DBS",
-  "current_balance": 12500.00,
-  "currency": "SGD"
-}
-// Response 201
-{ "result": { "sys_id": "...", "status": "created" } }
-```
-
-#### PUT `/accounts`
-
-```json
-// Request — sys_id required, other fields optional
-{ "sys_id": "...", "current_balance": 13000.00 }
-// Response 200
-{ "result": { "sys_id": "...", "status": "updated" } }
-```
-
-#### DELETE `/accounts`
-
-```json
-// Request body or ?sys_id= query param
-{ "sys_id": "..." }
-// Response 200
-{ "result": { "sys_id": "...", "status": "deleted" } }
-```
-
----
-
-### Transactions — `/transactions`
-
-#### GET `/transactions`
-
-Query params: `limit` (default 500, the app requests 3000), `type` (expense|income), `month` (YYYY-MM)
-
-```json
-// Response 200
-{
-  "result": [
-    {
-      "sys_id": "...",
-      "type": "expense",
-      "amount": 12.50,
-      "description": "Kopi at Ya Kun",
-      "category": "Food & Drink",
-      "account": "DBS Checking",
-      "date": "2024-06-15",
-      "currency": "SGD",
-      "notes": "",
-      "state": "2",
-      "is_recurring": false,
-      "recurring_frequency": "",
-      "next_run_date": ""
-    }
-  ],
-  "count": 1
-}
-```
-
-#### POST `/transactions`
-
-```json
-// Request
-{
-  "type": "expense",
-  "amount": 12.50,
-  "description": "Kopi at Ya Kun",
-  "date": "2024-06-15",
-  "account_name": "DBS Checking",
-  "category_name": "Food & Drink",
-  "currency": "SGD",
-  "notes": "",
-  "is_recurring": true,
-  "recurring_frequency": "monthly"
-}
-// Response 201 — always Confirmed (state=2); next_run_date computed by BR_ValidateTransaction.js
-{ "result": { "sys_id": "...", "status": "created" } }
-```
-
-#### PUT `/transactions`
-
-```json
-// Request
-{ "sys_id": "...", "amount": 13.00, "description": "Kopi + Toast" }
-// Response 200
-{ "result": { "sys_id": "...", "status": "updated" } }
-```
-
-`is_recurring`, `recurring_frequency`, and `state` are also accepted on PUT. Confirming a pending recurring instance is a PUT with `state: "2"`; un-ticking Repeat on an existing template is a PUT with `is_recurring: false`.
-
-#### DELETE `/transactions`
-
-```json
-{ "sys_id": "..." }
-// Response 200
-{ "result": { "sys_id": "...", "status": "deleted" } }
-```
-
----
-
-### Budgets — `/budgets`
-
-#### GET `/budgets`
-
-```json
-// Response 200
-{
-  "result": [
-    {
-      "sys_id": "...",
-      "category": "Food & Drink",
-      "category_icon": "🍜",
-      "category_color": "#8B5CF6",
-      "budget_amount": 500.00,
-      "spent_amount": 325.00,
-      "remaining_amount": 175.00,
-      "alert_threshold": 80,
-      "period_start": "2024-06-01",
-      "period_end": "2024-06-30",
-      "currency": "SGD"
-    }
-  ],
-  "count": 1
-}
-```
-
-#### POST `/budgets`
-
-```json
-// Request
-{
-  "category_name": "Food & Drink",
-  "budget_amount": 500.00,
-  "alert_threshold": 80,
-  "currency": "SGD",
-  "period_start": "2024-06-01",
-  "period_end": "2024-06-30"
-}
-// Response 201
-{ "result": { "sys_id": "...", "status": "created" } }
-// Error 409 if budget for this category + currency already exists
-```
-
-#### PUT `/budgets`
-
-```json
-{ "sys_id": "...", "budget_amount": 600.00, "alert_threshold": 75 }
-// Response 200
-{ "result": { "sys_id": "...", "status": "updated" } }
-```
-
-#### DELETE `/budgets`
-
-```json
-{ "sys_id": "..." }
-// Response 200
-{ "result": { "sys_id": "...", "status": "deleted" } }
-```
-
----
-
-### Goals — `/goals`
-
-#### GET `/goals`
-
-```json
-// Response 200
-{
-  "result": [
-    {
-      "sys_id": "...",
-      "goal_name": "Japan Trip",
-      "goal_icon": "✈️",
-      "target_amount": 5000.00,
-      "current_amount": 2500.00,
-      "monthly_contribution": 500.00,
-      "target_date": "2024-12-31",
-      "goal_status": "in_progress",
-      "currency": "SGD",
-      "remarks": "Save ¥500 per month",
-      "progress_pct": 50.0,
-      "account_sys_id": "...",
-      "account_name": "Savings"
-    }
-  ],
-  "count": 1
-}
-```
-
-#### POST `/goals`
-
-```json
-// Request
-{
-  "goal_name": "Japan Trip",
-  "goal_icon": "✈️",
-  "target_amount": 5000.00,
-  "current_amount": 0,
-  "monthly_contribution": 500.00,
-  "target_date": "2024-12-31",
-  "currency": "SGD",
-  "remarks": "Optional notes",
-  "account_name": "Savings"
-}
-// Response 201
-{ "result": { "sys_id": "...", "status": "created" } }
-// goal_status auto-set to 'achieved' if current >= target
-```
-
-#### PUT `/goals`
-
-```json
-{ "sys_id": "...", "current_amount": 3000.00, "currency": "SGD", "account_name": "Savings" }
-// Response 200 — goal_status auto-updated
-// account_name: "" clears the link; a name that doesn't resolve leaves the existing link untouched
-{ "result": { "sys_id": "...", "status": "updated" } }
-```
-
-#### DELETE `/goals`
-
-```json
-{ "sys_id": "..." }
-// Response 200
-{ "result": { "sys_id": "...", "status": "deleted" } }
-```
-
----
-
-### Profile — `/profile`
-
-#### GET `/profile`
-
-```json
-// Response 200
-{
-  "result": {
-    "sys_id": "...",
-    "username": "john",
-    "display_name": "John Doe",
-    "email": "john@example.com",
-    "currency": "SGD",
-    "language": "en",
-    "avatar_color": "#8B5CF6",
-    "monthly_income_target": 5000,
-    "last_login": "2024-06-15 10:30:00",
-    "sys_created_on": "2024-01-01 08:00:00",
-    "stats": {
-      "transaction_count": 45,
-      "account_count": 3,
-      "active_goal_count": 2
-    }
-  }
-}
-```
-
-#### PUT `/profile`
-
-```json
-// Request — all fields optional
-{
-  "display_name": "John Doe",
-  "email": "john@example.com",
-  "currency": "SGD",
-  "language": "en",
-  "avatar_color": "#00C896",
-  "monthly_income_target": 6000,
-  "current_password": "oldpass",
-  "new_password": "newpass123"
-}
-// Response 200
-{ "result": { "status": "updated", "display_name": "...", ... } }
-```
-
----
-
-## Authentication & Sessions
-
-### Flow
-
-```
-1. User enters instance + username + password
-2. App POSTs to /auth/login
-3. SN validates: username lookup → SHA-256 hash compare
-4. On success: createSession() inserts into x_887486_0_session
-5. Token (32-char hex) returned → stored in state.snToken + localStorage
-6. All subsequent API calls include X-PFMT-Token: <token>
-7. validateToken() queries session table (token match + expires_at > NOW)
-8. Expiry: 7 days from login — app auto-reconnects with saved credentials
-```
-
-### Auto-connect on page load
-
-```
-Page load
-  ├── If saved token: verify with GET /profile
-  │     ├── Valid → load data, skip login screen
-  │     └── Expired → _tryAutoLogin() with saved credentials
-  └── No token → _tryAutoLogin()
-        ├── Credentials saved → silent POST /auth/login → load data
-        └── No credentials → show login screen
-```
-
-### Security notes
-
-- Passwords are SHA-256 hashed (no salt) before comparison
-- Session tokens are 32-char random hex (fit in SN String(40) fields)
-- Credentials (including password) are stored in browser `localStorage` to enable auto-connect — do not use on shared/public computers
-- 4-digit PIN lock is available as an additional app-level guard (Settings → App Security)
-- All user-entered strings (descriptions, names, categories, institutions) are HTML-escaped via `esc()` before rendering — prevents stored XSS from local input or SN-synced data
-
----
-
-## Frontend Features
-
-### Navigation
-
-| Page | Description |
+| Page | What it does |
 |---|---|
-| Dashboard | Per-currency hero balance/income/expense, KPI cards, spend category chart grouped by currency |
-| Transactions | Full list with month/type filter; grouped by currency section when multi-currency; add/edit/delete with currency field |
-| Budgets | Per-currency budgets; same category allowed in different currencies; spend isolated per currency |
-| Goals | Savings goals grouped by currency section headers; per-goal currency, progress bars |
-| Analytics | Per-currency income/expense/savings-rate stat cards; category chart grouped by currency |
-| Accounts | Linked accounts grouped by currency; asset allocation and debt ratio shown per currency in Insights |
-| Profile | User info, account stats, edit display name / email / income target |
-| Settings | SN connection card, PIN setup, currency/language, Groq AI key |
+| Dashboard | Per-currency balance/income/expense hero, KPI cards, spend-by-category |
+| Transactions | Full list with month/type/currency filters, bulk select, undo |
+| Budgets | Per-currency budgets with rollover, plus "Plan from Salary" allocator |
+| **Bills** | The monthly checklist — see below |
+| Goals | Savings goals, optionally tracking a real account |
+| Analytics | Spending trend, monthly in/out, savings rate, category breakdowns |
+| Accounts | Balances, allocation, debt ratio |
+| Settings | Account, profile, password, appearance, app lock, **Telegram alerts**, AI key, backup, data |
 
-### Mobile layout (≤900px)
+**Mobile (≤900px).** The sidebar becomes a hamburger drawer and a bottom bar
+appears with Home / Txns / Goals / Stats and a centre **+**. Budgets, Bills,
+Accounts and Settings are reached through the drawer.
 
-- Sidebar collapses into a hamburger drawer; a **bottom navigation bar** appears — dark ink bar matching the sidebar, with Home 🏠 / Txns 💳 / Goals 🎯 / Stats 📈 tabs and a center jade-gradient **+** FAB that opens the Add Transaction modal
-- Active tab highlights jade (like the sidebar's active state); tab state stays in sync with the sidebar
-- Labels are localized (EN/中文); safe-area padding for iPhone home indicators
-- Budgets, Accounts, and Settings remain reachable via the hamburger drawer
-- Verified across desktop 1440 / laptop 1024 / tablet 768 / phone 390 / phone 360 / landscape — no horizontal overflow on any page
+**State** lives in one `state` object, persisted to `localStorage` under
+`pfmt_state_v2` and reloaded from Supabase on sign-in. Nothing derived is ever
+stored: balances, budget spend, savings rate and bill matching are all recomputed
+on render, which is why they cannot disagree with the ledger.
 
-### State structure
-
-```javascript
-{
-  transactions: [],   // [{id, sys_id, type, amount, description, category, account, date, currency, notes}]
-  budgets:      [],   // [{id, sys_id, category, amount, spent, alertPct, currency}]
-  goals:        [],   // [{id, sys_id, name, icon, target, current, monthly, date, currency, remarks}]
-  accounts:     [],   // [{id, sys_id, name, type, institution, balance, currency}]
-
-  snToken:         null,
-  snProfileSysId:  null,
-  snUserProfile:   {},
-  snInstance:      'dev405150.service-now.com',
-  snUsername:      '',
-  snPassword:      '',
-
-  currency:    'SGD',
-  language:    'en',
-  geminiKey:   '',
-  lastSync:    null,
-  filterMonth: 'YYYY-MM',
-  nextId:      100
-}
-```
-
-Persisted to `localStorage` key `pfmt_state_v2`.
-
-### Lock / PIN feature
-
-- Set a 4-digit PIN in Settings → App Security
-- PIN hash stored in `localStorage` (PIN_KEY) — separate from app state
-- Lock button in sidebar locks the app immediately
-- Unlock via numpad overlay
-- Forgot PIN: clears all localStorage and reloads
+**App lock** is a device-local PIN (Settings → App Lock). Its hash never syncs —
+a PIN synced to the cloud would be pointless next to the session that could fetch
+it.
 
 ---
 
-## ServiceNow Components
+## Bills
 
-### Script Include: `PFMTAuthHelper`
+A bill is an **expectation you type once**, not a second ledger to keep by hand.
+Each month the app looks through your real transactions for one that satisfies
+each bill, and ticks it off when it finds one.
 
-| Method | Description |
+**Nothing about "paid" is stored.** The tick is recomputed on every render from
+`state.transactions`, the same way budgets and savings rate are — so it can never
+fall out of step with your ledger. Page back to a previous month and you see what
+that month really did.
+
+### How matching works — `pfmtMatchBills()`
+
+A transaction satisfies a bill when **all** of these hold:
+
+1. it is an `expense` and not half of a transfer,
+2. it is in the month being shown,
+3. same currency,
+4. same category,
+5. same account — *unless* the bill says "any account",
+6. the amount is within `max(1.00, 2% of the bill)` — *unless* the bill is marked
+   as varying, in which case the amount is ignored entirely.
+
+**One transaction can only ever satisfy one bill.** Bills are matched
+fewest-candidates-first, so a bill whose only possible payment is a single row is
+never robbed of it by a looser bill that had other options.
+
+### Status
+
+| Status | Meaning |
 |---|---|
-| `validateToken(token)` | Returns `user_profile` sys_id or `null` |
-| `hashPassword(plaintext)` | Returns SHA-256 hex string |
-| `generateToken()` | Returns 32-char random hex (one GUID without hyphens) |
-| `createSession(sysId, deviceHint)` | Inserts session record, returns token |
-| `deleteSession(token)` | Removes session on logout |
-| `pruneExpiredSessions()` | Cleanup — run as scheduled job |
-| `errorResponse(response, status, msg)` | Standardised error format |
+| Paid | a matching transaction exists — the row shows which one, and the real amount |
+| Due | unpaid, due date not yet reached |
+| Overdue | unpaid, due date passed, in the current month |
+| Missed | unpaid, in a month that has already ended |
+| Upcoming | a future month |
 
-### Business Rules
+The sidebar badge counts what is still unpaid **this** month regardless of which
+month you are browsing, and turns red once any of them is late.
 
-| Name | Table | Trigger | Purpose |
-|---|---|---|---|
-| `BR_ValidateTransaction` | transaction | Before Insert+Update | Validate amount > 0, force Draft for future-dated rows, set recurring `next_run_date` (on insert, or on update if not already set — so ticking Repeat on an existing row still schedules it) |
-| `BR_UpdateAccountBalance` | transaction | After Insert+Update (Confirmed) | Increment/decrement account balance |
-| `BR_UpdateBudgetSpent` | transaction | After Insert (Expense) | Update budget spent_amount + fire alert event |
-| `BR_BudgetCalculatedFields` | budget | Before Insert+Update | Calculate remaining_amount, default period dates |
+**Log payment** does not invent a transaction — it opens the normal transaction
+form with the bill's details filled in, dated to the due day if that day has
+passed. The payment lands in the ledger like any other expense, and the tick then
+follows from the ledger.
 
-### Flows
+---
 
-| Name | Schedule | Purpose |
+## Telegram alerts
+
+One Edge Function, `pfmt-notify`, reached two ways:
+
+| Caller | Authentication | Scope |
 |---|---|---|
-| `FLOW_MonthlyBudgetReset` | 1st of month, 00:01 SGT | Reset spent_amount, apply rollover, update period dates |
-| `FLOW_RecurringTransactions` | Daily 08:00 SGT | Clone recurring transactions as Draft, copy the template's currency, advance `next_run_date`. **Currently dormant** — nothing in the app sets `is_recurring`, so it finds no templates to clone |
+| The app, after you record an expense; the Settings buttons | your Supabase JWT, verified against `/auth/v1/user` | you |
+| `pg_cron`, nightly at 01:00 UTC (09:00 SGT) | `x-pfmt-cron-secret` header, constant-time compared | every user with alerts on |
 
-### Scheduled Jobs
+The bot token lives **only** in the function's environment. A page served from
+GitHub Pages cannot keep a secret, and the token is shared across every user of
+the bot, so it belongs on the server side of the call. The app holds only the
+chat id — an address, which grants nothing.
 
-| Name | Schedule | Purpose |
+### What is sent, and how often
+
+Everything pending goes out as **one message**, never one per item. Each alert is
+claimed in `notifications_sent` *before* it is sent, and a failed send releases
+its claims so the next run retries.
+
+| Kind | Dedupe key | Effect |
 |---|---|---|
-| `SCHED_WeeklyBackupEmail` | Weekly (pick a day/time) | Email each user their accounts/transactions/budgets/goals as CSV attachments |
-| `SCHED_SystemBackupEmail` | Weekly | **Every user's data in one emailed file.** Runs with system rights, so no credentials are stored anywhere and nothing is installed on a laptop. Needs no new table — set `OWNER_EMAIL` at the top and schedule it |
-| `SCHED_WeeklyFullBackup` | Weekly (recommend Sunday 02:00) | Store a dated full backup as a record with JSON + CSV attachments; prunes to the last 12. **Needs the `x_887486_0_backup` table created first** — see [`backup/README.md`](backup/README.md) |
+| Budget | `category｜currency｜month｜near\|over` | one message on crossing the alert %, one more if it goes over |
+| Bill | `billId｜month｜due\|overdue` | one message as it approaches, one more if it actually goes unpaid |
 
-Paste into **System Definition → Scheduled Jobs → New → "Automatically run a script of your choosing"**. Users with no data yet are skipped — nothing is sent until there's something to back up. Uses each user's `email` field on `user_profile`, so make sure that's filled in (set at registration, editable from **Settings**).
+So crossing a threshold produces one message — not one per expense for the rest
+of the month. Because the de-duplication is a **primary key**, two overlapping
+runs cannot double-send.
 
-### Client Scripts (form UI)
+Budget alerts are judged against the same effective limit the budget card draws,
+rollover included, so an alert can never contradict the bar you are looking at.
 
-| Name | Event | Purpose |
-|---|---|---|
-| `CS_DefaultTransactionDate` | onLoad | Pre-fill today's date, set state to Confirmed |
-| `CS_FilterCategoriesByType` | onChange (type) | Filter category dropdown by expense/income |
-| `CS_RecurringToggleAndBudgetHint` | onChange | Show/hide recurring fields, show live budget hint |
+Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 
-### Utilities (`GR_Utilities`)
+---
 
-Run these once in **Scripts – Background** to seed initial data:
+## Tests
 
-```javascript
-// Seed 13 default categories
-new GR_Utilities().seedCategories();
+```bash
+node test/run-all.js
 ```
 
-Default categories seeded:
+170 checks across three suites. They load the **real** functions out of
+`index.html` and the real Edge Function source rather than copies, so a failure
+means the shipped code is wrong — not that a test is stale.
 
-**Expense**: Food & Drink 🍜, Transport 🚇, Groceries 🛒, Shopping 🛍️, Bills 🏠, Rental 🔑, Health 🏥, Entertainment 🎬, Sport ⚽, Education 📚, Travel ✈️, Investment 📈, Other 💰
-
-**Income**: Salary 💼, Freelance 💻, Investment 📈
-
-**Investment** appears in both lists — money into a fund is an outflow, returns from it are income.
-
----
-
-## Deployment Guide
-
-### Prerequisites
-
-- ServiceNow Personal Developer Instance (PDI) — free at developer.servicenow.com
-- GitHub account (for Pages hosting)
-
----
-
-### Step 1 — ServiceNow tables
-
-Create the following tables in Studio (prefix `x_887486_0_`):
-- `x_887486_0_user_profile`
-- `x_887486_0_session`
-- `x_887486_0_account`
-- `x_887486_0_transaction`
-- `x_887486_0_category`
-- `x_887486_0_budget`
-- `x_887486_0_savings_goal`
-
-Add fields as described in the [Data Model](#servicenow-data-model) section. Ensure the `session.token` field is at least **String(40)**.
-
----
-
-### Step 2 — Script Include
-
-Create **PFMTAuthHelper** (not client-callable). Paste contents of `SI_PFMTAuthHelper.js`.
-
----
-
-### Step 3 — Scripted REST APIs
-
-In Studio → Create File → Scripted REST API:
-- **API Name**: `PFMT API`
-- **Base path**: `pfmt/v1`
-- **Scope**: your app scope
-
-Add 6 resources and paste corresponding `REST_*.js` files:
-
-| Resource | Methods | File |
+| Suite | Checks | Protects |
 |---|---|---|
-| `/auth/{action}` | POST | `REST_AuthAPI.js` |
-| `/transactions` | GET, POST, PUT, DELETE | `REST_TransactionsAPI.js` |
-| `/budgets` | GET, POST, PUT, DELETE | `REST_BudgetsAPI.js` |
-| `/goals` | GET, POST, PUT, DELETE | `REST_GoalsAPI.js` |
-| `/accounts` | GET, POST, PUT, DELETE | `REST_AccountsAPI.js` |
-| `/profile` | GET, PUT | `REST_ProfileAPI.js` |
+| `budget-invariants.test.js` | 89 | budget figures never negative, never more than the Transactions list shows, bars always 0–100%, rollover capped, cash vs P&L conservation, currencies never mixed, and every surface reporting the *same* month total |
+| `bills-and-alerts.test.js` | 58 | the two copies of the shared rules are identical; one transaction never ticks two bills; a match is a real match; due dates survive short months; an alert never contradicts the budget card |
+| `pfmt-notify.test.mjs` | 23 | the Edge Function itself, under a stubbed Deno and a stubbed network — auth gates, claim-before-send, one message not many, HTML escaping, failed sends releasing their claims |
 
-> **Important**: Set **"Requires authentication" = false** on each resource (auth is handled by `X-PFMT-Token`).
+The Edge Function suite needs no Deno and touches nothing live: Node's own type
+stripping loads the `.ts` directly and the network is stubbed.
 
----
-
-### Step 4 — Business Rules & Client Scripts
-
-Create each file listed in [ServiceNow Components](#servicenow-components). Paste contents from the corresponding `.js` files.
-
----
-
-### Step 5 — Flows
-
-Import `FLOW_MonthlyBudgetReset.js` and `FLOW_RecurringTransactions.js` in Flow Designer. Set the scheduled triggers as described.
+These exist because of a real bug. A payback larger than the month's spending
+made net spend negative, and the budget card rendered
+`-S$87.36 spent of S$440.00 / -20% (S$527.36 left)` over a **full green bar** —
+a negative CSS width is dropped by the browser, "left" exceeded the whole budget,
+and the minus sign was swallowed by `fmtWithCur`'s `Math.abs`. Meanwhile the
+Transactions page for the same filter plainly listed S$40.84.
 
 ---
 
-### Step 5b — Scheduled Jobs
+## Deployment
 
-Create a Scheduled Job from `SCHED_WeeklyBackupEmail.js` as described in [Scheduled Jobs](#scheduled-jobs). Optional, but recommended once real data is on the instance.
+### The app
 
-For a dated backup history rather than just an inbox copy, also set up `SCHED_WeeklyFullBackup.js` — and optionally the Mac-side job that pulls those backups into a local folder every week. Both are documented in [`backup/README.md`](backup/README.md); the ServiceNow half needs a new `x_887486_0_backup` table, which that guide specifies field by field.
+GitHub Pages serves `index.html` from `main` at
+https://yapseng98.github.io/Personal-Money-Tracker/. Push to `main` and it is
+live within a minute. Keep `daily-money-tracker-app.html` byte-identical:
 
----
+```bash
+cp index.html daily-money-tracker-app.html
+```
 
-### Step 6 — Seed categories
+### The database
 
-Open **Scripts – Background** in SN and run:
+Run the files in [`supabase/migrations/`](supabase/migrations/) in order, in the
+Supabase SQL Editor. They are additive and safe to re-run.
 
-```javascript
-new GR_Utilities().seedCategories();
+### The Edge Function
+
+See [TELEGRAM_SETUP.md § redeploy](TELEGRAM_SETUP.md#if-you-ever-need-to-redeploy-the-function).
+Remember `--no-verify-jwt`, and run `node tools/sync-shared-rules.js` first.
+
+### Before pushing anything
+
+```bash
+node test/run-all.js && node tools/sync-shared-rules.js --check
 ```
 
 ---
 
-### Step 7 — GitHub Pages
+## Known limitations
 
-1. Push `index.html` to the `main` branch of your GitHub repo
-2. Go to **Repo → Settings → Pages → Source: main branch / root**
-3. Your app is live at `https://<username>.github.io/<repo-name>/`
+**Auth emails are capped at 2/hour.** Supabase's free built-in SMTP. Password
+resets and invitations hit `429 over_email_send_rate_limit` quickly. Configuring
+custom SMTP in Auth settings removes the cap.
 
----
+**`budgets.spent` is dead data.** Left over from the ServiceNow backend, which
+maintained it with a business rule. Nothing reads it — spend is always recomputed
+from transactions. It is kept only so an old backup still restores.
 
-### Step 8 — First login
+**Currencies are never converted.** Every figure stays in the currency it was
+entered in and totals are grouped per currency. A cross-currency transfer takes
+both amounts from you rather than applying a rate; there is no FX rate anywhere
+in the app, by design.
 
-1. Open the GitHub Pages URL
-2. Enter your SN instance URL (e.g. `dev405150.service-now.com`)
-3. Enter your PFMT username and password (created via Register if first time)
-4. App auto-saves credentials — future visits connect automatically
+**A transaction fetch caps at 3,000 rows.** Coming back exactly on the limit is
+taken as proof that older rows were left behind, and the backup then refuses to
+write a file that would look complete but isn't.
 
----
+**Recurring transactions are carried but dormant.** `is_recurring` and friends
+survive a round trip and appear in backups; nothing generates from them. Bills
+solve the adjacent problem from the other direction — see
+[FEATURE_IDEAS.md](FEATURE_IDEAS.md) for why they are not the same thing.
 
-## Test Users
-
-Seeded with `seed_test_users.py`. All passwords: **`Test1234!`**
-
-Seeded 2026-08-08 — 281 records, every one carrying an explicit currency. Re-running the script creates a *new* set of users (the `uuid` suffix changes); it never overwrites an existing one.
-
-| Name | Username | Currencies | Acc | Txn | Bud | Goal | Exercises |
-|---|---|---|---|---|---|---|---|
-| Alice Tan | `alice_8b5abb` | SGD + MYR | 4 | 12 | 6 | 3 | JB weekend spend; same category budgeted in both currencies |
-| Ben Lim | `ben_670e6e` | SGD + USD | 5 | 13 | 7 | 3 | USD brokerage; USD Education budget goes over |
-| Chloe Ng | `chloe_05186a` | MYR + SGD | 4 | 12 | 7 | 3 | Cross-border commuter — MYR home, SGD salary |
-| David Wong | `david_96383d` | AUD | 4 | 12 | 7 | 3 | Pure single currency — clean UI, no grouping headers |
-| Emma Liew | `emma_431de0` | SGD | 3 | 10 | 5 | 3 | Chinese UI; Shopping budget over |
-| Farid Hassan | `farid_1a0542` | SGD + MYR | 5 | 12 | 7 | 3 | Family support to MY; MYR Shopping over |
-| Grace Koh | `grace_1ed5d1` | SGD | 2 | 10 | 5 | 3 | Lightest dataset — new-user experience |
-| **Harry Teo** | `harry_1160b8` | **SGD + USD + MYR** | 6 | 14 | 9 | 4 | **Heaviest dataset, 3 currencies, 6 account types** |
-| Iris Chan | `iris_bbccbb` | SGD | 3 | 11 | 6 | 4 | Chinese UI; Shopping budget over |
-| Jake Sim | `jake_ef82a9` | SGD + USD | 5 | 14 | 8 | 4 | Remote dev paid in USD |
-
-**Best for demos:** `harry_1160b8` — three currencies, six accounts, and budgets that land in healthy / near / over states.
-
-> Transaction dates are seeded relative to the run date and span roughly the last 25 days, so they straddle two calendar months. Use the month bar (**‹ ›**) to move between them — some currencies only appear in the earlier month.
+**Bill matching can mis-attribute.** A bill marked "amount varies" matches on
+category and account alone, so with two such bills in one category the first can
+absorb the other's payment. The row always names the transaction it matched, so a
+wrong match is visible; tying the bill to a specific account fixes it.
 
 ---
 
-## Known Limitations
-
-### Transfers require one ServiceNow field
-
-Transfers are stored as a **matched pair** — an expense on the source account and an income on the destination — linked by a shared `transfer_group` id. Both balances then move through the normal `effectiveBal()` logic.
-
-That id needs a field on `x_887486_0_transaction`:
-
-| Field | Type | Notes |
-|---|---|---|
-| `transfer_group` | String (40) | Shared id linking the two legs of a transfer |
-
-**Without it, balances are still correct** — both legs are real expense/income rows. The app also carries known pairings across a reload from `localStorage` (matched on `sys_id`), so transfers stay paired on the device that created them. What the field buys you is pairing that survives on *other* devices and after clearing browser data; without it, a transfer opened elsewhere shows as a loose expense and income, and editing it opens on the Income/Expense tab rather than Transfer.
-
-Also re-paste `REST_TransactionsAPI.js` so the API reads and writes the field.
-
-### Legacy `transfer` rows are inert
-
-Transfers created before this change were saved as a single row with type `transfer`, which no balance calculation reads. They remain inert — delete and re-enter them to get correct balances.
-
-### Transaction ordering
-
-Rows sort by `transaction_date` descending, then `sys_created_on` descending, so the newest entry sits on top even among same-day rows. The API returns `created` for this; without the updated `REST_TransactionsAPI.js` same-day ordering falls back to whatever order the API returns.
-
----
-
-## Error Reference
-
-| HTTP Status | Meaning |
-|---|---|
-| 200 | Success |
-| 201 | Record created |
-| 400 | Bad request — missing required field or invalid value |
-| 401 | Invalid or expired session token |
-| 403 | Access denied — record belongs to another user |
-| 404 | Record not found, or unknown endpoint action |
-| 405 | HTTP method not allowed on this resource |
-| 409 | Conflict — duplicate (e.g. budget for same category + currency already exists) |
-| 500 | Server error — check SN system logs |
-
-All error responses follow the format:
-
-```json
-{ "error": "Human-readable message" }
-```
-
----
-
-*PFMT — Personal Finance Money Tracker | ServiceNow PDI + GitHub Pages*
+*PFMT — Personal Finance Money Tracker · Supabase + GitHub Pages*
