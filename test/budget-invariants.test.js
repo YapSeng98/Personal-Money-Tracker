@@ -33,6 +33,9 @@ function extract(name) {
     if (!m) continue;
     const start = m.index + 1;
     const brace = HTML.indexOf('{', start);
+    // A plain `const X = ...;` with no body of its own ends at its semicolon.
+    const semi = HTML.indexOf(';', start);
+    if (semi !== -1 && (brace === -1 || semi < brace)) return HTML.slice(start, semi + 1);
     if (HTML.slice(start, brace).includes('=>') &&
         /^const [^=]+=\s*[^{]*=>[^{]/.test(HTML.slice(start))) {
       return HTML.slice(start, HTML.indexOf(';', start) + 1);
@@ -46,7 +49,7 @@ function extract(name) {
   throw new Error(`could not find ${name}() in index.html`);
 }
 
-const NAMES = ['isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
+const NAMES = ['CLAIMS_CATEGORY', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal'];
@@ -178,6 +181,105 @@ group('Dashboard KPIs survive a payback-heavy month');
   const st = API.curStats('SGD', state.transactions, '2026-09');
   ok(!Number.isNaN(st.inc) && !Number.isNaN(st.exp) && !Number.isNaN(st.net), 'KPIs are numbers');
   ok(st.avgDaily >= 0, 'average daily spend is never negative', `got ${st.avgDaily}`);
+}
+
+
+// ── Financial structure audit ──────────────────────────────────────────────
+// The app keeps two separate ledgers and they must not contaminate each other:
+//   cash ledger  (effectiveBal) — every movement of money counts
+//   P&L  ledger  (curStats)     — only what you actually earned or spent
+// Money that merely moves (a transfer between your own accounts, funding a
+// holding, a work claim coming back) must move the cash ledger and leave the
+// P&L alone, or a month reports spending that never happened.
+const acct = (name, balance, currency = 'SGD') => ({ name, type: 'Savings', institution: '', balance, currency, isActive: true });
+function scenario(accounts, transactions) {
+  state.accounts = accounts; state.transactions = transactions; state.budgets = [];
+}
+const netWorth = (cur) => state.accounts.filter(a => a.currency === cur)
+  .reduce((s, a) => s + API.effectiveBal(a), 0);
+
+group('Financial structure — cash ledger vs P&L ledger');
+{
+  // 1. Same-currency transfer: money moves, wealth does not, P&L untouched.
+  scenario([acct('A', 1000), acct('B', 0)], [
+    txn({ type: 'expense', amount: 100, account: 'A', category: 'Transfer', transferGroup: 'tg_1', transferPeer: 'B' }),
+    txn({ type: 'income',  amount: 100, account: 'B', category: 'Transfer', transferGroup: 'tg_1', transferPeer: 'A' }),
+  ]);
+  const st = API.curStats('SGD', state.transactions, '2026-09');
+  ok(near(netWorth('SGD'), 1000), 'transfer leaves net worth unchanged', `got ${netWorth('SGD')}`);
+  ok(near(API.effectiveBal(state.accounts[0]), 900) && near(API.effectiveBal(state.accounts[1]), 100),
+     'transfer moves both account balances', `A=${API.effectiveBal(state.accounts[0])} B=${API.effectiveBal(state.accounts[1])}`);
+  ok(near(st.inc, 0) && near(st.exp, 0), 'transfer is not income or spending', `inc=${st.inc} exp=${st.exp}`);
+
+  // 2. Funding a holding out of an account: same rule.
+  scenario([acct('Bank', 1000), acct('Broker', 0)], [
+    txn({ type: 'expense', amount: 300, account: 'Bank',   category: 'Investment', transferGroup: 'ag_1', transferPeer: 'Broker' }),
+    txn({ type: 'asset',   amount: 300, account: 'Broker', category: 'Investment', transferGroup: 'ag_1', transferPeer: 'Bank' }),
+  ]);
+  const st2 = API.curStats('SGD', state.transactions, '2026-09');
+  ok(near(netWorth('SGD'), 1000), 'funding a holding leaves net worth unchanged', `got ${netWorth('SGD')}`);
+  ok(near(st2.exp, 0), 'funding a holding is not spending', `exp=${st2.exp}`);
+
+  // 3. Real income and real spending DO reach the P&L and the balance.
+  scenario([acct('A', 0)], [
+    txn({ type: 'income',  amount: 5000, account: 'A', category: 'Salary' }),
+    txn({ type: 'expense', amount: 200,  account: 'A', category: 'Food & Drink' }),
+  ]);
+  const st3 = API.curStats('SGD', state.transactions, '2026-09');
+  ok(near(st3.inc, 5000) && near(st3.exp, 200), 'income and spending reach the P&L');
+  ok(near(netWorth('SGD'), 4800), 'income and spending reach the balance', `got ${netWorth('SGD')}`);
+  ok(near(st3.net, 4800), 'net equals income minus spending', `got ${st3.net}`);
+}
+
+group('Financial structure — work claims are in-and-out');
+{
+  // The month the money left your pocket: it is spending, and the budget feels it.
+  scenario([acct('UOB', 1000)], [
+    txn({ type: 'expense', amount: 128.20, account: 'UOB', category: 'Claims', description: 'OT dinner + Grab' }),
+  ]);
+  state.budgets = [{ id: 'c', category: 'Claims', amount: 500, alertPct: 80, currency: 'SGD', rollover: false }];
+  const stOut = API.curStats('SGD', state.transactions, '2026-09');
+  ok(near(stOut.exp, 128.20), 'a claimable expense counts as spending when you pay it', `exp=${stOut.exp}`);
+  ok(near(API.getBudgetSpent('Claims', 'SGD'), 128.20), 'and it counts against a Claims budget');
+  ok(near(netWorth('SGD'), 871.80), 'and the money really left the account', `got ${netWorth('SGD')}`);
+
+  // The month it comes back: balance only. Nothing else may move.
+  scenario([acct('UOB', 1000)], [
+    txn({ type: 'expense', amount: 40.84,  account: 'UOB', category: 'Other' }),
+    txn({ type: 'payback', amount: 128.20, account: 'UOB', category: 'Claims', description: 'Claim for Jun' }),
+  ]);
+  const stIn = API.curStats('SGD', state.transactions, '2026-09');
+  ok(near(stIn.exp, 40.84), 'a claim coming back does NOT reduce this month\'s spending', `exp=${stIn.exp} (want 40.84)`);
+  ok(near(stIn.inc, 0),     'a claim coming back is not income', `inc=${stIn.inc}`);
+  ok(near(netWorth('SGD'), 1087.36), 'but the money does arrive in the account', `got ${netWorth('SGD')}`);
+  ok(near(API.getBudgetSpent('Other', 'SGD'), 40.84), 'and an unrelated budget is untouched');
+  ok(near(API.getBudgetSpent('Claims', 'SGD'), 0), 'and it does not credit a Claims budget either');
+
+  // A friend settling their share of THIS month's dinner still nets off.
+  scenario([acct('A', 1000)], [
+    txn({ type: 'expense', amount: 100, account: 'A', category: 'Food & Drink' }),
+    txn({ type: 'payback', amount: 60,  account: 'A', category: 'Food & Drink' }),
+  ]);
+  const stSplit = API.curStats('SGD', state.transactions, '2026-09');
+  ok(near(stSplit.exp, 40), 'a same-category payback still lowers what you bore', `exp=${stSplit.exp} (want 40)`);
+  ok(near(netWorth('SGD'), 960), 'and the balance reflects both movements', `got ${netWorth('SGD')}`);
+}
+
+group('Financial structure — currencies never mix');
+{
+  scenario([acct('SG', 1000, 'SGD'), acct('MY', 0, 'MYR')], [
+    txn({ type: 'expense', amount: 1000,    account: 'SG', currency: 'SGD', category: 'Transfer', transferGroup: 'tg_x', transferPeer: 'MY' }),
+    txn({ type: 'income',  amount: 3190.20, account: 'MY', currency: 'MYR', category: 'Transfer', transferGroup: 'tg_x', transferPeer: 'SG' }),
+  ]);
+  const sgd = API.curStats('SGD', state.transactions, '2026-09');
+  const myr = API.curStats('MYR', state.transactions, '2026-09');
+  ok(near(sgd.xOut, 1000) && near(sgd.xIn, 0), 'SGD side records money exchanged out', `xOut=${sgd.xOut}`);
+  ok(near(myr.xIn, 3190.20) && near(myr.xOut, 0), 'MYR side records money exchanged in', `xIn=${myr.xIn}`);
+  ok(near(sgd.inc, 0) && near(sgd.exp, 0) && near(myr.inc, 0) && near(myr.exp, 0),
+     'an exchange is neither income nor spending on either side');
+  ok(near(netWorth('SGD'), 0) && near(netWorth('MYR'), 3190.20),
+     'each currency keeps its own balance, never summed together',
+     `SGD=${netWorth('SGD')} MYR=${netWorth('MYR')}`);
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);

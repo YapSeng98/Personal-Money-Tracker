@@ -1332,6 +1332,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <option value="Salary">💼 Salary</option>
           <option value="Freelance">💻 Freelance</option>
           <option value="Investment">📈 Investment</option>
+          <option value="Claims">🧾 Claims</option>
           <option value="Other">💰 Other</option>
         </select>
       </div>
@@ -1892,12 +1893,19 @@ function loadState() {
 // signal that older rows were left behind.
 const TXN_FETCH_LIMIT = 3000;
 
+// Work money you front and later get back. The expense counts in the month you
+// paid it — you really were out of pocket then — but the reimbursement is a
+// pure in-and-out: it credits the account it lands in and touches nothing else,
+// because the spending it settles was already counted in its own month.
+// Netting it again where it lands would make an unrelated month look cheaper.
+const CLAIMS_CATEGORY = 'Claims';
+
 const CAT_COLORS = {
   'Food & Drink':'#8B5CF6','Transport':'#00C896','Groceries':'#3B82F6',
   'Shopping':'#FF5B5B','Bills':'#F59E0B','Rental':'#64748B','Health':'#EC4899',
   'Entertainment':'#F97316','Sport':'#84CC16','Education':'#6366F1','Travel':'#14B8A6',
   'Salary':'#00C896','Freelance':'#3B82F6','Investment':'#8B5CF6',
-  'Property':'#0EA5E9','Gold':'#EAB308','Vehicle':'#78716C','Transfer':'#3B82F6','Other':'#6B7280'
+  'Property':'#0EA5E9','Gold':'#EAB308','Vehicle':'#78716C','Transfer':'#3B82F6','Claims':'#0EA5E9','Other':'#6B7280'
 };
 const CAT_BG = {
   'Food & Drink':'#F5F3FF','Transport':'#E6FBF5','Groceries':'#EFF6FF',
@@ -2082,7 +2090,7 @@ function setType(type, el) {
   const income  = ['Salary','Freelance','Investment','Other'];
   // Investment appears in both lists: money going into a brokerage/fund is an
   // outflow from the source account, while returns from it are income.
-  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Other'];
+  const expense = ['Food & Drink','Transport','Groceries','Shopping','Bills','Rental','Health','Entertainment','Sport','Education','Travel','Investment','Claims','Other'];
   const asset   = ['Investment','Property','Gold','Vehicle','Other'];
   const transferCats = ['Transfer'];
   const opts = type === 'income' ? income : type === 'asset' ? asset : type === 'transfer' ? transferCats : expense;
@@ -2976,7 +2984,7 @@ const catBg = cat => document.documentElement.getAttribute('data-theme') === 'da
   ? (CAT_COLORS[cat] || '#6B7280') + '2E'
   : (CAT_BG[cat] || 'var(--surface)');
 
-const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Transfer':'🔄','Other':'💰' }[cat] || '💰');
+const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Transfer':'🔄','Claims':'🧾','Other':'💰' }[cat] || '💰');
 
 // ── Month helpers ──────────────────────────────
 function getMonthLabel(ym) {
@@ -3086,7 +3094,12 @@ function curStats(cur, txns, month) {
     // paid — a friend settling their share. Counting it as income would inflate
     // both earnings and the savings rate, so it comes off what you spent
     // instead, leaving the figure equal to what you actually bore.
-    if (t.type === 'payback') { exp -= t.amount; return; }
+    // A reimbursement filed under Claims settles spending already counted in
+    // the month it was paid, so it is neutral here: the balance moves, the
+    // month's spending does not. Every other payback still comes off what you
+    // spent, which is what makes a friend's share of this month's dinner stop
+    // counting as your cost.
+    if (t.type === 'payback') { if (t.category !== CLAIMS_CATEGORY) exp -= t.amount; return; }
     if (t.type !== 'income' && t.type !== 'expense') return;
     if (isFlow(t)) {
       if (t.type === 'income') inc += t.amount; else exp += t.amount;
@@ -3154,7 +3167,10 @@ function getBudgetSpent(category, currency, month) {
   // Money paid back to you for this category was never really your cost — so a
   // friend settling their share of this month's dinner correctly lowers what
   // the budget counts.
-  const back  = mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
+  // Claims reimbursements are neutral (see CLAIMS_CATEGORY), so they never
+  // reduce a budget — not even a budget set on Claims itself.
+  const back  = category === CLAIMS_CATEGORY ? 0
+              : mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
   // But only so much of it can be settling this month: a payback bigger than
   // everything spent in the category is covering something outside this month
   // — usually a claim for an earlier period landing now, though nothing here
@@ -3416,6 +3432,8 @@ function renderDashboard() {
   const expByCur = {};
   monthTxns.forEach(t => {
     if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
+    // Neutral here too, so this breakdown keeps adding up to the Expenses tile.
+    if (t.type === 'payback' && t.category === CLAIMS_CATEGORY) return;
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
     expByCur[c][t.category] = Math.round(((expByCur[c][t.category]||0) + (t.type === 'payback' ? -t.amount : t.amount)) * 100) / 100;
@@ -4481,6 +4499,8 @@ function renderMonthlyReview() {
   const expByCur = {};
   reviewTxns.forEach(t => {
     if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
+    // Neutral here too, so this breakdown keeps adding up to the Expenses tile.
+    if (t.type === 'payback' && t.category === CLAIMS_CATEGORY) return;
     const c = t.currency || state.currency;
     if (!expByCur[c]) expByCur[c] = {};
     expByCur[c][t.category] = (expByCur[c][t.category] || 0) + (t.type === 'payback' ? -t.amount : t.amount);
