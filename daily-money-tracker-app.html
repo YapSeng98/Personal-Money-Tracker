@@ -3177,7 +3177,11 @@ function nextMonthKey(ym) {
 function getBudgetRollover(b, month) {
   if (!b.rollover) return 0;
   const prevSpent = getBudgetSpent(b.category, b.currency, prevMonthKey(month || state.filterMonth));
-  return Math.max(0, Math.round((b.amount - prevSpent) * 100) / 100);
+  // Capped at the budget itself: a payback larger than last month's spending
+  // makes prevSpent negative, which would otherwise roll over MORE than the
+  // whole budget and quietly raise this month's limit above what was set.
+  const unused = Math.round((b.amount - prevSpent) * 100) / 100;
+  return Math.min(b.amount, Math.max(0, unused));
 }
 
 // The limit a budget is actually judged against. Every over-budget test has to
@@ -4075,7 +4079,13 @@ function renderBudgets() {
     const rollover = getBudgetRollover(b);
     const effAmt   = getBudgetLimit(b);
     const pctReal  = effAmt > 0 ? (spent/effAmt)*100 : 0;
-    const pct      = Math.min(pctReal, 100); // capped — bar width only
+    // Net spend goes negative when a payback in this category is bigger than
+    // the month's spending. Everything derived for display has to floor at
+    // zero: a negative CSS width is dropped by the browser and draws a FULL
+    // bar, and "left" would otherwise claim more headroom than the budget.
+    const pct      = Math.max(0, Math.min(pctReal, 100)); // bar width only
+    const pctShown = Math.max(0, pctReal);
+    const left     = Math.min(effAmt, effAmt - spent);
     const over  = spent > effAmt;
     const near  = pct >= b.alertPct && !over;
     const color = over ? 'var(--coral)' : near ? 'var(--amber)' : 'var(--jade)';
@@ -4101,8 +4111,8 @@ function renderBudgets() {
       </div>
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <div class="budget-stats">
-        <span>${fmtWithCur(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(effAmt, b.currency)}</span>
-        <span class="budget-pct" style="color:${color}">${pctReal.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-effAmt, b.currency)+' over)' : ' ('+fmtWithCur(effAmt-spent, b.currency)+' '+t('budget_left')+')'}</span>
+        <span>${fmtSigned(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(effAmt, b.currency)}</span>
+        <span class="budget-pct" style="color:${color}">${pctShown.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-effAmt, b.currency)+' over)' : ' ('+fmtWithCur(left, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
       ${rollover > 0 ? `<div class="budget-rollover-badge">${t('rollover_badge').replace('{amt}', fmtWithCur(rollover, b.currency))}</div>` : ''}
       <label class="rollover-toggle" onclick="event.stopPropagation()" title="${esc(t('rollover_hint'))}">
@@ -4144,12 +4154,15 @@ function renderBudgets() {
   const overBudgetCount  = state.budgets.filter(b => isBudgetOver(b)).length;
 
   const budgetTotalHTML = budgetCurEntries.map(([cur, d]) => {
-    const pct = d.total > 0 ? (d.spent / d.total * 100) : 0;
+    const pctReal = d.total > 0 ? (d.spent / d.total * 100) : 0;
+    // Floored at zero for the same reason as the cards: paybacks can push a
+    // currency's net spend below zero, and a negative width draws a full bar.
+    const pct = Math.max(0, pctReal);
     const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
     return `<div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
-        <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${fmtWithCur(d.spent, cur)} / ${fmtWithCur(d.total, cur)}</span>
+        <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${fmtSigned(d.spent, cur)} / ${fmtWithCur(d.total, cur)}</span>
       </div>
       <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;">
         <div style="background:${oc};width:${Math.min(pct,100).toFixed(1)}%;height:100%;border-radius:99px;transition:width .4s;"></div>
@@ -4163,7 +4176,7 @@ function renderBudgets() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_remaining')}</div>
-        <div style="font-size:12px;color:var(--jade-d);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.max(0,d.total-d.spent),c)).join('<br>')}</div>
+        <div style="font-size:12px;color:var(--jade-d);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.min(d.total, Math.max(0, d.total-d.spent)),c)).join('<br>')}</div>
       </div>
       <div style="background:var(--coral-s);border-radius:10px;padding:12px;">
         <div style="font-size:10px;color:var(--coral);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_over_lbl')}</div>
@@ -4191,7 +4204,10 @@ function renderGoals() {
   const isMultiCurGoals = Object.keys(goalsByCur).length > 1;
 
   const goalCardHTML = g => {
-    const pct      = Math.min((g.current/g.target)*100, 100);
+    // Floored at zero and guarded against a zero target: a goal linked to an
+    // account that has gone negative would otherwise produce a negative width,
+    // which the browser drops — drawing a full bar on an empty goal.
+    const pct      = g.target > 0 ? Math.max(0, Math.min((g.current/g.target)*100, 100)) : 0;
     const achieved = g.current >= g.target;
     const color    = achieved ? '#00C896' : pct > 50 ? '#3B82F6' : '#8B5CF6';
     const remaining = g.target - g.current;
@@ -4489,12 +4505,14 @@ function renderMonthlyReview() {
       if (budget) {
         const limit  = getBudgetLimit(budget, mk);
         const over   = amt > limit;
-        const bpct   = limit > 0 ? Math.min(amt/limit*100, 100) : 0;
+        // Floored at zero — a category whose paybacks outweigh its spending
+        // has a negative amt, and a negative width draws a full bar.
+        const bpct   = limit > 0 ? Math.max(0, Math.min(amt/limit*100, 100)) : 0;
         const bcolor = over ? 'var(--coral)' : bpct >= (budget.alertPct||80) ? 'var(--amber)' : 'var(--jade)';
         barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${bpct.toFixed(1)}%;background:${bcolor};"></div></div>
           <div class="review-cat-budget"><span>${t('budget_spent_of')} ${fmtWithCur(limit,cur)} budget</span><span style="color:${bcolor};font-weight:700;">${over?t('badge_over'):Math.round(bpct)+'%'}</span></div>`;
       } else {
-        barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${Math.min(pct,100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'};"></div></div>`;
+        barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${Math.max(0,Math.min(pct,100)).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'};"></div></div>`;
       }
       return `<div class="review-cat-row budget-clickable" role="button" tabindex="0"
            data-cat="${esc(cat)}" data-cur="${esc(cur)}"
@@ -4975,7 +4993,9 @@ function renderAccounts() {
     const curTotal = Object.values(byType).reduce((s,v)=>s+v,0);
     if (isMultiCur) allocationRows += `<div style="font-size:10px;font-weight:700;color:var(--sky);letter-spacing:.5px;margin:10px 0 6px;padding-top:6px;border-top:1px solid var(--border);">${cur}</div>`;
     allocationRows += Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type, bal]) => {
-      const pct = curTotal > 0 ? (bal/curTotal*100) : 0;
+      // An account type in net debt gives a negative share; floor it so the
+      // bar reads empty rather than being dropped and rendering full.
+      const pct = curTotal > 0 ? Math.max(0, (bal/curTotal*100)) : 0;
       const col = typeColors[type] || 'var(--muted)';
       return `<div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;">
