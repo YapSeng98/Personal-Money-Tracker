@@ -1578,6 +1578,7 @@ const TRANSLATIONS = {
     empty_no_budgets:'No budgets yet. Add one!', empty_no_budgets_overview:'Add budgets to see overview',
     budget_total:'Total Monthly Budget', budget_remaining:'Remaining', budget_over_lbl:'Over Budget',
     budget_used:'used', budget_spent_of:'spent of', budget_left:'left',
+    budget_paid_back:'paid back — claim for an earlier month, so it does not reduce this budget',
     badge_over:'OVER', badge_near:'NEAR', budget_cats:'cats',
     panel_savings_goals:'Savings Goals', btn_new_goal:'+ New Goal',
     panel_goals_summary:'Goals Summary', ai_title_goals:'Goal Coach',
@@ -1691,6 +1692,7 @@ const TRANSLATIONS = {
     empty_no_budgets:'暂无预算，请添加！', empty_no_budgets_overview:'添加预算以查看概览',
     budget_total:'月度预算总额', budget_remaining:'剩余', budget_over_lbl:'超支',
     budget_used:'已使用', budget_spent_of:'已花费，共', budget_left:'剩余',
+    budget_paid_back:'已退回 — 属于往月的报销，因此不抵扣本月预算',
     badge_over:'超支', badge_near:'接近', budget_cats:'个类别',
     panel_savings_goals:'储蓄目标', btn_new_goal:'+ 新建目标',
     panel_goals_summary:'目标摘要', ai_title_goals:'目标顾问',
@@ -3149,9 +3151,26 @@ function getBudgetSpent(category, currency, month) {
   const cur  = currency || state.currency;
   const mine = getMonthTxns(month).filter(t => t.category===category && (t.currency||state.currency) === cur);
   const spent = mine.filter(t => t.type==='expense' && isFlow(t)).reduce((s,t)=>s+t.amount, 0);
-  // Money paid back to you for this category was never really your cost.
+  // Money paid back to you for this category was never really your cost — so a
+  // friend settling their share of this month's dinner correctly lowers what
+  // the budget counts.
   const back  = mine.filter(t => t.type==='payback').reduce((s,t)=>s+t.amount, 0);
+  // But a payback bigger than everything spent in the category this month
+  // cannot be settling this month's spending: it is a claim for an earlier
+  // period landing now. Netting it here reported a month you really did spend
+  // in as costing nothing — or less than nothing. Past that point it stops
+  // offsetting, and the budget shows what actually went out this month.
+  if (back > spent) return Math.round(spent * 100) / 100;
   return Math.round((spent - back) * 100) / 100;
+}
+
+// The paybacks behind the figure above, so a card can say why a budget did not
+// move when money clearly came back.
+function getBudgetPayback(category, currency, month) {
+  const cur  = currency || state.currency;
+  return Math.round(getMonthTxns(month)
+    .filter(t => t.category===category && (t.currency||state.currency) === cur && t.type==='payback')
+    .reduce((s,t)=>s+t.amount, 0) * 100) / 100;
 }
 
 function prevMonthKey(ym) {
@@ -4078,6 +4097,10 @@ function renderBudgets() {
     const spent    = getBudgetSpent(b.category, b.currency);
     const rollover = getBudgetRollover(b);
     const effAmt   = getBudgetLimit(b);
+    // Shown when a payback outran the month's spending, so a budget that did
+    // not move still explains where the money went.
+    const back     = getBudgetPayback(b.category, b.currency);
+    const backNote = back > spent ? back : 0;
     const pctReal  = effAmt > 0 ? (spent/effAmt)*100 : 0;
     // Net spend goes negative when a payback in this category is bigger than
     // the month's spending. Everything derived for display has to floor at
@@ -4115,6 +4138,7 @@ function renderBudgets() {
         <span class="budget-pct" style="color:${color}">${pctShown.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-effAmt, b.currency)+' over)' : ' ('+fmtWithCur(left, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
       ${rollover > 0 ? `<div class="budget-rollover-badge">${t('rollover_badge').replace('{amt}', fmtWithCur(rollover, b.currency))}</div>` : ''}
+      ${backNote > 0 ? `<div class="budget-rollover-badge">↩ ${fmtWithCur(backNote, b.currency)} ${t('budget_paid_back')}</div>` : ''}
       <label class="rollover-toggle" onclick="event.stopPropagation()" title="${esc(t('rollover_hint'))}">
         <input type="checkbox" ${b.rollover ? 'checked' : ''} onchange="toggleBudgetRollover('${b.id}', this.checked)">
         <span>${t('rollover_toggle')}</span>

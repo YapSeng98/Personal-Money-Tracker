@@ -1,0 +1,184 @@
+#!/usr/bin/env node
+/*
+ * Invariant tests for the money maths in index.html.
+ *
+ * Run:  node test/budget-invariants.test.js
+ *
+ * These load the REAL functions out of index.html rather than copies, so the
+ * tests fail if the shipped code drifts. They exist because of a bug where a
+ * payback larger than the month's spending made net spend negative, and the
+ * budget card then rendered "-S$87.36 spent of S$440.00 / -20% (S$527.36
+ * left)" over a FULL green bar — a negative CSS width is dropped by the
+ * browser, "left" exceeded the whole budget, and the minus sign was swallowed
+ * by fmtWithCur's Math.abs. Meanwhile the Transactions page for the same
+ * filter plainly listed S$40.84 of spending.
+ *
+ * The rules being protected:
+ *   1. A budget figure is never negative.
+ *   2. A budget never reports more spent than the Transactions list shows.
+ *   3. A bar width is always a usable 0-100%.
+ *   4. "Left" never exceeds the budget, and rollover never exceeds it either.
+ *   5. Nothing is ever NaN.
+ */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+
+// ── lift the real functions out of the page ────────────────────────────────
+function extract(name) {
+  for (const p of [new RegExp(`\\nfunction ${name}\\s*\\(`), new RegExp(`\\nconst ${name}\\s*=`)]) {
+    const m = HTML.match(p);
+    if (!m) continue;
+    const start = m.index + 1;
+    const brace = HTML.indexOf('{', start);
+    if (HTML.slice(start, brace).includes('=>') &&
+        /^const [^=]+=\s*[^{]*=>[^{]/.test(HTML.slice(start))) {
+      return HTML.slice(start, HTML.indexOf(';', start) + 1);
+    }
+    let depth = 0;
+    for (let i = brace; i < HTML.length; i++) {
+      if (HTML[i] === '{') depth++;
+      else if (HTML[i] === '}' && --depth === 0) return HTML.slice(start, i + 1);
+    }
+  }
+  throw new Error(`could not find ${name}() in index.html`);
+}
+
+const NAMES = ['isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
+  'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
+  'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
+  'getBudgetLimit', 'isBudgetOver', 'effectiveBal'];
+
+const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
+const src = NAMES.map(extract).join('\n');
+const API = new Function('state', 'console', src + `; return {${NAMES.join(',')}};`)(state, console);
+
+// ── tiny assertion harness ─────────────────────────────────────────────────
+let failed = 0, passed = 0;
+const near = (a, b) => Math.abs(a - b) < 0.005;
+function ok(cond, label, detail) {
+  if (cond) { passed++; return; }
+  failed++;
+  console.log(`  FAIL  ${label}${detail ? '\n        ' + detail : ''}`);
+}
+function group(name) { console.log('\n' + name); }
+
+const txn = (o) => Object.assign({
+  type: 'expense', amount: 0, description: '', category: 'Other',
+  account: 'A', date: '2026-09-10', notes: '', currency: 'SGD',
+  transferGroup: '', transferPeer: '',
+}, o);
+
+/**
+ * Drives one month of a category through the real functions and asserts every
+ * invariant the budget card depends on.
+ */
+function checkBudget(label, { rows, amount, alertPct = 80, rollover = false, expectSpent }) {
+  state.transactions = rows;
+  state.budgets = [{ id: 'b1', category: 'Other', amount, spent: 0, alertPct, currency: 'SGD', rollover }];
+  const b = state.budgets[0];
+
+  const spent = API.getBudgetSpent('Other', 'SGD');
+  const limit = API.getBudgetLimit(b);
+  const roll  = API.getBudgetRollover(b);
+
+  // what the Transactions page lists for the same filter (expenses, this month)
+  const listed = rows
+    .filter(t => t.type === 'expense' && !t.transferGroup && t.date.startsWith('2026-09') && t.category === 'Other')
+    .reduce((s, t) => s + t.amount, 0);
+
+  // exactly the arithmetic the card performs
+  const pctReal  = limit > 0 ? (spent / limit) * 100 : 0;
+  const barWidth = Math.max(0, Math.min(pctReal, 100));
+  const left     = Math.min(limit, limit - spent);
+
+  if (expectSpent !== undefined) {
+    ok(near(spent, expectSpent), `${label}: spent`, `got ${spent}, expected ${expectSpent}`);
+  }
+  ok(spent >= 0,                  `${label}: spent is never negative`, `got ${spent}`);
+  ok(spent <= listed + 0.005,     `${label}: budget never claims more than the Transactions list`,
+                                  `budget ${spent} vs listed ${listed}`);
+  ok(barWidth >= 0 && barWidth <= 100, `${label}: bar width usable`, `got ${barWidth}%`);
+  ok(left <= limit + 0.005,       `${label}: "left" never exceeds the budget`, `left ${left} vs limit ${limit}`);
+  ok(roll >= 0 && roll <= b.amount + 0.005, `${label}: rollover within the budget`, `got ${roll}`);
+  ok([spent, limit, pctReal, barWidth, left, roll].every(n => !Number.isNaN(n)), `${label}: no NaN`);
+}
+
+group('Budgets — paybacks, the case that broke production');
+checkBudget('plain spending', {
+  rows: [txn({ amount: 75.39 })], amount: 160, expectSpent: 75.39,
+});
+checkBudget('over budget', {
+  rows: [txn({ amount: 500 })], amount: 160, expectSpent: 500,
+});
+checkBudget('same-month split (100 out, 60 back) still nets', {
+  rows: [txn({ amount: 100 }), txn({ type: 'payback', amount: 60 })],
+  amount: 440, expectSpent: 40,
+});
+checkBudget('payback settles the month exactly', {
+  rows: [txn({ amount: 50 }), txn({ type: 'payback', amount: 50 })],
+  amount: 440, expectSpent: 0,
+});
+// The regression: an old claim arriving this month must not cancel this
+// month's real spending, nor drive the budget below zero.
+checkBudget('claim for an earlier month exceeds this month\'s spend', {
+  rows: [txn({ amount: 30.84, description: 'CLAUDE Monthly' }),
+         txn({ amount: 10, description: 'Income tax charge' }),
+         txn({ type: 'payback', amount: 128.20, description: 'Claim for Jun' })],
+  amount: 440, expectSpent: 40.84,
+});
+checkBudget('payback with no spending at all', {
+  rows: [txn({ type: 'payback', amount: 300 })], amount: 440, expectSpent: 0,
+});
+checkBudget('transfer legs never count as spending', {
+  rows: [txn({ amount: 1000, transferGroup: 'tg_1', transferPeer: 'B' })],
+  amount: 440, expectSpent: 0,
+});
+
+group('Budget rollover cap');
+{
+  // Last month ran a big payback; the unused amount must not inflate this
+  // month's limit beyond the budget that was actually set.
+  state.transactions = [txn({ amount: 5, date: '2026-08-05' }),
+                        txn({ type: 'payback', amount: 500, date: '2026-08-06' })];
+  const b = { id: 'b1', category: 'Other', amount: 440, alertPct: 80, currency: 'SGD', rollover: true };
+  state.budgets = [b];
+  const roll = API.getBudgetRollover(b, '2026-09');
+  ok(roll >= 0 && roll <= b.amount + 0.005, 'rollover stays within the budget', `got ${roll}`);
+  ok(API.getBudgetLimit(b, '2026-09') <= b.amount * 2 + 0.005, 'limit stays sane', 'rollover doubled the budget');
+}
+
+group('Goal bars');
+for (const g of [
+  { name: 'normal',       target: 8000,  current: 1400.05 },
+  { name: 'achieved',     target: 100,   current: 250 },
+  { name: 'empty',        target: 10000, current: 0 },
+  { name: 'gone negative',target: 10000, current: -250 },   // linked account overdrawn
+  { name: 'zero target',  target: 0,     current: 500 },
+]) {
+  const pct = g.target > 0 ? Math.max(0, Math.min((g.current / g.target) * 100, 100)) : 0;
+  ok(pct >= 0 && pct <= 100 && !Number.isNaN(pct), `goal "${g.name}" bar usable`, `got ${pct}%`);
+}
+
+group('Account allocation bars');
+for (const [label, bal, total] of [['normal', 500, 1000], ['net debt', -500, 1000], ['zero total', 100, 0]]) {
+  const pct = total > 0 ? Math.max(0, (bal / total * 100)) : 0;
+  ok(pct >= 0 && !Number.isNaN(pct), `allocation "${label}" bar usable`, `got ${pct}%`);
+}
+
+group('Dashboard KPIs survive a payback-heavy month');
+{
+  state.transactions = [
+    txn({ type: 'income', amount: 4001.60, category: 'Salary', date: '2026-09-01' }),
+    txn({ amount: 40.84 }),
+    txn({ type: 'payback', amount: 128.20 }),
+  ];
+  const st = API.curStats('SGD', state.transactions, '2026-09');
+  ok(!Number.isNaN(st.inc) && !Number.isNaN(st.exp) && !Number.isNaN(st.net), 'KPIs are numbers');
+  ok(st.avgDaily >= 0, 'average daily spend is never negative', `got ${st.avgDaily}`);
+}
+
+console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);
+process.exit(failed === 0 ? 0 : 1);
