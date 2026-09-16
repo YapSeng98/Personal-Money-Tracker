@@ -287,6 +287,41 @@ group('An alert never contradicts the bar on screen');
   ok(!az.some(a => Number.isNaN(a.pct)), 'and nothing is NaN');
 }
 
+// ── 5b. an unreachable threshold must not fail silently ────────────────────
+group('A threshold that can never be reached says so');
+{
+  const V = new Function(extract('ALERT_PCT_MIN') + '\n' + extract('isValidAlertPct') +
+                         '\nreturn {ALERT_PCT_MIN, ALERT_PCT_MAX, isValidAlertPct};')();
+  ok(V.isValidAlertPct(80),  '80 is a valid threshold');
+  ok(V.isValidAlertPct(10),  '10, the floor, is valid');
+  ok(V.isValidAlertPct(100), '100, the ceiling, is valid');
+  // The exact values the ServiceNow import left behind, which switched budget
+  // alerts off without a single visible symptom.
+  ok(!V.isValidAlertPct(400), '400 is refused — nothing reaches 400% of its own limit');
+  ok(!V.isValidAlertPct(150), '150 is refused');
+  ok(!V.isValidAlertPct(9),   '9 is refused — below the floor');
+  ok(!V.isValidAlertPct(0),   '0 is refused');
+  ok(!V.isValidAlertPct(-80), 'a negative threshold is refused');
+  ok(!V.isValidAlertPct(NaN), 'NaN is refused rather than silently passing');
+  ok(!V.isValidAlertPct(Infinity), 'Infinity is refused');
+
+  // The real-world consequence: with 400 stored, a budget at 90% stays silent.
+  const budgets400 = [{ id: 'x', category: 'Health', amount: 480, alertPct: 400, currency: 'SGD', rollover: false }];
+  const budgets80  = [{ id: 'x', category: 'Health', amount: 480, alertPct: 80,  currency: 'SGD', rollover: false }];
+  const spend = [txn({ amount: 432, category: 'Health' })];
+  ok(R.pfmtBudgetAlerts(budgets400, spend, '2026-09', 'SGD').length === 0,
+     'a budget at 90% with a 400% threshold really does stay silent');
+  ok(R.pfmtBudgetAlerts(budgets80, spend, '2026-09', 'SGD').length === 1,
+     'and fires as soon as the threshold is a real percentage');
+
+  // The card has to mark it, or the silence is invisible.
+  ok(/const badPct = !isValidAlertPct\(b\.alertPct\)/.test(HTML),
+     'the budget card computes whether its threshold is reachable');
+  ok(/budget-badpct-badge/.test(HTML), 'and renders a badge when it is not');
+  ok(/if \(!isValidAlertPct\(alert\)\)/.test(HTML),
+     'and saving a budget refuses an out-of-range threshold outright');
+}
+
 // ── 6. dedupe keys ─────────────────────────────────────────────────────────
 group('The same alert is never sent twice');
 {

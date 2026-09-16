@@ -346,6 +346,8 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .budget-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
 .budget-pct{font-weight:700;}
 .budget-rollover-badge{margin-top:6px;font-size:10px;font-weight:700;color:var(--jade-d);background:var(--jade-s);display:inline-block;padding:2px 8px;border-radius:7px;}
+/* Amber, not jade: this one is telling you something is switched off. */
+.budget-badpct-badge{margin-top:6px;margin-left:6px;font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-s);display:inline-block;padding:2px 8px;border-radius:7px;cursor:help;}
 .rollover-toggle{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted);cursor:pointer;}
 .rollover-toggle input{width:14px;height:14px;cursor:pointer;accent-color:var(--jade);flex-shrink:0;}
 
@@ -1761,6 +1763,8 @@ const TRANSLATIONS = {
     budget_total:'Total Monthly Budget', budget_remaining:'Remaining', budget_over_lbl:'Over Budget',
     budget_used:'used', budget_spent_of:'spent of', budget_left:'left',
     budget_paid_back:'paid back — more than was spent here this month, so it does not reduce this budget',
+    budget_alert_off:'Alerts off — threshold is {pct}%',
+    budget_alert_off_hint:'A threshold has to be between 10% and 100% of the limit to ever be reached. This one never will, so this budget never warns you. Edit the budget to set a real percentage.',
     badge_over:'OVER', badge_near:'NEAR', budget_cats:'cats',
     panel_savings_goals:'Savings Goals', btn_new_goal:'+ New Goal',
     panel_goals_summary:'Goals Summary', ai_title_goals:'Goal Coach',
@@ -1839,6 +1843,7 @@ const TRANSLATIONS = {
     toast_groq_saved:'✓ Groq key saved', toast_groq_toast:'Groq API key saved',
     toast_enter_amount:'Enter a valid amount', toast_enter_desc:'Enter a description',
     toast_enter_date:'Select a date', toast_enter_budget_amt:'Enter a valid budget amount',
+    toast_alert_pct_range:'Alert threshold must be between {min}% and {max}% — it is a percentage of the budget, so anything higher can never be reached',
     toast_enter_goal_name:'Enter a goal name', toast_enter_goal_target:'Enter a valid target amount',
     toast_enter_account_name:'Enter an account name', toast_enter_api_key:'Enter an API key',
     ai_no_key:'⚠️ Add your free Groq API key in <strong>Settings → AI Configuration</strong> to enable insights.',
@@ -1893,6 +1898,8 @@ const TRANSLATIONS = {
     budget_total:'月度预算总额', budget_remaining:'剩余', budget_over_lbl:'超支',
     budget_used:'已使用', budget_spent_of:'已花费，共', budget_left:'剩余',
     budget_paid_back:'已退回 — 超过本月该类别的支出，因此不抵扣本月预算',
+    budget_alert_off:'提醒已失效 — 阈值为 {pct}%',
+    budget_alert_off_hint:'阈值必须在预算的 10% 至 100% 之间才可能触发。当前数值永远达不到，因此此预算不会发出任何提醒。请编辑预算设置有效的百分比。',
     badge_over:'超支', badge_near:'接近', budget_cats:'个类别',
     panel_savings_goals:'储蓄目标', btn_new_goal:'+ 新建目标',
     panel_goals_summary:'目标摘要', ai_title_goals:'目标顾问',
@@ -1971,6 +1978,7 @@ const TRANSLATIONS = {
     toast_groq_saved:'✓ Groq 密钥已保存', toast_groq_toast:'Groq API 密钥已保存',
     toast_enter_amount:'请输入有效金额', toast_enter_desc:'请输入描述',
     toast_enter_date:'请选择日期', toast_enter_budget_amt:'请输入有效预算金额',
+    toast_alert_pct_range:'提醒阈值必须在 {min}% 至 {max}% 之间 — 该数值是预算的百分比，超过此范围永远无法触发',
     toast_enter_goal_name:'请输入目标名称', toast_enter_goal_target:'请输入有效目标金额',
     toast_enter_account_name:'请输入账户名称', toast_enter_api_key:'请输入 API 密钥',
     ai_no_key:'⚠️ 请在 <strong>设置 → AI 配置</strong> 中添加免费 Groq API 密钥以启用洞察。',
@@ -2304,6 +2312,19 @@ function pfmtBillsToRemind(bills, txns, month, today, leadDays, fallbackCur) {
 // above so there is exactly one copy of each.
 const CLAIMS_CATEGORY = PFMT_CLAIMS_CATEGORY;
 const paybackOffsets  = pfmtPaybackOffsets;
+
+// A budget's alert threshold is a percentage of its own limit, so anything
+// outside this range is meaningless. It matters because an out-of-range value
+// does not fail loudly — it just means nothing ever reaches the threshold, and
+// the budget silently stops warning. The ServiceNow import landed values like
+// 400 and 150 in this field, which switched budget alerts off for months
+// without a single visible symptom.
+//
+// Deliberately NOT clamped on read: what counts as "warn me" is the user's
+// call, so a bad value is surfaced on the card rather than quietly rewritten to
+// something they never chose.
+const ALERT_PCT_MIN = 10, ALERT_PCT_MAX = 100;
+const isValidAlertPct = n => Number.isFinite(n) && n >= ALERT_PCT_MIN && n <= ALERT_PCT_MAX;
 
 // The spending categories, in one place: the transaction form's Expense tab and
 // the bill form both read this list, so a category can't exist on one and not
@@ -3091,6 +3112,14 @@ async function saveBudget() {
   const editId   = document.getElementById('budget-edit-id').value;
 
   if (!amt || amt <= 0) { showToast(t('toast_enter_budget_amt'), 'error'); return; }
+  // Refused rather than accepted-and-ignored: a threshold of 400 saves cleanly,
+  // looks fine, and then never warns about anything for the rest of the budget's
+  // life. The form's min/max attributes alone don't stop it — they don't apply
+  // to a value set programmatically or pasted in.
+  if (!isValidAlertPct(alert)) {
+    showToast(t('toast_alert_pct_range').replace('{min}', ALERT_PCT_MIN).replace('{max}', ALERT_PCT_MAX), 'error');
+    return;
+  }
 
   if (editId !== '') {
     const idx = state.budgets.findIndex(b => b.id == editId);
@@ -4529,6 +4558,9 @@ function renderBudgets() {
     const left     = Math.min(effAmt, effAmt - spent);
     const over  = spent > effAmt;
     const near  = pct >= b.alertPct && !over;
+    // A threshold outside 10–100 can never be reached, so this budget is not
+    // warning anyone — say so on the card instead of letting it look healthy.
+    const badPct = !isValidAlertPct(b.alertPct);
     const color = over ? 'var(--coral)' : near ? 'var(--amber)' : 'var(--jade)';
     // Data attributes rather than inline string args — category names contain
     // "&" and spaces, and quoting those into an onclick is a bug waiting to happen.
@@ -4557,6 +4589,7 @@ function renderBudgets() {
       </div>
       ${rollover > 0 ? `<div class="budget-rollover-badge">${t('rollover_badge').replace('{amt}', fmtWithCur(rollover, b.currency))}</div>` : ''}
       ${backNote > 0 ? `<div class="budget-rollover-badge">↩ ${fmtWithCur(backNote, b.currency)} ${t('budget_paid_back')}</div>` : ''}
+      ${badPct ? `<div class="budget-badpct-badge" title="${esc(t('budget_alert_off_hint'))}">⚠️ ${t('budget_alert_off').replace('{pct}', b.alertPct)}</div>` : ''}
       <label class="rollover-toggle" onclick="event.stopPropagation()" title="${esc(t('rollover_hint'))}">
         <input type="checkbox" ${b.rollover ? 'checked' : ''} onchange="toggleBudgetRollover('${b.id}', this.checked)">
         <span>${t('rollover_toggle')}</span>
