@@ -142,7 +142,14 @@ type Pref = {
 // reads worse than no greeting at all.
 function greeting(name: string | null | undefined) {
   const n = (name ?? '').trim();
-  return n ? `Dear ${esc(n)},\n` : '';
+  return n ? `Dear ${esc(n)},\n\n` : '';
+}
+
+// "17 Sep 2026" — the day the message is about, read the way a person reads a date.
+function dateLabel(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d} ${MON[m - 1]} ${y}`;
 }
 
 // `scope` says who is asking, because the three callers want different things:
@@ -197,7 +204,10 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
 
   // Claim first, send after: anything claimed here is in the message, and if the
   // send fails every claim is released so the next run tries again.
-  const lines: string[] = [];
+  // Every line remembers its currency, because the message is laid out in one
+  // section per currency — SGD and MYR are never mixed in one list, the same rule
+  // the app follows everywhere else.
+  const lines: Array<{ cur: string; text: string }> = [];
   const claimed: Array<[string, string]> = [];
   // What was due to be said but already had been this month. Reported back so
   // the app can say "already told you about Health" rather than the false
@@ -215,9 +225,9 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
        (a.budget.currency || fallbackCur) === (scope.currency || fallbackCur)));
     for (const a of alerts) {
       const cur = a.budget.currency || fallbackCur;
-      lines.push(a.level === 'over'
+      lines.push({ cur, text: a.level === 'over'
         ? `🔴 <b>${esc(a.budget.category)}</b> is over budget — ${money(a.spent, cur)} of ${money(a.limit, cur)} (${money(a.spent - a.limit, cur)} over)`
-        : `🟠 <b>${esc(a.budget.category)}</b> has passed ${money(a.at, cur)} — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left`);
+        : `🟠 <b>${esc(a.budget.category)}</b> has passed ${money(a.at, cur)} — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left` });
     }
   }
 
@@ -242,15 +252,35 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
                  : d.days === 0 ? 'due today'
                  : `due in ${d.days} day${d.days === 1 ? '' : 's'}`;
       const amt  = d.bill.amountVaries ? `~${money(d.bill.amount, cur)}` : money(d.bill.amount, cur);
-      lines.push(`${d.days < 0 ? '🔴' : '📅'} <b>${esc(d.bill.name)}</b> ${amt} — ${when} (${d.due})`);
+      lines.push({ cur, text: `${d.days < 0 ? '🔴' : '📅'} <b>${esc(d.bill.name)}</b> ${amt} — ${when} (${d.due})` });
     }
   }
 
   if (!lines.length) return { sent: 0, already };
 
-  const header = greeting(pref.display_name) + `<b>PFMT — ${month}</b>`;
+  // Dear YC,
+  //
+  // PFMT - 17 Sep 2026
+  //
+  // SGD
+  // 🟠 Health has passed …
+  //
+  // MYR
+  // 🟠 Food & Drink has passed …
+  //
+  // The book's own currency leads; any others follow alphabetically.
+  const byCur = new Map<string, string[]>();
+  for (const l of lines) {
+    if (!byCur.has(l.cur)) byCur.set(l.cur, []);
+    byCur.get(l.cur)!.push(l.text);
+  }
+  const curs = [...byCur.keys()].sort((a, b) =>
+    a === fallbackCur ? -1 : b === fallbackCur ? 1 : a.localeCompare(b));
+  const sections = curs.map(c => [`<b>${esc(c)}</b>`, ...byCur.get(c)!].join('\n'));
+  const message = greeting(pref.display_name) +
+    `<b>PFMT - ${dateLabel(today)}</b>\n\n` + sections.join('\n\n');
   try {
-    await sendTelegram(chat, [header, ...lines].join('\n'));
+    await sendTelegram(chat, message);
   } catch (e) {
     // Nothing was delivered, so nothing should count as said.
     for (const [kind, key] of claimed) await unclaim(pref.user_id, kind, key);

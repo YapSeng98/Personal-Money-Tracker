@@ -116,7 +116,7 @@ let b = await r.json();
 ok(r.status === 200 && b.sent === 1, 'a test message is sent', JSON.stringify(b));
 ok(sent[0].chat_id === '12345', 'to the chat id from preferences');
 ok(/connected/i.test(sent[0].text), 'and says the connection works');
-ok(sent[0].text.startsWith('Dear YC &lt;Seng&gt;,\n\u2705'),
+ok(sent[0].text.startsWith('Dear YC &lt;Seng&gt;,\n\n\u2705'),
    'the test message opens with the greeting, HTML-escaped', sent[0].text.slice(0, 40));
 
 // ── the manual check: every budget at or past its amount, and bills ──
@@ -127,8 +127,9 @@ b = await r.json();
 ok(r.status === 200 && b.sent === 2, 'one message covering both alerts', JSON.stringify(b));
 ok(sent.length === 1, 'sent as ONE telegram message, not two', `got ${sent.length}`);
 const text = sent[0]?.text ?? '';
-ok(text.startsWith('Dear YC &lt;Seng&gt;,\n<b>PFMT'),
-   'the alert opens with the greeting, then the header', text.slice(0, 60));
+ok(text.startsWith('Dear YC &lt;Seng&gt;,\n\n<b>PFMT - 9 Sep 2026</b>\n\n<b>SGD</b>\n'),
+   'greeting, blank line, dated header, blank line, then the currency section',
+   JSON.stringify(text.slice(0, 80)));
 ok(/Other/.test(text) && /has passed S\$380\.00/.test(text),
    'names the budget and the amount it passed', text);
 ok(/S\$400\.00/.test(text) && /S\$440\.00/.test(text), 'quotes spent of limit', text);
@@ -208,6 +209,22 @@ ok(Array.isArray(b.failures) && b.failures.length === 0, 'and reports no failure
 ok(!/Other/.test(sent[0]?.text ?? '') && /Rent/.test(sent[0]?.text ?? ''),
    'the daily run sends bills, never a budget with no new expense behind it',
    sent[0]?.text ?? '');
+
+// ── one section per currency, the book's own currency first ──
+BUDGETS.push({ id: 'g-myr', category: 'Food & Drink', amount: 600, alert_amount: 500,
+               currency: 'MYR', rollover: false });
+TXNS.push({ id: 'x-myr', type: 'expense', amount: 540, description: 'Makan', category: 'Food & Drink',
+            account: 'Maybank', date: '2026-09-04', currency: 'MYR', transfer_group: null });
+sent.length = 0; claimed.clear();
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09' },
+               { Authorization: 'Bearer good-jwt' });
+const mixed = sent[0]?.text ?? '';
+const sgdAt = mixed.indexOf('<b>SGD</b>'), myrAt = mixed.indexOf('<b>MYR</b>');
+ok(sgdAt > 0 && myrAt > sgdAt, 'SGD and MYR get their own sections, SGD first', mixed);
+ok(mixed.indexOf('RM540.00') > myrAt && mixed.indexOf('S$400.00') < myrAt,
+   'each line sits under its own currency, never mixed', mixed);
+ok(/\n\n<b>MYR<\/b>\n/.test(mixed), 'a blank line separates the sections', JSON.stringify(mixed));
+BUDGETS.pop(); TXNS.pop();
 
 // ── a failed telegram send must release its claims ──
 sent.length = 0; claimed.clear(); writes.length = 0;
