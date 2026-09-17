@@ -350,11 +350,21 @@ Once it's running, **Settings → Alerts on Telegram** controls it:
 One message with everything in it, not one per item:
 
 ```
-Dear YC,
-PFMT — 2026-09
+Dear CS,
+
+PFMT - 17 Sep 2026
+
+SGD
+🟠 Food & Drink has passed S$400.00 — S$449.99 of S$450.00, S$0.01 left
 🟠 Health has passed S$400.00 — S$432.00 of S$480.00, S$48.00 left
-🔴 Other is over budget — S$470.00 of S$440.00 (S$30.00 over)
+
+MYR
+🔴 Shopping is over budget — RM524.70 of RM500.00 (RM24.70 over)
 ```
+
+The greeting uses your display name, the header carries the date, and each
+currency gets its own section — your main currency first — so SGD and MYR
+figures are never listed together.
 
 **Budget alerts come with every expense that hits.** Once a category has reached
 its alert amount, each new expense you add to it sends a message with the updated

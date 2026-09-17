@@ -137,11 +137,21 @@ the existing one. To stop it: `select cron.unschedule('pfmt-daily-bill-check');`
 One message per run, with everything pending in it — not one message per item:
 
 ```
-Dear YC,
-PFMT — 2026-09
-🟠 Food & Drink has passed S$400.00 — S$430.00 of S$450.00, S$20.00 left
-🔴 Shopping is over budget — S$520.00 of S$200.00 (S$320.00 over)
+Dear CS,
+
+PFMT - 17 Sep 2026
+
+SGD
+🟠 Food & Drink has passed S$400.00 — S$449.99 of S$450.00, S$0.01 left
+🟠 Health has passed S$400.00 — S$432.00 of S$480.00, S$48.00 left
+
+MYR
+🔴 Shopping is over budget — RM524.70 of RM500.00 (RM24.70 over)
 ```
+
+The greeting uses your display name, the header carries the date, and each
+currency gets its own section — your main currency first — so SGD and MYR
+figures are never listed together.
 
 **Budget alerts come with every expense that hits.** Add an expense to a category
 that is at or past its alert amount and a message arrives with the new total — every
