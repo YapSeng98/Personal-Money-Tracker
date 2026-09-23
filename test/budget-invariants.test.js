@@ -183,6 +183,12 @@ group('Dashboard KPIs survive a payback-heavy month');
   const st = API.curStats('SGD', state.transactions, '2026-09');
   ok(!Number.isNaN(st.inc) && !Number.isNaN(st.exp) && !Number.isNaN(st.net), 'KPIs are numbers');
   ok(st.avgDaily >= 0, 'average daily spend is never negative', `got ${st.avgDaily}`);
+  // curStats used to net every payback straight into one running total with no
+  // floor — unlike pfmtBudgetSpent, which explicitly clamps (see this file's
+  // header). A payback (S$128.20) bigger than the month's only spend (S$40.84)
+  // drove exp to -87.36, and fmtWithCur()'s Math.abs() then rendered that
+  // negative "gain" as an ordinary-looking S$87.36 EXPENSE on the dashboard.
+  ok(st.exp >= 0, 'the Expenses tile never goes negative, even when a payback outweighs the month', `got ${st.exp}`);
 }
 
 
@@ -338,6 +344,108 @@ group('Cross-surface agreement — one month, every page');
   ok(near(incTile, 4001.60) && near(incTrend, 4001.60),
      'income agrees across tile and trend, and excludes the transfer leg',
      `tile=${incTile} trend=${incTrend}`);
+}
+
+// ── The payback-outweighs-the-month regression, on every surface at once ───
+// pfmtBudgetSpent clamps a category's payback against that category's OWN
+// spend — and once the payback exceeds that spend, it stops offsetting
+// ENTIRELY rather than flooring at zero (see pfmtBudgetSpent's own comment:
+// it's read as settling something outside this month, so the category keeps
+// reporting what actually went out). curStats/monthlyInOut/trendTotals used
+// to skip that per-category clamp and net every payback straight into one
+// running total instead, so a payback bigger than its category — or bigger
+// than everything spent that month — could drive the reported total
+// negative. fmtWithCur()'s Math.abs() then rendered that negative "gain" as
+// an ordinary-looking positive expense: the dashboard tile read "−S$87.36"
+// for a month that only ever spent S$40.84.
+group('Cross-surface agreement — a payback bigger than its own category, or the whole month');
+{
+  const month = '2026-09';
+
+  // A: single category, payback bigger than that category's spend — the
+  // exact regression (S$40.84 spent, S$128.20 paid back). Per
+  // pfmtBudgetSpent, that stops the offset entirely: the category reports
+  // the full 40.84, not 0.
+  {
+    const rows = [
+      txn({ type: 'expense', amount: 40.84,  category: 'Other', date: '2026-09-03' }),
+      txn({ type: 'payback', amount: 128.20, category: 'Other', date: '2026-09-10' }),
+    ];
+    state.transactions = rows;
+    state.budgets = [{ id: '1', category: 'Other', amount: 440, alertPct: 80, currency: 'SGD', rollover: false }];
+
+    const tile   = API.curStats('SGD', rows, month).exp;
+    const trend  = API.trendTotals([month], 'expense').SGD?.[month] || 0;
+    const io     = API.monthlyInOut();
+    const ioExp  = io.byCur?.SGD?.[month]?.exp ?? 0;
+    const budget = API.getBudgetSpent('Other', 'SGD', month);
+
+    ok(tile  >= 0, 'dashboard Expenses tile never goes negative',   `got ${tile}`);
+    ok(trend >= 0, 'Analytics spending trend never goes negative',  `got ${trend}`);
+    ok(ioExp >= 0, 'Monthly In/Out table never goes negative',      `got ${ioExp}`);
+    ok(near(budget, 40.84), 'sanity: the budget card itself reports the un-netted 40.84', `got ${budget}`);
+    ok(near(tile, budget) && near(trend, budget) && near(ioExp, budget),
+       'all four surfaces agree with the budget card',
+       `tile=${tile} trend=${trend} io=${ioExp} budget=${budget}`);
+  }
+
+  // B: two categories, payback tagged to the LIGHT one exceeds only that
+  // category — real spend in the OTHER category must survive untouched, and
+  // the exceeded category must keep reporting its own real spend (50), not
+  // 0 and not some fraction of the payback. A fix that just floors the grand
+  // total at zero, or subtracts the payback from a shared running total,
+  // would get both of these wrong.
+  {
+    const rows = [
+      txn({ type: 'expense', amount: 200, category: 'Food & Drink', date: '2026-09-02' }),
+      txn({ type: 'expense', amount: 50,  category: 'Transport',    date: '2026-09-03' }),
+      txn({ type: 'payback', amount: 300, category: 'Transport',    date: '2026-09-10' }),
+    ];
+    state.transactions = rows;
+    state.budgets = [
+      { id: '1', category: 'Food & Drink', amount: 2000, alertPct: 80, currency: 'SGD', rollover: false },
+      { id: '2', category: 'Transport',    amount: 200,  alertPct: 80, currency: 'SGD', rollover: false },
+    ];
+
+    const tile           = API.curStats('SGD', rows, month).exp;
+    const trend          = API.trendTotals([month], 'expense').SGD?.[month] || 0;
+    const foodSpent       = API.getBudgetSpent('Food & Drink', 'SGD', month);
+    const transportSpent  = API.getBudgetSpent('Transport', 'SGD', month);
+
+    ok(near(transportSpent, 50), 'a payback bigger than its category reports that category\'s real spend, not 0', `got ${transportSpent}`);
+    ok(near(foodSpent, 200),     "an unrelated category's real spend survives untouched",                          `got ${foodSpent}`);
+    ok(near(tile, 250) && near(trend, 250),
+       'the month total is the SUM of the two categories (250), not corrupted by the oversized payback',
+       `tile=${tile} trend=${trend}, expected 250`);
+  }
+}
+
+// ── A cross-currency funded asset purchase must still count as an exchange ─
+// curStats/monthlyInOut filtered on transaction type before checking whether
+// a paired leg crossed currencies, so the holding side of a funded asset
+// purchase (type:'asset', not 'income'/'expense') was silently dropped —
+// understating "exchanged in" whenever money bought a holding rather than
+// landing in cash. Account balances were never affected (effectiveBal reads
+// the asset leg directly), only this reported figure.
+group('Cross-currency funded asset purchases count as money exchanged in, not lost');
+{
+  const month = '2026-09';
+  scenario([acct('SG', 1000, 'SGD'), acct('MY', 0, 'MYR')], [
+    txn({ type: 'expense', amount: 1000,    account: 'SG', currency: 'SGD', category: 'Investment', transferGroup: 'ag_1', transferPeer: 'MY', date: '2026-09-05' }),
+    txn({ type: 'asset',   amount: 3190.20, account: 'MY', currency: 'MYR', category: 'Investment', transferGroup: 'ag_1', transferPeer: 'SG', date: '2026-09-05' }),
+  ]);
+  const sgd = API.curStats('SGD', state.transactions, month);
+  const myr = API.curStats('MYR', state.transactions, month);
+  ok(near(sgd.xOut, 1000), 'the funding side records money exchanged out', `xOut=${sgd.xOut}`);
+  ok(near(myr.xIn, 3190.20),
+     'the holding side records the SAME money exchanged in, even though it landed in an asset, not cash',
+     `xIn=${myr.xIn}`);
+  ok(near(sgd.exp, 0) && near(myr.exp, 0), 'funding a holding is never counted as spending on either side');
+
+  const io = API.monthlyInOut();
+  ok(near(io.byCur?.MYR?.[month]?.xIn || 0, 3190.20),
+     'the Monthly In/Out table agrees',
+     `got ${io.byCur?.MYR?.[month]?.xIn}`);
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);

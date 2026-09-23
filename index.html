@@ -3557,7 +3557,8 @@ const isFlow = pfmtIsFlow;
 // totals were dividing by a month they weren't showing.
 function curStats(cur, txns, month) {
   const mine = txns.filter(t => (t.currency || state.currency) === cur);
-  let inc = 0, exp = 0, xIn = 0, xOut = 0;
+  let inc = 0, xIn = 0, xOut = 0;
+  const spentByCat = {}, backByCat = {};
   mine.forEach(t => {
     // A payback is money returned by someone else for something you already
     // paid — a friend settling their share. Counting it as income would inflate
@@ -3567,16 +3568,43 @@ function curStats(cur, txns, month) {
     // the month it was paid, so it is neutral here: the balance moves, the
     // month's spending does not. Every other payback still comes off what you
     // spent, which is what makes a friend's share of this month's dinner stop
-    // counting as your cost.
-    if (t.type === 'payback') { if (paybackOffsets(t)) exp -= t.amount; return; }
-    if (t.type !== 'income' && t.type !== 'expense') return;
-    if (isFlow(t)) {
-      if (t.type === 'income') inc += t.amount; else exp += t.amount;
-    } else if (isCrossCurrencyLeg(t)) {
-      if (t.type === 'income') xIn += t.amount; else xOut += t.amount;
+    // counting as your cost. It's tallied per category rather than netted
+    // straight into the running total — see the clamp below.
+    if (t.type === 'payback') {
+      if (paybackOffsets(t)) backByCat[t.category] = (backByCat[t.category] || 0) + t.amount;
+      return;
     }
-    // same-currency transfer legs and asset-funding legs move no money in or
-    // out of this currency, so they contribute nothing.
+    if (t.type === 'income' || t.type === 'expense') {
+      if (isFlow(t)) {
+        if (t.type === 'income') inc += t.amount;
+        else spentByCat[t.category] = (spentByCat[t.category] || 0) + t.amount;
+      } else if (isCrossCurrencyLeg(t)) {
+        if (t.type === 'income') xIn += t.amount; else xOut += t.amount;
+      }
+      return;
+    }
+    // The holding side of a cross-currency funded asset purchase carries no
+    // income/expense sign of its own, but real money still arrived in this
+    // currency — credit it the same way the paired cash-out leg already
+    // credits xOut, so "exchanged in" isn't silently short whenever the
+    // destination is a holding rather than cash.
+    if (t.type === 'asset' && isCrossCurrencyLeg(t)) xIn += t.amount;
+    // same-currency transfer legs and same-currency asset-funding legs move
+    // no money in or out of this currency, so they contribute nothing.
+  });
+  // Net each category's paybacks against that category's OWN spend before
+  // summing — mirrors pfmtBudgetSpent exactly (its comment tells the story:
+  // the "-S$87.36 spent" regression), including that a payback bigger than
+  // the category's own spend stops offsetting entirely rather than flooring
+  // at zero — it's read as settling something outside this month, so the
+  // category reports what actually went out. Summing the raw per-category
+  // clamp afterward, rather than clamping the grand total, also means a
+  // payback in one category can never erase real spending in another.
+  let exp = 0;
+  Object.keys(spentByCat).forEach(cat => {
+    const spent = spentByCat[cat];
+    const back  = backByCat[cat] || 0;
+    exp += back > spent ? spent : spent - back;
   });
   exp = Math.round(exp * 100) / 100;
   return {
@@ -3922,10 +3950,23 @@ function renderDashboard() {
 // in different units and must never be added together. Transfers are left out:
 // moving your own money between accounts is not a gain or a loss.
 function dayTotalHTML(rows) {
-  const byCur = {};
-  rows.filter(isFlow).forEach(t => {
-    const cur = t.currency || state.currency;
+  const byCur = {}, xByCur = {};
+  rows.forEach(t => {
     if (t.type === 'asset') return;                       // moves into a holding, not a daily flow
+    if (!isFlow(t)) {
+      // A same-currency transfer's two legs cancel out, so correctly nothing
+      // shows. Crossing currencies, real money still left one currency and
+      // arrived in another — give it its own (non-spending) figure instead
+      // of silently showing nothing for the day. Asset-funding pairs stay
+      // out of this either way; the purchase already carries its own ASSET
+      // badge on the row itself.
+      if (!isAssetGroup(t) && isCrossCurrencyLeg(t)) {
+        const cur = t.currency || state.currency;
+        xByCur[cur] = (xByCur[cur] || 0) + (t.type === 'expense' ? -t.amount : t.amount);
+      }
+      return;
+    }
+    const cur = t.currency || state.currency;
     // A payback reduces the day's outgoings rather than adding to what came in.
     byCur[cur] = (byCur[cur] || 0) + (t.type === 'expense' ? -t.amount : t.amount);
   });
@@ -3933,6 +3974,13 @@ function dayTotalHTML(rows) {
     const v = Math.round(raw * 100) / 100;
     const color = v < 0 ? 'var(--coral)' : v > 0 ? 'var(--jade-d)' : 'var(--muted)';
     return `<span style="color:${color};">${fmtSigned(v, cur)}</span>`;
+  });
+  // Exchange is neither a gain nor a loss, so it never borrows the spend
+  // coloring — the same 🔄 + sky tint the dashboard's own "exchanged in/out"
+  // note and the TRANSFER row badge already use elsewhere.
+  Object.entries(xByCur).forEach(([cur, raw]) => {
+    const v = Math.round(raw * 100) / 100;
+    if (v) parts.push(`<span style="color:var(--sky);">🔄 ${fmtSigned(v, cur)}</span>`);
   });
   return parts.length ? `<span class="txn-date-total">${parts.join('')}</span>` : '';
 }
@@ -5381,31 +5429,61 @@ function isCrossCurrencyLeg(t) {
 function monthlyInOut() {
   const months = summaryMonthKeys();
   const byCur = {};
+  // spent/back are tallied per (currency, month, category) rather than netted
+  // straight into the running total — see the clamp below, and curStats'
+  // matching comment, for why.
+  const spentByCat = {}, backByCat = {};
+  const bucket = (map, cur, mk) => ((map[cur] = map[cur] || {})[mk] = map[cur][mk] || {});
+  const row = (cur, mk) => {
+    byCur[cur] = byCur[cur] || {};
+    return byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0, xIn: 0, xOut: 0 };
+  };
   state.transactions.forEach(t => {
     const cross = isCrossCurrencyLeg(t);
     // Ordinary income/expense always counts. Paired legs count only when they
     // cross currencies — an asset purchase or a same-currency transfer is money
     // moving inside one book, not in or out of it.
     if (!cross && !isFlow(t)) return;
-    if (t.type !== 'income' && t.type !== 'expense' && t.type !== 'payback') return;
+    if (t.type !== 'income' && t.type !== 'expense' && t.type !== 'payback' && t.type !== 'asset') return;
     const mk = t.date.slice(0, 7);
     if (!months.includes(mk)) return;
     const cur = t.currency || state.currency;
-    byCur[cur] = byCur[cur] || {};
-    byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0, xIn: 0, xOut: 0 };
     // Exchange is kept OUT of inc/exp rather than added to both. Counting the
     // same money twice made "Money In" of RM3,173.30 look like MYR earnings
     // when nothing was earned in MYR, and made SGD spending read 2,800 on this
     // page while the dashboard said 1,800 for the same month.
-    if (t.type === 'payback') { if (paybackOffsets(t)) byCur[cur][mk].exp -= t.amount; return; }
-    if (cross) {
-      if (t.type === 'income') byCur[cur][mk].xIn  += t.amount;
-      else                     byCur[cur][mk].xOut += t.amount;
-    } else {
-      if (t.type === 'income') byCur[cur][mk].inc  += t.amount;
-      else                     byCur[cur][mk].exp  += t.amount;
+    if (t.type === 'payback') {
+      if (paybackOffsets(t)) bucket(backByCat, cur, mk)[t.category] = (bucket(backByCat, cur, mk)[t.category] || 0) + t.amount;
+      return;
     }
+    if (cross) {
+      // The holding side of a cross-currency funded asset purchase carries no
+      // income/expense sign of its own, but real money still arrived in this
+      // currency — credit it as an inflow the same way the paired cash-out
+      // leg already credits xOut.
+      if (t.type === 'income' || t.type === 'asset') row(cur, mk).xIn  += t.amount;
+      else                                            row(cur, mk).xOut += t.amount;
+      return;
+    }
+    if (t.type === 'asset') return; // same-currency funding moves no money in or out of this currency
+    if (t.type === 'income') row(cur, mk).inc += t.amount;
+    else bucket(spentByCat, cur, mk)[t.category] = (bucket(spentByCat, cur, mk)[t.category] || 0) + t.amount;
   });
+  // Net each category's paybacks against that category's OWN spend before
+  // folding into the month total — see curStats' matching comment for why
+  // (mirrors pfmtBudgetSpent exactly, including the "stops offsetting past
+  // what was spent" cliff, and why the clamp has to happen per category).
+  Object.keys(spentByCat).forEach(cur => Object.keys(spentByCat[cur]).forEach(mk => {
+    const spentCats = spentByCat[cur][mk];
+    const backCats  = (backByCat[cur] && backByCat[cur][mk]) || {};
+    let exp = 0;
+    Object.keys(spentCats).forEach(cat => {
+      const spent = spentCats[cat];
+      const back  = backCats[cat] || 0;
+      exp += back > spent ? spent : spent - back;
+    });
+    row(cur, mk).exp = Math.round(exp * 100) / 100;
+  }));
   return { months, byCur };
 }
 
@@ -5510,16 +5588,39 @@ function showTrendDetail(mk, cur, amt, el) {
 // not cash moving between your own accounts.
 function trendTotals(months, metric) {
   const byMonthCur = {};
+  if (metric !== 'expense') {
+    state.transactions.forEach(t => {
+      if (!isFlow(t) || t.type !== metric) return;
+      const mk = t.date.slice(0, 7);
+      if (!months.includes(mk)) return;
+      const cur = t.currency || state.currency;
+      byMonthCur[cur] = byMonthCur[cur] || {};
+      byMonthCur[cur][mk] = Math.round(((byMonthCur[cur][mk] || 0) + t.amount) * 100) / 100;
+    });
+    return byMonthCur;
+  }
+  // 'expense': net each category's paybacks against that category's OWN
+  // spend before summing into the month — clamping only the grand total
+  // afterward would still be wrong whenever the payback and the spend it
+  // covers sit in different categories. See curStats' matching comment.
+  const spentByCat = {}, backByCat = {};
+  const bucket = (map, cur, mk) => ((map[cur] = map[cur] || {})[mk] = map[cur][mk] || {});
   state.transactions.forEach(t => {
     if (!isFlow(t)) return;
-    const offsets = metric === 'expense' && paybackOffsets(t);
-    if (t.type !== metric && !offsets) return;
     const mk = t.date.slice(0, 7);
     if (!months.includes(mk)) return;
     const cur = t.currency || state.currency;
-    if (!byMonthCur[cur]) byMonthCur[cur] = {};
-    byMonthCur[cur][mk] = Math.round(((byMonthCur[cur][mk] || 0) + (offsets ? -t.amount : t.amount)) * 100) / 100;
+    if (t.type === 'expense') bucket(spentByCat, cur, mk)[t.category] = (bucket(spentByCat, cur, mk)[t.category] || 0) + t.amount;
+    else if (paybackOffsets(t)) bucket(backByCat, cur, mk)[t.category] = (bucket(backByCat, cur, mk)[t.category] || 0) + t.amount;
   });
+  Object.keys(spentByCat).forEach(cur => Object.keys(spentByCat[cur]).forEach(mk => {
+    const spentCats = spentByCat[cur][mk];
+    const backCats  = (backByCat[cur] && backByCat[cur][mk]) || {};
+    let total = 0;
+    Object.keys(spentCats).forEach(cat => { const spent = spentCats[cat]; const back = backCats[cat] || 0; total += back > spent ? spent : spent - back; });
+    byMonthCur[cur] = byMonthCur[cur] || {};
+    byMonthCur[cur][mk] = Math.round(total * 100) / 100;
+  }));
   return byMonthCur;
 }
 
