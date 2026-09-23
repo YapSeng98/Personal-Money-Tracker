@@ -914,6 +914,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <select class="form-input" id="filter-cat" onchange="renderTransactions()">
             <option value="">All Categories</option>
           </select>
+          <select class="form-input" id="filter-acc" onchange="renderTransactions()">
+            <option value="" data-lkey="filter_all_accounts">All Payment Methods</option>
+          </select>
           <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral);border-color:var(--coral);">✕ Clear</button>
         </div>
         <div id="all-txns"><div class="empty"><div class="icon">📭</div><p>No transactions found.</p></div></div>
@@ -1759,7 +1762,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
     search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
-    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_paybacks:'Paybacks', badge_payback:'PAYBACK', payback_hint:'Money someone paid you back — reduces what this category cost you, and is never counted as income', filter_all_currencies:'All Currencies', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
+    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_paybacks:'Paybacks', badge_payback:'PAYBACK', payback_hint:'Money someone paid you back — reduces what this category cost you, and is never counted as income', filter_all_currencies:'All Currencies', filter_all_accounts:'All Payment Methods', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
     panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
@@ -1895,7 +1898,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
     search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
-    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_paybacks:'还款', badge_payback:'还款', payback_hint:'他人还给你的钱 — 会抵扣该类别的支出，不计为收入', filter_all_currencies:'全部货币', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
+    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_paybacks:'还款', badge_payback:'还款', payback_hint:'他人还给你的钱 — 会抵扣该类别的支出，不计为收入', filter_all_currencies:'全部货币', filter_all_accounts:'全部支付方式', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
     panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
@@ -2406,7 +2409,7 @@ function showView(name, el) {
   // show month nav only on views where it's relevant
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) monthBar.style.display = ['dashboard','budgets','bills','transactions'].includes(name) ? 'flex' : 'none';
-  if (name === 'transactions') { populateCategoryFilter(); populateCurrencyFilter(); }
+  if (name === 'transactions') { populateCategoryFilter(); populateCurrencyFilter(); populateAccountFilter(); }
   if (name === 'settings') {
     _updateSNConnCard();
     _renderProfileView();
@@ -4170,29 +4173,50 @@ function populateCategoryFilter() {
   sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${esc(c)}">${catIcon(c)} ${esc(c)}</option>`).join('');
 }
 
+// Payment method here means the account a transaction was made from/to
+// (t.account) — the same field the txn modal's Account picker writes, just
+// surfaced as a filter. Sourced from accounts rather than transactions so a
+// newly added account with nothing posted yet still shows up to filter on.
+function populateAccountFilter() {
+  const sel = document.getElementById('filter-acc');
+  if (!sel) return;
+  const accs = [...new Set([
+    ...state.accounts.map(a => a.name),
+    ...state.transactions.map(t => t.account)
+  ].filter(Boolean))].sort();
+  const prev = sel.value;
+  sel.innerHTML = `<option value="" data-lkey="filter_all_accounts">${t('filter_all_accounts')}</option>` +
+    accs.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  sel.value = accs.includes(prev) ? prev : '';
+}
+
 function clearFilters() {
   const si = document.getElementById('search-input');
   const ft = document.getElementById('filter-type');
   const fc = document.getElementById('filter-cat');
   const fu = document.getElementById('filter-cur');
+  const fa = document.getElementById('filter-acc');
   const fp = document.getElementById('filter-period');
   if (si) si.value = '';
   if (ft) ft.value = '';
   if (fc) fc.value = '';
   if (fu) fu.value = '';
+  if (fa) fa.value = '';
   if (fp) fp.value = '';
   renderTransactions();
 }
 
 function renderTransactions() {
   populateCurrencyFilter();
+  populateAccountFilter();
   const typeF   = document.getElementById('filter-type')?.value || '';
   const catF    = document.getElementById('filter-cat')?.value  || '';
   const curF    = document.getElementById('filter-cur')?.value  || '';
+  const accF    = document.getElementById('filter-acc')?.value  || '';
   const periodF = document.getElementById('filter-period')?.value || '';
   const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
   const clearBtn = document.getElementById('clear-filters-btn');
-  if (clearBtn) clearBtn.style.display = (typeF || catF || curF || periodF || searchF) ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = (typeF || catF || curF || accF || periodF || searchF) ? 'inline-flex' : 'none';
 
   let txns = state.transactions.filter(t => {
     // The page was hard-scoped to the month bar, so anything in another month
@@ -4219,6 +4243,7 @@ function renderTransactions() {
     // appears under each side — the SGD leg under SGD, the MYR leg under MYR —
     // which is the truth: each side really is money in that currency.
     if (curF    && (t.currency || state.currency) !== curF)  return false;
+    if (accF    && t.account !== accF)                        return false;
     if (searchF && !t.description.toLowerCase().includes(searchF)) return false;
     return true;
   });
