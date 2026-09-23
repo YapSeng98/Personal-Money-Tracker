@@ -4180,13 +4180,27 @@ function populateCategoryFilter() {
 function populateAccountFilter() {
   const sel = document.getElementById('filter-acc');
   if (!sel) return;
+  // A deleted account can still be named on old transactions, so its currency
+  // has to come from those rows instead — falling back to the book's own
+  // currency only when nothing at all pins it down.
+  const curByAcc = {};
+  state.transactions.forEach(t => { if (t.account && !curByAcc[t.account]) curByAcc[t.account] = t.currency || state.currency; });
+  state.accounts.forEach(a => { curByAcc[a.name] = a.currency || state.currency; });
   const accs = [...new Set([
     ...state.accounts.map(a => a.name),
     ...state.transactions.map(t => t.account)
   ].filter(Boolean))].sort();
+  const byCur = {};
+  accs.forEach(a => { const c = curByAcc[a] || state.currency; (byCur[c] || (byCur[c] = [])).push(a); });
   const prev = sel.value;
-  sel.innerHTML = `<option value="" data-lkey="filter_all_accounts">${t('filter_all_accounts')}</option>` +
-    accs.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  // A single-currency book has nothing to group by — grouping into one
+  // optgroup would just repeat the label the currency filter already hides.
+  const optionsHTML = Object.keys(byCur).length > 1
+    ? Object.keys(byCur).sort().map(cur =>
+        `<optgroup label="${esc(cur)}">${byCur[cur].map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')}</optgroup>`
+      ).join('')
+    : accs.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  sel.innerHTML = `<option value="" data-lkey="filter_all_accounts">${t('filter_all_accounts')}</option>` + optionsHTML;
   sel.value = accs.includes(prev) ? prev : '';
 }
 
