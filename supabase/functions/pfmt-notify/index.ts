@@ -214,20 +214,37 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   // "nothing is over its threshold" — which is what it said before.
   const already: string[] = [];
 
+  // The expense path leads with the budget that was just spent in, then lists
+  // every other budget already at or past its alert amount underneath it.
+  let justNow: { cur: string; text: string } | null = null;
+
   // Budget alerts are NOT limited to once a month. The user asked for every
   // expense that lands in a category at or past its alert amount to say so, with
-  // the new total — so there is no claim here, only a filter to the category
-  // that actually changed. A Transport expense must never re-send Health.
+  // the new total — so there is no claim here. Only the category that actually
+  // changed decides whether a message goes out: a Transport expense that stays
+  // under its alert sends nothing, even while Health is over.
   if (pref.notify_budget && scope.kind !== 'cron') {
-    const alerts = pfmtBudgetAlerts(budgets, txns, month, fallbackCur).filter(a =>
-      scope.kind !== 'expense' ||
-      (a.budget.category === scope.category &&
-       (a.budget.currency || fallbackCur) === (scope.currency || fallbackCur)));
-    for (const a of alerts) {
-      const cur = a.budget.currency || fallbackCur;
-      lines.push({ cur, text: a.level === 'over'
-        ? `🔴 <b>${esc(a.budget.category)}</b> is over budget — ${money(a.spent, cur)} of ${money(a.limit, cur)} (${money(a.spent - a.limit, cur)} over)`
-        : `🟠 <b>${esc(a.budget.category)}</b> has passed ${money(a.at, cur)} — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left` });
+    const alerts = pfmtBudgetAlerts(budgets, txns, month, fallbackCur)
+      // Over budget before merely past the alert amount, within each currency.
+      .sort((x, y) => (x.level === 'over' ? 0 : 1) - (y.level === 'over' ? 0 : 1));
+    const budgetLine = (a: typeof alerts[number], cur: string) => a.level === 'over'
+      ? `🔴 <b>${esc(a.budget.category)}</b> is over budget — ${money(a.spent, cur)} of ${money(a.limit, cur)} (${money(a.spent - a.limit, cur)} over)`
+      : `🟠 <b>${esc(a.budget.category)}</b> has passed ${money(a.at, cur)} — ${money(a.spent, cur)} of ${money(a.limit, cur)}, ${money(a.limit - a.spent, cur)} left`;
+    const isJustSpent = (a: typeof alerts[number]) =>
+      a.budget.category === scope.category &&
+      (a.budget.currency || fallbackCur) === (scope.currency || fallbackCur);
+
+    const hit = scope.kind === 'expense' ? alerts.find(isJustSpent) : undefined;
+    if (scope.kind === 'manual' || hit) {
+      if (hit) {
+        const cur = hit.budget.currency || fallbackCur;
+        justNow = { cur, text: budgetLine(hit, cur) };
+      }
+      for (const a of alerts) {
+        if (a === hit) continue;
+        const cur = a.budget.currency || fallbackCur;
+        lines.push({ cur, text: budgetLine(a, cur) });
+      }
     }
   }
 
@@ -256,7 +273,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
     }
   }
 
-  if (!lines.length) return { sent: 0, already };
+  if (!lines.length && !justNow) return { sent: 0, already };
 
   // Dear YC,
   //
@@ -268,7 +285,9 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   // MYR
   // 🟠 Food & Drink has passed …
   //
-  // The book's own currency leads; any others follow alphabetically.
+  // The book's own currency leads; any others follow alphabetically. After an
+  // expense, the budget it just hit comes first under "Just now", and the rest
+  // follow under "Also past their alert" in the same per-currency sections.
   const byCur = new Map<string, string[]>();
   for (const l of lines) {
     if (!byCur.has(l.cur)) byCur.set(l.cur, []);
@@ -277,6 +296,10 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   const curs = [...byCur.keys()].sort((a, b) =>
     a === fallbackCur ? -1 : b === fallbackCur ? 1 : a.localeCompare(b));
   const sections = curs.map(c => [`<b>${esc(c)}</b>`, ...byCur.get(c)!].join('\n'));
+  if (justNow) {
+    if (sections.length) sections.unshift('<b>Also past their alert</b>');
+    sections.unshift(`<b>Just now · ${esc(justNow.cur)}</b>\n${justNow.text}`);
+  }
   const message = greeting(pref.display_name) +
     `<b>PFMT - ${dateLabel(today)}</b>\n\n` + sections.join('\n\n');
   try {
@@ -286,7 +309,7 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
     for (const [kind, key] of claimed) await unclaim(pref.user_id, kind, key);
     throw e;
   }
-  return { sent: lines.length, already };
+  return { sent: lines.length + (justNow ? 1 : 0), already };
 }
 
 // ── entry point ────────────────────────────────────────────────────────────

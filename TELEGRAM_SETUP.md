@@ -155,8 +155,30 @@ figures are never listed together.
 
 **Budget alerts come with every expense that hits.** Add an expense to a category
 that is at or past its alert amount and a message arrives with the new total — every
-time, not once a month. Only the category you spent in is checked, so a Transport
-expense never re-sends Health.
+time, not once a month. Only the category you spent in decides whether a message
+goes out, so a Transport expense that stays under its alert sends nothing — but when
+it does send, everything else already past its alert is listed underneath.
+
+After you save an expense that hits its alert, that budget comes first, and every
+other budget already past its alert is listed below it:
+
+```
+Dear CS,
+
+PFMT - 17 Sep 2026
+
+Just now · SGD
+🔴 Food & Drink is over budget — S$462.50 of S$450.00 (S$12.50 over)
+
+Also past their alert
+
+SGD
+🟠 Health has passed S$400.00 — S$432.00 of S$480.00, S$48.00 left
+
+MYR
+🔴 Shopping is over budget — RM524.70 of RM500.00 (RM24.70 over)
+```
+
 
 **Bill reminders are limited:** once as a bill approaches, once more if it actually
 goes unpaid — otherwise the daily run would repeat the same bill every morning. That

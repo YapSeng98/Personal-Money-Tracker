@@ -325,7 +325,7 @@ Everything pending goes out as **one message**, never one per item.
 
 | Kind | Fires | Limit |
 |---|---|---|
-| Budget | every expense saved in a category at or past its alert amount — only that category is checked | **none** — each expense sends the new total |
+| Budget | every expense saved in a category at or past its alert amount — that category decides; every other budget past its alert is listed below it | **none** — each expense sends the new total |
 | Bill | once as it approaches, once more if it goes unpaid | `billId｜month｜due\|overdue` in `notifications_sent` |
 
 Budget alerts were once limited to one per month per level; the owner asked for
@@ -335,9 +335,11 @@ behind it and would otherwise repeat the same bill every morning. A bill reminde
 is claimed in `notifications_sent` *before* it is sent — the primary key is the
 rule, so overlapping runs cannot double-send — and a failed send releases the claim.
 
-The three callers are scoped: the **expense** path (the app, after a save) checks
-only that category's budget; the **manual** check (Settings) checks every budget and
-bill; the **daily run** checks bills only.
+The three callers are scoped: the **expense** path (the app, after a save) sends only
+when that category's budget is at or past its alert, and then leads with it under
+*Just now*, followed by every other budget already past its alert under *Also past
+their alert*; the **manual** check (Settings) checks every budget and bill; the
+**daily run** checks bills only.
 
 Budget alerts are judged against the same effective limit the budget card draws,
 rollover included, so an alert can never contradict the bar you are looking at.

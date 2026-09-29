@@ -224,6 +224,83 @@ ok(sgdAt > 0 && myrAt > sgdAt, 'SGD and MYR get their own sections, SGD first', 
 ok(mixed.indexOf('RM540.00') > myrAt && mixed.indexOf('S$400.00') < myrAt,
    'each line sits under its own currency, never mixed', mixed);
 ok(/\n\n<b>MYR<\/b>\n/.test(mixed), 'a blank line separates the sections', JSON.stringify(mixed));
+
+// ── the LIVE post-expense path also fires for a non-primary currency ──
+// Only the manual check above (no category/currency in the request) was
+// proven to include a MYR budget. notifyAfterSpend() — what actually fires
+// the moment a user saves an expense in the app — passes { category,
+// currency } and index.ts:222-225 filters alerts down to that exact pair.
+// That's a different code path with its own filter, so prove it separately
+// rather than assuming the manual check's pass covers it too.
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Food & Drink', currency: 'MYR' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+const myrExp = sent[0]?.text ?? '';
+ok(/Food &amp; Drink/.test(myrExp) && /RM540\.00/.test(myrExp),
+   'a MYR expense triggers its own MYR budget through the live post-save path, not just the manual check',
+   JSON.stringify(b) + ' ' + myrExp);
+
+// ── after an expense: the budget just hit first, then the rest already past ──
+const justAt = myrExp.indexOf('<b>Just now · MYR</b>');
+const alsoAt = myrExp.indexOf('<b>Also past their alert</b>');
+ok(justAt > 0 && myrExp.indexOf('RM540.00') > justAt && myrExp.indexOf('RM540.00') < alsoAt,
+   'the budget the expense just hit leads the message, under "Just now"', myrExp);
+ok(alsoAt > justAt && myrExp.indexOf('<b>SGD</b>') > alsoAt && myrExp.indexOf('S$400.00') > alsoAt,
+   'every other budget already past its alert follows below, in its own currency section', myrExp);
+ok(myrExp.split('RM540.00').length === 2, 'and the budget just hit is not listed twice', myrExp);
+ok(b.sent === 2, 'both lines are counted as sent', JSON.stringify(b));
+
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Transport', currency: 'SGD' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+ok(b.sent === 0 && sent.length === 0,
+   'an expense in a quiet category still sends nothing, even with two budgets past their alert',
+   JSON.stringify(b));
+
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Other', currency: 'SGD' },
+               { Authorization: 'Bearer good-jwt' });
+const sgdExp = sent[0]?.text ?? '';
+ok(sgdExp.indexOf('<b>Just now · SGD</b>') < sgdExp.indexOf('S$400.00') &&
+   sgdExp.indexOf('S$400.00') < sgdExp.indexOf('<b>Also past their alert</b>') &&
+   sgdExp.indexOf('<b>Also past their alert</b>') < sgdExp.indexOf('RM540.00'),
+   'the same works the other way round: SGD just hit, MYR listed below', sgdExp);
+
+// ── every currency past its alert is listed, not just SGD and MYR ──
+BUDGETS.push({ id: 'g-usd', category: 'Travel', amount: 1000, alert_amount: 800, currency: 'USD', rollover: false },
+             { id: 'g-aud', category: 'Shopping', amount: 300, alert_amount: 250, currency: 'AUD', rollover: false },
+             { id: 'g-aud2', category: 'Health', amount: 500, alert_amount: 400, currency: 'AUD', rollover: false });
+TXNS.push({ id: 'x-usd', type: 'expense', amount: 1100, description: 'Flight', category: 'Travel',
+            account: 'Wise', date: '2026-09-05', currency: 'USD', transfer_group: null },
+          { id: 'x-aud', type: 'expense', amount: 260, description: 'Shoes', category: 'Shopping',
+            account: 'CommBank', date: '2026-09-06', currency: 'AUD', transfer_group: null },
+          { id: 'x-aud2', type: 'expense', amount: 50, description: 'Pharmacy', category: 'Health',
+            account: 'CommBank', date: '2026-09-06', currency: 'AUD', transfer_group: null });
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-09', month: '2026-09',
+                 category: 'Food & Drink', currency: 'MYR' },
+               { Authorization: 'Bearer good-jwt' });
+b = await r.json();
+const allCur = sent[0]?.text ?? '';
+const at = s => allCur.indexOf(s);
+ok(at('<b>Just now · MYR</b>') > 0 && at('RM540.00') < at('<b>Also past their alert</b>'),
+   'with four currencies, the MYR budget just hit still leads', allCur);
+ok(at('<b>SGD</b>') > at('<b>Also past their alert</b>') && at('S$400.00') > at('<b>SGD</b>'),
+   'SGD is listed below it', allCur);
+ok(at('<b>AUD</b>') > 0 && at('A$260.00') > at('<b>AUD</b>'), 'AUD is listed below it', allCur);
+ok(at('<b>USD</b>') > 0 && at('US$1,100.00') > at('<b>USD</b>') && /Travel<\/b> is over budget/.test(allCur),
+   'USD is listed below it, over budget', allCur);
+ok(at('<b>SGD</b>') < at('<b>AUD</b>') && at('<b>AUD</b>') < at('<b>USD</b>'),
+   'main currency first, then the rest alphabetically', allCur);
+ok(!/Health/.test(allCur), 'a budget still under its alert is left out', allCur);
+ok(b.sent === 4, 'all four lines are counted', JSON.stringify(b));
+BUDGETS.splice(-3); TXNS.splice(-3);
+
 BUDGETS.pop(); TXNS.pop();
 
 // ── a failed telegram send must release its claims ──
