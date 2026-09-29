@@ -3009,6 +3009,9 @@ async function saveTransaction() {
   const dbPayload = { type: state.currentType, amount: amt, description: desc,
     category: cat, account: acct, date, notes, currency };
 
+  // The alert below reads the database, so it waits for this write to land —
+  // otherwise it can see the row as it was before the save or edit.
+  let written = Promise.resolve();
   if (editId !== '') {
     const idx = state.transactions.findIndex(tx => tx.id == editId);
     if (idx >= 0) {
@@ -3017,7 +3020,7 @@ async function saveTransaction() {
         description: desc, category: cat, account: acct, date, notes, currency };
       const rid = _snId(old);
       if (state.userId && rid) {
-        dbUpdate('transactions', rid, dbPayload)
+        written = dbUpdate('transactions', rid, dbPayload)
           .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       showToast(t('toast_txn_updated'), 'success');
@@ -3027,7 +3030,7 @@ async function saveTransaction() {
       description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp() };
     state.transactions.unshift(txn);
     if (state.userId) {
-      dbInsert('transactions', { id: txn.id, user_id: state.userId, ...dbPayload })
+      written = dbInsert('transactions', { id: txn.id, user_id: state.userId, ...dbPayload })
         .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     } else {
       showToast('Not signed in — transaction saved locally only. Please sign in to sync.', 'error');
@@ -3040,7 +3043,8 @@ async function saveTransaction() {
   renderAll();
   // Every expense in a category at or past its alert amount is worth hearing
   // about now, with the new total — not once a month, and not at a scheduled run.
-  if (state.currentType === 'expense' || state.currentType === 'payback') notifyAfterSpend(cat, currency, date);
+  if (state.currentType === 'expense' || state.currentType === 'payback')
+    written.then(() => notifyAfterSpend(cat, currency, date));
 }
 
 async function deleteTransaction(id) {
