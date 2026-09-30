@@ -7157,7 +7157,10 @@ async function snLoadAll() {
       currency   : t.currency || state.currency,
       transferGroup: t.transfer_group || '',
       transferPeer : t.transfer_peer  || '',
-      created    : t.created_at || '',
+      // Supabase sends '2026-09-17T23:48:55.84+00:00'; bring it to nowStamp()'s
+      // shape, or the 'T' outsorts the space and a just-added row lands under
+      // every synced row from the same day.
+      created    : t.created_at ? new Date(t.created_at).toISOString().slice(0, 19).replace('T', ' ') : '',
       isRecurring: !!t.is_recurring,
       recurringFrequency: t.recurring_frequency || '',
       nextRunDate: t.next_run_date || ''
