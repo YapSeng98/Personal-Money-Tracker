@@ -426,10 +426,11 @@ ceiling on how many a user can have. Nothing renders until every page is in; if
 a load fails, the last complete copy stays on screen and the header says so
 until a sync succeeds.
 
-**Recurring transactions are carried but dormant.** `is_recurring` and friends
-survive a round trip and appear in backups; nothing generates from them. Bills
-solve the adjacent problem from the other direction — see
-[FEATURE_IDEAS.md](FEATURE_IDEAS.md) for why they are not the same thing.
+**Recurring transactions add themselves.** Set **Repeat** (weekly, monthly,
+yearly) on an expense, income or payback and each occurrence is added when the
+app loads on or after its date, tagged `recurring_source`. If you entered it
+yourself around the due date — a salary paid early — that occurrence is skipped.
+An auto-added row never marks a bill as paid. Needs migration 005.
 
 **Bill matching can mis-attribute.** A bill marked "amount varies" matches on
 category and account alone, so with two such bills in one category the first can

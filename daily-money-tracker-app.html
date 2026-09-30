@@ -1460,7 +1460,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Date</label>
-        <input class="form-input" type="date" id="txn-date">
+        <input class="form-input" type="date" id="txn-date" onchange="updateRepeatHint()">
       </div>
       <div class="form-group">
         <label class="form-label">Currency</label>
@@ -1475,6 +1475,16 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
       <input class="form-input" type="text" id="txn-notes" placeholder="Any additional notes…">
+    </div>
+    <div class="form-group" id="txn-repeat-group">
+      <label class="form-label">Repeat</label>
+      <select class="form-input" id="txn-repeat" onchange="updateRepeatHint()">
+        <option value="">Doesn't repeat</option>
+        <option value="weekly">Every week</option>
+        <option value="monthly">Every month</option>
+        <option value="yearly">Every year</option>
+      </select>
+      <div id="txn-repeat-hint" style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45;"></div>
     </div>
     <input type="hidden" id="txn-edit-id" value="">
     <div class="form-actions">
@@ -2066,7 +2076,9 @@ let state = {
   displayName: '',
   avatarColor: '#8B5CF6',
   monthlyIncomeTarget: 0,
-  lastBackupAt: ''    // ISO date of the last complete backup taken from this app
+  lastBackupAt: '',   // ISO date of the last backup — this device's, or the account's if newer
+  lastBackupInfo: null, // { device, counts } of that backup, when the account knows it
+  backupSnoozeUntil: '' // ISO date "Later" hides the reminder until, on this device
 };
 
 // ═══════════════════════════════════════════════
@@ -2105,7 +2117,9 @@ function saveState() {
       displayName: state.displayName,
       avatarColor: state.avatarColor,
       monthlyIncomeTarget: state.monthlyIncomeTarget,
-      lastBackupAt: state.lastBackupAt
+      lastBackupAt: state.lastBackupAt,
+      lastBackupInfo: state.lastBackupInfo,
+      backupSnoozeUntil: state.backupSnoozeUntil
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -2288,7 +2302,8 @@ function pfmtBillDueDate(bill, month) {
 // never robbed of it by a looser bill that had other options.
 function pfmtMatchBills(bills, txns, month, fallbackCur) {
   const pool = txns.filter(function (t) {
-    return t.type === 'expense' && pfmtIsFlow(t) && t.date.slice(0, 7) === month;
+    // A row the app added on a schedule can't prove you paid anything.
+    return t.type === 'expense' && pfmtIsFlow(t) && !t.recurringSource && t.date.slice(0, 7) === month;
   });
   const ranked = bills.filter(function (b) { return b.isActive !== false; }).map(function (b) {
     const cur = b.currency || fallbackCur;
@@ -2460,6 +2475,7 @@ function openTxnModal(id = null) {
   document.getElementById('txn-notes').value               = '';
   document.getElementById('txn-currency').value             = state.currency;
   document.getElementById('txn-amount-recv').value          = '';
+  document.getElementById('txn-repeat').value               = '';
   const fundSel = document.getElementById('txn-fund-account');
   if (fundSel) fundSel.value = '';
 
@@ -2533,6 +2549,13 @@ function openTxnModal(id = null) {
     // list was built against the previous account — it offered the holding
     // itself and hid the real source. Rebuild now that both are set.
     if (txn.type === 'asset') { populateFundAccounts(''); updateAssetUI(); }
+    document.getElementById('txn-repeat').value = txn.isRecurring ? (txn.recurringFrequency || '') : '';
+    // A row the app added is one occurrence, not a schedule of its own — the
+    // schedule lives on the row it came from.
+    if (txn.recurringSource) {
+      document.getElementById('txn-repeat-group').style.display = 'none';
+    }
+    updateRepeatHint();
     document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
     document.getElementById('save-txn-btn').className   = 'btn btn-amber';
   } else {
@@ -2583,6 +2606,16 @@ function setType(type, el) {
   if (accLabel) accLabel.textContent = isTransfer ? 'From Account' : 'Account';
   if (isTransfer) populateToAccounts();
   updateTransferUI();
+
+  // Transfers and asset purchases are pairs; repeating one would need both legs
+  // generated together, so Repeat is offered only for single-row types.
+  const repeatGroup = document.getElementById('txn-repeat-group');
+  if (repeatGroup) {
+    const canRepeat = type === 'expense' || type === 'income' || type === 'payback';
+    repeatGroup.style.display = canRepeat ? '' : 'none';
+    if (!canRepeat) document.getElementById('txn-repeat').value = '';
+    updateRepeatHint();
+  }
 
   const isAsset = type === 'asset';
   const assetBlock = document.getElementById('txn-asset-block');
@@ -3027,8 +3060,29 @@ async function saveTransaction() {
     }
   }
 
+  const repeatSel = document.getElementById('txn-repeat');
+  const freq = repeatSel && repeatSel.closest('#txn-repeat-group').style.display !== 'none'
+    ? repeatSel.value : '';
+  const editingRow = editId !== '' ? state.transactions.find(tx => tx.id == editId) : null;
+  // A new schedule starts from the row's own date, so a salary first dated three
+  // months back fills in those months (skipping any you entered by hand). An
+  // edited schedule starts after today instead: re-timing a salary shouldn't
+  // back-fill months that were already handled under the old timing.
+  let nextRun = null;
+  if (freq) {
+    const unchanged = editingRow && editingRow.isRecurring && editingRow.recurringFrequency === freq &&
+                      editingRow.date === date && editingRow.nextRunDate;
+    nextRun = unchanged ? editingRow.nextRunDate
+            : editingRow ? recurNextAfter(date, freq, date > localDateStr() ? date : localDateStr())
+            : recurNextAfter(date, freq, date);
+  }
+  const recurFields = { isRecurring: !!freq, recurringFrequency: freq, nextRunDate: nextRun || '' };
   const dbPayload = { type: state.currentType, amount: amt, description: desc,
-    category: cat, account: acct, date, notes, currency };
+    category: cat, account: acct, date, notes, currency,
+    // Only a row that repeats, or is being switched off, touches these columns,
+    // so an ordinary save writes exactly what it always has.
+    ...((freq || (editingRow && editingRow.isRecurring)) && !(editingRow && editingRow.recurringSource)
+        ? { is_recurring: !!freq, recurring_frequency: freq || null, next_run_date: nextRun } : {}) };
 
   // The alert below reads the database, so it waits for this write to land —
   // otherwise it can see the row as it was before the save or edit.
@@ -3038,7 +3092,8 @@ async function saveTransaction() {
     if (idx >= 0) {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
-        description: desc, category: cat, account: acct, date, notes, currency };
+        description: desc, category: cat, account: acct, date, notes, currency,
+        ...(old.recurringSource ? {} : recurFields) };
       const rid = _snId(old);
       if (state.userId && rid) {
         written = dbUpdate('transactions', rid, dbPayload)
@@ -3048,7 +3103,8 @@ async function saveTransaction() {
     }
   } else {
     const txn = { id: newId(), type: state.currentType, amount: amt,
-      description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp() };
+      description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp(),
+      ...recurFields };
     state.transactions.unshift(txn);
     if (state.userId) {
       written = dbInsert('transactions', { id: txn.id, user_id: state.userId, ...dbPayload })
@@ -3522,6 +3578,144 @@ const nowStamp = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 function sortTxnsDesc(arr) {
   return arr.slice().sort((a, b) =>
     b.date.localeCompare(a.date) || (b.created || '').localeCompare(a.created || ''));
+}
+
+/* ── RECURRING TRANSACTIONS ──────────────────────────────────────────────────
+   A recurring transaction is an ordinary row (the "template") carrying
+   is_recurring + recurring_frequency + next_run_date. On each load, every
+   occurrence that has come due is added as its own row, tagged with
+   recurring_source = the template's id, and next_run_date moves past today.
+
+   Only for money that moves by itself — salary, a subscription, an auto-debit.
+   An auto-added row never settles a bill (see pfmtMatchBills): a bill exists
+   to catch a payment you forgot, and a row the app wrote can't prove you paid.
+   ─────────────────────────────────────────────────────────────────────────── */
+const RECUR_FREQS = { weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' };
+// A book left unopened for a long time fills in at most this many per template
+// in one go, rather than flooding the list.
+const RECUR_MAX_CATCHUP = 60;
+
+function addDaysStr(date, n) {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// The k-th occurrence after a template dated `start` (k = 0 is the template).
+// Months are counted on the string, and a day the month doesn't have is
+// clamped: a 31st salary lands on the 30th in September, then back on the 31st.
+function recurDate(start, freq, k) {
+  if (freq === 'weekly') return addDaysStr(start, 7 * k);
+  const [y, m, d] = start.split('-').map(Number);
+  const total = (m - 1) + (freq === 'yearly' ? 12 * k : k);
+  const yy = y + Math.floor(total / 12), mm = total % 12 + 1;
+  const dim = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+  return `${yy}-${String(mm).padStart(2, '0')}-${String(Math.min(d, dim)).padStart(2, '0')}`;
+}
+
+// First occurrence strictly after `date`.
+function recurNextAfter(start, freq, date) {
+  let k = 1;
+  while (recurDate(start, freq, k) <= date && k < 20000) k++;
+  return recurDate(start, freq, k);
+}
+
+// How far either side of the due date a hand-entered row still counts as this
+// occurrence — half a period, so a salary paid a week early is recognised
+// without ever reaching into the previous or next month's.
+const recurHalfWindow = freq => freq === 'weekly' ? 3 : freq === 'yearly' ? 180 : 14;
+
+// A row you entered yourself for this occurrence — the salary that came in two
+// days early. Same type, category, account and currency, near the due date,
+// and within 25% of the amount (a salary with overtime is still the salary).
+// `claimed` stops one entry from covering two occurrences.
+function recurAlreadyEntered(tpl, due, txns, claimed) {
+  const h = recurHalfWindow(tpl.recurringFrequency);
+  const lo = addDaysStr(due, -h), hi = addDaysStr(due, h);
+  const cur = tpl.currency || state.currency;
+  return txns.find(t => t !== tpl && t.id !== tpl.id && !t.recurringSource && !t.transferGroup &&
+    !claimed.has(t.id) && t.type === tpl.type && t.category === tpl.category &&
+    t.account === tpl.account && (t.currency || state.currency) === cur &&
+    t.date >= lo && t.date <= hi && Math.abs(t.amount - tpl.amount) <= Math.abs(tpl.amount) * 0.25) || null;
+}
+
+// The same template and date always make the same id, so two devices opening
+// the app on the same morning can't both add the salary — the second insert
+// hits the primary key and is skipped.
+async function recurId(tplId, date) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tplId + '|' + date));
+  const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${((parseInt(h[16], 16) & 3) | 8).toString(16)}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+let _recurRunning = false;
+async function runRecurring() {
+  if (_recurRunning) return 0;
+  _recurRunning = true;
+  let made = 0;
+  try {
+    const today = localDateStr();
+    const claimed = new Set();
+    const tpls = state.transactions.filter(t => t.isRecurring && RECUR_FREQS[t.recurringFrequency] && !t.transferGroup);
+    for (const tpl of tpls) {
+      const freq = tpl.recurringFrequency;
+      let due = tpl.nextRunDate || recurDate(tpl.date, freq, 1);
+      for (let n = 0; due <= today && n < RECUR_MAX_CATCHUP; n++) {
+        const mine = recurAlreadyEntered(tpl, due, state.transactions, claimed);
+        if (mine) {
+          claimed.add(mine.id);
+        } else {
+          const id = await recurId(tpl.id, due);
+          if (!state.transactions.some(t => t.id === id || (t.recurringSource === tpl.id && t.date === due))) {
+            const row = { id, type: tpl.type, amount: tpl.amount, description: tpl.description,
+              category: tpl.category, account: tpl.account, date: due, notes: tpl.notes || '',
+              currency: tpl.currency || state.currency, created: nowStamp(), recurringSource: tpl.id };
+            if (state.userId) {
+              const { error } = await sb.from('transactions').insert({
+                id, user_id: state.userId, type: row.type, amount: row.amount, description: row.description,
+                category: row.category, account: row.account, date: due, notes: row.notes,
+                currency: row.currency, recurring_source: tpl.id });
+              // 23505: another device added this one first — it's in the book already.
+              if (error && error.code !== '23505') {
+                console.warn('recurring not added:', error.message);
+                return made;            // leave next_run_date alone; try again next load
+              }
+              if (error) { due = recurNextAfter(tpl.date, freq, due); continue; }
+            }
+            state.transactions.unshift(row);
+            made++;
+          }
+        }
+        due = recurNextAfter(tpl.date, freq, due);
+      }
+      // Moving next_run_date past what was just handled is also what keeps a
+      // row you deleted from being added straight back on the next load.
+      if (due !== tpl.nextRunDate) {
+        tpl.nextRunDate = due;
+        if (state.userId) {
+          const { error } = await sb.from('transactions').update({ next_run_date: due }).eq('id', tpl.id);
+          if (error) console.warn('next_run_date not saved:', error.message);
+        }
+      }
+    }
+    if (made) {
+      saveState();
+      showToast(`Added ${made} recurring transaction${made > 1 ? 's' : ''} that came due`, 'info');
+    }
+  } finally {
+    _recurRunning = false;
+  }
+  return made;
+}
+
+// The hint under the Repeat field says exactly what will happen, in dates.
+function updateRepeatHint() {
+  const el = document.getElementById('txn-repeat-hint');
+  if (!el) return;
+  const freq = document.getElementById('txn-repeat').value;
+  const date = document.getElementById('txn-date').value;
+  if (!freq || !date) { el.textContent = ''; return; }
+  const next = recurNextAfter(date, freq, date);
+  el.textContent = `Added automatically from ${fmtDate(next)}. If you enter it yourself first — a salary that comes in early — that one is skipped. Auto-added rows never mark a bill as paid.`;
 }
 
 function getMonthTxns(month) {
@@ -4100,6 +4294,15 @@ function collapseTransfers(arr) {
   });
 }
 
+// 🔁 MONTHLY on the row that holds the schedule; 🔁 AUTO on the rows it added.
+function recurBadgeHTML(txn) {
+  const st = 'background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;';
+  if (txn.recurringSource) return `<span style="${st}" title="Added automatically by a recurring transaction">🔁 AUTO</span>`;
+  if (txn.isRecurring && RECUR_FREQS[txn.recurringFrequency])
+    return `<span style="${st}" title="Repeats ${txn.recurringFrequency}${txn.nextRunDate ? ' — next ' + fmtDate(txn.nextRunDate) : ''}">🔁 ${RECUR_FREQS[txn.recurringFrequency].toUpperCase()}</span>`;
+  return '';
+}
+
 function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = false) {
   const isPos = txn.type === 'income';
   const isAsset = txn.type === 'asset';
@@ -4150,7 +4353,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     <div class="txn-ico" style="background:${isPayback?'var(--amber-s)':catBg(txn.category)}">${isPayback?'↩️':catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
-      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -6449,7 +6652,8 @@ async function exportFullBackup() {
       state: t.snState || '2',
       is_recurring: !!t.isRecurring,
       recurring_frequency: t.recurringFrequency || '',
-      next_run_date: t.nextRunDate || ''
+      next_run_date: t.nextRunDate || '',
+      recurring_source: t.recurringSource || ''
     })),
     budgets: state.budgets.map(b => ({
       category: b.category, amount: +b.amount || 0,
@@ -6488,9 +6692,17 @@ async function exportFullBackup() {
   const c = payload.pfmt_backup.counts;
   downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
                `pfmt_backup_${localDateStr()}.json`);
-  state.lastBackupAt = new Date().toISOString();
+  state.lastBackupAt = payload.pfmt_backup.exported_at;
+  state.lastBackupInfo = { device: deviceLabel(), counts: c };
+  state.backupSnoozeUntil = '';
   saveState();
-  _backupNoticeDismissed = false;
+  // On the account too, so every device knows this backup was taken. The file
+  // is already saved either way; a failed log only means other devices nag.
+  if (state.userId) {
+    sb.from('backups').insert({ user_id: state.userId, taken_at: state.lastBackupAt,
+        file_name: `pfmt_backup_${localDateStr()}.json`, counts: c, device: deviceLabel() })
+      .then(({ error }) => { if (error) console.warn('backup not logged:', error.message); });
+  }
   renderBackupReminder();
   renderExportSummary();
   showToast(`Backup saved — ${c.transactions} transactions, ${c.accounts} accounts, ${c.budgets} budgets, ${c.goals} goals`, 'success');
@@ -6500,7 +6712,30 @@ async function exportFullBackup() {
 // A month between backups. Long enough not to nag, short enough that losing
 // the gap since the last one would not be painful.
 const BACKUP_DUE_DAYS = 30;
-let _backupNoticeDismissed = false;   // this session only — not worth persisting
+// "Later" means later, not "until the next reload" — a week, on this device.
+const BACKUP_SNOOZE_DAYS = 7;
+
+// "Mac · Chrome", "iPhone · Safari" — enough to tell devices apart in the log,
+// without storing the whole user-agent string.
+function deviceLabel() {
+  const ua = navigator.userAgent;
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+           : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : 'Unknown';
+  const br = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /CriOS|Chrome\//.test(ua) ? 'Chrome'
+           : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  return `${os} · ${br}`;
+}
+
+// The account's newest backup wins over this device's only when it is newer —
+// a backup just taken here may not have reached the log yet.
+function applyAccountBackup(row) {
+  if (!row || !row.taken_at) return;
+  if (state.lastBackupAt && new Date(state.lastBackupAt) >= new Date(row.taken_at)) return;
+  state.lastBackupAt = row.taken_at;
+  state.lastBackupInfo = { device: row.device || '', counts: row.counts || {} };
+  renderBackupReminder();
+  renderExportSummary();
+}
 
 function daysSinceLastBackup() {
   if (!state.lastBackupAt) return null;             // never taken one
@@ -6509,9 +6744,8 @@ function daysSinceLastBackup() {
   return Math.floor((Date.now() - then.getTime()) / 86400000);
 }
 
-// The unattended alternative needs a stored ServiceNow login and a scheduled
-// job on this Mac. This asks nothing of either: you are already signed in, so
-// a reminder plus one click is the whole mechanism.
+// A reminder plus one click is the whole mechanism: you are already signed in,
+// so nothing has to be stored or scheduled on the device.
 function renderBackupReminder() {
   const el = document.getElementById('backup-reminder');
   if (!el) return;
@@ -6519,7 +6753,9 @@ function renderBackupReminder() {
   const due  = days === null || days >= BACKUP_DUE_DAYS;
   const haveData = state.transactions.length || state.accounts.length;
 
-  if (!due || !haveData || _backupNoticeDismissed) { el.innerHTML = ''; return; }
+  const snoozed = state.backupSnoozeUntil && new Date(state.backupSnoozeUntil) > new Date();
+
+  if (!due || !haveData || snoozed) { el.innerHTML = ''; return; }
 
   const msg = days === null
     ? "You haven't backed up yet — one click saves every account, transaction, budget and goal to this device."
@@ -6531,14 +6767,16 @@ function renderBackupReminder() {
       </div>
       <div class="backup-note-actions">
         <button class="btn btn-jade btn-sm" onclick="exportFullBackup()">Back up now</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissBackupReminder()">Later</button>
+        <button class="btn btn-ghost btn-sm" onclick="dismissBackupReminder()" title="Hide for ${BACKUP_SNOOZE_DAYS} days">Later</button>
       </div>
     </div>`;
 }
 
 function dismissBackupReminder() {
-  _backupNoticeDismissed = true;
+  state.backupSnoozeUntil = new Date(Date.now() + BACKUP_SNOOZE_DAYS * 86400000).toISOString();
+  saveState();
   renderBackupReminder();
+  showToast(`OK — reminding you again in ${BACKUP_SNOOZE_DAYS} days`, 'info');
 }
 
 // Says what a backup would actually contain, so the button isn't a leap of
@@ -6555,9 +6793,10 @@ function renderExportSummary() {
   ];
   if (state.bills.length) bits.push(`${state.bills.length} bill${state.bills.length===1?'':'s'}`);
   const days = daysSinceLastBackup();
-  const last = days === null ? 'never backed up'
+  const dev  = state.lastBackupInfo && state.lastBackupInfo.device;
+  const last = (days === null ? 'never backed up'
              : days === 0    ? 'backed up today'
-             : `last backup ${days} day${days === 1 ? '' : 's'} ago`;
+             : `last backup ${days} day${days === 1 ? '' : 's'} ago`) + (days !== null && dev ? ` on ${dev}` : '');
   el.textContent = `In this book: ${bits.join(' · ')}${curs.length ? ' · ' + curs.join(', ') : ''} — ${last}`;
 }
 
@@ -7213,6 +7452,9 @@ async function snLogout() {
   state.budgets      = [];
   state.goals        = [];
   state.accounts     = [];
+  // The account's backup log fills these back in on the next sign-in, so
+  // clearing them keeps one person's backup date from covering the next.
+  state.lastBackupAt = ''; state.lastBackupInfo = null; state.backupSnoozeUntil = '';
   saveState();
   _showSNLogin();
   showToast('Signed out', 'info');
@@ -7244,7 +7486,7 @@ function _hideSNLogin() {
 async function snLoadAll() {
   try {
     const uid = state.userId;
-    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes] = await Promise.all([
+    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes, backupsRes] = await Promise.all([
       // Nothing renders until every page is in, so the screen never shows a
       // book that is still half-loaded. The count tells a big book it is moving.
       fetchAllTxns(uid, n => _setLoginLoading(true, `Loading your data… ${n.toLocaleString()} transactions`)),
@@ -7252,7 +7494,9 @@ async function snLoadAll() {
       sb.from('goals').select('*').eq('user_id', uid),
       sb.from('accounts').select('*').eq('user_id', uid),
       sb.from('preferences').select('*').eq('user_id', uid).maybeSingle(),
-      sb.from('bills').select('*').eq('user_id', uid)
+      sb.from('bills').select('*').eq('user_id', uid),
+      sb.from('backups').select('taken_at, device, counts').eq('user_id', uid)
+        .order('taken_at', { ascending: false }).limit(1)
     ]);
     for (const r of [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes]) {
       if (r.error) throw r.error;
@@ -7260,6 +7504,10 @@ async function snLoadAll() {
     // Bills are the newest table — an account whose database hasn't had the
     // migration run yet still loads everything else rather than failing outright.
     if (billsRes.error) console.warn('bills not loaded:', billsRes.error.message);
+    // Same for the backup log (migration 005): without it the reminder falls
+    // back to this device's own memory, which is how it always worked.
+    if (backupsRes.error) console.warn('backup history not loaded:', backupsRes.error.message);
+    else applyAccountBackup(backupsRes.data && backupsRes.data[0]);
     const txns     = txnsRes.data     || [];
     const budgets  = budgetsRes.data  || [];
     const goals    = goalsRes.data    || [];
@@ -7285,7 +7533,8 @@ async function snLoadAll() {
       created    : t.created_at ? new Date(t.created_at).toISOString().slice(0, 19).replace('T', ' ') : '',
       isRecurring: !!t.is_recurring,
       recurringFrequency: t.recurring_frequency || '',
-      nextRunDate: t.next_run_date || ''
+      nextRunDate: t.next_run_date || '',
+      recurringSource: t.recurring_source || ''
     }));
 
     // Rebuild each transfer leg's peer-account label from its partner row.
@@ -7369,6 +7618,7 @@ async function snLoadAll() {
     // Retag legacy transfers now that their real category is known.
     const retagged = migrateTransferCategories();
     if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
+    await runRecurring();
     state.lastSync = new Date().toISOString();
     state.syncFailed = false;
     saveState();

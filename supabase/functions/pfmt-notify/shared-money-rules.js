@@ -131,7 +131,8 @@ function pfmtBillDueDate(bill, month) {
 // never robbed of it by a looser bill that had other options.
 function pfmtMatchBills(bills, txns, month, fallbackCur) {
   const pool = txns.filter(function (t) {
-    return t.type === 'expense' && pfmtIsFlow(t) && t.date.slice(0, 7) === month;
+    // A row the app added on a schedule can't prove you paid anything.
+    return t.type === 'expense' && pfmtIsFlow(t) && !t.recurringSource && t.date.slice(0, 7) === month;
   });
   const ranked = bills.filter(function (b) { return b.isActive !== false; }).map(function (b) {
     const cur = b.currency || fallbackCur;

@@ -52,14 +52,6 @@ See [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md) for the one-time setup, and [README �
 
 ## Still unbuilt
 
-### Recurring transactions
-
-`is_recurring`, `recurring_frequency` and `next_run_date` survive a round trip and appear in backups, but nothing generates from them — the ServiceNow flow that would have is gone. Bills solved the adjacent problem from the other direction (watch for a transaction rather than create one), so this is only worth building for things you genuinely want *created* without being paid — an accrual, a standing estimate.
-
-### Rewrite the `backup/` scripts for Supabase
-
-Every script in `backup/` authenticates against ServiceNow and is dead. [BACKUP_STEPS.md](BACKUP_STEPS.md) now documents the `pg_dump` route by hand; turning that into the scheduled job the old `admin_backup.sh` was would be a contained piece of work.
-
 ### Custom SMTP
 
 Supabase's built-in auth email is capped at **2 messages an hour**, which makes a password reset slow at the worst possible moment. Pointing Auth at a real SMTP provider removes the cap.

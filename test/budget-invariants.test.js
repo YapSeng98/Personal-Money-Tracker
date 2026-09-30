@@ -49,16 +49,19 @@ function extract(name) {
   throw new Error(`could not find ${name}() in index.html`);
 }
 
-const NAMES = ['PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
+const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
   'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
   'CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
-  'getBudgetLimit', 'isBudgetOver', 'effectiveBal'];
+  'getBudgetLimit', 'isBudgetOver', 'effectiveBal',
+  'addDaysStr', 'recurDate', 'recurNextAfter', 'recurHalfWindow', 'recurAlreadyEntered'];
 
 const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
 const src = NAMES.map(extract).join('\n');
 const API = new Function('state', 'console', src + `; return {${NAMES.join(',')}};`)(state, console);
+
+const pfmtMatch = (bills, txns) => API.pfmtMatchBills(bills, txns, '2026-09', 'SGD');
 
 // ── tiny assertion harness ─────────────────────────────────────────────────
 let failed = 0, passed = 0;
@@ -487,6 +490,44 @@ group('Net equals the change in the accounts');
     ok(near(ioNet, change), `${label}: Monthly In & Out net matches the accounts`, `net=${ioNet} change=${change}`);
     ok(near(st.back, back) && near(io.back, back), `${label}: shows ${back} as refunds & claims`, `curStats=${st.back} table=${io.back}`);
   }
+}
+
+// ── Recurring transactions ─────────────────────────────────────────────────
+group('Recurring — dates');
+{
+  ok(API.recurDate('2026-01-31', 'monthly', 1) === '2026-02-28', 'a 31st lands on the last day of a short month', API.recurDate('2026-01-31', 'monthly', 1));
+  ok(API.recurDate('2026-01-31', 'monthly', 2) === '2026-03-31', '…and goes back to the 31st after it', API.recurDate('2026-01-31', 'monthly', 2));
+  ok(API.recurDate('2026-11-25', 'monthly', 2) === '2027-01-25', 'months roll over the year');
+  ok(API.recurDate('2026-09-28', 'weekly', 1) === '2026-10-05', 'weekly is seven days');
+  ok(API.recurDate('2028-02-29', 'yearly', 1) === '2029-02-28', 'a leap-day yearly falls back to the 28th');
+  ok(API.recurNextAfter('2026-08-25', 'monthly', '2026-09-30') === '2026-10-25', 'next after today is the coming occurrence');
+  ok(API.recurNextAfter('2026-08-25', 'monthly', '2026-09-25') === '2026-10-25', 'a due date that is today counts as handled');
+}
+
+group('Recurring — a salary you entered yourself is not added twice');
+{
+  const tpl = txn({ id: 'tpl', type: 'income', amount: 4000, category: 'Salary', account: 'DBS', date: '2026-08-25',
+                    isRecurring: true, recurringFrequency: 'monthly' });
+  const early = txn({ id: 'early', type: 'income', amount: 4001.60, category: 'Salary', account: 'DBS', date: '2026-09-23' });
+  const none = new Set();
+  ok(API.recurAlreadyEntered(tpl, '2026-09-25', [tpl, early], none) === early, 'paid two days early: that month is skipped');
+  ok(API.recurAlreadyEntered(tpl, '2026-10-25', [tpl, early], none) === null, "…but it doesn't also cover next month");
+  ok(API.recurAlreadyEntered(tpl, '2026-09-25', [tpl, early], new Set(['early'])) === null, 'one entry covers one occurrence only');
+  const other = txn({ id: 'o', type: 'income', amount: 4000, category: 'Salary', account: 'UOB', date: '2026-09-24' });
+  ok(API.recurAlreadyEntered(tpl, '2026-09-25', [tpl, other], none) === null, 'a different account is a different income');
+  const bonus = txn({ id: 'b', type: 'income', amount: 12000, category: 'Salary', account: 'DBS', date: '2026-09-24' });
+  ok(API.recurAlreadyEntered(tpl, '2026-09-25', [tpl, bonus], none) === null, 'a bonus far off the amount is not the salary');
+  const auto = txn({ id: 'a', type: 'income', amount: 4000, category: 'Salary', account: 'DBS', date: '2026-09-25', recurringSource: 'tpl' });
+  ok(API.recurAlreadyEntered(tpl, '2026-09-25', [tpl, auto], none) === null, 'an auto-added row is never mistaken for a hand-entered one');
+}
+
+group('Recurring — an auto-added row never pays a bill');
+{
+  const bill = { id: 'rent', amount: 1500, currency: 'SGD', category: 'Housing', account: '', dueDay: 1, isActive: true };
+  const auto = txn({ id: 'x', amount: 1500, category: 'Housing', date: '2026-09-01', recurringSource: 'tpl' });
+  const real = txn({ id: 'y', amount: 1500, category: 'Housing', date: '2026-09-02' });
+  ok(!pfmtMatch([bill], [auto]).rent, 'auto-added rent leaves the bill unpaid');
+  ok(pfmtMatch([bill], [auto, real]).rent === real, 'the rent you entered yourself still pays it');
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);
