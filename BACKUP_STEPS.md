@@ -3,10 +3,11 @@
 Your book now lives in Supabase, not ServiceNow. That changes what a backup is
 and how you take one.
 
-> **The scripts in `backup/` no longer work.** Every one of them authenticates
-> against a ServiceNow instance and reads `x_887486_0_*` tables. They are kept
-> only as a reference for how the scheduling was wired up. Nothing in this page
-> depends on them.
+> **Scheduled backup:** `backup/supabase_backup.py` backs up every user from
+> Supabase. Run `backup/setup_supabase_keychain.sh` once (it stores the
+> service-role key in the Keychain), then `backup/install_schedule.sh` for a
+> weekly run. The other scripts in `backup/` still talk to ServiceNow and no
+> longer work.
 
 ---
 
@@ -24,11 +25,8 @@ PIN and the Telegram bot token. A backup gets copied to places a credential
 should never follow, and reissuing a login costs far less than containing a
 leaked one.
 
-**It refuses to lie to you.** If the last sync came back exactly on the 3,000-row
-fetch limit — meaning older rows were almost certainly left behind — the export
-warns you before writing, because a partial file that looks complete is more
-dangerous than no file at all. The JSON records `"complete": true/false` either
-way.
+**It is always the whole book.** The app pages in every transaction on load,
+so there is no fetch limit for a backup to fall short of.
 
 The Dashboard shows a reminder when it has been too long since your last one.
 
