@@ -1,13 +1,11 @@
 # PFMT Backup — what to do
 
-Your book now lives in Supabase, not ServiceNow. That changes what a backup is
-and how you take one.
+Your book lives in Supabase. There are three ways to back it up.
 
 > **Scheduled backup:** `backup/supabase_backup.py` backs up every user from
 > Supabase. Run `backup/setup_supabase_keychain.sh` once (it stores the
 > service-role key in the Keychain), then `backup/install_schedule.sh` for a
-> weekly run. The other scripts in `backup/` still talk to ServiceNow and no
-> longer work.
+> weekly run.
 
 ---
 
@@ -68,10 +66,10 @@ A real, complete, restorable copy of the database on hardware you own.
 2. Then:
 
 ```bash
-mkdir -p ~/Documents/PFMT_Backups
+mkdir -p ~/PFMT_Backups
 pg_dump "postgresql://postgres.oqsqfrpblinvsizitmgl:<PASSWORD>@<HOST>:5432/postgres" \
   --schema=public --no-owner --no-privileges \
-  -f ~/Documents/PFMT_Backups/pfmt_$(date +%F).sql
+  -f ~/PFMT_Backups/pfmt_$(date +%F).sql
 ```
 
 `pg_dump` comes with the Postgres client tools — `brew install libpq` if you
@@ -96,7 +94,7 @@ Save as `~/bin/pfmt_backup.sh`:
 ```bash
 #!/bin/bash
 set -euo pipefail
-OUT=~/Documents/PFMT_Backups
+OUT=~/PFMT_Backups
 mkdir -p "$OUT"
 TMP=$(mktemp)
 # Write to a temp file first: a failed dump must never replace a good backup.
@@ -140,7 +138,7 @@ There is no import button in the app. Restore is a SQL job:
 
 ```bash
 psql "postgresql://postgres.oqsqfrpblinvsizitmgl@<HOST>:5432/postgres" \
-  -f ~/Documents/PFMT_Backups/pfmt_2026-09-16.sql
+  -f ~/PFMT_Backups/pfmt_2026-09-16.sql
 ```
 
 Restore into a **fresh or empty** project unless you intend to overwrite what is

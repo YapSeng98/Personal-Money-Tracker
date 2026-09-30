@@ -21,6 +21,21 @@ case "$KEY" in
   sb_publishable_*) echo "That is the publishable key — it can only see signed-in users' own rows. Use the secret one."; exit 1 ;;
 esac
 
+# The prompt doesn't echo, so pasting twice is easy and invisible — and two
+# keys glued together is just an "Invalid API key" at the first backup.
+N=$(printf '%s' "$KEY" | grep -o 'sb_secret_' | wc -l | tr -d ' ')
+if [ "${N:-0}" -gt 1 ]; then
+  echo "That looks like the key pasted $N times. Run this again and paste it once."; exit 1
+fi
+
+# Try it before storing it, so a wrong key fails here rather than on Sunday.
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: $KEY" \
+  "https://oqsqfrpblinvsizitmgl.supabase.co/rest/v1/accounts?select=id&limit=1")
+if [ "$CODE" != "200" ]; then
+  echo "Supabase rejected that key (HTTP $CODE). Copy the secret key again and re-run."; exit 1
+fi
+echo "  key works"
+
 security add-generic-password -U -s "$SERVICE" -a service_role -w "$KEY" >/dev/null \
   && echo "  stored in the login Keychain as '$SERVICE'" \
   || { echo "  FAILED to store the key"; exit 1; }

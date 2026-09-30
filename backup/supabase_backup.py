@@ -6,7 +6,7 @@
 #   ./supabase_backup.py             take one now
 #   ./install_schedule.sh            weekly, Sunday 09:00
 #
-# Writes ~/Documents/PFMT_Backups/<date>/<table>.json plus manifest.json.
+# Writes ~/PFMT_Backups/<date>/<table>.json plus manifest.json.
 # Override the folder with PFMT_BACKUP_DIR and how many runs to keep with
 # PFMT_KEEP_RUNS (default 12).
 #
@@ -29,13 +29,13 @@ SUPABASE_URL = 'https://oqsqfrpblinvsizitmgl.supabase.co'
 KC_SERVICE   = 'pfmt-supabase-backup'
 KC_ACCOUNT   = 'service_role'
 TABLES       = ['accounts', 'transactions', 'budgets', 'goals', 'bills',
-                'preferences', 'notifications_sent']
+                'preferences', 'notifications_sent', 'backups']
 PAGE         = 1000
 # Columns that authenticate as someone. A backup gets copied to places a
 # credential should never follow, so these are blanked like the app export does.
 REDACT       = {'preferences': ['ai_api_key']}
 
-BACKUP_DIR = os.path.expanduser(os.environ.get('PFMT_BACKUP_DIR', '~/Documents/PFMT_Backups'))
+BACKUP_DIR = os.path.expanduser(os.environ.get('PFMT_BACKUP_DIR', '~/PFMT_Backups'))
 KEEP_RUNS  = int(os.environ.get('PFMT_KEEP_RUNS', '12'))
 
 

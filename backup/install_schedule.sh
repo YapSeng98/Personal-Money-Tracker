@@ -5,11 +5,11 @@
 #
 #   ./install_schedule.sh                       weekly, Sunday 09:00
 #   ./install_schedule.sh --monthly             monthly, 1st at 09:00
-#   ./install_schedule.sh --to ~/Downloads/PFMT_Backups
+#   ./install_schedule.sh --to ~/Dropbox/PFMT_Backups
 #   ./install_schedule.sh --remove              uninstall
 #
 # Flags combine, e.g.
-#   ./install_schedule.sh --monthly --to ~/Downloads/PFMT_Backups
+#   ./install_schedule.sh --monthly --to ~/Dropbox/PFMT_Backups
 # ============================================================
 
 set -uo pipefail
@@ -31,8 +31,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# Backs up every user from Supabase. The ServiceNow scripts beside it
-# (pfmt_backup.sh, admin_backup.sh) are dead — that backend is retired.
+# Backs up every user from Supabase.
 # The period is part of the label so a monthly job replaces the monthly one
 # rather than silently colliding with a weekly job you still want.
 SCRIPT="$HERE/supabase_backup.py"
@@ -40,7 +39,10 @@ KC_SERVICE="pfmt-supabase-backup"
 KC_ACCOUNT="service_role"
 SETUP_HINT="./setup_supabase_keychain.sh"
 ENV_KEY="PFMT_BACKUP_DIR"
-DEFAULT_DIR="$HOME/Documents/PFMT_Backups"
+# Not ~/Documents, ~/Desktop or ~/Downloads: macOS privacy protection blocks a
+# background launchd job from writing there, so every scheduled run failed
+# while the same script run by hand from Terminal worked.
+DEFAULT_DIR="$HOME/PFMT_Backups"
 [ "$PERIOD" = "monthly" ] && LABEL="com.pfmt.monthlybackup" || LABEL="com.pfmt.weeklybackup"
 BACKUP_DIR="${DEST_OVERRIDE:-${PFMT_BACKUP_DIR:-$DEFAULT_DIR}}"
 
