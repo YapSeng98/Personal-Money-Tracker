@@ -503,6 +503,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
 .filter-bar .form-input{width:auto;flex:1;min-width:140px;padding:8px 14px;font-size:13px;}
 .search-input{flex:2!important;}
+.search-summary{font-size:12px;color:var(--muted);padding:8px 12px;margin-bottom:10px;background:var(--surface);border-radius:10px;line-height:1.6;}
+.search-summary strong{color:var(--ink);}
+.search-summary span{font-family:var(--fm);}
 .bulk-action-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:12px;font-weight:600;}
 .bulk-action-bar .form-input{width:auto;padding:7px 12px;font-size:12px;}
 .bulk-action-bar .btn[disabled]{opacity:.4;cursor:not-allowed;}
@@ -904,7 +907,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <button class="btn btn-ghost btn-sm" onclick="toggleBulkMode()" data-lkey="bulk_cancel">Cancel</button>
         </div>
         <div class="filter-bar">
-          <input class="form-input search-input" type="text" id="search-input" placeholder="🔍 Search description…" oninput="renderTransactions()">
+          <input class="form-input search-input" type="text" id="search-input" placeholder="🔍 Search anything — grab, dbs, 27.90, >100…" oninput="renderTransactions()">
           <select class="form-input" id="filter-type" onchange="renderTransactions()">
             <option value="" data-lkey="filter_all_types">All Types</option>
             <option value="expense" data-lkey="filter_expenses">Expenses</option>
@@ -1780,7 +1783,7 @@ const TRANSLATIONS = {
     empty_no_txns_month:'No transactions in', empty_add_first:'Add your first one!',
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
-    search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
+    search_placeholder:'🔍 Search anything — grab, dbs, 27.90, >100…', filter_all_types:'All Types',
     filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_paybacks:'Paybacks', badge_payback:'PAYBACK', payback_hint:'Money someone paid you back — reduces what this category cost you, and is never counted as income', filter_all_currencies:'All Currencies', filter_all_accounts:'All Payment Methods', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', hero_refunds:'refunds & claims', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
@@ -1916,7 +1919,7 @@ const TRANSLATIONS = {
     empty_no_txns_month:'本月暂无交易', empty_add_first:'添加您的第一笔！',
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
-    search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
+    search_placeholder:'🔍 搜索任何内容 — 描述、账户、金额、>100…', filter_all_types:'全部类型',
     filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_paybacks:'还款', badge_payback:'还款', payback_hint:'他人还给你的钱 — 会抵扣该类别的支出，不计为收入', filter_all_currencies:'全部货币', filter_all_accounts:'全部支付方式', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', hero_refunds:'退款与报销', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
@@ -4507,15 +4510,79 @@ function clearFilters() {
   renderTransactions();
 }
 
+// ── Search ──────────────────────────────────────────────────────────────────
+// Every word has to match somewhere on the row, so "grab dbs" finds Grab rides
+// paid from DBS. A number matches the amount — "27.9" finds S$27.90, "27" finds
+// S$27.00–27.99 — as well as any text containing it. ">100" and "<20" bound the
+// amount. Everything else is matched against description, notes, category,
+// account, the other side of a transfer, currency and type.
+function parseTxnSearch(raw) {
+  return raw.toLowerCase().split(/\s+/).filter(Boolean).map(w => {
+    const range = w.match(/^([<>])=?\$?([\d,]*\.?\d+)$/);
+    if (range) return { op: range[1], n: parseFloat(range[2].replace(/,/g, '')) };
+    const num = w.replace(/^\$|^s\$|^rm/, '');
+    if (/^\d[\d,]*(\.\d*)?$/.test(num)) return { num: num.replace(/,/g, ''), text: w };
+    return { text: w };
+  });
+}
+
+function txnMatchesSearch(t, terms) {
+  const hay = [t.description, t.notes, t.category, t.account, t.transferPeer, t.currency || state.currency,
+               t.transferGroup ? (isAssetGroup(t) ? 'asset' : 'transfer') : t.type,
+               t.recurringSource || t.isRecurring ? 'recurring' : ''].join(' ').toLowerCase();
+  const amt = Math.abs(+t.amount || 0);
+  return terms.every(q => {
+    if (q.op) return q.op === '>' ? amt > q.n : amt < q.n;
+    if (q.num !== undefined) {
+      const hit = q.num.includes('.') ? amt.toFixed(2).startsWith(q.num) : Math.floor(amt) === +q.num;
+      if (hit) return true;
+    }
+    return hay.includes(q.text);
+  });
+}
+
+// What a search found, in figures: how many rows, and per currency what went
+// out and came in — so "grab" answers "how much have I spent on Grab".
+function searchSummaryHTML(txns, allMonths) {
+  const by = {};
+  txns.forEach(t => {
+    if (!isFlow(t)) return;
+    const c = t.currency || state.currency;
+    by[c] = by[c] || { out: 0, in: 0 };
+    if (t.type === 'expense') by[c].out += t.amount;
+    else if (t.type === 'income' || t.type === 'payback') by[c].in += t.amount;
+  });
+  const money = Object.keys(by).sort().map(c => [
+    by[c].out ? `<span class="msum-out">−${fmtWithCur(by[c].out, c)} out</span>` : '',
+    by[c].in  ? `<span class="msum-in">+${fmtWithCur(by[c].in, c)} in</span>` : ''
+  ].filter(Boolean).join(' · ')).filter(Boolean).join(' &nbsp;|&nbsp; ');
+  return `<div class="search-summary"><strong>${txns.length} result${txns.length === 1 ? '' : 's'}</strong> ${allMonths ? 'across all months' : 'in ' + getMonthLabel(state.filterMonth)}${money ? ' · ' + money : ''}</div>`;
+}
+
+// Set while a search has switched the period to All Time on its own, so
+// clearing the search can put it back — and a period picked by hand mid-search
+// is left alone.
+let _searchWidened = false;
+
 function renderTransactions() {
   populateCurrencyFilter();
   populateAccountFilter();
+  // You search because you don't remember when it was, so a search looks
+  // through every month — and the period dropdown says so rather than claiming
+  // "This Month" over results from July.
+  const periodSel = document.getElementById('filter-period');
+  const typed = (document.getElementById('search-input')?.value || '').trim();
+  if (periodSel) {
+    if (typed && !_searchWidened && periodSel.value === '') { periodSel.value = 'all'; _searchWidened = true; }
+    else if (!typed && _searchWidened) { if (periodSel.value === 'all') periodSel.value = ''; _searchWidened = false; }
+  }
   const typeF   = document.getElementById('filter-type')?.value || '';
   const catF    = document.getElementById('filter-cat')?.value  || '';
   const curF    = document.getElementById('filter-cur')?.value  || '';
   const accF    = document.getElementById('filter-acc')?.value  || '';
   const periodF = document.getElementById('filter-period')?.value || '';
-  const searchF = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const searchF = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+  const terms   = searchF ? parseTxnSearch(searchF) : [];
   const clearBtn = document.getElementById('clear-filters-btn');
   if (clearBtn) clearBtn.style.display = (typeF || catF || curF || accF || periodF || searchF) ? 'inline-flex' : 'none';
 
@@ -4545,11 +4612,11 @@ function renderTransactions() {
     // which is the truth: each side really is money in that currency.
     if (curF    && (t.currency || state.currency) !== curF)  return false;
     if (accF    && t.account !== accF)                        return false;
-    if (searchF && !t.description.toLowerCase().includes(searchF)) return false;
+    if (terms.length && !txnMatchesSearch(t, terms)) return false;
     return true;
   });
 
-  if (!txns.length) { document.getElementById('all-txns').innerHTML = `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
+  if (!txns.length) { document.getElementById('all-txns').innerHTML = (searchF ? searchSummaryHTML([], !!periodF) : '') + `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
 
   // The month bar does not drive this page in All Time; dim it rather than
   // leaving a control that looks live but changes nothing.
@@ -4568,7 +4635,8 @@ function renderTransactions() {
   // its own currency badge and symbol, and dayTotalHTML emits one figure per
   // currency rather than adding them, so nothing is ambiguous. Use the currency
   // filter to isolate one.
-  document.getElementById('all-txns').innerHTML = txnListByDate(txns, isMultiCurTxn, true, bulkMode);
+  document.getElementById('all-txns').innerHTML =
+    (searchF ? searchSummaryHTML(txns, !!periodF) : '') + txnListByDate(txns, isMultiCurTxn, true, bulkMode);
   updateBulkBar();
 }
 

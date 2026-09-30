@@ -55,6 +55,7 @@ const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPayb
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal',
+  'parseTxnSearch', 'txnMatchesSearch',
   'addDaysStr', 'recurDate', 'recurNextAfter', 'recurHalfWindow', 'recurAlreadyEntered'];
 
 const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
@@ -528,6 +529,26 @@ group('Recurring — an auto-added row never pays a bill');
   const real = txn({ id: 'y', amount: 1500, category: 'Housing', date: '2026-09-02' });
   ok(!pfmtMatch([bill], [auto]).rent, 'auto-added rent leaves the bill unpaid');
   ok(pfmtMatch([bill], [auto, real]).rent === real, 'the rent you entered yourself still pays it');
+}
+
+group('Search — every field, amounts and ranges');
+{
+  const grab = txn({ id: 'g', amount: 27.9, description: 'Grab to office', category: 'Transport', account: 'DBS Saving', notes: 'late meeting' });
+  const tfr  = txn({ id: 't', amount: 200, description: 'Money transfer', category: 'Transfer', account: 'CIMB MLY Saving',
+                     currency: 'MYR', transferGroup: 'tg_1', transferPeer: 'TNG' });
+  const find = (q, t) => API.txnMatchesSearch(t, API.parseTxnSearch(q));
+  ok(find('grab', grab), 'description');
+  ok(find('meeting', grab), 'notes');
+  ok(find('transport', grab), 'category');
+  ok(find('dbs', grab), 'account');
+  ok(find('grab dbs', grab) && !find('grab uob', grab), 'every word must match');
+  ok(find('27.9', grab) && find('27.90', grab) && find('27', grab), '27.9 / 27.90 / 27 find S$27.90');
+  ok(!find('27.95', grab) && !find('2', grab), 'a different amount does not');
+  ok(find('>20', grab) && !find('>30', grab) && find('<28', grab), '>20 and <28 bound the amount');
+  ok(find('$27.90', grab) && find('1,500', txn({ amount: 1500 })), 'currency signs and thousands commas are ignored');
+  ok(find('tng', tfr), 'the other side of a transfer');
+  ok(find('myr', tfr) && find('transfer', tfr), 'currency and type');
+  ok(!find('uber', grab), 'no match, no row');
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);
