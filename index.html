@@ -7389,7 +7389,11 @@ async function doSNRegister() {
   _setLoginLoading(true, 'Creating account…');
 
   try {
-    const { data, error } = await sb.auth.signUp({ email, password });
+    // Without a redirect the confirmation link falls back to the project's Site
+    // URL, the bare github.io domain — a 404, since the app lives in a subfolder.
+    // Supabase only honours this if the URL is in Auth → URL Configuration.
+    const { data, error } = await sb.auth.signUp({ email, password,
+      options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) throw error;
     if (!data.session) {
       _setLoginLoading(false);
