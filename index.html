@@ -318,6 +318,15 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .msum-in{color:var(--jade-d);}
 .msum-out{color:var(--coral);}
 .msum-wrap{overflow-x:auto;}
+.msum-row{cursor:pointer;}
+.msum-row:hover td{background:var(--surface);}
+.msum-caret{display:inline-block;width:12px;color:var(--muted);font-size:10px;}
+.msum-table tr.msum-open td{text-align:left;font-family:var(--ff);font-weight:400;white-space:normal;padding:4px 0 14px 16px;}
+.msum-detail{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 28px;}
+.msum-sec-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px;}
+.msum-line{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:12px;}
+.msum-line em{font-style:normal;color:var(--muted);font-size:11px;}
+.msum-line span:last-child{font-family:var(--fm);white-space:nowrap;}
 .theme-opts{display:flex;gap:8px;flex-wrap:wrap;}
 .theme-opt{font-size:13px;font-weight:600;padding:9px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;font-family:var(--ff);transition:all .15s;}
 .theme-opt:hover{border-color:var(--indigo);}
@@ -1090,7 +1099,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div class="panel-title">Monthly In &amp; Out</div>
           <button class="btn btn-ghost btn-sm" onclick="exportMonthlySummaryCSV()" title="Download this table as CSV">⬇ CSV</button>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. <strong>Income</strong> and <strong>Spending</strong> are what you actually earned and spent. Moving your own money — a same-currency transfer or an asset purchase — nets to zero inside a currency and is left out entirely. A currency exchange does move money, so it gets its own columns rather than being mixed into income or spending. <strong>Net</strong> is all of it together, and matches the change in that currency's accounts.</div>
+        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. <strong>Income</strong> and <strong>Spending</strong> are what you actually earned and spent. Moving your own money — a same-currency transfer or an asset purchase — nets to zero inside a currency and is left out entirely. A currency exchange does move money, so it gets its own columns rather than being mixed into income or spending. <strong>Kept</strong> is income minus spending — what you saved before any exchange. <strong>Refunds &amp; Claims</strong> are paybacks that came into your accounts without lowering spending. <strong>Net</strong> is all of it together, and matches the change in that currency's accounts. Click a month to see every line behind it.</div>
         <div id="monthly-summary"></div>
       </div>
       <div class="ai-panel">
@@ -1148,7 +1157,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               Signed in as <span id="sn-conn-username" style="color:#fff;font-weight:600;"></span>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="snLoadAll().then(()=>showToast('Synced from Supabase','success')).catch(e=>showToast(e.message,'error'))" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">🔄 Sync Data</button>
+              <button onclick="syncNow()" class="btn btn-jade" style="font-size:12px;padding:7px 14px;">🔄 Sync Data</button>
               <button onclick="snLogout()" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15);">Sign Out</button>
             </div>
           </div>
@@ -1762,7 +1771,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'Add expenses to see chart',
     panel_all_txns:'All Transactions', btn_add:'+ Add',
     search_placeholder:'🔍 Search description…', filter_all_types:'All Types',
-    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_paybacks:'Paybacks', badge_payback:'PAYBACK', payback_hint:'Money someone paid you back — reduces what this category cost you, and is never counted as income', filter_all_currencies:'All Currencies', filter_all_accounts:'All Payment Methods', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', filter_transfers:'Transfers',
+    filter_expenses:'Expenses', filter_income:'Income', filter_assets:'Assets', filter_paybacks:'Paybacks', badge_payback:'PAYBACK', payback_hint:'Money someone paid you back — reduces what this category cost you, and is never counted as income', filter_all_currencies:'All Currencies', filter_all_accounts:'All Payment Methods', filter_this_month:'This Month', filter_all_time:'All Time', month_bar_inactive:'Showing all months — set the period filter to This Month to use this', budget_view_txns:'View transactions in this category', hero_exch_in:'exchanged in', hero_exch_out:'exchanged out', hero_refunds:'refunds & claims', filter_transfers:'Transfers',
     filter_all_cats:'All Categories', empty_no_txns_filter:'No transactions match your filters.',
     panel_monthly_budgets:'Monthly Budgets', btn_add_budget:'+ Add Budget',
     panel_monthly_overview:'Monthly Overview', ai_title_budget:'Budget Coach',
@@ -1898,7 +1907,7 @@ const TRANSLATIONS = {
     empty_add_expenses_chart:'添加支出以查看图表',
     panel_all_txns:'全部交易', btn_add:'+ 添加',
     search_placeholder:'🔍 搜索描述…', filter_all_types:'全部类型',
-    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_paybacks:'还款', badge_payback:'还款', payback_hint:'他人还给你的钱 — 会抵扣该类别的支出，不计为收入', filter_all_currencies:'全部货币', filter_all_accounts:'全部支付方式', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', filter_transfers:'转账',
+    filter_expenses:'支出', filter_income:'收入', filter_assets:'资产', filter_paybacks:'还款', badge_payback:'还款', payback_hint:'他人还给你的钱 — 会抵扣该类别的支出，不计为收入', filter_all_currencies:'全部货币', filter_all_accounts:'全部支付方式', filter_this_month:'本月', filter_all_time:'全部时间', month_bar_inactive:'正在显示所有月份 — 将时间筛选设为“本月”方可使用', budget_view_txns:'查看该类别的交易', hero_exch_in:'换汇转入', hero_exch_out:'换汇转出', hero_refunds:'退款与报销', filter_transfers:'转账',
     filter_all_cats:'全部类别', empty_no_txns_filter:'没有符合筛选条件的交易。',
     panel_monthly_budgets:'月度预算', btn_add_budget:'+ 添加预算',
     panel_monthly_overview:'月度概览', ai_title_budget:'预算顾问',
@@ -2057,7 +2066,6 @@ let state = {
   displayName: '',
   avatarColor: '#8B5CF6',
   monthlyIncomeTarget: 0,
-  txnFetchTruncated: false,
   lastBackupAt: ''    // ISO date of the last complete backup taken from this app
 };
 
@@ -2097,9 +2105,6 @@ function saveState() {
       displayName: state.displayName,
       avatarColor: state.avatarColor,
       monthlyIncomeTarget: state.monthlyIncomeTarget,
-      // Survives a reload: the data in localStorage is whatever that truncated
-      // sync returned, so the warning has to outlive the page that raised it.
-      txnFetchTruncated: state.txnFetchTruncated,
       lastBackupAt: state.lastBackupAt
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
@@ -2118,10 +2123,26 @@ function loadState() {
   } catch(e) { return false; }
 }
 
-// Ceiling on one transactions fetch. Comfortably covers a heavy year, and the
-// backup checks whether a load came back exactly on it — a full page is the
-// signal that older rows were left behind.
-const TXN_FETCH_LIMIT = 3000;
+// Rows asked for per transactions request. Supabase hands back at most 1,000 a
+// request whatever .limit() says, so the book is read in pages until one comes
+// back empty — there is no ceiling on how many transactions a user can have.
+const TXN_PAGE_SIZE = 1000;
+
+async function fetchAllTxns(uid, onPage) {
+  const all = [];
+  for (;;) {
+    // id breaks date ties, so a row can't slip between two pages or appear in both.
+    const { data, error } = await sb.from('transactions').select('*').eq('user_id', uid)
+      .order('date', { ascending: false }).order('id')
+      .range(all.length, all.length + TXN_PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    // Stop on an empty page, not a short one: a server cap below TXN_PAGE_SIZE
+    // would make every page look short.
+    if (!data.length) return { data: all, error: null };
+    all.push(...data);
+    if (onPage) onPage(all.length);
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    THE SHARED MONEY RULES
@@ -3561,7 +3582,7 @@ const isFlow = pfmtIsFlow;
 // totals were dividing by a month they weren't showing.
 function curStats(cur, txns, month) {
   const mine = txns.filter(t => (t.currency || state.currency) === cur);
-  let inc = 0, xIn = 0, xOut = 0;
+  let inc = 0, xIn = 0, xOut = 0, back = 0;
   const spentByCat = {}, backByCat = {};
   mine.forEach(t => {
     // A payback is money returned by someone else for something you already
@@ -3576,6 +3597,7 @@ function curStats(cur, txns, month) {
     // straight into the running total — see the clamp below.
     if (t.type === 'payback') {
       if (paybackOffsets(t)) backByCat[t.category] = (backByCat[t.category] || 0) + t.amount;
+      else back += t.amount;
       return;
     }
     if (t.type === 'income' || t.type === 'expense') {
@@ -3607,13 +3629,20 @@ function curStats(cur, txns, month) {
   let exp = 0;
   Object.keys(spentByCat).forEach(cat => {
     const spent = spentByCat[cat];
-    const back  = backByCat[cat] || 0;
-    exp += back > spent ? spent : spent - back;
+    const b     = backByCat[cat] || 0;
+    exp += b > spent ? spent : spent - b;
   });
   exp = Math.round(exp * 100) / 100;
+  // A payback that didn't come off spending — a claim, or one bigger than its
+  // category's spend — still landed in an account. It is kept out of income and
+  // spending but counted in net, or net drifts from the balances by exactly it.
+  Object.keys(backByCat).forEach(cat => {
+    if (backByCat[cat] > (spentByCat[cat] || 0)) back += backByCat[cat];
+  });
+  back = Math.round(back * 100) / 100;
   return {
-    inc, exp, xIn, xOut,
-    net        : inc - exp + xIn - xOut,
+    inc, exp, xIn, xOut, back,
+    net        : inc - exp + xIn - xOut + back,
     earned     : inc - exp,
     savingsRate: inc > 0 ? ((inc - exp) / inc * 100) : null,
     avgDaily   : (exp > 0 && month) ? exp / daysSoFarIn(month) : 0,
@@ -3850,11 +3879,14 @@ function renderDashboard() {
 
   // The exchange note always sits inside its own currency's block, so an
   // incoming RM can never be read as an incoming S$.
+  // Refunds and claims ride along too: they are in the net but in neither income
+  // nor spending, so without this line the net wouldn't add up on screen.
   const xNote = (c, st) => {
-    if (!st.hasExchange) return '';
+    if (!st.hasExchange && !st.back) return '';
     const bits = [];
     if (st.xIn)  bits.push(`+${fmtWithCur(st.xIn, c)} ${t('hero_exch_in')}`);
     if (st.xOut) bits.push(`−${fmtWithCur(st.xOut, c)} ${t('hero_exch_out')}`);
+    if (st.back) bits.push(`+${fmtWithCur(st.back, c)} ${t('hero_refunds')}`);
     return `<div class="hero-exch">🔄 ${bits.join(' · ')}</div>`;
   };
 
@@ -5440,7 +5472,7 @@ function monthlyInOut() {
   const bucket = (map, cur, mk) => ((map[cur] = map[cur] || {})[mk] = map[cur][mk] || {});
   const row = (cur, mk) => {
     byCur[cur] = byCur[cur] || {};
-    return byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0, xIn: 0, xOut: 0 };
+    return byCur[cur][mk] = byCur[cur][mk] || { inc: 0, exp: 0, xIn: 0, xOut: 0, back: 0 };
   };
   state.transactions.forEach(t => {
     const cross = isCrossCurrencyLeg(t);
@@ -5458,6 +5490,7 @@ function monthlyInOut() {
     // page while the dashboard said 1,800 for the same month.
     if (t.type === 'payback') {
       if (paybackOffsets(t)) bucket(backByCat, cur, mk)[t.category] = (bucket(backByCat, cur, mk)[t.category] || 0) + t.amount;
+      else row(cur, mk).back += t.amount;
       return;
     }
     if (cross) {
@@ -5488,7 +5521,93 @@ function monthlyInOut() {
     });
     row(cur, mk).exp = Math.round(exp * 100) / 100;
   }));
+  // Paybacks that didn't offset spending still reached an account — the same
+  // rule as curStats, including a month with paybacks and no spend at all.
+  Object.keys(backByCat).forEach(cur => Object.keys(backByCat[cur]).forEach(mk => {
+    const spentCats = (spentByCat[cur] && spentByCat[cur][mk]) || {};
+    Object.entries(backByCat[cur][mk]).forEach(([cat, b]) => {
+      if (b > (spentCats[cat] || 0)) row(cur, mk).back += b;
+    });
+  }));
+  Object.values(byCur).forEach(ms => Object.values(ms).forEach(r => { r.back = Math.round(r.back * 100) / 100; }));
   return { months, byCur };
+}
+
+// Which month rows are expanded, as 'CUR|YYYY-MM'. Kept across re-renders so a
+// sync or an edit elsewhere doesn't snap an open breakdown shut.
+const msumOpen = new Set();
+function toggleMonthDetail(key) {
+  if (msumOpen.has(key)) msumOpen.delete(key); else msumOpen.add(key);
+  renderMonthlySummary();
+}
+
+// Where one month's money in one currency actually came from and went, line by
+// line — the same rules monthlyInOut() applies, itemised so every figure in the
+// row above it can be traced to transactions.
+function monthFlowDetail(cur, mk) {
+  const txns = state.transactions.filter(t =>
+    (t.currency || state.currency) === cur && t.date.slice(0, 7) === mk);
+  const add = (m, k, v) => { m[k] = (m[k] || 0) + v; };
+  const incByCat = {}, spentByCat = {}, backByCat = {};
+  const exchanges = [], refunds = [];
+  let moved = 0, movedN = 0;
+  txns.forEach(t => {
+    if (t.type === 'payback') {
+      if (paybackOffsets(t)) add(backByCat, t.category, t.amount);
+      else refunds.push({ t, why: t.category });
+      return;
+    }
+    if (isCrossCurrencyLeg(t)) {
+      const peer = state.transactions.find(x => x.transferGroup === t.transferGroup && x !== t);
+      exchanges.push({ t, peer, inflow: t.type === 'income' || t.type === 'asset' });
+      return;
+    }
+    if (!isFlow(t)) {
+      // Only count the outgoing leg, so a transfer is one movement, not two.
+      if (t.type === 'expense') { moved += t.amount; movedN++; }
+      return;
+    }
+    if (t.type === 'income') add(incByCat, t.category, t.amount);
+    else if (t.type === 'expense') add(spentByCat, t.category, t.amount);
+  });
+  // A payback bigger than its category's spend doesn't offset it — it lands in
+  // Refunds & Claims instead, exactly as the row's figures treat it.
+  Object.entries(backByCat).forEach(([cat, b]) => {
+    if (b > (spentByCat[cat] || 0)) {
+      txns.filter(t => t.type === 'payback' && t.category === cat)
+          .forEach(t => refunds.push({ t, why: 'more than ' + cat + ' spending' }));
+      delete backByCat[cat];
+    }
+  });
+  const money = v => fmtWithCur(v, cur);
+  const line = (label, amt, cls, note = '') =>
+    `<div class="msum-line"><span>${label}${note ? ` <em>${note}</em>` : ''}</span><span class="${cls}">${amt}</span></div>`;
+  const sec = (title, body) => body ? `<div class="msum-sec"><div class="msum-sec-t">${title}</div>${body}</div>` : '';
+  const byAmt = m => Object.entries(m).sort((a, b) => b[1] - a[1]);
+
+  const incHTML = byAmt(incByCat).map(([c, v]) =>
+    line(`${catIcon(c)} ${esc(c)}`, '+' + money(v), 'msum-in')).join('');
+  const spendHTML = byAmt(spentByCat).map(([c, v]) => {
+    const b = backByCat[c] || 0;
+    return line(`${catIcon(c)} ${esc(c)}`, '−' + money(v - b), 'msum-out',
+                b ? `${money(v)} spent, ${money(b)} paid back` : '');
+  }).join('');
+  const exHTML = exchanges.sort((a, b) => a.t.date.localeCompare(b.t.date)).map(({ t, peer, inflow }) => {
+    const other = peer ? `${esc(peer.account)} (${fmtWithCur(peer.amount, peer.currency)})` : '?';
+    const rate  = peer && t.amount ? (inflow ? t.amount / peer.amount : peer.amount / t.amount) : 0;
+    const rateTxt = rate ? `1 ${inflow ? peer.currency : cur} = ${rate.toFixed(4)} ${inflow ? cur : peer.currency}` : '';
+    return line(`${fmtDate(t.date)} · ${inflow ? other + ' → ' + esc(t.account) : esc(t.account) + ' → ' + other}`,
+                (inflow ? '+' : '−') + money(t.amount), 'msum-x', rateTxt);
+  }).join('');
+  const refHTML = refunds.map(({ t, why }) =>
+    line(`${fmtDate(t.date)} · ${esc(t.description)}`, '+' + money(t.amount), 'msum-in', esc(why))).join('');
+  const movedHTML = movedN
+    ? `<div class="msum-foot">Also moved between your own ${cur} accounts: ${money(moved)} in ${movedN} transfer${movedN > 1 ? 's' : ''} or asset purchase${movedN > 1 ? 's' : ''}. That changes which account holds the money, not how much you have, so it isn't in any column.</div>`
+    : '';
+  return `<div class="msum-detail">
+    ${sec('Income', incHTML)}${sec('Spending', spendHTML)}
+    ${sec('Currency exchange', exHTML)}${sec('Refunds &amp; claims', refHTML)}
+  </div>${movedHTML}`;
 }
 
 function renderMonthlySummary() {
@@ -5510,33 +5629,46 @@ function renderMonthlySummary() {
   el.innerHTML = currencies.map(cur => {
     // Only months that actually have activity — a run of empty rows is noise.
     const rows = months.filter(mk => byCur[cur][mk]);
-    // The exchange columns appear only for a currency that actually saw one,
-    // so a single-currency book keeps the plain four-column table.
+    // The exchange and refund columns appear only for a currency that actually
+    // saw one, so a single-currency book keeps the plain four-column table.
     const hasX = rows.some(mk => byCur[cur][mk].xIn || byCur[cur][mk].xOut);
-    let tIn = 0, tOut = 0, tXIn = 0, tXOut = 0;
+    const hasB = rows.some(mk => byCur[cur][mk].back);
+    const cols = 5 + (hasX ? 2 : 0) + (hasB ? 1 : 0);
+    let tIn = 0, tOut = 0, tXIn = 0, tXOut = 0, tBack = 0;
     const cell = (v, sign, cls) => `<td class="${cls}">${v ? sign + fmtWithCur(v, cur) : '—'}</td>`;
+    const netCell = v => `<td style="color:${v < 0 ? 'var(--coral)' : 'var(--jade-d)'};font-weight:700;">${fmtSigned(v, cur)}</td>`;
 
     const body = rows.map(mk => {
-      const { inc, exp, xIn, xOut } = byCur[cur][mk];
-      tIn += inc; tOut += exp; tXIn += xIn; tXOut += xOut;
+      const { inc, exp, xIn, xOut, back } = byCur[cur][mk];
+      tIn += inc; tOut += exp; tXIn += xIn; tXOut += xOut; tBack += back;
       // Net is everything that moved, earned or exchanged — so it matches the
       // change in this currency's accounts, and the dashboard's net.
-      const net = Math.round((inc - exp + xIn - xOut) * 100) / 100;
-      return `<tr>
-        <td>${label(mk)}</td>
+      const net = Math.round((inc - exp + xIn - xOut + back) * 100) / 100;
+      // Kept is what earning minus spending left you, before any exchange. It
+      // is the answer to "did I live within my means" when net is dragged
+      // negative by money sent to another currency.
+      const kept = Math.round((inc - exp) * 100) / 100;
+      const key  = `${cur}|${mk}`;
+      const open = msumOpen.has(key);
+      return `<tr class="msum-row${open ? ' open' : ''}" onclick="toggleMonthDetail('${key}')" title="Show where this month's ${cur} came from and went">
+        <td><span class="msum-caret">${open ? '▾' : '▸'}</span> ${label(mk)}</td>
         ${cell(inc, '+', 'msum-in')}
         ${cell(exp, '-', 'msum-out')}
+        ${netCell(kept)}
         ${hasX ? cell(xIn, '+', 'msum-x') + cell(xOut, '-', 'msum-x') : ''}
-        <td style="color:${net < 0 ? 'var(--coral)' : 'var(--jade-d)'};font-weight:700;">${fmtSigned(net, cur)}</td>
-      </tr>`;
+        ${hasB ? cell(back, '+', 'msum-in') : ''}
+        ${netCell(net)}
+      </tr>${open ? `<tr class="msum-open"><td colspan="${cols}">${monthFlowDetail(cur, mk)}</td></tr>` : ''}`;
     }).join('');
 
-    const tNet = Math.round((tIn - tOut + tXIn - tXOut) * 100) / 100;
+    const tKept = Math.round((tIn - tOut) * 100) / 100;
+    const tNet  = Math.round((tIn - tOut + tXIn - tXOut + tBack) * 100) / 100;
     return `<div class="msum-cur"><span>${cur}</span><div></div></div>
       <div class="msum-wrap"><table class="msum-table">
         <thead><tr>
-          <th>Month</th><th>Income</th><th>Spending</th>
+          <th>Month</th><th>Income</th><th>Spending</th><th title="Income minus spending">Kept</th>
           ${hasX ? '<th>Exchanged In</th><th>Exchanged Out</th>' : ''}
+          ${hasB ? '<th title="Paybacks that did not reduce spending: work claims, or more than the category cost that month">Refunds &amp; Claims</th>' : ''}
           <th>Net</th>
         </tr></thead>
         <tbody>${body}
@@ -5544,8 +5676,10 @@ function renderMonthlySummary() {
             <td>Total</td>
             ${cell(tIn, '+', 'msum-in')}
             ${cell(tOut, '-', 'msum-out')}
+            ${netCell(tKept)}
             ${hasX ? cell(tXIn, '+', 'msum-x') + cell(tXOut, '-', 'msum-x') : ''}
-            <td style="color:${tNet < 0 ? 'var(--coral)' : 'var(--jade-d)'};">${fmtSigned(tNet, cur)}</td>
+            ${hasB ? cell(tBack, '+', 'msum-in') : ''}
+            ${netCell(tNet)}
           </tr>
         </tbody>
       </table></div>`;
@@ -5557,13 +5691,13 @@ function exportMonthlySummaryCSV() {
   const currencies = Object.keys(byCur).sort();
   if (!currencies.length) { showToast('Nothing to export for this range', 'warning'); return; }
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = [['Currency','Month','Income','Spending','Net','Exchanged In','Exchanged Out'].map(q).join(',')];
+  const lines = [['Currency','Month','Income','Spending','Kept','Exchanged In','Exchanged Out','Refunds & Claims','Net'].map(q).join(',')];
   currencies.forEach(cur => {
     months.filter(mk => byCur[cur][mk]).forEach(mk => {
-      const { inc, exp, xIn, xOut } = byCur[cur][mk];
-      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2),
-                  (inc - exp + (xIn || 0) - (xOut || 0)).toFixed(2),
-                  (xIn || 0).toFixed(2), (xOut || 0).toFixed(2)].map(q).join(','));
+      const { inc, exp, xIn, xOut, back } = byCur[cur][mk];
+      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2), (inc - exp).toFixed(2),
+                  xIn.toFixed(2), xOut.toFixed(2), back.toFixed(2),
+                  (inc - exp + xIn - xOut + back).toFixed(2)].map(q).join(','));
     });
   });
   const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -6271,16 +6405,6 @@ async function exportFullBackup() {
   if (!state.transactions.length && !state.accounts.length) {
     showToast('Nothing to back up yet', 'info'); return;
   }
-  // Refuse rather than write a file that looks complete but isn't — the same
-  // rule the scheduled backups follow. A partial copy is more dangerous than
-  // no copy, because it is the one you would restore from.
-  if (state.txnFetchTruncated) {
-    const go = await showConfirm(
-      'This copy would be incomplete',
-      `The last sync returned ${TXN_FETCH_LIMIT} transactions, which is the maximum one request sends — older rows were almost certainly left behind. Sign in on a fresh device and re-sync for a complete copy. Save this partial file anyway?`,
-      'Save anyway', 'btn-amber');
-    if (!go) return;
-  }
   const payload = {
     pfmt_backup: {
       format_version : 2,
@@ -6291,10 +6415,9 @@ async function exportFullBackup() {
                          budgets: state.budgets.length,  goals: state.goals.length,
                          bills: state.bills.length },
       secrets_included: false,
-      // Says plainly whether this file is the whole book, so a restore is never
-      // started on the assumption that it is.
-      complete       : !state.txnFetchTruncated,
-      truncated_at   : state.txnFetchTruncated ? TXN_FETCH_LIMIT : null
+      // Every transaction is paged in on load, so the file is the whole book.
+      // Kept so a restore can still check it, as older files carried it too.
+      complete       : true
     },
     // The profile row, minus anything that authenticates as this user.
     user_profile: {
@@ -6365,15 +6488,11 @@ async function exportFullBackup() {
   const c = payload.pfmt_backup.counts;
   downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
                `pfmt_backup_${localDateStr()}.json`);
-  // Only a complete file resets the clock — a partial one saved past the
-  // warning should not buy another month of silence.
-  if (payload.pfmt_backup.complete) {
-    state.lastBackupAt = new Date().toISOString();
-    saveState();
-    _backupNoticeDismissed = false;
-    renderBackupReminder();
-    renderExportSummary();
-  }
+  state.lastBackupAt = new Date().toISOString();
+  saveState();
+  _backupNoticeDismissed = false;
+  renderBackupReminder();
+  renderExportSummary();
   showToast(`Backup saved — ${c.transactions} transactions, ${c.accounts} accounts, ${c.budgets} budgets, ${c.goals} goals`, 'success');
 }
 
@@ -6444,9 +6563,19 @@ function renderExportSummary() {
 
 function updateLastSync() {
   const el = document.getElementById('last-sync-label');
-  if (el && state.lastSync) {
+  if (!el) return;
+  const when = state.lastSync
+    ? new Date(state.lastSync).toLocaleString('en-SG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    : 'never';
+  if (state.syncFailed) {
+    el.innerHTML = `<span style="color:var(--amber);font-weight:600;">⚠️ Couldn't sync — showing your copy from ${when}</span> <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" onclick="syncNow()">Retry</button>`;
+  } else if (state.lastSync) {
     el.textContent = 'Last sync: ' + new Date(state.lastSync).toLocaleTimeString('en-SG', { hour:'2-digit', minute:'2-digit' });
   }
+}
+
+async function syncNow() {
+  if (await snLoadAll()) { renderAll(); showToast('Synced from Supabase', 'success'); }
 }
 
 function openAI() {
@@ -7116,11 +7245,9 @@ async function snLoadAll() {
   try {
     const uid = state.userId;
     const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes] = await Promise.all([
-      // 3000 comfortably covers a full year even for a heavy multi-account user;
-      // this only affects payload size for people who actually have that many —
-      // a light user's fetch is unchanged since the number is a ceiling, not a
-      // target. Needed so the spending-trend chart isn't quietly missing months.
-      sb.from('transactions').select('*').eq('user_id', uid).order('date', { ascending: false }).limit(TXN_FETCH_LIMIT),
+      // Nothing renders until every page is in, so the screen never shows a
+      // book that is still half-loaded. The count tells a big book it is moving.
+      fetchAllTxns(uid, n => _setLoginLoading(true, `Loading your data… ${n.toLocaleString()} transactions`)),
       sb.from('budgets').select('*').eq('user_id', uid),
       sb.from('goals').select('*').eq('user_id', uid),
       sb.from('accounts').select('*').eq('user_id', uid),
@@ -7139,11 +7266,6 @@ async function snLoadAll() {
     const accounts = accountsRes.data || [];
     const pref     = prefRes.data;
 
-    // The transactions fetch caps at TXN_FETCH_LIMIT. Coming back exactly on
-    // the limit means there is almost certainly more that wasn't sent, and a
-    // backup taken from a truncated book would look complete while missing the
-    // oldest rows — so record it and let the export refuse.
-    state.txnFetchTruncated = txns.length >= TXN_FETCH_LIMIT;
 
     state.transactions = txns.map(t => ({
       id         : t.id,
@@ -7248,11 +7370,19 @@ async function snLoadAll() {
     const retagged = migrateTransferCategories();
     if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
     state.lastSync = new Date().toISOString();
+    state.syncFailed = false;
     saveState();
     updateLastSync();
+    return true;
   } catch(e) {
+    // Nothing above has touched state.transactions yet when a fetch fails, so
+    // what stays on screen is the last complete copy — never a partial one.
+    // The header says so for as long as it's true, not just in a passing toast.
     console.warn('snLoadAll failed:', e.message);
+    state.syncFailed = true;
+    updateLastSync();
     showToast('Could not load data from Supabase: ' + e.message, 'error');
+    return false;
   }
 }
 

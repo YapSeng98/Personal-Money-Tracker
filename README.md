@@ -421,9 +421,10 @@ entered in and totals are grouped per currency. A cross-currency transfer takes
 both amounts from you rather than applying a rate; there is no FX rate anywhere
 in the app, by design.
 
-**A transaction fetch caps at 3,000 rows.** Coming back exactly on the limit is
-taken as proof that older rows were left behind, and the backup then refuses to
-write a file that would look complete but isn't.
+**Transactions load in pages of 1,000 until none are left**, so there is no
+ceiling on how many a user can have. Nothing renders until every page is in; if
+a load fails, the last complete copy stays on screen and the header says so
+until a sync succeeds.
 
 **Recurring transactions are carried but dormant.** `is_recurring` and friends
 survive a round trip and appear in backups; nothing generates from them. Bills

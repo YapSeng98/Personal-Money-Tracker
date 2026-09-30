@@ -448,5 +448,46 @@ group('Cross-currency funded asset purchases count as money exchanged in, not lo
      `got ${io.byCur?.MYR?.[month]?.xIn}`);
 }
 
+// ── Net must equal what actually happened to the accounts ─────────────────
+// The Monthly In & Out note promises Net "matches the change in that currency's
+// accounts". A payback that didn't lower spending — a work claim, or one bigger
+// than its category's spend — was dropped from every column, so August 2026
+// read S$336.24 while the SGD accounts rose S$470.92, and September missed a
+// S$128.20 claim. Both shapes from the real book, on both surfaces.
+group('Net equals the change in the accounts');
+{
+  const month = API.localYM();
+  const on = month + '-10';
+  const cases = [
+    ['a claim coming back', [
+      txn({ type: 'income',  amount: 4001.60, account: 'A', category: 'Salary', date: on }),
+      txn({ type: 'expense', amount: 2043.64, account: 'A', category: 'Food & Drink', date: on }),
+      txn({ type: 'payback', amount: 128.20,  account: 'A', category: 'Claims', date: on }),
+    ], 128.20],
+    ['a payback bigger than its category', [
+      txn({ type: 'income',  amount: 4002.06, account: 'A', category: 'Salary', date: on }),
+      txn({ type: 'expense', amount: 40.75,   account: 'A', category: 'Bills', date: on }),
+      txn({ type: 'payback', amount: 134.68,  account: 'A', category: 'Bills', date: on }),
+    ], 134.68],
+    ['a payback with no spend in its category', [
+      txn({ type: 'payback', amount: 50, account: 'A', category: 'Shopping', date: on }),
+    ], 50],
+    ['a payback that does offset (not a refund line)', [
+      txn({ type: 'expense', amount: 100, account: 'A', category: 'Food & Drink', date: on }),
+      txn({ type: 'payback', amount: 60,  account: 'A', category: 'Food & Drink', date: on }),
+    ], 0],
+  ];
+  for (const [label, txns, back] of cases) {
+    scenario([acct('A', 1000)], txns);
+    const change = netWorth('SGD') - 1000;
+    const st = API.curStats('SGD', state.transactions, month);
+    const io = API.monthlyInOut().byCur.SGD[month];
+    const ioNet = io.inc - io.exp + io.xIn - io.xOut + io.back;
+    ok(near(st.net, change), `${label}: dashboard net matches the accounts`, `net=${st.net} change=${change}`);
+    ok(near(ioNet, change), `${label}: Monthly In & Out net matches the accounts`, `net=${ioNet} change=${change}`);
+    ok(near(st.back, back) && near(io.back, back), `${label}: shows ${back} as refunds & claims`, `curStats=${st.back} table=${io.back}`);
+  }
+}
+
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);
