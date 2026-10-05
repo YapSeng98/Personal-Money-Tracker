@@ -56,6 +56,7 @@ const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPayb
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal',
   'parseTxnSearch', 'txnMatchesSearch',
+  'monthFlowData', 'txnBalanceEffect', 'stmtKind', 'buildStatement', 'stmtNum',
   'addDaysStr', 'recurDate', 'recurNextAfter', 'recurHalfWindow', 'recurAlreadyEntered'];
 
 const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
@@ -549,6 +550,73 @@ group('Search — every field, amounts and ranges');
   ok(find('tng', tfr), 'the other side of a transfer');
   ok(find('myr', tfr) && find('transfer', tfr), 'currency and type');
   ok(!find('uber', grab), 'no match, no row');
+}
+
+group('Statement — balances carry through and agree with Monthly In & Out');
+{
+  state.budgets = [];
+  state.accounts = [
+    { name: 'DBS', balance: 1000, currency: 'SGD' },
+    { name: 'OCBC', balance: 500, currency: 'SGD' },
+    { name: 'MBB', balance: 0, currency: 'MYR' },
+  ];
+  state.transactions = [
+    txn({ account: 'DBS', type: 'income', category: 'Salary', amount: 3000, date: '2026-08-01' }),
+    txn({ account: 'DBS', amount: 200, date: '2026-08-20' }),
+    txn({ account: 'DBS', type: 'income', category: 'Salary', amount: 3000, date: '2026-09-01' }),
+    txn({ account: 'DBS', category: 'Food & Drink', amount: 120, date: '2026-09-03' }),
+    txn({ account: 'DBS', type: 'payback', category: 'Food & Drink', amount: 50, date: '2026-09-04' }),
+    txn({ account: 'DBS', category: 'Entertainment', amount: 20, date: '2026-09-04' }),
+    // bigger than the category's spend, so it stops offsetting and counts as a refund
+    txn({ account: 'DBS', type: 'payback', category: 'Entertainment', amount: 50, date: '2026-09-05' }),
+    txn({ account: 'DBS', type: 'payback', category: 'Claims', amount: 80, date: '2026-09-05' }),
+    txn({ account: 'DBS', category: 'Transfer', amount: 400, date: '2026-09-06', transferGroup: 'tg_9' }),
+    txn({ account: 'OCBC', type: 'income', category: 'Transfer', amount: 400, date: '2026-09-06', transferGroup: 'tg_9' }),
+    txn({ account: 'DBS', category: 'Transfer', amount: 1000, date: '2026-09-07', transferGroup: 'tg_8' }),
+    txn({ account: 'MBB', type: 'income', category: 'Transfer', amount: 3300, currency: 'MYR', date: '2026-09-07', transferGroup: 'tg_8' }),
+    txn({ account: 'Cash', category: 'Transport', amount: 15, date: '2026-09-08' }),   // booked to no account
+    txn({ account: 'DBS', amount: 999, date: '2026-10-02' }),                         // after the month
+  ];
+  const { sections } = API.buildStatement('2026-09');
+  const { byCur } = API.monthlyInOut(['2026-09']);
+  sections.forEach(s => {
+    const f = byCur[s.cur] && byCur[s.cur]['2026-09'];
+    if (f) {
+      ok(near(s.moneyIn, f.inc + f.back + f.xIn), `${s.cur}: money in matches Monthly In & Out`);
+      ok(near(s.moneyOut, f.exp + f.xOut), `${s.cur}: money out matches Monthly In & Out`);
+      ok(near(s.income.reduce((t, x) => t + x.amt, 0), f.inc), `${s.cur}: income lines add up to total income`);
+      ok(near(s.spending.reduce((t, x) => t + x.amt, 0), f.exp), `${s.cur}: spending lines add up to total spending`);
+    }
+    s.accounts.forEach(x => {
+      ok(near(x.opening + x.moneyIn - x.moneyOut, x.closing), `${s.cur} ${x.a.name}: opening + in − out = closing`);
+      const last = x.lines.length ? x.lines[x.lines.length - 1].bal : x.opening;
+      ok(near(last, x.closing), `${s.cur} ${x.a.name}: the running balance ends on the closing balance`);
+    });
+  });
+  const sgd = sections.find(s => s.cur === 'SGD');
+  const dbs = sgd.accounts.find(x => x.a.name === 'DBS');
+  ok(near(dbs.opening, 3800), 'opening balance carries August forward', `got ${dbs.opening}`);
+  ok(near(dbs.closing, 5440), 'closing balance leaves out rows after the month', `got ${dbs.closing}`);
+  ok(near(API.effectiveBal(state.accounts[0]), 5440 - 999), 'effectiveBal agrees once the October row is applied');
+  ok(near(sgd.flow.back, 130), 'the claim and the oversized payback both land in refunds', `got ${sgd.flow.back}`);
+  ok(sgd.unlinked.length === 1 && sgd.unlinked[0].account === 'Cash', 'a row booked to no account is listed, not lost');
+  ok(near(sgd.gap, 15), 'the balance-vs-flow gap is exactly that unbooked row', `got ${sgd.gap}`);
+  const myr = sections.find(s => s.cur === 'MYR');
+  ok(myr && near(myr.moneyIn, 3300) && near(myr.gap, 0), 'the exchange lands in MYR with nothing left over');
+  ok(API.stmtKind(state.transactions[8]) === 'transfer' && API.stmtKind(state.transactions[10]) === 'exchange'
+     && API.stmtKind(state.transactions[7]) === 'claim', 'transfers, exchanges and claims are labelled');
+  ok(API.stmtNum(-1234.5) === '(1,234.50)' && API.stmtNum(0) === '–' && API.stmtNum(0.004) === '–',
+     'accounting format: brackets for negatives, a dash for nothing');
+
+  // The Monthly Review donut lists every category spent in the month at its
+  // getBudgetSpent figure; their sum must be the Expenses tile, paybacks and all.
+  const monthTxns = state.transactions.filter(t => t.date.startsWith('2026-09'));
+  const cats = [...new Set(monthTxns.filter(t => t.type === 'expense' && API.isFlow(t) && t.currency === 'SGD').map(t => t.category))];
+  const donut = cats.reduce((t, c) => t + API.getBudgetSpent(c, 'SGD', '2026-09'), 0);
+  ok(near(donut, API.curStats('SGD', monthTxns, '2026-09').exp), 'Monthly Review donut total equals the Expenses tile',
+     `donut ${donut} vs tile ${API.curStats('SGD', monthTxns, '2026-09').exp}`);
+  ok(cats.includes('Entertainment') && near(API.getBudgetSpent('Entertainment', 'SGD', '2026-09'), 20),
+     'a category whose payback outgrew it stays on the donut at what was spent');
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'} — ${passed} checks passed, ${failed} failed\n`);

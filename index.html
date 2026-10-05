@@ -271,21 +271,140 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .review-stat{background:var(--surface);border-radius:12px;padding:10px 12px;}
 .review-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px;}
 .review-stat-val{font-family:var(--fd);font-size:16px;font-weight:700;}
-.review-cur-heading{display:flex;align-items:center;gap:10px;margin:16px 0 10px;}
-.review-cur-heading:first-child{margin-top:0;}
-.review-cur-heading span{font-size:11px;font-weight:700;color:var(--indigo);letter-spacing:.8px;}
-.review-cur-heading .rule{flex:1;height:1px;background:var(--border);}
-.review-cat-row{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 14px;margin-bottom:8px;}
-.review-cat-top{display:flex;align-items:center;gap:8px;}
-.review-cat-label{flex:1;min-width:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.review-cat-pct{font-size:11px;color:var(--muted);font-weight:600;flex-shrink:0;}
-.review-cat-amt{font-family:var(--fm);font-size:13px;font-weight:700;flex-shrink:0;min-width:70px;text-align:right;}
-.review-cat-delta{font-size:10px;font-weight:700;flex-shrink:0;padding:1px 6px;border-radius:6px;}
+/* Monthly Review breakdown: one donut per currency beside a compact table of
+   every category spent in that month, currencies side by side when the panel
+   is wide enough. A slice and its row share data-key, so hovering either one
+   lights up both and the donut's centre names the category. A row's bar only
+   ever means budget used; share of spending is the slice and the Share column. */
+.review-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:28px 44px;}
+.review-cur{container-type:inline-size;min-width:0;}
+.review-cur-body{display:flex;align-items:flex-start;gap:26px;}
+.review-donut{position:relative;width:176px;aspect-ratio:1;flex-shrink:0;}
+.review-donut svg{display:block;width:100%;height:100%;animation:reviewSpin .7s cubic-bezier(.2,.8,.2,1) backwards;}
+.review-track{stroke:var(--surface);}
+.review-seg{cursor:pointer;transition:opacity .15s,stroke-width .15s;}
+.review-cur.is-hl .review-seg:not(.hl){opacity:.25;}
+.review-seg.hl{stroke-width:21;}
+.review-centre{position:absolute;inset:0;padding:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;pointer-events:none;}
+.review-centre b{font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;}
+.review-centre small{font-size:11px;color:var(--muted);line-height:1.3;}
+.review-centre .ci{font-size:20px;line-height:1;}
+.review-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--indigo);background:var(--indigo-s);padding:2px 8px;border-radius:7px;}
+.review-table{flex:1;min-width:0;}
+.review-row{display:grid;grid-template-columns:26px minmax(0,1fr) 116px 64px 40px 104px;align-items:center;gap:10px;padding:5px 8px;border-radius:9px;font-size:13px;}
+.review-row.hd{font-family:var(--ff);font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding-top:0;padding-bottom:6px;}
+.review-row.hd .review-sh,.review-row.hd .review-amt{font:inherit;color:inherit;}
+.review-row[role="button"]{cursor:pointer;transition:background .12s;}
+.review-row[role="button"]:hover,.review-row.hl{background:var(--surface);}
+.review-row[role="button"]:focus-visible{outline:2px solid var(--indigo);outline-offset:-2px;}
+.review-ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:14px;background:color-mix(in srgb,var(--c) 22%,transparent);}
+.review-nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.review-nm small{font-size:11px;font-weight:500;color:var(--muted);margin-left:6px;}
+.review-bud{display:flex;align-items:center;gap:7px;min-width:0;}
+.review-bud em{font-style:normal;font-size:11px;color:var(--muted);}
+.review-bud b{width:38px;flex-shrink:0;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;}
+.review-mini{flex:1;height:5px;border-radius:99px;background:var(--surface);overflow:hidden;}
+.review-mini i{display:block;height:100%;border-radius:99px;}
+.review-mini .ok{background:linear-gradient(90deg,color-mix(in srgb,var(--jade) 45%,var(--surface)),var(--jade));}
+.review-mini .near{background:linear-gradient(90deg,color-mix(in srgb,var(--amber) 45%,var(--surface)),var(--amber));}
+.review-mini .over{background:repeating-linear-gradient(-45deg,var(--coral) 0 5px,color-mix(in srgb,var(--coral) 70%,#000) 5px 10px);}
+.review-chg,.review-sh,.review-amt{text-align:right;}
+.review-sh{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.review-amt{font-family:var(--fm);font-size:12.5px;font-weight:700;white-space:nowrap;}
+.review-row.zero .review-nm,.review-row.zero .review-amt{color:var(--muted);}
+.review-cat-delta{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;white-space:nowrap;}
 .review-cat-delta.up{background:var(--coral-s);color:var(--coral);}
 .review-cat-delta.down{background:var(--jade-s);color:var(--jade-d);}
-.review-cat-bar{background:var(--surface);border-radius:99px;height:6px;overflow:hidden;margin-top:6px;}
-.review-cat-fill{height:100%;border-radius:99px;}
-.review-cat-budget{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px;}
+/* Thresholds are the section's own width: the change column needs the table
+   beside the donut to be ~530px wide, and below ~600px the donut moves on top. */
+@container (max-width:740px){
+  .review-row{grid-template-columns:26px minmax(0,1fr) 92px 38px 96px;}
+  .review-chg{display:none;}
+}
+@container (max-width:600px){
+  .review-cur-body{flex-direction:column;align-items:stretch;gap:14px;}
+  .review-donut{width:168px;align-self:center;}
+}
+@container (max-width:400px){
+  .review-row{grid-template-columns:26px minmax(0,1fr) 72px 88px;gap:8px;}
+  .review-sh{display:none;}
+}
+@keyframes reviewSpin{from{opacity:0;transform:rotate(-40deg) scale(.92);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){
+  .review-donut svg{animation:none;}
+}
+.msum-stmt-btn{margin-top:12px;}
+
+/* Monthly Statement: a printable document. The paper stays white with dark
+   ink in both themes, like a PDF preview; only the toolbar around it follows
+   the theme. Printing (see @media print below) shows the paper alone. */
+/* .modal.stmt-modal, not .stmt-modal: the generic .modal rule comes later in
+   this sheet and would otherwise shrink the paper to 520px. */
+.modal.stmt-modal{width:min(1040px,96vw);max-height:92vh;padding:0;display:flex;flex-direction:column;overflow:hidden;}
+.stmt-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px;padding:16px 20px;border-bottom:1px solid var(--border);}
+.stmt-tb-group{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;}
+.stmt-scroll{flex:1;min-height:0;overflow:auto;background:var(--surface);padding:24px;}
+.stmt-paper{--p-ink:#111827;--p-ink2:#374151;--p-muted:#6B7280;--p-rule:#D1D5DB;--p-hair:#ECEEF2;--p-tint:#F5F6F8;--p-accent:#4F46E5;--p-accent-s:#EEF0FF;--p-flag:#FFF7E6;--p-flag-ink:#92400E;
+  background:#fff;color:var(--p-ink);max-width:880px;margin:0 auto;padding:44px 48px;border-radius:6px;box-shadow:0 12px 40px -14px rgba(0,0,0,.35);
+  font-family:var(--ff);font-size:12px;line-height:1.45;font-variant-numeric:tabular-nums;}
+.stmt-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px 32px;padding-bottom:18px;border-bottom:2px solid var(--p-ink);}
+.stmt-brand{font-family:var(--fd);font-size:22px;font-weight:700;letter-spacing:-.4px;line-height:1.1;}
+.stmt-brand small{display:block;margin-top:4px;font-family:var(--ff);font-size:11px;font-weight:500;letter-spacing:0;color:var(--p-muted);}
+.stmt-who{margin-top:12px;color:var(--p-ink2);}
+.stmt-title{text-align:right;color:var(--p-muted);font-size:11px;}
+.stmt-title .k{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--p-accent);}
+.stmt-title .m{font-family:var(--fd);font-size:24px;font-weight:700;letter-spacing:-.4px;color:var(--p-ink);margin:2px 0 6px;}
+.stmt-flag{margin-top:14px;padding:8px 12px;border-radius:6px;background:var(--p-flag);color:var(--p-flag-ink);font-size:11px;}
+.stmt-h2{display:flex;align-items:center;gap:10px;margin:32px 0 4px;font-family:var(--fd);font-size:16px;font-weight:700;}
+.stmt-h2::after{content:'';flex:1;height:1px;background:var(--p-rule);}
+.stmt-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--p-accent);background:var(--p-accent-s);padding:2px 8px;border-radius:5px;}
+.stmt-h3{margin:22px 0 6px;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--p-muted);}
+.stmt-h4{margin:16px 0 4px;font-size:12px;font-weight:700;}
+.stmt-h4 span{margin-left:8px;font-size:11px;font-weight:500;color:var(--p-muted);}
+.stmt-tw{overflow-x:auto;}
+.stmt-table{width:100%;border-collapse:collapse;}
+.stmt-table th{padding:6px 8px;border-bottom:1px solid var(--p-ink);font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--p-muted);text-align:left;white-space:nowrap;}
+.stmt-table td{padding:5px 8px;border-bottom:1px solid var(--p-hair);vertical-align:top;}
+.stmt-table .n{text-align:right;white-space:nowrap;}
+.stmt-table .d{white-space:nowrap;color:var(--p-ink2);}
+.stmt-table .c{color:var(--p-ink2);}
+.stmt-table td small{font-size:10.5px;color:var(--p-muted);}
+.stmt-table tr.grp td{font-weight:600;border-bottom:none;padding-top:9px;}
+.stmt-table tr.ind td:first-child{padding-left:22px;color:var(--p-ink2);}
+.stmt-table tr.sub td{font-weight:600;border-top:1px solid var(--p-rule);}
+.stmt-table tr.tot td{font-weight:700;border-top:1px solid var(--p-ink);border-bottom:3px double var(--p-ink);}
+.stmt-table tr.bal td{background:var(--p-tint);font-weight:600;}
+.stmt-ledger{min-width:600px;}
+.stmt-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px 32px;align-items:start;}
+.stmt-net{margin-top:14px;}
+.stmt-net td{font-size:13px;}
+.stmt-note{margin-top:6px;font-size:10.5px;color:var(--p-muted);}
+.stmt-empty{padding:48px 0;text-align:center;color:var(--p-muted);}
+.stmt-foot{margin-top:32px;padding-top:12px;border-top:1px solid var(--p-rule);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 16px;font-size:10px;color:var(--p-muted);}
+@media(max-width:600px){
+  .stmt-toolbar{padding:12px 14px;}
+  .stmt-scroll{padding:10px;}
+  .stmt-paper{padding:22px 16px;}
+  .stmt-title{text-align:left;}
+}
+@media print{
+  @page{size:A4;margin:14mm 12mm;}
+  html{background:#fff!important;}
+  html,body.stmt-printing{height:auto!important;}
+  body.stmt-printing{display:block!important;background:#fff!important;}
+  body.stmt-printing::before,body.stmt-printing::after{display:none!important;}
+  body.stmt-printing > *:not(#stmt-modal){display:none!important;}
+  body.stmt-printing #stmt-modal{position:static!important;display:block!important;background:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
+  body.stmt-printing .stmt-modal{width:auto!important;max-width:none!important;max-height:none!important;overflow:visible!important;border-radius:0!important;box-shadow:none!important;animation:none!important;background:#fff!important;display:block!important;}
+  body.stmt-printing .stmt-toolbar{display:none!important;}
+  body.stmt-printing .stmt-scroll{overflow:visible!important;padding:0!important;background:none!important;}
+  body.stmt-printing .stmt-paper{max-width:none;padding:0;box-shadow:none;border-radius:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body.stmt-printing .stmt-tw{overflow:visible;}
+  body.stmt-printing .stmt-ledger{min-width:0;}
+  .stmt-table thead{display:table-header-group;}
+  .stmt-table tr{break-inside:avoid;}
+  .stmt-h2,.stmt-h3,.stmt-h4{break-after:avoid;}
+}
 .trend-bars{display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 2px;}
 .trend-bar-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;}
 .trend-bar{width:100%;max-width:28px;background:linear-gradient(180deg,var(--coral),var(--coral-s));border-radius:6px 6px 0 0;min-height:2px;transition:height .3s;}
@@ -304,17 +423,76 @@ select.form-input optgroup{font-weight:700;font-style:normal;}
 html[data-theme="dark"] select.form-input option,
 html[data-theme="dark"] select.form-input optgroup{background:var(--card);color:var(--ink);}
 html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
-.msum-cur{display:flex;align-items:center;gap:10px;margin:16px 0 8px;}
-.msum-cur:first-child{margin-top:0;}
-.msum-cur span{font-size:11px;font-weight:700;color:var(--indigo);letter-spacing:.8px;}
-.msum-cur div{flex:1;height:1px;background:var(--border);}
-.msum-table{width:100%;border-collapse:collapse;font-size:12px;}
-.msum-table th{text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:6px 0 8px;border-bottom:1px solid var(--border);}
-.msum-table th:first-child{text-align:left;}
-.msum-table td{padding:9px 0;border-bottom:1px solid var(--border);font-family:var(--fm);text-align:right;white-space:nowrap;}
+/* Monthly In & Out: one block per currency, a headline of the range's totals
+   over a table whose In / Out bars show each month's money in and out at a
+   glance. Cells carry plain figures; the currency is named once, in the block's
+   headline, instead of on every number. */
+.msum-intro{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:-8px 0 16px;font-size:12px;color:var(--muted);}
+.msum-legend{display:inline-flex;flex-wrap:wrap;gap:4px 14px;margin-left:auto;}
+.msum-legend span{display:inline-flex;align-items:center;gap:6px;}
+.msum-legend i{display:inline-block;width:14px;height:6px;border-radius:99px;}
+.msum-help{flex-basis:100%;}
+.msum-help summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--indigo);list-style:none;}
+.msum-help summary::-webkit-details-marker{display:none;}
+.msum-help summary::after{content:'▸';font-size:10px;transition:transform .15s;}
+.msum-help[open] summary::after{transform:rotate(90deg);}
+.msum-help summary:focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:4px;}
+.msum-help dl{display:grid;grid-template-columns:max-content 1fr;gap:7px 18px;margin-top:10px;padding:14px 16px;border-radius:12px;background:var(--surface);color:var(--ink2);max-width:880px;line-height:1.5;}
+.msum-help dt{font-weight:700;color:var(--ink);}
+.msum-block+.msum-block{margin-top:24px;padding-top:22px;border-top:1px solid var(--border);}
+.msum-head{display:flex;align-items:center;flex-wrap:wrap;gap:12px 30px;margin-bottom:14px;}
+.msum-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--indigo);background:var(--indigo-s);padding:3px 9px;border-radius:7px;}
+.msum-kpi{display:flex;flex-direction:column;gap:2px;}
+.msum-kpi span{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}
+.msum-kpi b{font-family:var(--fd);font-size:18px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;}
+.msum-kpi .msum-pill{font-size:14px;padding:2px 10px;}
+.msum-months{margin-left:auto;font-size:11px;color:var(--muted);}
+.msum-pill{display:inline-block;padding:3px 9px;border-radius:99px;font-weight:700;white-space:nowrap;}
+.msum-pill.pos{background:var(--jade-s);color:var(--jade-d);}
+.msum-pill.neg{background:var(--coral-s);color:var(--coral);}
+.msum-zero{color:var(--muted);opacity:.55;}
+.msum-bars{display:flex;flex-direction:column;gap:3px;}
+.msum-bars>div{display:flex;gap:2px;height:6px;}
+.msum-bars i{display:block;height:100%;border-radius:99px;min-width:3px;}
+.msum-bars .inc{background:var(--jade);}
+.msum-bars .back{background:color-mix(in srgb,var(--jade) 45%,var(--surface));}
+.msum-bars .xch{background:var(--sky);}
+.msum-bars .exp{background:var(--coral);}
+/* Fixed layout with a set Month width, so the MYR, SGD and USD tables stacked
+   here line their columns up instead of each sizing to its own figures. The
+   inline min-width (see renderMonthlySummary) keeps narrow screens scrolling
+   inside .msum-wrap rather than squeezing figures into each other. */
+.msum-table{width:100%;min-width:var(--msum-min,0px);border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
+.msum-table th{text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:6px 0 9px 12px;border-bottom:1px solid var(--border);vertical-align:bottom;}
+.msum-table th:first-child{text-align:left;width:128px;padding-left:8px;}
+.msum-table th.msum-flow{width:18%;text-align:left;}
+.msum-table th.msum-net{width:120px;}
+.msum-table td{padding:10px 0 10px 12px;border-bottom:1px solid var(--border);font-family:var(--fm);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msum-table td:first-child{padding-left:8px;}
+.msum-table td.msum-flow{text-align:left;padding-right:20px;}
 .msum-table td:first-child{text-align:left;font-family:var(--ff);font-weight:600;}
 .msum-table tr:last-child td{border-bottom:none;}
-.msum-table tr.msum-total td{border-top:2px solid var(--border);font-weight:700;padding-top:11px;}
+.msum-table tr.msum-total td{border-top:2px solid var(--border);font-weight:700;padding-top:12px;}
+@media(min-width:601px) and (max-width:900px){
+  /* The month stays in view while the figures scroll sideways. */
+  .msum-table tr:not(.msum-open) > :first-child{position:sticky;left:0;z-index:1;background:var(--card);}
+}
+@media(max-width:600px){
+  /* A phone keeps Month, Income, Spending and Net, so nothing scrolls sideways.
+     Kept is in each block's headline; exchanges and refunds are in a month's
+     breakdown when it is tapped. */
+  .msum-table{min-width:0;font-size:11px;}
+  .msum-table th,.msum-table td{padding-left:6px;}
+  .msum-table th:first-child,.msum-table td:first-child{padding-left:4px;}
+  .msum-table th:first-child{width:26%;}
+  .msum-table th:nth-child(3),.msum-table th:nth-child(4){width:22%;}
+  .msum-table th.msum-net{width:auto;}
+  /* Zero width rather than display:none: the cells stay in the table grid, so
+     a tapped month's breakdown, which spans every column, still lines up. */
+  .msum-table th.msum-flow,.msum-table th.msum-opt,.msum-table td.msum-flow,.msum-table td.msum-opt{width:0;padding:0;border:0;overflow:hidden;visibility:hidden;font-size:0;}
+  .msum-legend{display:none;}
+  .msum-table td .msum-pill{padding:2px 5px;}
+}
 .msum-in{color:var(--jade-d);}
 .msum-out{color:var(--coral);}
 .msum-wrap{overflow-x:auto;}
@@ -893,6 +1071,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="panel-header">
           <div class="panel-title">All Transactions</div>
           <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="openStatement(state.filterMonth)" title="View, save as PDF or download this month's statement">📄 Statement</button>
             <button class="btn btn-ghost btn-sm" id="bulk-toggle-btn" onclick="toggleBulkMode()" data-lkey="bulk_select_btn">☑️ Select</button>
             <button class="btn btn-jade btn-sm" onclick="openTxnModal()">+ Add</button>
           </div>
@@ -1075,6 +1254,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <span class="month-nav-label" id="review-month-label">—</span>
             <button class="month-nav-btn" onclick="reviewMonthShift(1)" title="Next month">›</button>
             <button class="month-today-btn" id="review-today-btn" onclick="reviewMonthToday()" style="display:none;">Today</button>
+            <button class="btn btn-ghost btn-sm" onclick="openStatement()" title="View, save as PDF or download this month's statement">📄 Statement</button>
           </div>
         </div>
         <div id="review-summary" class="review-summary"></div>
@@ -1102,7 +1282,27 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div class="panel-title">Monthly In &amp; Out</div>
           <button class="btn btn-ghost btn-sm" onclick="exportMonthlySummaryCSV()" title="Download this table as CSV">⬇ CSV</button>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin:-8px 0 14px;">Follows the range picked above. <strong>Income</strong> and <strong>Spending</strong> are what you actually earned and spent. Moving your own money — a same-currency transfer or an asset purchase — nets to zero inside a currency and is left out entirely. A currency exchange does move money, so it gets its own columns rather than being mixed into income or spending. <strong>Kept</strong> is income minus spending — what you saved before any exchange. <strong>Refunds &amp; Claims</strong> are paybacks that came into your accounts without lowering spending. <strong>Net</strong> is all of it together, and matches the change in that currency's accounts. Click a month to see every line behind it.</div>
+        <div class="msum-intro">
+          <span><span id="msum-range-note">Follows the range picked above.</span> Tap a month to see every line behind it.</span>
+          <span class="msum-legend" aria-hidden="true">
+            <span><i style="background:var(--jade)"></i>Income</span>
+            <span><i style="background:color-mix(in srgb,var(--jade) 45%,var(--surface))"></i>Refunds &amp; claims</span>
+            <span><i style="background:var(--sky)"></i>Exchanged</span>
+            <span><i style="background:var(--coral)"></i>Spending</span>
+          </span>
+          <details class="msum-help">
+            <summary>How each column is counted</summary>
+            <dl>
+              <dt>Income</dt><dd>What you actually earned.</dd>
+              <dt>Spending</dt><dd>What you actually spent.</dd>
+              <dt>Kept</dt><dd>Income minus spending: what you saved before any exchange.</dd>
+              <dt>Exchanged in / out</dt><dd>A currency exchange does move money, so it gets its own columns rather than being mixed into income or spending.</dd>
+              <dt>Refunds &amp; claims</dt><dd>Paybacks that came into your accounts without lowering spending.</dd>
+              <dt>Net</dt><dd>All of it together. It matches the change in that currency's accounts.</dd>
+              <dt>Left out</dt><dd>Moving your own money (a same-currency transfer or an asset purchase) nets to zero inside a currency, so it isn't in any column.</dd>
+            </dl>
+          </details>
+        </div>
         <div id="monthly-summary"></div>
       </div>
       <div class="ai-panel">
@@ -1377,6 +1577,30 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   <button class="bnav-item" data-bview="goals" onclick="showView('goals')"><span class="bnav-ico">🎯</span><span class="bnav-lbl" data-bkey="bnav_goals">Goals</span></button>
   <button class="bnav-item" data-bview="analytics" onclick="showView('analytics')"><span class="bnav-ico">📈</span><span class="bnav-lbl" data-bkey="bnav_review">Stats</span></button>
 </nav>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- MONTHLY STATEMENT                            -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="stmt-modal">
+  <div class="modal stmt-modal" role="dialog" aria-modal="true" aria-labelledby="stmt-modal-title">
+    <div class="stmt-toolbar">
+      <div class="stmt-tb-group">
+        <div class="modal-title" id="stmt-modal-title">Monthly Statement</div>
+        <div class="review-month-nav">
+          <button class="month-nav-btn" onclick="statementShift(-1)" title="Previous month">‹</button>
+          <span class="month-nav-label" id="stmt-month-label">—</span>
+          <button class="month-nav-btn" onclick="statementShift(1)" title="Next month">›</button>
+        </div>
+      </div>
+      <div class="stmt-tb-group">
+        <button class="btn btn-ghost" onclick="downloadStatementCSV()" title="Opens in Excel, Numbers or Google Sheets">⬇ Excel (CSV)</button>
+        <button class="btn btn-primary" onclick="printStatement()" title="Pick Save as PDF in the print window to keep a copy">🖨 PDF / Print</button>
+        <button class="modal-close" onclick="closeStatement()" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="stmt-scroll"><div class="stmt-paper" id="stmt-paper"></div></div>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════════════ -->
 <!-- TRANSACTION MODAL (Add + Edit)               -->
@@ -1792,6 +2016,9 @@ const TRANSLATIONS = {
     empty_no_budgets:'No budgets yet. Add one!', empty_no_budgets_overview:'Add budgets to see overview',
     budget_total:'Total Monthly Budget', budget_remaining:'Remaining', budget_over_lbl:'Over Budget',
     budget_used:'used', budget_spent_of:'spent of', budget_left:'left',
+    review_over:'over', review_of:'of', review_no_budget:'No budget', review_vs:'vs', review_paid_back:'paid back',
+    review_col_category:'Category', review_col_budget:'Budget', review_col_share:'Share', review_col_spent:'Spent',
+    review_category:'category', review_categories:'categories',
     budget_paid_back:'paid back — more than was spent here this month, so it does not reduce this budget',
     budget_alert_off:'Warns only at {amt} — above the limit',
     budget_alert_off_hint:'This budget warns at an amount higher than its own limit, so going over budget will always happen first. Lower it if you want warning beforehand.',
@@ -1928,6 +2155,9 @@ const TRANSLATIONS = {
     empty_no_budgets:'暂无预算，请添加！', empty_no_budgets_overview:'添加预算以查看概览',
     budget_total:'月度预算总额', budget_remaining:'剩余', budget_over_lbl:'超支',
     budget_used:'已使用', budget_spent_of:'已花费，共', budget_left:'剩余',
+    review_over:'超支', review_of:'/', review_no_budget:'未设预算', review_vs:'较', review_paid_back:'已全额退回',
+    review_col_category:'类别', review_col_budget:'预算', review_col_share:'占比', review_col_spent:'支出',
+    review_category:'个类别', review_categories:'个类别',
     budget_paid_back:'已退回 — 超过本月该类别的支出，因此不抵扣本月预算',
     budget_alert_off:'提醒金额 {amt} — 高于预算上限',
     budget_alert_off_hint:'此预算的提醒金额高于预算上限，因此总会先超支再提醒。如需提前收到提醒，请调低该金额。',
@@ -5609,48 +5839,55 @@ function renderMonthlyReview() {
     }).join('') + `<div class="review-stat"><div class="review-stat-lbl">Transactions</div><div class="review-stat-val">${countEvents(reviewTxns)}</div></div>`;
   }
 
-  // Category breakdown, net of paybacks — matches what the Budgets page calls
-  // "spent" for the same category, rather than a second, disagreeing number.
-  const expByCur = {};
+  // Every category with spending this month gets a row, a payback that brought
+  // it to zero included, each at the figure the Budgets page calls "spent"
+  // (getBudgetSpent). That one rule is also what keeps the donut's total equal
+  // to the Expenses tile, because curStats() sums exactly these per-category
+  // figures. This panel used to net paybacks on its own, without the "a payback
+  // bigger than the spend stops offsetting" rule, so such a category went
+  // negative, fell off the list, and pulled the total below the tile.
+  const catsByCur = {};
   reviewTxns.forEach(t => {
-    if ((t.type !== 'expense' && t.type !== 'payback') || !isFlow(t)) return;
-    // Neutral here too, so this breakdown keeps adding up to the Expenses tile.
-    if (t.type === 'payback' && !paybackOffsets(t)) return;
+    if (t.type !== 'expense' || !isFlow(t)) return;
     const c = t.currency || state.currency;
-    if (!expByCur[c]) expByCur[c] = {};
-    expByCur[c][t.category] = (expByCur[c][t.category] || 0) + (t.type === 'payback' ? -t.amount : t.amount);
+    (catsByCur[c] = catsByCur[c] || new Set()).add(t.category);
   });
-
-  // A currency with nothing left costing money this month — every category a
-  // payback fully offset — has no rows to show at all.
-  const expCurs = Object.keys(expByCur).filter(c => Object.values(expByCur[c]).some(v => v > 0));
+  // Home currency first, then the rest alphabetically.
+  const homeFirst = (a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b);
+  const expCurs = Object.keys(catsByCur).sort(homeFirst);
   if (!expCurs.length) {
     summaryEl.innerHTML = `<div class="empty"><div class="icon">📊</div><p>${t('empty_add_txns_breakdown')}</p></div>`;
     return;
   }
-  const isMultiCurAn = expCurs.length > 1;
   const prevMk = prevMonthKey(mk);
+  const [prevY, prevM] = prevMk.split('-');
+  const prevShort = new Date(+prevY, +prevM - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
+  Object.keys(_reviewCentre).forEach(k => delete _reviewCentre[k]);
 
-  summaryEl.innerHTML = expCurs.map(cur => {
-    const all = Object.entries(expByCur[cur]);
-    // The grand total sums EVERY category, including one a payback drove to
-    // zero or negative — dropping it here (as the rows below do) previously
-    // left this total higher than the SGD Expenses stat tile above it,
-    // because that tile's curStats() lets the same payback reduce the
-    // overall figure instead of erasing just one category's slice of it.
-    const total = all.reduce((s,[,v]) => s+v, 0);
-    const cs    = all.filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
-    // Two denominators on purpose. The heading total above keeps every category
-    // so it reconciles with the Expenses stat tile, but a row's share is taken
-    // against the rows actually drawn — dividing by a total that a payback had
-    // pushed near zero rendered a single category as "1000%".
-    const shownTotal = cs.reduce((s,[,v]) => s+v, 0);
-    const pctLabels  = wholePercents(cs.map(([,v]) => v), shownTotal);
-    const rows = cs.map(([cat, amt], rowIdx) => {
-      // Exact share drives the bar width; the printed label uses the
-      // largest-remainder figure so the column adds up.
-      const pct = shownTotal > 0 ? (amt/shownTotal*100) : 0;
-      const pctLabel = pctLabels[rowIdx];
+  summaryEl.innerHTML = `<div class="review-cols">${expCurs.map(cur => {
+    const cs = [...catsByCur[cur]].map(cat => [cat, getBudgetSpent(cat, cur, mk)])
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const total = Math.round(cs.reduce((s, [, v]) => s + v, 0) * 100) / 100;
+    // Exact shares size the slices; the printed labels use largest-remainder
+    // rounding so the Share column adds up to 100.
+    const pctLabels = wholePercents(cs.map(([, v]) => v), total);
+    // A real but tiny spend that rounds to 0% reads as nothing at all.
+    const share = i => (pctLabels[i] === 0 && cs[i][1] > 0 ? '&lt;1' : pctLabels[i]) + '%';
+    const R = 54, C = 2 * Math.PI * R;
+    const gap = cs.filter(([, v]) => v > 0).length > 1 ? 1.8 : 0;
+    let off = 0;
+    const segs = cs.map(([cat, amt], i) => {
+      if (!(amt > 0)) return '';
+      const len = amt / total * C;
+      const seg = `<circle class="review-seg" data-key="${esc(cur + '|' + cat)}" data-cat="${esc(cat)}" data-cur="${esc(cur)}"
+        onclick="showReviewCategoryTransactions(this)" r="${R}" cx="70" cy="70" fill="none" stroke="${CAT_COLORS[cat] || '#6B7280'}" stroke-width="17"
+        stroke-dasharray="${Math.max(len - gap, 0.6).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"><title>${esc(cat)} · ${share(i)} · ${fmtWithCur(amt, cur)}</title></circle>`;
+      off += len;
+      return seg;
+    }).join('');
+
+    const rows = cs.map(([cat, amt], i) => {
+      const key = cur + '|' + cat;
       // Same spend-minus-payback figure, one month earlier — a real trend
       // comparison, not just "biggest slice of this month's pie".
       const prevAmt = getBudgetSpent(cat, cur, prevMk);
@@ -5658,38 +5895,84 @@ function renderMonthlyReview() {
       // Rounds to 0% when spend barely moved — flagging that as a red "▲ 0%"
       // increase would read as an alarm for something that didn't happen.
       const deltaHTML = (delta === null || Math.round(delta) === 0) ? '' :
-        `<span class="review-cat-delta ${delta>=0?'up':'down'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(0)}%</span>`;
+        `<span class="review-cat-delta ${delta >= 0 ? 'up' : 'down'}" title="${getMonthLabel(prevMk)}: ${fmtWithCur(prevAmt, cur)}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}%</span>`;
 
-      const budget = state.budgets.find(b => b.category === cat && (b.currency||state.currency) === cur);
-      let barHTML;
+      const budget = state.budgets.find(b => b.category === cat && (b.currency || state.currency) === cur);
+      let budHTML;
       if (budget) {
-        const limit  = getBudgetLimit(budget, mk);
-        const over   = amt > limit;
-        // Floored at zero — a category whose paybacks outweigh its spending
-        // has a negative amt, and a negative width draws a full bar.
-        const bpct   = limit > 0 ? Math.max(0, Math.min(amt/limit*100, 100)) : 0;
-        const bcolor = over ? 'var(--coral)' : amt >= pfmtAlertAt(budget) ? 'var(--amber)' : 'var(--jade)';
-        barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${bpct.toFixed(1)}%;background:${bcolor};"></div></div>
-          <div class="review-cat-budget"><span>${t('budget_spent_of')} ${fmtWithCur(limit,cur)} budget</span><span style="color:${bcolor};font-weight:700;">${over?t('badge_over'):Math.round(bpct)+'%'}</span></div>`;
+        const limit = getBudgetLimit(budget, mk);
+        const over  = amt > limit;
+        const used  = limit > 0 ? Math.max(0, amt / limit * 100) : 0;
+        const level = over ? 'over' : amt >= pfmtAlertAt(budget) ? 'near' : 'ok';
+        const tip   = over ? `${fmtWithCur(amt - limit, cur)} ${t('review_over')} ${fmtWithCur(limit, cur)}`
+                           : `${fmtWithCur(limit - amt, cur)} ${t('budget_left')} ${t('review_of')} ${fmtWithCur(limit, cur)}`;
+        budHTML = `<span class="review-bud" title="${tip}"><span class="review-mini"><i class="${level}" style="width:${Math.min(used, 100).toFixed(1)}%"></i></span>`
+          + `<b style="color:${{ over:'var(--coral)', near:'var(--amber)', ok:'var(--jade-d)' }[level]}">${limit > 0 ? Math.round(used) + '%' : '—'}</b></span>`;
       } else {
-        barHTML = `<div class="review-cat-bar"><div class="review-cat-fill" style="width:${Math.max(0,Math.min(pct,100)).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6B7280'};"></div></div>`;
+        budHTML = `<span class="review-bud"><em>${t('review_no_budget')}</em></span>`;
       }
-      return `<div class="review-cat-row budget-clickable" role="button" tabindex="0"
-           data-cat="${esc(cat)}" data-cur="${esc(cur)}"
+      _reviewCentre[key] = `<span class="ci">${catIcon(cat)}</span><b>${fmtWithCur(amt, cur)}</b><small>${esc(cat)} · ${share(i)}</small>${deltaHTML}`;
+      return `<div class="review-row${amt > 0 ? '' : ' zero'}" role="button" tabindex="0" style="--c:${CAT_COLORS[cat] || '#6B7280'}"
+           data-key="${esc(key)}" data-cat="${esc(cat)}" data-cur="${esc(cur)}"
            title="${t('budget_view_txns')}"
            onclick="showReviewCategoryTransactions(this)"
            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showReviewCategoryTransactions(this);}">
-        <div class="review-cat-top">
-          <div class="review-cat-label">${catIcon(cat)} ${esc(cat)}</div>
-          ${deltaHTML}
-          <span class="review-cat-pct">${pctLabel}%</span>
-          <div class="review-cat-amt">${fmtWithCur(amt, cur)}</div>
-        </div>
-        ${barHTML}
+        <span class="review-ic">${catIcon(cat)}</span>
+        <span class="review-nm">${esc(cat)}${amt > 0 ? '' : `<small>${t('review_paid_back')}</small>`}</span>
+        ${budHTML}
+        <span class="review-chg">${deltaHTML}</span>
+        <span class="review-sh">${share(i)}</span>
+        <span class="review-amt">${fmtWithCur(amt, cur)}</span>
       </div>`;
     }).join('');
-    return `${isMultiCurAn ? `<div class="review-cur-heading"><span>${esc(cur)}</span><div class="rule"></div><span style="color:var(--muted);font-weight:600;">${fmtWithCur(total,cur)}</span></div>` : ''}${rows}`;
-  }).join('');
+
+    _reviewCentre[cur] = `<span class="review-code">${esc(cur)}</span><b>${fmtWithCur(total, cur)}</b><small>${cs.length} ${t(cs.length === 1 ? 'review_category' : 'review_categories')}</small>`;
+    return `<section class="review-cur" data-cur="${esc(cur)}">
+      <div class="review-cur-body">
+        <div class="review-donut">
+          <svg viewBox="0 0 140 140" aria-hidden="true">
+            <circle class="review-track" r="${R}" cx="70" cy="70" fill="none" stroke-width="17"></circle>
+            <g transform="rotate(-90 70 70)">${segs}</g>
+          </svg>
+          <div class="review-centre">${_reviewCentre[cur]}</div>
+        </div>
+        <div class="review-table">
+          <div class="review-row hd"><span></span><span>${t('review_col_category')}</span><span>${t('review_col_budget')}</span><span class="review-chg">${t('review_vs')} ${prevShort}</span><span class="review-sh">${t('review_col_share')}</span><span class="review-amt">${t('review_col_spent')}</span></div>
+          ${rows}
+        </div>
+      </div>
+    </section>`;
+  }).join('')}</div>`;
+
+  // Bound once: the container survives every re-render, only its contents change.
+  if (!summaryEl.dataset.hoverBound) {
+    summaryEl.dataset.hoverBound = '1';
+    summaryEl.addEventListener('pointerover', e => reviewHighlight(e.target));
+    summaryEl.addEventListener('pointerleave', () => reviewHighlight(null));
+    summaryEl.addEventListener('focusin', e => reviewHighlight(e.target));
+    summaryEl.addEventListener('focusout', () => reviewHighlight(null));
+  }
+}
+
+// Centre text for each donut, keyed by currency (the total) and by
+// 'CUR|Category' (that category), filled in by renderMonthlyReview().
+const _reviewCentre = {};
+
+// Hovering or tabbing to a slice or a row lights up both and puts that category
+// in its donut's centre; anywhere else puts each currency's total back.
+function reviewHighlight(target) {
+  const hit = target && target.closest ? target.closest('[data-key]') : null;
+  document.querySelectorAll('#analytics-chart .review-cur').forEach(cur => {
+    const key = hit && cur.contains(hit) ? hit.dataset.key : '';
+    cur.classList.toggle('is-hl', !!key);
+    cur.querySelectorAll('[data-key]').forEach(n => n.classList.toggle('hl', n.dataset.key === key));
+    const centre = cur.querySelector('.review-centre');
+    const html = _reviewCentre[key || cur.dataset.cur];
+    if (centre && html !== undefined && centre.dataset.showing !== key) {
+      centre.innerHTML = html;
+      centre.dataset.showing = key;
+    }
+  });
 }
 
 function setTrendRange(n) {
@@ -5733,8 +6016,10 @@ function isCrossCurrencyLeg(t) {
   return (peer.currency || state.currency) !== (t.currency || state.currency);
 }
 
-function monthlyInOut() {
-  const months = summaryMonthKeys();
+// The months to tally: the statement asks for just one; left out, it is the
+// trailing range the Analytics page shows.
+function monthlyInOut(only) {
+  const months = only || summaryMonthKeys();
   const byCur = {};
   // spent/back are tallied per (currency, month, category) rather than netted
   // straight into the running total — see the clamp below, and curStats'
@@ -5815,7 +6100,7 @@ function toggleMonthDetail(key) {
 // Where one month's money in one currency actually came from and went, line by
 // line — the same rules monthlyInOut() applies, itemised so every figure in the
 // row above it can be traced to transactions.
-function monthFlowDetail(cur, mk) {
+function monthFlowData(cur, mk) {
   const txns = state.transactions.filter(t =>
     (t.currency || state.currency) === cur && t.date.slice(0, 7) === mk);
   const add = (m, k, v) => { m[k] = (m[k] || 0) + v; };
@@ -5850,6 +6135,11 @@ function monthFlowDetail(cur, mk) {
       delete backByCat[cat];
     }
   });
+  return { incByCat, spentByCat, backByCat, exchanges, refunds, moved, movedN };
+}
+
+function monthFlowDetail(cur, mk) {
+  const { incByCat, spentByCat, backByCat, exchanges, refunds, moved, movedN } = monthFlowData(cur, mk);
   const money = v => fmtWithCur(v, cur);
   const line = (label, amt, cls, note = '') =>
     `<div class="msum-line"><span>${label}${note ? ` <em>${note}</em>` : ''}</span><span class="${cls}">${amt}</span></div>`;
@@ -5878,14 +6168,19 @@ function monthFlowDetail(cur, mk) {
   return `<div class="msum-detail">
     ${sec('Income', incHTML)}${sec('Spending', spendHTML)}
     ${sec('Currency exchange', exHTML)}${sec('Refunds &amp; claims', refHTML)}
-  </div>${movedHTML}`;
+  </div>${movedHTML}
+  <button class="btn btn-ghost btn-sm msum-stmt-btn" onclick="openStatement('${mk}')">📄 Statement for ${getMonthLabel(mk)}</button>`;
 }
 
 function renderMonthlySummary() {
   const el = document.getElementById('monthly-summary');
   if (!el) return;
   const { months, byCur } = monthlyInOut();
-  const currencies = Object.keys(byCur).sort();
+  // Home currency first, then the rest alphabetically: the same order as the
+  // Monthly Review and the statement.
+  const currencies = Object.keys(byCur).sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b));
+  const note = document.getElementById('msum-range-note');
+  if (note) note.textContent = `Last ${state.trendMonths || 6} months, following the range picked above.`;
 
   if (!currencies.length) {
     el.innerHTML = `<div class="empty"><div class="icon">📄</div><p>No income or spending in the last ${state.trendMonths || 6} months.</p></div>`;
@@ -5897,64 +6192,391 @@ function renderMonthlySummary() {
     return new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'short', year: 'numeric' });
   };
 
+  // The exchange and refund columns appear only when some currency actually saw
+  // one, so a book without them keeps the plain table. Decided once for the
+  // whole book, not per currency, so the stacked tables share one set of
+  // columns and line up — a USD table without refunds no longer shifts every
+  // column after Kept out of step with the SGD table above it.
+  const hasX = currencies.some(cur => months.some(mk => byCur[cur][mk] && (byCur[cur][mk].xIn || byCur[cur][mk].xOut)));
+  const hasB = currencies.some(cur => months.some(mk => byCur[cur][mk] && byCur[cur][mk].back));
+  const cols = 6 + (hasX ? 2 : 0) + (hasB ? 1 : 0);
+  // Month 128px + the In / Out bars (at least 150px) + ~86px per figure + Net
+  // 120px, which fits a 1280px laptop without sideways scrolling. A phone drops
+  // the bars and the optional columns instead (see the 600px rule).
+  const minW = 128 + 150 + (cols - 3) * 86 + 120;
+
+  const r2 = v => Math.round(v * 100) / 100;
+  const num = v => Math.abs(v).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const signed = v => (v < 0 ? '−' : v > 0 ? '+' : '') + num(v);
+  const amt = (v, cls, opt) => `<td class="${v ? cls : 'msum-zero'}${opt ? ' msum-opt' : ''}">${v ? num(v) : '—'}</td>`;
+  const keptCell = v => `<td class="${v < 0 ? 'msum-out' : v > 0 ? 'msum-in' : 'msum-zero'} msum-opt">${v ? signed(v) : '—'}</td>`;
+  const netCell = v => `<td><span class="msum-pill ${v < 0 ? 'neg' : 'pos'}">${signed(v)}</span></td>`;
+
   el.innerHTML = currencies.map(cur => {
     // Only months that actually have activity — a run of empty rows is noise.
     const rows = months.filter(mk => byCur[cur][mk]);
-    // The exchange and refund columns appear only for a currency that actually
-    // saw one, so a single-currency book keeps the plain four-column table.
-    const hasX = rows.some(mk => byCur[cur][mk].xIn || byCur[cur][mk].xOut);
-    const hasB = rows.some(mk => byCur[cur][mk].back);
-    const cols = 5 + (hasX ? 2 : 0) + (hasB ? 1 : 0);
-    let tIn = 0, tOut = 0, tXIn = 0, tXOut = 0, tBack = 0;
-    const cell = (v, sign, cls) => `<td class="${cls}">${v ? sign + fmtWithCur(v, cur) : '—'}</td>`;
-    const netCell = v => `<td style="color:${v < 0 ? 'var(--coral)' : 'var(--jade-d)'};font-weight:700;">${fmtSigned(v, cur)}</td>`;
+    const sum = k => r2(rows.reduce((s, mk) => s + byCur[cur][mk][k], 0));
+    const tIn = sum('inc'), tOut = sum('exp'), tXIn = sum('xIn'), tXOut = sum('xOut'), tBack = sum('back');
+    const tKept = r2(tIn - tOut);
+    const tNet  = r2(tIn - tOut + tXIn - tXOut + tBack);
+    // One scale per currency, so each month's bars compare with its neighbours.
+    const peak = Math.max(0, ...rows.map(mk => {
+      const r = byCur[cur][mk];
+      return Math.max(r.inc + r.back + r.xIn, r.exp + r.xOut);
+    }));
+    const seg = (v, cls) => v > 0 && peak > 0 ? `<i class="${cls}" style="width:${(v / peak * 100).toFixed(2)}%"></i>` : '';
+    const money = v => fmtWithCur(v, cur);
+    const moneySigned = v => (v < 0 ? '−' : v > 0 ? '+' : '') + fmtWithCur(v, cur);
 
     const body = rows.map(mk => {
       const { inc, exp, xIn, xOut, back } = byCur[cur][mk];
-      tIn += inc; tOut += exp; tXIn += xIn; tXOut += xOut; tBack += back;
       // Net is everything that moved, earned or exchanged — so it matches the
       // change in this currency's accounts, and the dashboard's net.
-      const net = Math.round((inc - exp + xIn - xOut + back) * 100) / 100;
+      const net  = r2(inc - exp + xIn - xOut + back);
       // Kept is what earning minus spending left you, before any exchange. It
       // is the answer to "did I live within my means" when net is dragged
       // negative by money sent to another currency.
-      const kept = Math.round((inc - exp) * 100) / 100;
+      const kept = r2(inc - exp);
       const key  = `${cur}|${mk}`;
       const open = msumOpen.has(key);
+      const tip  = [`Income ${money(inc)}`, back ? `Refunds & claims ${money(back)}` : '', xIn ? `Exchanged in ${money(xIn)}` : '',
+                    `Spending ${money(exp)}`, xOut ? `Exchanged out ${money(xOut)}` : ''].filter(Boolean).join(' · ');
       return `<tr class="msum-row${open ? ' open' : ''}" onclick="toggleMonthDetail('${key}')" title="Show where this month's ${cur} came from and went">
         <td><span class="msum-caret">${open ? '▾' : '▸'}</span> ${label(mk)}</td>
-        ${cell(inc, '+', 'msum-in')}
-        ${cell(exp, '-', 'msum-out')}
-        ${netCell(kept)}
-        ${hasX ? cell(xIn, '+', 'msum-x') + cell(xOut, '-', 'msum-x') : ''}
-        ${hasB ? cell(back, '+', 'msum-in') : ''}
+        <td class="msum-flow"><div class="msum-bars" title="${esc(tip)}"><div>${seg(inc, 'inc')}${seg(back, 'back')}${seg(xIn, 'xch')}</div><div>${seg(exp, 'exp')}${seg(xOut, 'xch')}</div></div></td>
+        ${amt(inc, 'msum-in')}
+        ${amt(exp, 'msum-out')}
+        ${keptCell(kept)}
+        ${hasX ? amt(xIn, 'msum-x', 1) + amt(xOut, 'msum-x', 1) : ''}
+        ${hasB ? amt(back, 'msum-in', 1) : ''}
         ${netCell(net)}
       </tr>${open ? `<tr class="msum-open"><td colspan="${cols}">${monthFlowDetail(cur, mk)}</td></tr>` : ''}`;
     }).join('');
 
-    const tKept = Math.round((tIn - tOut) * 100) / 100;
-    const tNet  = Math.round((tIn - tOut + tXIn - tXOut + tBack) * 100) / 100;
-    return `<div class="msum-cur"><span>${cur}</span><div></div></div>
-      <div class="msum-wrap"><table class="msum-table">
+    const kpi = (name, value, cls) => `<div class="msum-kpi"><span>${name}</span><b class="${cls}">${value}</b></div>`;
+    return `<section class="msum-block">
+      <div class="msum-head">
+        <span class="msum-code">${esc(cur)}</span>
+        ${kpi('Income', money(tIn), 'msum-in')}
+        ${kpi('Spending', money(tOut), 'msum-out')}
+        ${kpi('Kept', moneySigned(tKept), tKept < 0 ? 'msum-out' : 'msum-in')}
+        ${kpi('Net', `<span class="msum-pill ${tNet < 0 ? 'neg' : 'pos'}">${moneySigned(tNet)}</span>`, '')}
+        <span class="msum-months">${rows.length} month${rows.length === 1 ? '' : 's'} with activity</span>
+      </div>
+      <div class="msum-wrap"><table class="msum-table" style="--msum-min:${minW}px">
         <thead><tr>
-          <th>Month</th><th>Income</th><th>Spending</th><th title="Income minus spending">Kept</th>
-          ${hasX ? '<th>Exchanged In</th><th>Exchanged Out</th>' : ''}
-          ${hasB ? '<th title="Paybacks that did not reduce spending: work claims, or more than the category cost that month">Refunds &amp; Claims</th>' : ''}
-          <th>Net</th>
+          <th>Month</th><th class="msum-flow">In / Out</th><th>Income</th><th>Spending</th><th class="msum-opt" title="Income minus spending">Kept</th>
+          ${hasX ? '<th class="msum-opt">Exchanged In</th><th class="msum-opt">Exchanged Out</th>' : ''}
+          ${hasB ? '<th class="msum-opt" title="Paybacks that did not reduce spending: work claims, or more than the category cost that month">Refunds &amp; Claims</th>' : ''}
+          <th class="msum-net">Net</th>
         </tr></thead>
         <tbody>${body}
           <tr class="msum-total">
-            <td>Total</td>
-            ${cell(tIn, '+', 'msum-in')}
-            ${cell(tOut, '-', 'msum-out')}
-            ${netCell(tKept)}
-            ${hasX ? cell(tXIn, '+', 'msum-x') + cell(tXOut, '-', 'msum-x') : ''}
-            ${hasB ? cell(tBack, '+', 'msum-in') : ''}
+            <td>Total</td><td class="msum-flow"></td>
+            ${amt(tIn, 'msum-in')}
+            ${amt(tOut, 'msum-out')}
+            ${keptCell(tKept)}
+            ${hasX ? amt(tXIn, 'msum-x', 1) + amt(tXOut, 'msum-x', 1) : ''}
+            ${hasB ? amt(tBack, 'msum-in', 1) : ''}
             ${netCell(tNet)}
           </tr>
         </tbody>
-      </table></div>`;
+      </table></div>
+    </section>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// MONTHLY STATEMENT — view, save as PDF, or download for Excel
+// ═══════════════════════════════════════════════
+// Money in and out come from monthlyInOut() and monthFlowData(), the two
+// functions behind Monthly In & Out, so the statement can never disagree with
+// that table. Account balances are carried through the month by
+// txnBalanceEffect(), which is effectiveBal()'s rule applied one row at a time.
+let _stmtMonth = null;
+const CUR_NAME = { SGD:'Singapore dollar', MYR:'Malaysian ringgit', USD:'US dollar', AUD:'Australian dollar' };
+
+function txnBalanceEffect(t) {
+  if (t.type === 'expense') return -t.amount;
+  if (t.type === 'income' || t.type === 'asset' || t.type === 'payback') return t.amount;
+  return 0;
+}
+
+// What kind of movement a row is, for the statement's Category column. Plain
+// income and spending need no label; the rest do, or a transfer between your
+// own accounts reads like money earned or spent.
+function stmtKind(t) {
+  if (t.type === 'payback') return t.category === PFMT_CLAIMS_CATEGORY ? 'claim' : 'payback';
+  if (isCrossCurrencyLeg(t)) return 'exchange';
+  if (t.transferGroup) return isAssetGroup(t) ? 'asset purchase' : 'transfer';
+  if (t.type === 'asset') return 'asset';
+  return '';
+}
+
+function buildStatement(mk) {
+  const r2 = v => Math.round(v * 100) / 100;
+  const curOf = x => x.currency || state.currency;
+  const start = mk + '-01';
+  const inMonth = t => t.date.slice(0, 7) === mk;
+  const oldestFirst = (a, b) => a.date.localeCompare(b.date) || (a.created || '').localeCompare(b.created || '');
+  const { byCur } = monthlyInOut([mk]);
+  const curs = new Set(Object.keys(byCur));
+  state.transactions.forEach(t => { if (inMonth(t)) curs.add(curOf(t)); });
+  state.accounts.forEach(a => curs.add(curOf(a)));
+
+  const sections = [...curs].sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b)).map(cur => {
+    const flow = (byCur[cur] && byCur[cur][mk]) || { inc: 0, exp: 0, xIn: 0, xOut: 0, back: 0 };
+    const d = monthFlowData(cur, mk);
+    const byAmt = (a, b) => b.amt - a.amt || a.cat.localeCompare(b.cat);
+    const income = Object.entries(d.incByCat).map(([cat, amt]) => ({ cat, amt: r2(amt) })).sort(byAmt);
+    const spending = Object.entries(d.spentByCat).map(([cat, spent]) => {
+      const back = d.backByCat[cat] || 0;
+      return { cat, amt: r2(spent - back), spent: r2(spent), back: r2(back) };
+    }).sort(byAmt);
+    const moneyIn  = r2(flow.inc + flow.back + flow.xIn);
+    const moneyOut = r2(flow.exp + flow.xOut);
+
+    const mine  = state.accounts.filter(a => curOf(a) === cur);
+    const names = new Set(mine.map(a => a.name));
+    const accounts = mine.map(a => {
+      const linked  = state.transactions.filter(t => t.account === a.name && curOf(t) === cur);
+      const opening = r2((+a.balance || 0) + linked.filter(t => t.date < start).reduce((s, t) => s + txnBalanceEffect(t), 0));
+      let bal = opening, tIn = 0, tOut = 0;
+      const lines = linked.filter(inMonth).sort(oldestFirst).map(t => {
+        const e = txnBalanceEffect(t);
+        bal = r2(bal + e);
+        if (e > 0) tIn += e; else tOut -= e;
+        return { t, e, bal };
+      });
+      return { a, opening, moneyIn: r2(tIn), moneyOut: r2(tOut), closing: bal, lines };
+    }).filter(x => x.lines.length || x.opening !== 0);
+    // Booked to no account in this currency (or none at all), so no balance
+    // moved — but the money still counts in the flow above.
+    const unlinked = state.transactions.filter(t => inMonth(t) && curOf(t) === cur && !names.has(t.account)).sort(oldestFirst);
+    const openTot  = r2(accounts.reduce((s, x) => s + x.opening, 0));
+    const closeTot = r2(accounts.reduce((s, x) => s + x.closing, 0));
+    const net = r2(moneyIn - moneyOut);
+    return { cur, flow, income, spending, moneyIn, moneyOut, net, kept: r2(flow.inc - flow.exp),
+             accounts, unlinked, openTot, closeTot,
+             accIn:  r2(accounts.reduce((s, x) => s + x.moneyIn, 0)),
+             accOut: r2(accounts.reduce((s, x) => s + x.moneyOut, 0)),
+             gap: accounts.length ? r2(closeTot - openTot - net) : 0 };
+  }).filter(s => s.accounts.length || s.unlinked.length || s.moneyIn || s.moneyOut);
+  return { mk, sections };
+}
+
+// Accounting style: thousands separators, two decimals, negatives in brackets
+// and a dash for nothing.
+function stmtNum(v) {
+  const r = Math.round(v * 100) / 100;
+  if (Math.abs(r) < 0.005) return '–';
+  const s = Math.abs(r).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return r < 0 ? `(${s})` : s;
+}
+
+function stmtMonthEnd(mk) {
+  const [y, m] = mk.split('-').map(Number);
+  return `${mk}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+}
+
+function renderStatement() {
+  const mk = _stmtMonth, n = stmtNum, label = getMonthLabel(mk), end = stmtMonthEnd(mk);
+  document.getElementById('stmt-month-label').textContent = label;
+  const { sections } = buildStatement(mk);
+  const now = new Date();
+  const stamp = `${fmtDate(localDateStr(now))}, ${now.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit' })}`;
+  const who = state.displayName || state.userEmail || '';
+  const acctSub = a => [a.type, a.institution].filter(Boolean).map(esc).join(' · ');
+  const catCell = t => esc(t.category || '—') + (stmtKind(t) ? ` <small>${stmtKind(t)}</small>` : '');
+  const inOut = e => `<td class="n">${e > 0 ? n(e) : ''}</td><td class="n">${e < 0 ? n(-e) : ''}</td>`;
+  const group = (title, items, subLabel, subTotal, note) => items.length
+    ? `<tr class="grp"><td>${title}</td><td></td></tr>`
+      + items.map(x => `<tr class="ind"><td>${esc(x.cat)}${note && note(x) ? ` <small>${note(x)}</small>` : ''}</td><td class="n">${n(x.amt)}</td></tr>`).join('')
+      + `<tr class="sub"><td>${subLabel}</td><td class="n">${n(subTotal)}</td></tr>`
+    : `<tr><td>${title}</td><td class="n">${n(0)}</td></tr>`;
+
+  const head = `<div class="stmt-head">
+      <div>
+        <div class="stmt-brand">PFMT<small>Daily Money Tracker</small></div>
+        ${who ? `<div class="stmt-who">Prepared for <b>${esc(who)}</b></div>` : ''}
+      </div>
+      <div class="stmt-title">
+        <div class="k">Monthly statement</div>
+        <div class="m">${label}</div>
+        <div>Period ${fmtDate(mk + '-01')} – ${fmtDate(end)}</div>
+        <div>Generated ${stamp}</div>
+      </div>
+    </div>
+    ${mk === localYM() ? `<div class="stmt-flag">${label} isn't over yet, so these figures will change as you add transactions.</div>`
+      : mk > localYM() ? `<div class="stmt-flag">${label} hasn't started yet.</div>` : ''}`;
+
+  const summary = `<div class="stmt-h3">Summary</div>
+    <div class="stmt-tw"><table class="stmt-table">
+      <thead><tr><th>Currency</th><th class="n">Money in</th><th class="n">Money out</th><th class="n">Net flow</th><th class="n">Opening balance</th><th class="n">Closing balance</th></tr></thead>
+      <tbody>${sections.map(s => `<tr><td><b>${s.cur}</b></td><td class="n">${n(s.moneyIn)}</td><td class="n">${n(s.moneyOut)}</td><td class="n">${n(s.net)}</td>
+        <td class="n">${s.accounts.length ? n(s.openTot) : '–'}</td><td class="n">${s.accounts.length ? n(s.closeTot) : '–'}</td></tr>`).join('')}</tbody>
+    </table></div>`;
+
+  const section = s => {
+    const c = s.cur;
+    const moneyIn = `<table class="stmt-table">
+        <thead><tr><th>Money in</th><th class="n">${c}</th></tr></thead>
+        <tbody>
+          ${group('Income', s.income, 'Total income', s.flow.inc)}
+          <tr><td>Refunds &amp; claims</td><td class="n">${n(s.flow.back)}</td></tr>
+          <tr><td>Exchanged in from other currencies</td><td class="n">${n(s.flow.xIn)}</td></tr>
+          <tr class="tot"><td>Total money in</td><td class="n">${n(s.moneyIn)}</td></tr>
+        </tbody></table>`;
+    const moneyOut = `<table class="stmt-table">
+        <thead><tr><th>Money out</th><th class="n">${c}</th></tr></thead>
+        <tbody>
+          ${group('Spending', s.spending, 'Total spending', s.flow.exp, x => x.back ? `${n(x.spent)} spent, ${n(x.back)} paid back` : '')}
+          <tr><td>Exchanged out to other currencies</td><td class="n">${n(s.flow.xOut)}</td></tr>
+          <tr class="tot"><td>Total money out</td><td class="n">${n(s.moneyOut)}</td></tr>
+        </tbody></table>`;
+    const net = `<table class="stmt-table stmt-net"><tbody>
+        <tr class="tot"><td>Net cash flow <small>total money in less total money out</small></td><td class="n">${n(s.net)}</td></tr>
+      </tbody></table>
+      <p class="stmt-note">Kept (income less spending, before refunds and exchanges): ${n(s.kept)}</p>`;
+
+    const gapNote = s.gap ? `<p class="stmt-note">Your ${c} accounts changed by ${n(s.closeTot - s.openTot)}, while net cash flow is ${n(s.net)}. ${s.unlinked.length
+      ? `The difference comes from ${s.unlinked.length} transaction${s.unlinked.length > 1 ? 's' : ''} not booked to a ${c} account, listed at the end of this section.`
+      : 'The difference is usually a move between your own accounts that was recorded on one side only.'}</p>` : '';
+    const balances = s.accounts.length ? `<div class="stmt-tw"><table class="stmt-table">
+        <thead><tr><th>Account</th><th class="n">Opening</th><th class="n">Money in</th><th class="n">Money out</th><th class="n">Closing</th></tr></thead>
+        <tbody>${s.accounts.map(x => `<tr><td>${esc(x.a.name)}${acctSub(x.a) ? ` <small>${acctSub(x.a)}</small>` : ''}</td>
+          <td class="n">${n(x.opening)}</td><td class="n">${n(x.moneyIn)}</td><td class="n">${n(x.moneyOut)}</td><td class="n">${n(x.closing)}</td></tr>`).join('')}
+          <tr class="tot"><td>Total</td><td class="n">${n(s.openTot)}</td><td class="n">${n(s.accIn)}</td><td class="n">${n(s.accOut)}</td><td class="n">${n(s.closeTot)}</td></tr>
+        </tbody></table></div>${gapNote}`
+      : `<p class="stmt-note">No ${c} accounts yet. Add one under Accounts to see opening and closing balances here.</p>`;
+
+    const ledgers = s.accounts.filter(x => x.lines.length).map(x => `
+      <div class="stmt-h4">${esc(x.a.name)}${acctSub(x.a) ? `<span>${acctSub(x.a)}</span>` : ''}</div>
+      <div class="stmt-tw"><table class="stmt-table stmt-ledger">
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="n">Money in</th><th class="n">Money out</th><th class="n">Balance</th></tr></thead>
+        <tbody>
+          <tr class="bal"><td class="d">${fmtDate(mk + '-01')}</td><td colspan="4">Opening balance</td><td class="n">${n(x.opening)}</td></tr>
+          ${x.lines.map(({ t, e, bal }) => `<tr><td class="d">${fmtDate(t.date)}</td><td>${esc(t.description || '—')}</td><td class="c">${catCell(t)}</td>${inOut(e)}<td class="n">${n(bal)}</td></tr>`).join('')}
+          <tr class="sub"><td></td><td colspan="2">Total for ${label}</td><td class="n">${n(x.moneyIn)}</td><td class="n">${n(x.moneyOut)}</td><td></td></tr>
+          <tr class="bal"><td class="d">${fmtDate(end)}</td><td colspan="4">Closing balance</td><td class="n">${n(x.closing)}</td></tr>
+        </tbody></table></div>`).join('');
+    const uIn  = s.unlinked.reduce((t, x) => t + Math.max(0, txnBalanceEffect(x)), 0);
+    const uOut = s.unlinked.reduce((t, x) => t + Math.max(0, -txnBalanceEffect(x)), 0);
+    const unlinked = s.unlinked.length ? `
+      <div class="stmt-h4">Not linked to an account<span>these don't change any ${c} account balance in PFMT</span></div>
+      <div class="stmt-tw"><table class="stmt-table stmt-ledger">
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account recorded</th><th class="n">Money in</th><th class="n">Money out</th></tr></thead>
+        <tbody>${s.unlinked.map(t => `<tr><td class="d">${fmtDate(t.date)}</td><td>${esc(t.description || '—')}</td><td class="c">${catCell(t)}</td><td class="c">${esc(t.account || '—')}</td>${inOut(txnBalanceEffect(t))}</tr>`).join('')}
+          <tr class="sub"><td></td><td colspan="3">Total</td><td class="n">${n(uIn)}</td><td class="n">${n(uOut)}</td></tr>
+        </tbody></table></div>` : '';
+
+    return `<section class="stmt-cur">
+      <h2 class="stmt-h2"><span class="stmt-code">${c}</span>${CUR_NAME[c] || ''}</h2>
+      ${s.moneyIn || s.moneyOut ? `<div class="stmt-h3">Money in and out</div>
+      <div class="stmt-flow">${moneyIn}${moneyOut}</div>
+      ${net}` : `<p class="stmt-note">Nothing came into or went out of ${c} in ${label}.</p>`}
+      <div class="stmt-h3">Account balances</div>
+      ${balances}
+      ${ledgers || unlinked ? `<div class="stmt-h3">Transactions</div>${ledgers}${unlinked}` : ''}
+    </section>`;
+  };
+
+  document.getElementById('stmt-paper').innerHTML = head
+    + (sections.length ? summary + sections.map(section).join('') : `<div class="stmt-empty">Nothing recorded for ${label}.</div>`)
+    + `<div class="stmt-foot"><span>PFMT · Monthly statement for ${label}</span><span>Figures in brackets are negative. Money in and out follow the same rules as Monthly In &amp; Out.</span></div>`;
+  const scroller = document.querySelector('#stmt-modal .stmt-scroll');
+  if (scroller) scroller.scrollTop = 0;
+}
+
+function openStatement(mk) {
+  _stmtMonth = mk || state.reviewMonth || localYM();
+  renderStatement();
+  document.getElementById('stmt-modal').classList.add('open');
+}
+function closeStatement() {
+  document.getElementById('stmt-modal').classList.remove('open');
+  document.body.classList.remove('stmt-printing');
+}
+function statementShift(delta) {
+  const [y, m] = _stmtMonth.split('-').map(Number);
+  _stmtMonth = localYM(new Date(y, m - 1 + delta, 1));
+  renderStatement();
+}
+
+// Printing shows only the statement paper (see the @media print rules), and the
+// page title becomes the suggested file name when it is saved as a PDF.
+function printStatement() {
+  const title = document.title;
+  document.title = `PFMT Statement ${_stmtMonth}`;
+  document.body.classList.add('stmt-printing');
+  window.addEventListener('afterprint', () => {
+    document.title = title;
+    document.body.classList.remove('stmt-printing');
+  }, { once: true });
+  window.print();
+}
+
+// The same statement as rows Excel, Numbers or Google Sheets can open: plain
+// numbers (no currency symbols) so they can be summed, one block per section.
+function downloadStatementCSV() {
+  const mk = _stmtMonth, end = stmtMonthEnd(mk);
+  const { sections } = buildStatement(mk);
+  const out = [];
+  const row = (...cells) => out.push(cells.map(c =>
+    typeof c === 'number' ? (Math.round(c * 100) / 100).toFixed(2) : (c === '' || c == null ? '' : csvCell(c))).join(','));
+  const blank = () => out.push('');
+  row('PFMT Monthly Statement', getMonthLabel(mk));
+  row('Period', `${mk}-01`, end);
+  row('Generated', `${localDateStr()} ${new Date().toTimeString().slice(0, 5)}`);
+  if (state.displayName || state.userEmail) row('Prepared for', state.displayName || state.userEmail);
+  blank();
+  row('SUMMARY');
+  row('Currency', 'Money in', 'Money out', 'Net flow', 'Opening balance', 'Closing balance');
+  sections.forEach(s => row(s.cur, s.moneyIn, s.moneyOut, s.net, s.accounts.length ? s.openTot : '', s.accounts.length ? s.closeTot : ''));
+  sections.forEach(s => {
+    const c = s.cur;
+    if (s.moneyIn || s.moneyOut) {
+      blank();
+      row(`${c} MONEY IN AND OUT`);
+      row('Section', 'Line', `Amount (${c})`);
+      s.income.forEach(x => row('Money in', `Income: ${x.cat}`, x.amt));
+      row('Money in', 'Total income', s.flow.inc);
+      row('Money in', 'Refunds & claims', s.flow.back);
+      row('Money in', 'Exchanged in', s.flow.xIn);
+      row('Money in', 'Total money in', s.moneyIn);
+      s.spending.forEach(x => row('Money out', `Spending: ${x.cat}`, x.amt));
+      row('Money out', 'Total spending', s.flow.exp);
+      row('Money out', 'Exchanged out', s.flow.xOut);
+      row('Money out', 'Total money out', s.moneyOut);
+      row('', 'Net cash flow', s.net);
+      row('', 'Kept (income less spending)', s.kept);
+    }
+    if (s.accounts.length) {
+      blank();
+      row(`${c} ACCOUNT BALANCES`);
+      row('Account', 'Opening', 'Money in', 'Money out', 'Closing');
+      s.accounts.forEach(x => row(x.a.name, x.opening, x.moneyIn, x.moneyOut, x.closing));
+      row('Total', s.openTot, s.accIn, s.accOut, s.closeTot);
+    }
+    if (s.accounts.some(x => x.lines.length) || s.unlinked.length) {
+      blank();
+      row(`${c} TRANSACTIONS`);
+      row('Account', 'Date', 'Description', 'Category', 'Kind', 'Money in', 'Money out', 'Balance');
+      s.accounts.filter(x => x.lines.length).forEach(x => {
+        row(x.a.name, `${mk}-01`, 'Opening balance', '', '', '', '', x.opening);
+        x.lines.forEach(({ t, e, bal }) => row(x.a.name, t.date, t.description || '', t.category || '', stmtKind(t) || t.type, e > 0 ? e : '', e < 0 ? -e : '', bal));
+        row(x.a.name, end, 'Closing balance', '', '', x.moneyIn, x.moneyOut, x.closing);
+      });
+      s.unlinked.forEach(t => {
+        const e = txnBalanceEffect(t);
+        row(t.account || '(no account)', t.date, t.description || '', t.category || '', 'not linked to an account', e > 0 ? e : '', e < 0 ? -e : '', '');
+      });
+    }
+  });
+  // The byte-order mark tells Excel the file is UTF-8, so S$, RM and any
+  // Chinese descriptions survive the trip.
+  downloadBlob(new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `pfmt_statement_${mk}.csv`);
+  showToast(`Statement for ${getMonthLabel(mk)} downloaded`, 'success');
 }
 
 function exportMonthlySummaryCSV() {
@@ -7227,7 +7849,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
-    closeTxnModal(); closeBudgetModal(); closeGoalModal();
+    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement();
     ['account-modal','confirm-modal'].forEach(id=>document.getElementById(id).classList.remove('open'));
   }
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openTxnModal(); }
