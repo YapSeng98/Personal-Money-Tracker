@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PFMT — Daily Money Tracker</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -733,7 +733,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   .bnav-fab:active{transform:scale(.92);}
   .content{padding-bottom:132px!important;}
   /* iOS: inputs under 16px trigger Safari auto-zoom on focus — force 16px */
-  input.form-input,select.form-input,textarea.form-input,.sn-login-input,.search-input{font-size:16px!important;}
+  /* (Pinch-zoom stays allowed: this rule, not maximum-scale, is what stops it.) */
+  input.form-input,select.form-input,textarea.form-input,.sn-login-input,.search-input,.sp-legend-pct-input{font-size:16px!important;}
 
   /* A cross-currency transfer's amount ("S$1,000.00 → RM3,173.30") is far too
      wide to sit beside the description on a phone. Let the row wrap so the

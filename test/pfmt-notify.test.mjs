@@ -201,7 +201,13 @@ ok(/8 days late/.test(sent[0]?.text ?? ''),
 
 // ── the cron path: bills only ──
 sent.length = 0; claimed.clear(); writes.length = 0;
+// The cron path takes no date — it reads the clock. Pin it to 10 Sep (8am in
+// Singapore), two days before Rent is due, or this check passes or fails with
+// the calendar: on the 5th the bill is still outside its 3-day window.
+const realNow = Date.now;
+Date.now = () => Date.parse('2026-09-10T00:00:00Z');
 r = await post({}, { 'x-pfmt-cron-secret': 'cron-secret' });
+Date.now = realNow;
 b = await r.json();
 ok(r.status === 200 && b.users === 1 && b.sent > 0,
    'the cron path runs for every subscribed user with no JWT', JSON.stringify(b));
