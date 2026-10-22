@@ -581,6 +581,9 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 /* Data check: broken transfer or asset pairs, never hidden, always fixable. */
 .sync-badge{background:var(--amber-s);color:var(--amber);border:1px solid var(--amber);font-weight:700;}
 .sync-badge.bad{background:var(--coral-s);color:var(--coral);border-color:var(--coral);}
+/* .btn sets display, which beats the hidden attribute: without this the
+   badge showed as an empty pill even with nothing waiting. */
+.sync-badge[hidden]{display:none!important;}
 .pending-chip{background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;}
 .pair-warn{border:none;cursor:pointer;background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;}
 .data-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:12px;background:var(--amber-s);color:var(--ink);font-size:12.5px;}
