@@ -172,7 +172,7 @@ Seven tables, all in `public`, all with RLS on and a `user_id` referencing
 | `name` | text | unique per user in practice; transactions reference it by name |
 | `type` | text | Checking, Savings, Credit Card, Investment, … |
 | `institution` | text | |
-| `currency` | text | SGD · USD · AUD · MYR |
+| `currency` | text | SGD · USD · AUD · MYR · USDT |
 | `starting_balance` | numeric | the balance *before* any transaction in the book |
 | `is_active` | boolean | inactive accounts stay for history, drop out of pickers |
 
@@ -235,11 +235,11 @@ rule. See [Telegram alerts](#telegram-alerts).
 | Page | What it does |
 |---|---|
 | Dashboard | Per-currency balance/income/expense hero, KPI cards, spend-by-category |
-| Transactions | Full list with month/type/currency filters, bulk select, undo |
+| Transactions | Full list with month/type/currency filters, bulk select, undo, a **Data check** for broken transfer pairs, and a **Statement** button |
 | Budgets | Per-currency budgets with rollover, plus "Plan from Salary" allocator |
 | **Bills** | The monthly checklist — see below |
 | Goals | Savings goals, optionally tracking a real account |
-| Analytics | Spending trend, monthly in/out, savings rate, category breakdowns |
+| Analytics | Monthly Review (a donut per currency of every category spent), the **monthly statement** (view, PDF, Excel, CSV), spending trend, and Monthly In & Out (range totals, per-month bars, Excel and CSV downloads) |
 | Accounts | Balances, allocation, debt ratio |
 | Settings | Account, profile, password, appearance, app lock, **Telegram alerts**, AI key, backup, data |
 
@@ -252,9 +252,31 @@ Accounts and Settings are reached through the drawer.
 stored: balances, budget spend, savings rate and bill matching are all recomputed
 on render, which is why they cannot disagree with the ledger.
 
-**App lock** is a device-local PIN (Settings → App Lock). Its hash never syncs —
-a PIN synced to the cloud would be pointless next to the session that could fetch
-it.
+**Writes go through an outbox.** Every insert, update and delete is applied
+locally, queued in `state.outbox`, and sent: at once, then again on reconnect,
+on returning to the app, every 30 seconds and on each load. A reload merges the
+server's rows with what is still queued (`mergeWithOutbox`), so a change that
+hadn't landed is never overwritten and a deleted row can't come back. Inserts
+are upserts, so a retry never duplicates. The badge in the top bar shows what is
+waiting, and anything the server refuses (a constraint, a missing column) can be
+retried or discarded from there.
+
+**Transfers and asset purchases are pairs** of rows sharing a `transferGroup`.
+`pairProblems()` finds any that aren't one expense plus one income/asset on two
+accounts; those are never hidden from the list, and the Data check fixes them.
+
+**Offline and installable.** `manifest.webmanifest` and `icons/` let the app be
+added to a home screen; `sw.js` caches the page and its pinned libraries
+(network-first for the page, never for Supabase), so it opens with no
+connection and queues changes in the outbox.
+
+**Only the page on screen is drawn.** `renderAll()` draws the active page and
+marks the others stale; `showView()` draws a page when it is opened.
+
+**App lock** is a device-local PIN (Settings → App Lock), stored as PBKDF2
+(310,000 rounds, per-device salt), with a 30-second wait after five wrong tries.
+It never syncs — a PIN synced to the cloud would be pointless next to the session
+that could fetch it.
 
 ---
 
@@ -351,21 +373,34 @@ Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 ## Tests
 
 ```bash
-node test/run-all.js
+node test/run-all.js        # 350 checks, no browser needed
+node test/e2e/run.js        # the real page in headless Chrome (needs Node 22+ and Chrome)
+node test/perf/bench.js     # how long a redraw takes with 5,000 transactions
 ```
 
-170 checks across three suites. They load the **real** functions out of
-`index.html` and the real Edge Function source rather than copies, so a failure
-means the shipped code is wrong — not that a test is stale.
+The unit suites load the **real** functions out of `index.html` and the real
+Edge Function source rather than copies, so a failure means the shipped code is
+wrong — not that a test is stale.
 
 | Suite | Checks | Protects |
 |---|---|---|
-| `budget-invariants.test.js` | 89 | budget figures never negative, never more than the Transactions list shows, bars always 0–100%, rollover capped, cash vs P&L conservation, currencies never mixed, and every surface reporting the *same* month total |
-| `bills-and-alerts.test.js` | 58 | the two copies of the shared rules are identical; one transaction never ticks two bills; a match is a real match; due dates survive short months; an alert never contradicts the budget card |
-| `pfmt-notify.test.mjs` | 23 | the Edge Function itself, under a stubbed Deno and a stubbed network — auth gates, claim-before-send, one message not many, HTML escaping, failed sends releasing their claims |
+| `budget-invariants.test.js` | 173 | budget figures never negative, never more than the Transactions list shows, bars always 0–100%, rollover capped, cash vs P&L conservation, currencies never mixed, every surface reporting the *same* month total, and statements that reconcile (opening + in − out = closing, a range equals its months added up) |
+| `bills-and-alerts.test.js` | 72 | the two copies of the shared rules are identical; one transaction never ticks two bills; a match is a real match; due dates survive short months; an alert never contradicts the budget card |
+| `pfmt-notify.test.mjs` | 48 | the Edge Function itself, under a stubbed Deno and a stubbed network — auth gates, claim-before-send, one message not many, HTML escaping, failed sends releasing their claims; the cron run is pinned to a date |
+| `data-integrity.test.js` | 17 | every broken transfer-pair shape is named, and no list ever hides a row it should show (3,000 randomised lists) |
+| `outbox.test.js` | 32 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed |
+| `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
 
-The Edge Function suite needs no Deno and touches nothing live: Node's own type
-stripping loads the `.ts` directly and the network is stubbed.
+The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
+swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
+writes), loads dated-relative-to-today test data (`seed.js`), and clicks through
+the app (`checks.js`): about 200 checks at desktop, laptop and true 390px phone
+sizes, covering the statement and its downloads, Monthly In & Out, the Data
+check, offline saves surviving a reload, deletes not coming back, USDT, App Lock
+and every page in both languages. A last run serves the app from localhost and
+reloads it with the server stopped to prove the offline shell.
+
+GitHub Actions (`.github/workflows/tests.yml`) runs both suites on every push.
 
 These exist because of a real bug. A payback larger than the month's spending
 made net spend negative, and the budget card rendered
@@ -382,7 +417,9 @@ Transactions page for the same filter plainly listed S$40.84.
 
 GitHub Pages serves `index.html` from `main` at
 https://yapseng98.github.io/Personal-Money-Tracker/. Push to `main` and it is
-live within a minute. Keep `daily-money-tracker-app.html` byte-identical:
+live within a minute. To deploy only after the tests pass, set Settings → Pages →
+Source to **GitHub Actions**; the workflow's deploy job then publishes the site
+once both suites are green. Keep `daily-money-tracker-app.html` byte-identical:
 
 ```bash
 cp index.html daily-money-tracker-app.html
@@ -391,7 +428,8 @@ cp index.html daily-money-tracker-app.html
 ### The database
 
 Run the files in [`supabase/migrations/`](supabase/migrations/) in order, in the
-Supabase SQL Editor. They are additive and safe to re-run.
+Supabase SQL Editor: 001 (the original tables) through 006 (lets currency columns
+accept USDT). They are additive and safe to re-run.
 
 ### The Edge Function
 
@@ -401,7 +439,7 @@ Remember `--no-verify-jwt`, and run `node tools/sync-shared-rules.js` first.
 ### Before pushing anything
 
 ```bash
-node test/run-all.js && node tools/sync-shared-rules.js --check
+node test/run-all.js && node test/e2e/run.js && node tools/sync-shared-rules.js --check
 ```
 
 ---
