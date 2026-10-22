@@ -517,6 +517,20 @@
       state.transactions = state.transactions.filter(t => t.account !== 'BingX Main' && t.description !== 'Buy USDT');
       renderAll();
 
+      // ── App Lock ────────────────────────────────────────────────────────
+      $('#applock-pin').value = '4321'; $('#applock-pin-confirm').value = '4321';
+      await saveAppLockPin();
+      ok(state.appLockEnabled && state.appLockPinHash.indexOf('pbkdf2$') === 0, 'app lock: a new PIN is stored salted, not as a bare hash');
+      const unlock = async pin => { $('#pin-lock-input').value = pin; await submitPinUnlock(); return $('#pin-lock-err').textContent; };
+      ok(/Incorrect/.test(await unlock('0000')), 'app lock: a wrong PIN is refused');
+      ok((await unlock('4321')) === '', 'app lock: the right PIN unlocks');
+      for (let i = 0; i < 5; i++) await unlock('1111');
+      ok(/Wait/.test(await unlock('4321')), 'app lock: after five wrong tries even the right PIN has to wait');
+      _pinWaitUntil = 0; _pinFails = 0;
+      state.appLockPinHash = await sha256Hex('2468');
+      ok((await unlock('2468')) === '' && state.appLockPinHash.indexOf('pbkdf2$') === 0, 'app lock: a PIN stored the old way unlocks, and is re-stored salted');
+      turnOffAppLock();
+
       // ── Every page still renders, in both languages ─────────────────────
       ['dashboard', 'transactions', 'budgets', 'bills', 'goals', 'analytics', 'accounts', 'settings'].forEach(v => {
         try { nav(v); ok($('#view-' + v).classList.contains('active'), `page: ${v} opens`); }

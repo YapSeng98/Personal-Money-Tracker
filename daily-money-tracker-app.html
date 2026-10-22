@@ -8548,6 +8548,29 @@ async function sha256Hex(text) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Stored as "pbkdf2$<rounds>$<salt hex>$<hash hex>". A 4–6 digit PIN has at
+// most a million values, so the plain SHA-256 it used to be stored as could be
+// reversed in well under a second from a copy of this device's storage. A
+// per-device salt and 310,000 PBKDF2 rounds make every guess cost real time.
+const PIN_ROUNDS = 310000;
+const toHex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+async function hashPin(pin, saltHex, rounds) {
+  saltHex = saltHex || toHex(crypto.getRandomValues(new Uint8Array(16)));
+  rounds = rounds || PIN_ROUNDS;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const salt = new Uint8Array(saltHex.match(/../g).map(h => parseInt(h, 16)));
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: rounds }, key, 256);
+  return `pbkdf2$${rounds}$${saltHex}$${toHex(new Uint8Array(bits))}`;
+}
+async function checkPin(pin, stored) {
+  if (!stored || !pin) return false;
+  if (stored.indexOf('pbkdf2$') === 0) {
+    const [, rounds, salt] = stored.split('$');
+    return (await hashPin(pin, salt, +rounds)) === stored;
+  }
+  return (await sha256Hex(pin)) === stored;   // a PIN set before PBKDF2
+}
+
 function _refreshAppLockUI() {
   const status  = document.getElementById('app-lock-status');
   const saveBtn = document.getElementById('applock-save-btn');
@@ -8572,7 +8595,7 @@ async function saveAppLockPin() {
   const confirm = document.getElementById('applock-pin-confirm')?.value || '';
   if (!/^\d{4,6}$/.test(pin)) { showToast('PIN must be 4–6 digits', 'error'); return; }
   if (pin !== confirm)        { showToast('PINs do not match', 'error'); return; }
-  state.appLockPinHash = await sha256Hex(pin);
+  state.appLockPinHash = await hashPin(pin);
   state.appLockEnabled = true;
   saveState();
   document.getElementById('applock-pin').value = '';
@@ -8591,16 +8614,24 @@ function turnOffAppLock() {
   showToast('App Lock turned off', 'info');
 }
 
+// After five wrong PINs, each further try waits 30 seconds.
+let _pinFails = 0, _pinWaitUntil = 0;
 async function submitPinUnlock() {
   const val   = document.getElementById('pin-lock-input')?.value || '';
   const errEl = document.getElementById('pin-lock-err');
   if (!val) { errEl.textContent = 'Enter your PIN'; return; }
-  const hash = await sha256Hex(val);
-  if (hash !== state.appLockPinHash) {
-    errEl.textContent = 'Incorrect PIN';
+  const wait = Math.ceil((_pinWaitUntil - Date.now()) / 1000);
+  if (wait > 0) { errEl.textContent = `Too many tries. Wait ${wait}s and try again.`; return; }
+  if (!(await checkPin(val, state.appLockPinHash))) {
+    _pinFails++;
+    if (_pinFails >= 5) _pinWaitUntil = Date.now() + 30000;
+    errEl.textContent = _pinFails >= 5 ? 'Incorrect PIN. Wait 30s before trying again.' : 'Incorrect PIN';
     document.getElementById('pin-lock-input').value = '';
     return;
   }
+  _pinFails = 0; _pinWaitUntil = 0;
+  // A PIN still stored the old way is re-stored the new way now that we have it.
+  if (state.appLockPinHash.indexOf('pbkdf2$') !== 0) { state.appLockPinHash = await hashPin(val); saveState(); }
   errEl.textContent = '';
   document.getElementById('pin-lock-input').value = '';
   _hideSNLogin();

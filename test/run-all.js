@@ -16,6 +16,7 @@ const SUITES = [
   'bills-and-alerts.test.js',    // the bills checklist and the alert rules
   'data-integrity.test.js',      // transfer pairs: never broken, never hidden
   'outbox.test.js',              // writes queue until the server has them
+  'app-lock.test.js',            // the PIN is stored salted, old PINs upgrade
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 
