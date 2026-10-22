@@ -485,6 +485,7 @@
       openStatement(M0);
       ok(/Tether \(USDT\)/.test($('#stmt-paper').textContent) && /OKX Wallet/.test($('#stmt-paper').textContent), 'usdt: the statement has a USDT section with the wallet');
       closeStatement();
+      nav('analytics'); await wait(10);
       ok($$('#monthly-summary .msum-code').some(c => c.textContent === 'USDT'), 'usdt: Monthly In & Out shows USDT on its own');
 
       // Switching an existing account (say BingX, kept in USD) to USDT.
@@ -516,6 +517,28 @@
       state.accounts = state.accounts.filter(a => a.id !== accId && a.name !== 'OKX Wallet');
       state.transactions = state.transactions.filter(t => t.account !== 'BingX Main' && t.description !== 'Buy USDT');
       renderAll();
+
+      // ── Only the open page draws; the others catch up when opened ───────
+      nav('dashboard'); await wait(10);
+      const realRT = renderTransactions;
+      let drawnTxns = 0;
+      renderTransactions = (...a) => { drawnTxns++; return realRT(...a); };
+      renderAll();
+      ok(drawnTxns === 0, 'speed: a change redraws only the page on screen');
+      state.transactions.unshift({ id: 'fresh-1', date: M1 + '-15', type: 'expense', category: 'Other', amount: 1.23, currency: 'SGD',
+                                   account: 'DBS Checking', description: 'Drawn on open', created: M1 + '-15 23:59:59' });
+      renderAll();
+      state.filterMonth = M1;
+      ['filter-period', 'filter-type', 'filter-cat', 'filter-cur', 'filter-acc', 'search-input'].forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
+      nav('transactions'); await wait(10);
+      ok(drawnTxns === 1 && $('#all-txns').textContent.includes('Drawn on open'), 'speed: a hidden page is up to date the moment it is opened', drawnTxns);
+      renderTransactions = realRT;
+      state.transactions = state.transactions.filter(t => t.id !== 'fresh-1');
+      const pairLegs = state.transactions.filter(t => t.transferGroup === 'tg_1');
+      ok(!isCrossCurrencyLeg(pairLegs[0]), 'speed: the transfer index answers from its cache');
+      pairLegs[1].currency = 'MYR'; renderAll();
+      ok(isCrossCurrencyLeg(pairLegs[0]), 'speed: ...and never with a stale answer after an edit');
+      pairLegs[1].currency = 'SGD'; renderAll();
 
       // ── App Lock ────────────────────────────────────────────────────────
       $('#applock-pin').value = '4321'; $('#applock-pin-confirm').value = '4321';

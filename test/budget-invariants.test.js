@@ -51,7 +51,7 @@ function extract(name) {
 
 const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
   'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
-  'CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
+  'CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'legsByGroup', 'transferPartner', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal',
@@ -60,7 +60,9 @@ const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPayb
   'addDaysStr', 'recurDate', 'recurNextAfter', 'recurHalfWindow', 'recurAlreadyEntered'];
 
 const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
-const src = NAMES.map(extract).join('\n');
+// legsByGroup()'s cache lives in these page-level variables.
+const src = 'let _legIndex = null, _legIndexOf = null, _legIndexLen = -1, _legIndexVer = -1, _txnVersion = 0;\n' +
+  NAMES.map(extract).join('\n');
 const API = new Function('state', 'console', src + `; return {${NAMES.join(',')}};`)(state, console);
 
 const pfmtMatch = (bills, txns) => API.pfmtMatchBills(bills, txns, '2026-09', 'SGD');

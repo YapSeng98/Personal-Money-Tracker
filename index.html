@@ -2372,6 +2372,7 @@ let state = {
 // ═══════════════════════════════════════════════
 const LS_KEY = 'pfmt_state_v2';
 function saveState() {
+  _txnVersion++;
   try {
     const toSave = {
       transactions: state.transactions,
@@ -4653,21 +4654,41 @@ function applyLanguage() {
   if (searchInput) searchInput.placeholder = t('search_placeholder');
 }
 
+// Each page draws only while it is on screen. Every change used to redraw all
+// eight pages, about 46ms with 5,000 transactions on a laptop and several
+// times that on a phone; the hidden ones are now marked stale and draw when
+// they are opened (showView ends with renderAll, which draws the page it
+// just opened). Only the pieces shown on every page — the nav
+// badges, the backup reminder, the sync badge — update every time.
+const VIEW_RENDERERS = {
+  dashboard: () => renderDashboard(),
+  transactions: () => renderTransactions(),
+  budgets: () => renderBudgets(),
+  bills: () => renderBills(),
+  goals: () => renderGoals(),
+  analytics: () => renderAnalytics(),
+  accounts: () => renderAccounts(),
+  settings: () => { renderExportSummary(); _renderProfileView(); _updateSNConnCard(); },
+};
+let _staleViews = new Set(Object.keys(VIEW_RENDERERS));
+function activeViewName() {
+  const v = document.querySelector('.view.active');
+  return v ? v.id.replace('view-', '') : 'dashboard';
+}
+function renderView(name) {
+  _staleViews.delete(name);
+  if (VIEW_RENDERERS[name]) VIEW_RENDERERS[name]();
+}
+
 function renderAll() {
+  _txnVersion++;
   applyLanguage();
   updateMonthUI();
   syncLinkedGoals();
-  renderDashboard();
-  renderTransactions();
-  renderBudgets();
-  renderBills();
-  renderGoals();
-  renderAnalytics();
-  renderAccounts();
+  _staleViews = new Set(Object.keys(VIEW_RENDERERS));
+  renderView(activeViewName());
+  updateBillsBadge();
   renderBackupReminder();
-  renderExportSummary();
-  _renderProfileView();
-  _updateSNConnCard();
   renderSyncBadge();
   saveState();
 }
@@ -4892,7 +4913,7 @@ function isAssetGroup(t) {
   if (t.transferGroup.indexOf('ag_') === 0) return true;
   if (t.transferGroup.indexOf('tg_') === 0) return false;
   // Older rows predate the prefixes, so fall back to looking for the holding leg.
-  return state.transactions.some(x => x.transferGroup === t.transferGroup && x.type === 'asset');
+  return (legsByGroup().get(t.transferGroup) || []).some(x => x.type === 'asset');
 }
 
 // Groups whose rows don't form one healthy pair, with what is wrong. A healthy
@@ -4971,7 +4992,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     : '';
 
   if (txn.transferGroup) {
-    const peer = state.transactions.find(x => x.transferGroup === txn.transferGroup && x !== txn);
+    const peer = transferPartner(txn);
     const recv = peer ? fmtWithCur(peer.amount, peer.currency) : '';
     const diffCur = peer && (peer.currency || state.currency) !== (txn.currency || state.currency);
     // An asset purchase is a pair too, but it reads as "bought a holding",
@@ -6447,9 +6468,30 @@ function summaryMonthKeys() {
 // inflates both columns. A cross-currency transfer is different: the SGD really
 // did leave the SGD book and the MYR really did arrive in the MYR book, so from
 // each currency's point of view it IS a genuine flow.
+// transferGroup → its rows, rebuilt only when the list changes. Looking a
+// partner up by scanning every row, once per row, made the monthly tallies
+// grow with the square of the book.
+let _legIndex = null, _legIndexOf = null, _legIndexLen = -1, _legIndexVer = -1, _txnVersion = 0;
+function legsByGroup() {
+  const list = state.transactions;
+  if (_legIndex && _legIndexOf === list && _legIndexLen === list.length && _legIndexVer === _txnVersion) return _legIndex;
+  _legIndex = new Map();
+  list.forEach(t => {
+    if (!t.transferGroup) return;
+    if (!_legIndex.has(t.transferGroup)) _legIndex.set(t.transferGroup, []);
+    _legIndex.get(t.transferGroup).push(t);
+  });
+  _legIndexOf = list; _legIndexLen = list.length; _legIndexVer = _txnVersion;
+  return _legIndex;
+}
+function transferPartner(t) {
+  if (!t.transferGroup) return null;
+  return (legsByGroup().get(t.transferGroup) || []).find(x => x !== t) || null;
+}
+
 function isCrossCurrencyLeg(t) {
   if (!t.transferGroup) return false;
-  const peer = state.transactions.find(x => x.transferGroup === t.transferGroup && x !== t);
+  const peer = transferPartner(t);
   if (!peer) return false;
   return (peer.currency || state.currency) !== (t.currency || state.currency);
 }
@@ -6552,7 +6594,7 @@ function monthFlowData(cur, mk) {
       return;
     }
     if (isCrossCurrencyLeg(t)) {
-      const peer = state.transactions.find(x => x.transferGroup === t.transferGroup && x !== t);
+      const peer = transferPartner(t);
       exchanges.push({ t, peer, inflow: t.type === 'income' || t.type === 'asset' });
       return;
     }
