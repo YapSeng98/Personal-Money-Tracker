@@ -572,6 +572,16 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .type-tab.transfer.active{background:var(--sky);}
 .type-tab.asset.active{background:#8B5CF6;}
 .type-tab{white-space:nowrap;min-width:0;padding:8px 4px;}
+.type-tab:disabled{opacity:.35;cursor:not-allowed;}
+/* Data check: broken transfer or asset pairs, never hidden, always fixable. */
+.pair-warn{border:none;cursor:pointer;background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;}
+.data-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:12px;background:var(--amber-s);color:var(--ink);font-size:12.5px;}
+.data-banner b{color:var(--amber);}
+.dc-item{border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+.dc-why{font-size:12.5px;font-weight:700;color:var(--amber);margin-bottom:8px;}
+.dc-leg{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;color:var(--ink2);}
+.dc-leg span:last-child{font-family:var(--fm);white-space:nowrap;}
+.dc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 
 /* form */
 .form-group{margin-bottom:16px;}
@@ -1111,6 +1121,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           </select>
           <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral);border-color:var(--coral);">✕ Clear</button>
         </div>
+        <div id="data-banner"></div>
         <div id="all-txns"><div class="empty"><div class="icon">📭</div><p>No transactions found.</p></div></div>
       </div>
     </div>
@@ -1581,6 +1592,20 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   <button class="bnav-item" data-bview="goals" onclick="showView('goals')"><span class="bnav-ico">🎯</span><span class="bnav-lbl" data-bkey="bnav_goals">Goals</span></button>
   <button class="bnav-item" data-bview="analytics" onclick="showView('analytics')"><span class="bnav-ico">📈</span><span class="bnav-lbl" data-bkey="bnav_review">Stats</span></button>
 </nav>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- DATA CHECK                                   -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="datacheck-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="datacheck-title">
+    <div class="modal-header">
+      <div class="modal-title" id="datacheck-title">Data check</div>
+      <button class="modal-close" onclick="closeDataCheck()" aria-label="Close">✕</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin:-10px 0 14px;">A transfer or asset purchase is saved as two linked rows: money leaving one account and arriving in another. These don't form a proper pair.</p>
+    <div id="datacheck-list"></div>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════════════ -->
 <!-- MONTHLY STATEMENT                            -->
@@ -2701,8 +2726,20 @@ function showView(name, el) {
 // ═══════════════════════════════════════════════
 // TRANSACTION MODAL — open / close / edit
 // ═══════════════════════════════════════════════
+// While a transfer or asset pair is open for editing, only its own tab works.
+// Switching one side to Expense or Income used to save that row alone, still
+// linked to its partner: a broken pair the list could no longer show.
+function lockTypeTabs(allowed) {
+  document.querySelectorAll('.type-tab').forEach(tab => {
+    const locked = !!allowed && tab.id !== 'tab-' + allowed;
+    tab.disabled = locked;
+    tab.title = locked ? 'This is one side of a ' + allowed + '. Delete it and add it again to change its type.' : '';
+  });
+}
+
 function openTxnModal(id = null) {
   const editing = id !== null;
+  lockTypeTabs(null);
   document.getElementById('txn-modal-title').textContent  = editing ? t('modal_edit_txn') : t('modal_add_txn');
   document.getElementById('txn-edit-badge').textContent   = t('modal_editing_txn');
   document.getElementById('txn-edit-badge').style.display = editing ? 'inline-flex' : 'none';
@@ -2742,6 +2779,7 @@ function openTxnModal(id = null) {
       // and lose the asset leg on save.
       if (assetLeg) {
         setType('asset', document.getElementById('tab-asset'));
+        lockTypeTabs('asset');
         document.getElementById('txn-desc').value     = assetLeg.description;
         document.getElementById('txn-date').value     = assetLeg.date;
         document.getElementById('txn-notes').value    = assetLeg.notes || '';
@@ -2759,6 +2797,7 @@ function openTxnModal(id = null) {
       }
 
       setType('transfer', document.getElementById('tab-transfer'));
+      lockTypeTabs('transfer');
       document.getElementById('txn-desc').value     = out.description;
       document.getElementById('txn-date').value     = out.date;
       document.getElementById('txn-notes').value    = out.notes || '';
@@ -3067,7 +3106,7 @@ async function saveAssetPair({ amt, desc, cat, from, to, currency, date, notes }
       dbInsert('transactions', {
         id: txn.id, user_id: state.userId, type: txn.type, amount: txn.amount, description: txn.description,
         category: txn.category, account: txn.account, date: txn.date,
-        notes: txn.notes, currency: txn.currency, transfer_group: group
+        notes: txn.notes, currency: txn.currency, transfer_group: group, transfer_peer: txn.transferPeer
       }).catch(e => showToast('Sync failed: ' + e.message, 'error'))
     ));
   } else {
@@ -3098,7 +3137,7 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
     if (!state.userId || !rid) return Promise.resolve();
     return dbUpdate('transactions', rid, { type: row.type, amount: row.amount,
       description: row.description, category: row.category, account: row.account,
-      date: row.date, notes: row.notes, currency: row.currency, ...extra })
+      date: row.date, notes: row.notes, currency: row.currency, transfer_peer: row.transferPeer || null, ...extra })
       .catch(e => showToast('Sync: ' + e.message, 'warning'));
   };
 
@@ -3120,7 +3159,7 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
     await syncRow(assetRow, { transfer_group: g });
     if (state.userId) {
       await dbInsert('transactions', { id: leg.id, user_id: state.userId, type:'expense', amount:amt,
-        description:desc, category:cat, account:fundFrom, date, notes, currency, transfer_group:g })
+        description:desc, category:cat, account:fundFrom, date, notes, currency, transfer_group:g, transfer_peer:to })
         .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     }
 
@@ -3165,7 +3204,7 @@ async function saveTransferPair({ amt, recvAmt, desc, cat, from, to, fromCur, to
       dbInsert('transactions', {
         id: txn.id, user_id: state.userId, type: txn.type, amount: txn.amount, description: txn.description,
         category: txn.category, account: txn.account, date: txn.date,
-        notes: txn.notes, currency: txn.currency, transfer_group: group
+        notes: txn.notes, currency: txn.currency, transfer_group: group, transfer_peer: txn.transferPeer
       }).catch(e => showToast('Sync failed: ' + e.message, 'error'))
     ));
   } else {
@@ -3205,7 +3244,7 @@ async function updateTransferPair(editId, { amt, recvAmt, desc, cat, from, to, f
       return dbUpdate('transactions', rid, {
         type: leg.type, amount: leg.amount, description: leg.description,
         category: leg.category, account: leg.account, date: leg.date,
-        notes: leg.notes, currency: leg.currency, transfer_group: leg.transferGroup
+        notes: leg.notes, currency: leg.currency, transfer_group: leg.transferGroup, transfer_peer: leg.transferPeer
       }).catch(e => showToast('Sync: ' + e.message, 'warning'));
     }));
   }
@@ -3227,6 +3266,16 @@ async function saveTransaction() {
 
   if (!amt || amt <= 0) { showToast(t('toast_enter_amount'), 'error'); return; }
   if (!desc)             { showToast(t('toast_enter_desc'), 'error'); return; }
+  // The tabs are locked while a pair is open (lockTypeTabs); this is the same
+  // rule enforced at save, so nothing can strand one side of a pair.
+  const pairRow = editId !== '' ? state.transactions.find(x => x.id == editId) : null;
+  if (pairRow && pairRow.transferGroup) {
+    const pairType = isAssetGroup(pairRow) ? 'asset' : 'transfer';
+    if (state.currentType !== pairType) {
+      showToast(`This is one side of a ${pairType}. Delete it and add it again to change its type.`, 'error');
+      return;
+    }
+  }
   if (!date)             { showToast(t('toast_enter_date'), 'error'); return; }
 
   // effectiveBal() only counts rows whose currency matches the account's, so a
@@ -3409,6 +3458,98 @@ function removeTransactionsWithUndo(legs, msg) {
   );
 }
 
+
+// ═══════════════════════════════════════════════
+// DATA CHECK — broken transfer and asset pairs
+// ═══════════════════════════════════════════════
+function openDataCheck() {
+  renderDataCheck();
+  document.getElementById('datacheck-modal').classList.add('open');
+}
+function closeDataCheck() { document.getElementById('datacheck-modal').classList.remove('open'); }
+
+function renderDataCheck() {
+  const list = document.getElementById('datacheck-list');
+  if (!list) return;
+  const problems = pairProblems();
+  if (!problems.length) {
+    list.innerHTML = '<div class="empty"><div class="icon">✅</div><p>Every transfer and asset purchase is a proper pair.</p></div>';
+    return;
+  }
+  list.innerHTML = problems.map(p => {
+    const legs = p.legs.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const rows = legs.map(l => `<div class="dc-leg"><span>${fmtDate(l.date)} · ${esc(l.description || '—')} · ${esc(l.account || '—')}
+      <em style="font-style:normal;color:var(--muted)">(${l.type === 'expense' ? 'money leaving' : l.type === 'income' ? 'money arriving' : l.type})</em></span>
+      <span>${fmtWithCur(l.amount, l.currency)}</span></div>`).join('');
+    const g = esc(p.group);
+    // Splitting two rows on the same account would only invent income and
+    // spending; for those the honest fixes are delete or edit.
+    const split = p.kind === 'same' ? '' :
+      `<button class="btn btn-ghost btn-sm" onclick="dataCheckSeparate('${g}')" title="Keep the rows as ordinary income or spending, no longer linked">Make separate</button>`;
+    const edit = p.kind === 'same' || p.kind === 'types'
+      ? `<button class="btn btn-ghost btn-sm" onclick="closeDataCheck();dataCheckEdit('${g}')">Edit</button>` : '';
+    return `<div class="dc-item"><div class="dc-why">⚠ ${esc(p.why)}</div>${rows}
+      <div class="dc-actions"><button class="btn btn-sm" style="background:var(--coral);color:#fff" onclick="dataCheckDelete('${g}')">Delete</button>${split}${edit}</div></div>`;
+  }).join('');
+}
+
+function dataCheckDelete(group) {
+  const legs = state.transactions.filter(t => t.transferGroup === group);
+  if (!legs.length) return;
+  removeTransactionsWithUndo(legs, `Deleted ${legs.length} row${legs.length > 1 ? 's' : ''}`);
+  renderDataCheck();
+}
+
+// Unlinks the rows: each becomes an ordinary expense or income again.
+function dataCheckSeparate(group) {
+  state.transactions.filter(t => t.transferGroup === group).forEach(t => {
+    delete t.transferGroup; delete t.transferPeer;
+    if (t.category === 'Transfer') t.category = 'Other';
+    const rid = _snId(t);
+    if (state.userId && rid) {
+      dbUpdate('transactions', rid, { transfer_group: null, transfer_peer: null, category: t.category })
+        .catch(e => showToast('Sync: ' + e.message, 'warning'));
+    }
+  });
+  saveState();
+  renderAll();
+  renderDataCheck();
+  showToast('Unlinked: the rows are now ordinary transactions', 'success');
+}
+
+function dataCheckEdit(group) {
+  const legs = state.transactions.filter(t => t.transferGroup === group);
+  const pick = legs.find(t => t.type === 'expense') || legs[0];
+  if (pick) openTxnModal(pick.id);
+}
+
+// Fills in each healthy pair's "other side" account from its partner row. New
+// pairs didn't send transfer_peer to the server, so after a reload both rows
+// came back without it. Safe to run on every load: it writes only what differs.
+function fillTransferPeers() {
+  const broken = brokenPairMap();
+  const groups = new Map();
+  state.transactions.forEach(t => {
+    if (!t.transferGroup || broken.has(t.transferGroup)) return;
+    if (!groups.has(t.transferGroup)) groups.set(t.transferGroup, []);
+    groups.get(t.transferGroup).push(t);
+  });
+  let fixed = 0;
+  groups.forEach(([a, b]) => {
+    [[a, b], [b, a]].forEach(([leg, other]) => {
+      if (leg.transferPeer === other.account) return;
+      leg.transferPeer = other.account;
+      fixed++;
+      const rid = _snId(leg);
+      if (state.userId && rid) {
+        dbUpdate('transactions', rid, { transfer_peer: leg.transferPeer })
+          .catch(e => console.warn('transfer_peer backfill:', e.message));
+      }
+    });
+  });
+  if (fixed) saveState();
+  return fixed;
+}
 
 // ═══════════════════════════════════════════════
 // BUDGET MODAL — open / close / edit
@@ -4456,6 +4597,7 @@ function dayTotalHTML(rows) {
 // showTotals is off by default: the dashboard shows only the latest few rows, so
 // a "day total" there could quietly leave part of the day out.
 function txnListByDate(arr, forceBadge = false, showTotals = false, selectMode = false) {
+  _brokenPairs = brokenPairMap();
   const byDate = {};
   sortTxnsDesc(arr).forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
@@ -4515,7 +4657,43 @@ function isAssetGroup(t) {
   return state.transactions.some(x => x.transferGroup === t.transferGroup && x.type === 'asset');
 }
 
+// Groups whose rows don't form one healthy pair, with what is wrong. A healthy
+// pair is exactly two rows sharing a transferGroup: one expense (money leaving)
+// and one income or asset (money arriving), on two different accounts.
+// Anything else came from a failed save or an old edit path, and is listed by
+// the Data check so it can be fixed.
+function pairProblems(txns) {
+  const groups = new Map();
+  (txns || state.transactions).forEach(t => {
+    if (!t.transferGroup) return;
+    if (!groups.has(t.transferGroup)) groups.set(t.transferGroup, []);
+    groups.get(t.transferGroup).push(t);
+  });
+  const out = [];
+  groups.forEach((legs, group) => {
+    const leaving  = legs.filter(l => l.type === 'expense');
+    const arriving = legs.filter(l => l.type === 'income' || l.type === 'asset');
+    let why = '', kind = '';
+    if (legs.length === 1)      { kind = 'lone';  why = 'The other side of this transfer is missing.'; }
+    else if (legs.length > 2)   { kind = 'many';  why = `${legs.length} rows are linked as one transfer.`; }
+    else if (leaving.length !== 1 || arriving.length !== 1) {
+      kind = 'types';
+      why = leaving.length === 2 ? 'Both sides are marked as money leaving.' : 'Neither side is marked as money leaving.';
+    } else if (leaving[0].account === arriving[0].account) {
+      kind = 'same'; why = 'Both sides are the same account, so no money moved.';
+    }
+    if (why) out.push({ group, legs, why, kind });
+  });
+  return out;
+}
+function brokenPairMap() {
+  return new Map(pairProblems().map(p => [p.group, p.why]));
+}
+// Set by txnListByDate for the rows it is about to draw.
+let _brokenPairs = null;
+
 function collapseTransfers(arr) {
+  const broken = _brokenPairs || brokenPairMap();
   // Collapse a pair to one row only when BOTH legs are in this same list.
   // A cross-currency transfer has its legs in different currency sections, so
   // each section holds just one — dropping it there made the money vanish from
@@ -4524,6 +4702,10 @@ function collapseTransfers(arr) {
   arr.forEach(t => { if (t.transferGroup) legsHere[t.transferGroup] = (legsHere[t.transferGroup] || 0) + 1; });
   return arr.filter(t => {
     if (!t.transferGroup) return true;
+    // A broken pair shows every row it has, flagged. Collapsing assumes one
+    // expense leg, and a pair without one used to vanish from the list while
+    // search, which matched just one of its rows, still found it.
+    if (broken.has(t.transferGroup)) return true;
     // Both legs here → show the outgoing one. Every pair has exactly one
     // expense leg (transfer = expense+income, asset = expense+asset), so this
     // picks precisely one row; "not income" would have kept both for an asset.
@@ -4559,6 +4741,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     // Same reasoning as isAssetGroup: trust the group's own prefix first so a
     // purchase never renders as a transfer just because a type failed to survive.
     const isAssetPair = isAssetGroup(txn) || (peer && peer.type === 'asset');
+    const problem = (_brokenPairs || brokenPairMap()).get(txn.transferGroup);
     const tint  = isAssetPair ? 'var(--violet-s)' : 'var(--sky-s)';
     const inkC  = isAssetPair ? 'var(--violet)'   : 'var(--sky)';
     const icon  = isAssetPair ? '📈' : '🔄';
@@ -4576,7 +4759,8 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
       <div class="txn-ico" style="background:${tint}">${icon}</div>
       <div class="txn-body">
         <div class="txn-name">${esc(txn.description)}</div>
-        <div class="txn-meta">${route} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span></div>
+        <div class="txn-meta">${route} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span>${problem
+          ? ` · <button type="button" class="pair-warn" onclick="openDataCheck()" title="${esc(problem)}">⚠ Needs attention</button>` : ''}</div>
       </div>
       <div class="txn-amt" style="color:${inkC};">${incoming ? '+' : ''}${fmtWithCur(txn.amount, txn.currency)}${(showsPair && diffCur) ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
@@ -4799,7 +4983,17 @@ function searchSummaryHTML(txns, allMonths) {
 // is left alone.
 let _searchWidened = false;
 
+function renderDataBanner() {
+  const el = document.getElementById('data-banner');
+  if (!el) return;
+  const n = pairProblems().length;
+  el.innerHTML = n ? `<div class="data-banner"><span>⚠ <b>${n} transfer${n > 1 ? 's' : ''} need${n > 1 ? '' : 's'} attention.</b>
+    ${n > 1 ? 'They don\'t' : 'It doesn\'t'} form a proper pair, so account balances may be off.</span>
+    <button class="btn btn-ghost btn-sm" onclick="openDataCheck()">Review</button></div>` : '';
+}
+
 function renderTransactions() {
+  renderDataBanner();
   populateCurrencyFilter();
   populateAccountFilter();
   // You search because you don't remember when it was, so a search looks
@@ -6439,6 +6633,7 @@ function renderStatement() {
         <div>Generated ${stamp}</div>
       </div>
     </div>
+    ${pairProblems().length ? `<div class="stmt-flag">⚠ ${pairProblems().length} transfer${pairProblems().length > 1 ? 's don\'t' : ' doesn\'t'} form a proper pair. The balances below count ${pairProblems().length > 1 ? 'them' : 'it'} as recorded; fix ${pairProblems().length > 1 ? 'them' : 'it'} under Transactions → Review.</div>` : ''}
     ${mk === localYM() ? `<div class="stmt-flag">${label} isn't over yet, so these figures will change as you add transactions.</div>`
       : mk > localYM() ? `<div class="stmt-flag">${label} hasn't started yet.</div>` : ''}`;
 
@@ -8081,7 +8276,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
-    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement();
+    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck();
     ['account-modal','confirm-modal'].forEach(id=>document.getElementById(id).classList.remove('open'));
   }
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openTxnModal(); }
@@ -8544,6 +8739,7 @@ async function snLoadAll() {
     // Retag legacy transfers now that their real category is known.
     const retagged = migrateTransferCategories();
     if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
+    fillTransferPeers();
     await runRecurring();
     state.lastSync = new Date().toISOString();
     state.syncFailed = false;

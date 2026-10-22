@@ -14,6 +14,7 @@ const path = require('path');
 const SUITES = [
   'budget-invariants.test.js',   // the money maths every page depends on
   'bills-and-alerts.test.js',    // the bills checklist and the alert rules
+  'data-integrity.test.js',      // transfer pairs: never broken, never hidden
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 
