@@ -21,11 +21,12 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
-SUPABASE_URL = 'https://oqsqfrpblinvsizitmgl.supabase.co'
+SUPABASE_URL = os.environ.get('PFMT_SUPABASE_URL', 'https://oqsqfrpblinvsizitmgl.supabase.co')
 KC_SERVICE   = 'pfmt-supabase-backup'
 KC_ACCOUNT   = 'service_role'
 TABLES       = ['accounts', 'transactions', 'budgets', 'goals', 'bills',
@@ -43,8 +44,23 @@ def log(msg):
     print(f'[{datetime.datetime.now():%H:%M:%S}] {msg}', flush=True)
 
 
+# A scheduled run wakes the Mac at 9:00, often before Wi-Fi is back: the runs
+# of 11 and 18 October 2026 both died on their first request ("nodename nor
+# servname provided") and left nothing but a log line. So the network gets
+# about 13 minutes to come up, and a run that still fails says so on screen.
+RETRY_WAITS = [float(x) for x in os.environ.get('PFMT_RETRY_WAITS', '15,30,60,120,240,300').split(',') if x]
+
+
+def notify(title, msg):
+    if sys.platform != 'darwin' or os.environ.get('PFMT_NO_NOTIFY'):
+        return
+    script = f'display notification {json.dumps(msg)} with title {json.dumps(title)} sound name "Basso"'
+    subprocess.run(['osascript', '-e', script], capture_output=True)
+
+
 def fail(msg):
     log('ERROR: ' + msg)
+    notify('PFMT backup failed', msg)
     sys.exit(1)
 
 
@@ -63,9 +79,20 @@ def get(key, table, params):
     if key.startswith('eyJ'):
         headers['Authorization'] = 'Bearer ' + key
     url = f'{SUPABASE_URL}/rest/v1/{table}?' + urllib.parse.urlencode(params)
-    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as r:
-        total = r.headers.get('Content-Range', '*/*').split('/')[-1]
-        return json.load(r), (int(total) if total.isdigit() else None)
+    last = None
+    for wait in [0] + RETRY_WAITS:
+        if wait:
+            log(f'  Supabase not reachable yet ({last.reason if hasattr(last, "reason") else last}) — retrying in {wait:g}s')
+            time.sleep(wait)
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as r:
+                total = r.headers.get('Content-Range', '*/*').split('/')[-1]
+                return json.load(r), (int(total) if total.isdigit() else None)
+        except urllib.error.HTTPError:
+            raise                      # Supabase answered: retrying won't change it
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last = e
+    raise last if isinstance(last, urllib.error.URLError) else urllib.error.URLError(last)
 
 
 def fetch_table(key, table):
@@ -108,6 +135,11 @@ def main():
     final = os.path.join(BACKUP_DIR, today)
     stage = final + '.partial'
     shutil.rmtree(stage, ignore_errors=True)
+    # Folders a failed run left half-written on earlier days.
+    for d in os.listdir(BACKUP_DIR) if os.path.isdir(BACKUP_DIR) else []:
+        if d.endswith('.partial') and d != today + '.partial':
+            shutil.rmtree(os.path.join(BACKUP_DIR, d), ignore_errors=True)
+            log(f'  removed the unfinished {d}')
     os.makedirs(stage)
 
     counts, per_user = {}, {}
