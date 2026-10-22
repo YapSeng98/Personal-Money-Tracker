@@ -462,6 +462,61 @@
       Object.assign(state, keep);
       renderAll();
 
+      // ── USDT and crypto accounts ────────────────────────────────────────
+      ok(['txn-currency', 'budget-currency', 'bill-currency', 'goal-currency', 'acc-currency', 'sp-currency', 'currency-select']
+           .every(id => $('#' + id) && [...$('#' + id).options].some(o => (o.value || o.textContent) === 'USDT')), 'usdt: every currency picker offers USDT');
+      ok(fmtWithCur(1234.5, 'USDT') === 'USDT 1,234.50' && fmtSigned(-3, 'USDT') === '-USDT 3.00', 'usdt: amounts read "USDT 1,234.50"', fmtWithCur(1234.5, 'USDT'));
+      ok(fmtWithCur(5, 'XYZ') === 'XYZ 5.00', 'usdt: any other code gets a space before the amount too');
+      openAccountModal();
+      $('#acc-name').value = 'OKX Wallet'; $('#acc-balance').value = '0'; $('#acc-currency').value = 'USDT';
+      await saveAccount();
+      const okx = state.accounts.find(a => a.name === 'OKX Wallet');
+      ok(okx && okx.currency === 'USDT', 'usdt: a USDT account can be created');
+      openTxnModal(); setType('transfer', $('#tab-transfer'));
+      setSelectVal('txn-account', 'DBS Checking'); $('#txn-currency').value = 'SGD';
+      $('#txn-amount').value = '135'; $('#txn-desc').value = 'Buy USDT'; $('#txn-date').value = M0 + '-06';
+      populateToAccounts('OKX Wallet'); updateTransferUI(); $('#txn-amount-recv').value = '100';
+      await saveTransaction(); await wait(20);
+      const buy = state.transactions.filter(t => t.description === 'Buy USDT');
+      const bOut = buy.find(t => t.type === 'expense'), bIn = buy.find(t => t.type === 'income');
+      ok(buy.length === 2 && bOut.currency === 'SGD' && bOut.amount === 135 && bIn.currency === 'USDT' && bIn.amount === 100,
+         'usdt: buying USDT with SGD is saved as a cross-currency transfer', JSON.stringify(buy.map(t => [t.type, t.amount, t.currency])));
+      ok(near(effectiveBal(okx), 100), 'usdt: the wallet holds 100 USDT', effectiveBal(okx));
+      openStatement(M0);
+      ok(/Tether \(USDT\)/.test($('#stmt-paper').textContent) && /OKX Wallet/.test($('#stmt-paper').textContent), 'usdt: the statement has a USDT section with the wallet');
+      closeStatement();
+      ok($$('#monthly-summary .msum-code').some(c => c.textContent === 'USDT'), 'usdt: Monthly In & Out shows USDT on its own');
+
+      // Switching an existing account (say BingX, kept in USD) to USDT.
+      const accId = crypto.randomUUID(), uA = crypto.randomUUID(), uB = crypto.randomUUID();
+      state.accounts.push({ id: accId, name: 'BingX Old', type: 'Savings', institution: 'BingX', balance: 0, currency: 'USD', icon: '💳' });
+      state.transactions.push(leg({ id: uA, date: M1 + '-10', type: 'income', amount: 300, currency: 'USD', account: 'BingX Old', description: 'Deposit', category: 'Investment' }),
+                              leg({ id: uB, date: M1 + '-12', type: 'expense', amount: 95.92, currency: 'USD', account: 'BingX Old', description: 'Fee', category: 'Other' }));
+      const bxBefore = effectiveBal(state.accounts.find(a => a.id === accId));
+      state.userId = 'test-user'; state.outbox = []; window.__sb.calls.length = 0;
+      openAccountModal(accId); $('#acc-currency').value = 'USDT';
+      let saving = saveAccount(); await wait(10);
+      ok($('#confirm-modal').classList.contains('open') && /2 transactions/.test($('#confirm-msg').textContent), 'account: switching to USDT asks to relabel its transactions');
+      confirmResolve(false); await saving;
+      ok(state.accounts.find(a => a.id === accId).currency === 'USD', 'account: saying no leaves the account as it was');
+      openAccountModal(accId); $('#acc-currency').value = 'USDT';
+      saving = saveAccount(); await wait(10);
+      $('#confirm-ok-btn').click(); await saving; await flushOutbox();
+      const bx = state.accounts.find(a => a.id === accId);
+      ok(bx.currency === 'USDT' && state.transactions.filter(t => t.account === 'BingX Old').every(t => t.currency === 'USDT'), 'account: its transactions move to USDT with it');
+      ok(near(effectiveBal(bx), bxBefore), 'account: the balance carries over unchanged', `${effectiveBal(bx)} vs ${bxBefore}`);
+      ok(window.__sb.calls.filter(c => c.op === 'update' && c.patch && c.patch.currency === 'USDT').length >= 2, 'account: ...and the server is told about every row');
+      openAccountModal(accId); $('#acc-name').value = 'BingX Main'; window.__sb.calls.length = 0;
+      await saveAccount(); await flushOutbox();
+      ok(state.transactions.filter(t => t.account === 'BingX Main').length === 2 && near(effectiveBal(state.accounts.find(a => a.id === accId)), bxBefore),
+         'account: renaming keeps its history and balance');
+      ok(window.__sb.calls.filter(c => c.op === 'update' && c.patch && c.patch.account === 'BingX Main').length === 2,
+         'account: ...on the server too (a rename used to change this device only)');
+      state.userId = null; state.outbox = [];
+      state.accounts = state.accounts.filter(a => a.id !== accId && a.name !== 'OKX Wallet');
+      state.transactions = state.transactions.filter(t => t.account !== 'BingX Main' && t.description !== 'Buy USDT');
+      renderAll();
+
       // ── Every page still renders, in both languages ─────────────────────
       ['dashboard', 'transactions', 'budgets', 'bills', 'goals', 'analytics', 'accounts', 'settings'].forEach(v => {
         try { nav(v); ok($('#view-' + v).classList.contains('active'), `page: ${v} opens`); }

@@ -1142,7 +1142,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <div class="form-group">
               <label class="form-label">Currency</label>
               <select class="form-input" id="sp-currency" onchange="onSalaryPlannerCurrencyChange()">
-                <option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option>
+                <option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option><option value="USDT">USDT</option>
               </select>
             </div>
             <div class="form-group">
@@ -1404,7 +1404,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <div class="profile-stat"><div class="profile-stat-val" id="prof-stat-goals">—</div><div class="profile-stat-lbl">Active Goals</div></div>
           </div>
           <!-- Editable preferences -->
-          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();syncPreferencesToSN();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:90px;padding:6px 10px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();syncPreferencesToSN();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>USDT</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 10px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" id="toggle-budget-alerts" onclick="toggleSetting('budgetAlerts',this)"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" id="toggle-now-assist" onclick="toggleSetting('nowAssist',this)"></div></div>
@@ -1744,6 +1744,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
           <option value="MYR">MYR</option>
+          <option value="USDT">USDT</option>
         </select>
       </div>
     </div>
@@ -1817,6 +1818,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
           <option value="MYR">MYR</option>
+          <option value="USDT">USDT</option>
         </select>
       </div>
     </div>
@@ -1864,7 +1866,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <label class="form-label">Currency</label>
         <select class="form-input" id="bill-currency">
           <option value="SGD">SGD</option><option value="USD">USD</option>
-          <option value="AUD">AUD</option><option value="MYR">MYR</option>
+          <option value="AUD">AUD</option><option value="MYR">MYR</option><option value="USDT">USDT</option>
         </select>
       </div>
     </div>
@@ -1940,6 +1942,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
           <option value="MYR">MYR</option>
+          <option value="USDT">USDT</option>
         </select>
       </div>
     </div>
@@ -1985,7 +1988,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
-      <div class="form-group"><label class="form-label">Currency</label><select class="form-input" id="acc-currency"><option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option></select></div>
+      <div class="form-group"><label class="form-label">Currency</label><select class="form-input" id="acc-currency"><option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option><option value="USDT">USDT</option></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Balance</label><div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="acc-balance" placeholder="0.00"></div></div>
@@ -4036,6 +4039,20 @@ async function saveAccount() {
     const idx = state.accounts.findIndex(a => a.id == _editingAccountId);
     if (idx !== -1) {
       const prevName = state.accounts[idx].name;
+      const prevCur  = state.accounts[idx].currency || state.currency;
+      // A balance counts only rows in the account's own currency, so switching
+      // an account (say BingX from USD to USDT) without its rows would drop its
+      // whole history from the balance. Relabel them too, or don't save.
+      const oldRows = state.transactions.filter(txn => txn.account === prevName && (txn.currency || state.currency) === prevCur);
+      if (prevCur !== currency && oldRows.length) {
+        const go = await showConfirm(`Move ${prevName}'s transactions to ${currency}?`,
+          `${oldRows.length} transaction${oldRows.length > 1 ? 's are' : ' is'} recorded in ${prevCur}. They'll be relabelled ${currency} so they keep counting toward this account's balance. Amounts stay as they are; only the currency changes.`,
+          `Relabel to ${currency}`, 'btn-primary');
+        if (!go) return;
+      }
+      const touched = new Map();
+      const touch = (txn, patch) => touched.set(txn, Object.assign(touched.get(txn) || {}, patch));
+      if (prevCur !== currency) oldRows.forEach(txn => { txn.currency = currency; touch(txn, { currency }); });
       state.accounts[idx] = { ...state.accounts[idx], name, type, institution, balance, icon, currency };
       // Transactions and linked goals point at an account by NAME. Without
       // repointing them here a rename silently detached the account's entire
@@ -4043,8 +4060,14 @@ async function saveAccount() {
       // tracking it stopped updating, with nothing on screen to say why.
       if (prevName && prevName !== name) {
         state.transactions.forEach(txn => {
-          if (txn.account === prevName)      txn.account = name;
-          if (txn.transferPeer === prevName) txn.transferPeer = name;
+          if (txn.account === prevName)      { txn.account = name;      touch(txn, { account: name }); }
+          if (txn.transferPeer === prevName) { txn.transferPeer = name; touch(txn, { transfer_peer: name }); }
+        });
+        // Bills find their payment by account name too.
+        (state.bills || []).forEach(b => {
+          if (b.account !== prevName) return;
+          b.account = name;
+          if (state.userId && b.id) dbUpdate('bills', b.id, { account: name });
         });
         state.goals.forEach(g => {
           if (g.linkedAccount !== prevName) return;
@@ -4056,6 +4079,12 @@ async function saveAccount() {
           }
         });
       }
+      // These used to change on this device only: after a reload the server's
+      // rows still named the old account, and the history detached again.
+      touched.forEach((patch, txn) => {
+        const tRid = _snId(txn);
+        if (state.userId && tRid) dbUpdate('transactions', tRid, patch);
+      });
       const rid = _snId(state.accounts[idx]);
       if (state.userId && rid) {
         dbUpdate('accounts', rid, dbPayload)
@@ -4101,8 +4130,11 @@ async function deleteAccount(id) {
 // ═══════════════════════════════════════════════
 const fmt = n => '$' + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const CUR_SYM = { SGD:'S$', USD:'$', AUD:'A$', MYR:'RM' };
-const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cur || '$'); return s + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
+// Every currency the app offers. USDT is a stablecoin, tracked like any other
+// currency: its own accounts and balances, never converted.
+const CURRENCIES = ['SGD', 'USD', 'AUD', 'MYR', 'USDT'];
+const CUR_SYM = { SGD:'S$', USD:'$', AUD:'A$', MYR:'RM', USDT:'USDT ' };
+const fmtWithCur = (n, cur) => { const s = CUR_SYM[cur || state.currency] || (cur ? cur + ' ' : '$'); return s + Math.abs(n).toLocaleString('en-SG', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
 // fmtWithCur() strips the sign via Math.abs(), which suits callers that supply
 // their own +/- prefix but silently turns a negative balance positive. Use this
 // wherever a bare, possibly-negative figure is shown or sent to the model.
@@ -6698,7 +6730,7 @@ function renderMonthlySummary() {
 // that table. Account balances are carried through the month by
 // txnBalanceEffect(), which is effectiveBal()'s rule applied one row at a time.
 let _stmtMonth = null;
-const CUR_NAME = { SGD:'Singapore dollar', MYR:'Malaysian ringgit', USD:'US dollar', AUD:'Australian dollar' };
+const CUR_NAME = { SGD:'Singapore dollar', MYR:'Malaysian ringgit', USD:'US dollar', AUD:'Australian dollar', USDT:'Tether (USDT)' };
 
 function txnBalanceEffect(t) {
   if (t.type === 'expense') return -t.amount;
