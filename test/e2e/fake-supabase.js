@@ -1,9 +1,12 @@
-// A stand-in for supabase-js in the browser tests. Nothing touches the network:
-// every query is recorded in window.__sb.calls, selects come back empty, and
-// window.__sb.failWrites = true makes inserts, updates and deletes fail the way
-// a dropped connection does — so the tests can prove nothing is lost.
+// A stand-in for supabase-js in the browser tests. Nothing touches the network.
+//   window.__sb.calls       every query, in order
+//   window.__sb.tables      rows the "server" holds, returned by selects
+//                           (range() pages through them, maybeSingle() gives one)
+//   window.__sb.failWrites  true: writes fail the way a dropped connection does
+//   window.__sb.failWith    an error object: writes are refused with it, the way
+//                           a database constraint refuses a row
 (function () {
-  const sb = window.__sb = { calls: [], failWrites: false };
+  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {} };
   function query(table) {
     const q = { table, op: 'select', filters: [] };
     const target = {
@@ -14,9 +17,20 @@
       select() { return api; },
       then(resolve, reject) {
         sb.calls.push(q);
-        const fail = sb.failWrites && q.op !== 'select';
-        const res = fail ? { data: null, error: { message: 'Failed to fetch' } }
-                         : { data: q.op === 'select' ? [] : null, error: null };
+        let res;
+        if (q.op === 'select') {
+          let rows = (sb.tables[table] || []).slice();
+          const range = q.filters.find(f => f[0] === 'range');
+          if (range) rows = rows.slice(range[1][0], range[1][1] + 1);
+          const one = q.filters.some(f => f[0] === 'maybeSingle' || f[0] === 'single');
+          res = { data: one ? (rows[0] || null) : rows, error: null };
+        } else if (sb.failWith) {
+          res = { data: null, error: sb.failWith };
+        } else if (sb.failWrites) {
+          res = { data: null, error: { message: 'Failed to fetch', code: '' } };
+        } else {
+          res = { data: null, error: null };
+        }
         return Promise.resolve(res).then(resolve, reject);
       }
     };

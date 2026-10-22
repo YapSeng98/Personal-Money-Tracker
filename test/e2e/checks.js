@@ -362,7 +362,7 @@
       state.userId = 'test-user'; window.__sb.calls.length = 0;
       await saveTransferPair({ amt: 50, recvAmt: 50, desc: 'Peer test', cat: 'Transfer', from: 'DBS Checking', to: 'OCBC Savings',
                                fromCur: 'SGD', toCur: 'SGD', date: M0 + '-05', notes: '' });
-      const sent = window.__sb.calls.filter(c => c.op === 'insert' && c.row && c.row.description === 'Peer test');
+      const sent = window.__sb.calls.filter(c => c.op === 'upsert' && c.row && c.row.description === 'Peer test');
       ok(sent.length === 2 && sent.find(c => c.row.type === 'expense').row.transfer_peer === 'OCBC Savings'
          && sent.find(c => c.row.type === 'income').row.transfer_peer === 'DBS Checking', 'sync: a new transfer sends each side\'s other account');
       const u1 = crypto.randomUUID(), u2 = crypto.randomUUID();
@@ -370,11 +370,96 @@
                               leg({ id: u2, date: M1 + '-07', type: 'income', amount: 9, account: 'OCBC Savings', description: 'Old pair', transferGroup: 'tg_old', transferPeer: '' }));
       window.__sb.calls.length = 0;
       ok(fillTransferPeers() >= 2, 'sync: pairs saved without their other account are repaired');
-      await wait(10);
+      await flushOutbox();
       const peerFix = window.__sb.calls.filter(c => c.op === 'update' && c.patch && 'transfer_peer' in c.patch);
       ok(peerFix.length >= 2 && peerFix.some(c => c.patch.transfer_peer === 'OCBC Savings'), 'sync: ...and the server is told', JSON.stringify(peerFix.map(c => c.patch)));
       state.userId = null;
       state.transactions = state.transactions.filter(t => t.description !== 'Peer test' && t.transferGroup !== 'tg_old');
+      renderAll();
+
+      // ── Never lose a change: the outbox ─────────────────────────────────
+      // A reload here is the real load path (snLoadAll) against a fake server
+      // holding window.__sb.tables, so "refresh the page" is tested as it runs.
+      const keep = { transactions: state.transactions.slice(), accounts: state.accounts.slice(), budgets: state.budgets.slice(),
+                     goals: state.goals.slice(), bills: (state.bills || []).slice(), reviewMonth: state.reviewMonth, filterMonth: state.filterMonth };
+      fillTransferPeers();   // signed out, so local only: the fake server then holds complete pairs
+      const asServer = t => ({ id: String(t.id), user_id: 'test-user', type: t.type, amount: t.amount, description: t.description,
+        category: t.category, account: t.account, date: t.date, notes: t.notes || '', currency: t.currency,
+        transfer_group: t.transferGroup || null, transfer_peer: t.transferPeer || null, created_at: '2026-01-01T00:00:00Z' });
+      const server = window.__sb.tables = { transactions: state.transactions.map(asServer), accounts: [], budgets: [], goals: [], bills: [], preferences: [], backups: [] };
+      const reload = async () => { await snLoadAll(); renderAll(); };
+      const addViaForm = async (desc, amount) => {
+        openTxnModal(); setType('expense', $('#tab-expense'));
+        $('#txn-amount').value = String(amount); $('#txn-desc').value = desc; $('#txn-date').value = M1 + '-20';
+        setSelectVal('txn-account', 'DBS Checking'); $('#txn-currency').value = 'SGD'; setSelectVal('txn-cat', 'Food & Drink');
+        await saveTransaction(); await wait(20);
+        return state.transactions.find(t => t.description === desc);
+      };
+      state.userId = 'test-user'; state.outbox = []; state.outboxRejected = [];
+      state.accounts = keep.accounts;
+
+      window.__sb.failWrites = true;
+      const offline = await addViaForm('Offline lunch', 12.34);
+      ok(offline && outbox().length === 1 && outbox()[0].kind === 'upsert', 'outbox: a change made offline is kept and queued', JSON.stringify(outbox().map(o => o.kind)));
+      ok(!$('#sync-badge').hidden && /1 not synced/.test($('#sync-badge').textContent), 'outbox: the badge says one change is waiting', $('#sync-badge').textContent);
+      nav('transactions'); state.filterMonth = M1;
+      ['filter-period', 'filter-type', 'filter-cat', 'filter-cur', 'filter-acc', 'search-input'].forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
+      renderTransactions();
+      ok($$('#all-txns .txn-row').some(r => /Offline lunch/.test(r.textContent) && /Not synced/.test(r.textContent)), 'outbox: the row itself is marked not synced');
+      state.accounts = []; await reload(); state.accounts = keep.accounts;
+      ok(state.transactions.some(t => t.id === offline.id), 'outbox: it survives a reload that replaces everything with the server copy');
+      ok(state.transactions.length === server.transactions.length + 1, 'outbox: ...and every other row comes from the server', `${state.transactions.length} vs ${server.transactions.length + 1}`);
+      window.__sb.failWrites = false; window.__sb.calls.length = 0;
+      await flushOutbox();
+      const ups = window.__sb.calls.filter(c => c.op === 'upsert' && c.row && c.row.id === offline.id);
+      ok(ups.length === 1 && outbox().length === 0, 'outbox: back online, it is sent exactly once', ups.length);
+      ok($('#sync-badge').hidden, 'outbox: the badge clears');
+      server.transactions.push(asServer(offline));
+
+      window.__sb.failWrites = true;
+      openTxnModal(offline.id); $('#txn-amount').value = '15'; await saveTransaction(); await wait(20);
+      ok(outbox().length === 1 && outbox()[0].kind === 'update', 'outbox: an edit made offline is queued');
+      window.__sb.failWrites = false; window.__sb.calls.length = 0;
+      window.dispatchEvent(new Event('online')); await wait(50); await flushOutbox();
+      ok(window.__sb.calls.some(c => c.op === 'update' && c.patch && c.patch.amount === 15) && outbox().length === 0, 'outbox: coming back online sends what was waiting');
+
+      deleteTransaction(offline.id); await wait(10); $('#confirm-ok-btn').click(); await wait(20);
+      ok(!state.transactions.some(t => t.id === offline.id) && outbox().some(o => o.kind === 'delete' && o.rowId === offline.id && o.notBefore > Date.now()),
+         'delete: queued at once, to be sent when the undo window ends');
+      state.accounts = []; await reload(); state.accounts = keep.accounts;
+      ok(!state.transactions.some(t => t.id === offline.id), 'delete: refreshing inside the undo window doesn\'t bring the row back');
+      outbox().forEach(o => { o.notBefore = 0; }); window.__sb.calls.length = 0;
+      await flushOutbox();
+      ok(window.__sb.calls.filter(c => c.op === 'delete').length === 1 && outbox().length === 0, 'delete: then it reaches the server, once');
+      server.transactions = server.transactions.filter(t => t.id !== offline.id); window.__sb.tables = server;
+
+      const undoMe = await addViaForm('Undo me', 7);
+      server.transactions.push(asServer(undoMe));
+      deleteTransaction(undoMe.id); await wait(10); $('#confirm-ok-btn').click(); await wait(20);
+      _runPendingUndo(); window.__sb.calls.length = 0; await flushOutbox();
+      ok(state.transactions.some(t => t.id === undoMe.id) && !outbox().some(o => o.kind === 'delete') && !window.__sb.calls.some(c => c.op === 'delete'),
+         'undo: brings the row back and cancels the queued delete');
+
+      window.__sb.failWith = { code: '23514', message: 'new row violates check constraint "transactions_currency_check"' };
+      await addViaForm('Refused row', 9); await flushOutbox();
+      ok(rejectedWrites().length === 1 && $('#sync-badge').classList.contains('bad') && /not saved/.test($('#sync-badge').textContent),
+         'refused: a change the server refuses is kept and flagged', $('#sync-badge').textContent);
+      $('#sync-badge').click(); await wait(10);
+      ok($('#syncprob-modal').classList.contains('open') && /currency_check/.test($('#syncprob-list').textContent), 'refused: the dialog gives the server\'s reason');
+      window.__sb.failWith = null;
+      $$('#syncprob-list button').find(b => /Try again/.test(b.textContent)).click(); await wait(30); await flushOutbox();
+      ok(rejectedWrites().length === 0 && outbox().length === 0, 'refused: Try again sends it once the problem is fixed');
+      closeSyncProblems();
+      window.__sb.failWith = { code: '23514', message: 'refused again' };
+      await addViaForm('Discard me', 3); await flushOutbox();
+      $('#sync-badge').click(); await wait(10);
+      $$('#syncprob-list button').find(b => /Discard/.test(b.textContent)).click(); await wait(50);
+      ok(!state.transactions.some(t => t.description === 'Discard me') && rejectedWrites().length === 0 && $('#sync-badge').hidden,
+         'refused: Discard goes back to the server copy');
+
+      window.__sb.failWith = null; window.__sb.failWrites = false; window.__sb.tables = {};
+      state.userId = null; state.outbox = []; state.outboxRejected = [];
+      Object.assign(state, keep);
       renderAll();
 
       // ── Every page still renders, in both languages ─────────────────────

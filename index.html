@@ -574,6 +574,9 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .type-tab{white-space:nowrap;min-width:0;padding:8px 4px;}
 .type-tab:disabled{opacity:.35;cursor:not-allowed;}
 /* Data check: broken transfer or asset pairs, never hidden, always fixable. */
+.sync-badge{background:var(--amber-s);color:var(--amber);border:1px solid var(--amber);font-weight:700;}
+.sync-badge.bad{background:var(--coral-s);color:var(--coral);border-color:var(--coral);}
+.pending-chip{background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;}
 .pair-warn{border:none;cursor:pointer;background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;}
 .data-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:12px;background:var(--amber-s);color:var(--ink);font-size:12.5px;}
 .data-banner b{color:var(--amber);}
@@ -1021,6 +1024,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <div class="topbar-title" id="topbar-title">Dashboard</div>
     </div>
     <div class="topbar-actions">
+      <button class="btn btn-sm sync-badge" id="sync-badge" onclick="onSyncBadge()" hidden></button>
       <button class="btn btn-ghost btn-sm" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch theme" style="min-width:34px;">🌙</button>
       <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
       <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
@@ -1592,6 +1596,20 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   <button class="bnav-item" data-bview="goals" onclick="showView('goals')"><span class="bnav-ico">🎯</span><span class="bnav-lbl" data-bkey="bnav_goals">Goals</span></button>
   <button class="bnav-item" data-bview="analytics" onclick="showView('analytics')"><span class="bnav-ico">📈</span><span class="bnav-lbl" data-bkey="bnav_review">Stats</span></button>
 </nav>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHANGES THE SERVER REFUSED                   -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="syncprob-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="syncprob-title">
+    <div class="modal-header">
+      <div class="modal-title" id="syncprob-title">Changes not saved</div>
+      <button class="modal-close" onclick="closeSyncProblems()" aria-label="Close">✕</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin:-10px 0 14px;">The server refused these. They're still shown on this device. Try again, or discard your change to go back to the server's copy.</p>
+    <div id="syncprob-list"></div>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════════════ -->
 <!-- DATA CHECK                                   -->
@@ -2360,6 +2378,8 @@ function saveState() {
       filterMonth: state.filterMonth,
       geminiKey: state.geminiKey,
       aiModel: state.aiModel,
+      outbox: state.outbox || [],
+      outboxRejected: state.outboxRejected || [],
       budgetCur: state.budgetCur,
       lastSync: state.lastSync,
       currency: state.currency,
@@ -3066,17 +3086,189 @@ function _snId(item) {
 }
 
 function newId() { return crypto.randomUUID(); }
+
+// ── Outbox: every write stays on this device until the server has it ──
+// A change is applied locally and queued here, then sent: straight away, and
+// again when the connection comes back, when the app returns to the
+// foreground, every 30 seconds while anything waits, and on every load. A
+// reload merges the server's copy with what is still queued (mergeWithOutbox)
+// instead of replacing it, so a change that hadn't landed is never lost and a
+// deleted row can't come back. New rows go up as upserts: retrying one that
+// did land after all can never create a duplicate.
+function outbox() { return state.outbox || (state.outbox = []); }
+function rejectedWrites() { return state.outboxRejected || (state.outboxRejected = []); }
+
+// The server refused the write itself (a constraint, a missing column): no
+// retry can help, so it waits in rejectedWrites() for the user to decide.
+// Everything else (offline, a timeout, an expired login) is retried.
+function isPermanentDbError(e) {
+  const code = String((e && e.code) || '');
+  return /^(22|23|42)[0-9A-Z]{3}$/.test(code) || /^PGRST[12]\d\d$/.test(code);
+}
+
+// A later write to the same row folds into the one still waiting; a delete
+// replaces whatever was queued for its row. A deferred delete (the undo window)
+// leaves earlier writes alone until it is settled, so Undo loses nothing.
+function enqueueWrite(table, kind, rowId, payload, notBefore) {
+  const id = String(rowId);
+  if (kind === 'delete' && !notBefore) {
+    state.outbox = outbox().filter(o => !(o.table === table && o.rowId === id && !o.sending && o.kind !== 'delete'));
+  } else if (kind !== 'delete') {
+    const prev = outbox().find(o => o.table === table && o.rowId === id && o.kind !== 'delete' && !o.sending);
+    if (prev) {
+      prev.payload = Object.assign({}, prev.payload, payload);
+      if (kind === 'upsert') prev.kind = 'upsert';
+      saveState();
+      return prev;
+    }
+  }
+  const op = { opId: newId(), table, kind, rowId: id, payload: payload || null, userId: state.userId,
+               notBefore: notBefore || 0, tries: 0 };
+  outbox().push(op);
+  saveState();
+  renderSyncBadge();
+  return op;
+}
+
+let _flushing = null, _flushAgain = false;
+function flushOutbox() {
+  // Asked again mid-run (back online while a doomed attempt is still out):
+  // run once more as soon as this one ends, and let the caller wait for that.
+  if (_flushing) { _flushAgain = true; return _flushing.then(() => _flushing); }
+  _flushing = (async () => {
+    // Yield once first. A run with nothing to send would otherwise finish, and
+    // clear _flushing, before the assignment above had even happened, leaving
+    // a settled promise in _flushing that made every later flush a no-op.
+    await Promise.resolve();
+    try {
+      for (;;) {
+        if (!state.userId || (typeof navigator !== 'undefined' && navigator.onLine === false)) break;
+        const now = Date.now();
+        const op = outbox().find(o => o.userId === state.userId && !(o.notBefore > now));
+        if (!op) break;
+        op.sending = true;
+        let error = null;
+        try {
+          const q = sb.from(op.table);
+          const res = op.kind === 'upsert' ? await q.upsert(op.payload)
+                    : op.kind === 'update' ? await q.update(op.payload).eq('id', op.rowId)
+                    : await q.delete().eq('id', op.rowId);
+          error = res && res.error;
+        } catch (e) { error = e; }
+        op.sending = false;
+        if (!error) { state.outbox = outbox().filter(o => o !== op); saveState(); continue; }
+        op.tries++;
+        op.lastError = error.message || String(error);
+        if (isPermanentDbError(error)) {
+          state.outbox = outbox().filter(o => o !== op);
+          rejectedWrites().push(op);
+          saveState();
+          continue;
+        }
+        saveState();
+        break;   // offline or a server hiccup: keep the order, try again later
+      }
+    } finally {
+      _flushing = null;
+      renderSyncBadge();
+      if (_flushAgain) { _flushAgain = false; flushOutbox(); }
+    }
+  })();
+  return _flushing;
+}
+
+// Server rows win, except where this device still has a change on its way: a
+// row with a queued (or refused) insert or update keeps its local version, and
+// a row queued for deletion stays gone.
+function mergeWithOutbox(table, serverRows, localRows) {
+  const ops = [...outbox(), ...rejectedWrites()].filter(o => o.table === table && o.userId === state.userId);
+  if (!ops.length) return serverRows;
+  const gone = new Set(ops.filter(o => o.kind === 'delete').map(o => o.rowId));
+  const kept = new Set(ops.filter(o => o.kind !== 'delete' && !gone.has(o.rowId)).map(o => o.rowId));
+  const local = new Map((localRows || []).map(r => [String(r.id), r]));
+  const out = serverRows.filter(r => !gone.has(String(r.id)) && !kept.has(String(r.id)));
+  kept.forEach(id => {
+    const row = local.get(id) || serverRows.find(r => String(r.id) === id);
+    if (row) out.push(row);
+  });
+  return out;
+}
+
+function pendingRowIds(table) {
+  return new Set(outbox().filter(o => o.table === table && o.userId === state.userId).map(o => o.rowId));
+}
+
+function renderSyncBadge() {
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  const pending  = outbox().filter(o => o.userId === state.userId).length;
+  const refused  = rejectedWrites().filter(o => o.userId === state.userId).length;
+  if (!state.userId || (!pending && !refused)) { el.hidden = true; return; }
+  el.hidden = false;
+  el.className = 'btn btn-sm sync-badge' + (refused ? ' bad' : '');
+  el.textContent = refused ? `⚠ ${refused} change${refused > 1 ? 's' : ''} not saved` : `⟳ ${pending} not synced`;
+  el.title = refused ? 'The server refused these changes. Tap to see them.'
+                     : 'Saved on this device and waiting to be sent. Tap to send now.';
+}
+
+function onSyncBadge() {
+  if (rejectedWrites().some(o => o.userId === state.userId)) { openSyncProblems(); return; }
+  flushOutbox().then(() => {
+    const n = outbox().filter(o => o.userId === state.userId).length;
+    showToast(n ? `Still can't reach the server — ${n} change${n > 1 ? 's are' : ' is'} kept on this device`
+                : 'All changes synced', n ? 'warning' : 'success');
+  });
+}
+
+function openSyncProblems() {
+  const list = document.getElementById('syncprob-list');
+  const mine = rejectedWrites().filter(o => o.userId === state.userId);
+  list.innerHTML = mine.length ? mine.map(o => {
+    const row = (state[o.table] || []).find(r => String(r.id) === o.rowId);
+    const what = row ? esc(row.description || row.name || row.category || o.rowId) : esc(o.rowId);
+    return `<div class="dc-item"><div class="dc-why">⚠ ${esc(o.lastError || 'Refused by the server')}</div>
+      <div class="dc-leg"><span>${o.kind === 'delete' ? 'Delete' : o.kind === 'update' ? 'Change to' : 'New'} ${o.table.replace(/s$/, '')}: ${what}</span></div>
+      <div class="dc-actions"><button class="btn btn-ghost btn-sm" onclick="retryRejected('${o.opId}')">Try again</button>
+      <button class="btn btn-sm" style="background:var(--coral);color:#fff" onclick="discardRejected('${o.opId}')">Discard my change</button></div></div>`;
+  }).join('') : '<div class="empty"><div class="icon">✅</div><p>Nothing is waiting.</p></div>';
+  document.getElementById('syncprob-modal').classList.add('open');
+}
+function closeSyncProblems() { document.getElementById('syncprob-modal').classList.remove('open'); }
+function retryRejected(opId) {
+  const op = rejectedWrites().find(o => o.opId === opId);
+  if (!op) return;
+  state.outboxRejected = rejectedWrites().filter(o => o !== op);
+  op.notBefore = 0;
+  outbox().push(op);
+  saveState();
+  flushOutbox().then(openSyncProblems);
+}
+// Gives up on the change and takes the server's copy back.
+async function discardRejected(opId) {
+  state.outboxRejected = rejectedWrites().filter(o => o.opId !== opId);
+  saveState();
+  renderSyncBadge();
+  closeSyncProblems();
+  await syncNow();
+}
+
+window.addEventListener('online', () => flushOutbox());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushOutbox(); });
+setInterval(() => { if (outbox().length) flushOutbox(); }, 30000);
+
+// Every write goes through the outbox, so none of these ever throws: a change
+// that can't be sent stays queued (and shows in the sync badge) until it can.
 async function dbInsert(table, row) {
-  const { error } = await sb.from(table).insert(row);
-  if (error) throw error;
+  enqueueWrite(table, 'upsert', row.id, row);
+  await flushOutbox();
 }
 async function dbUpdate(table, id, patch) {
-  const { error } = await sb.from(table).update(patch).eq('id', id);
-  if (error) throw error;
+  enqueueWrite(table, 'update', id, patch);
+  await flushOutbox();
 }
 async function dbDelete(table, id) {
-  const { error } = await sb.from(table).delete().eq('id', id);
-  if (error) throw error;
+  enqueueWrite(table, 'delete', id);
+  await flushOutbox();
 }
 
 // Writes the two legs of a transfer and links them with a shared group id so the
@@ -3433,28 +3625,37 @@ async function deleteTransaction(id) {
 // Shared by single delete and bulk delete: the local list updates instantly,
 // and the ServiceNow DELETE calls only actually fire once the undo window
 // in undoToast() passes with no undo — see the UNDO section below.
+const UNDO_MS = 6000;
 function removeTransactionsWithUndo(legs, msg) {
   const snapshot = legs.slice();
   const ids = new Set(legs.map(l => l.id));
   state.transactions = state.transactions.filter(x => !ids.has(x.id));
+  // Queued now and sent when the undo window ends. They used to be sent only
+  // then, so a refresh or a closed app inside the window left the rows on the
+  // server, and they came back on the next load.
+  const ops = state.userId
+    ? snapshot.map(leg => _snId(leg)).filter(Boolean).map(rid => enqueueWrite('transactions', 'delete', rid, null, Date.now() + UNDO_MS))
+    : [];
   saveState();
   renderAll();
   undoToast(msg,
     () => {
+      state.outbox = outbox().filter(o => !ops.includes(o));
       state.transactions.push(...snapshot);
       saveState();
       renderAll();
+      renderSyncBadge();
     },
     () => {
-      if (!state.userId) return;
-      snapshot.forEach(leg => {
-        const rid = _snId(leg);
-        if (rid) {
-          dbDelete('transactions', rid)
-            .catch(e => showToast('Delete: ' + e.message, 'warning'));
-        }
+      // Settled: anything else still queued for these rows is now moot.
+      ops.forEach(op => {
+        op.notBefore = 0;
+        state.outbox = outbox().filter(o => o === op || !(o.table === op.table && o.rowId === op.rowId && o.kind !== 'delete' && !o.sending));
       });
-    }
+      saveState();
+      flushOutbox();
+    },
+    UNDO_MS
   );
 }
 
@@ -4433,6 +4634,7 @@ function renderAll() {
   renderExportSummary();
   _renderProfileView();
   _updateSNConnCard();
+  renderSyncBadge();
   saveState();
 }
 
@@ -4596,8 +4798,10 @@ function dayTotalHTML(rows) {
 
 // showTotals is off by default: the dashboard shows only the latest few rows, so
 // a "day total" there could quietly leave part of the day out.
+let _pendingTxnIds = new Set();
 function txnListByDate(arr, forceBadge = false, showTotals = false, selectMode = false) {
   _brokenPairs = brokenPairMap();
+  _pendingTxnIds = pendingRowIds('transactions');
   const byDate = {};
   sortTxnsDesc(arr).forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
   return Object.keys(byDate).sort((a,b) => b.localeCompare(a))
@@ -4760,7 +4964,8 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
       <div class="txn-body">
         <div class="txn-name">${esc(txn.description)}</div>
         <div class="txn-meta">${route} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span>${problem
-          ? ` · <button type="button" class="pair-warn" onclick="openDataCheck()" title="${esc(problem)}">⚠ Needs attention</button>` : ''}</div>
+          ? ` · <button type="button" class="pair-warn" onclick="openDataCheck()" title="${esc(problem)}">⚠ Needs attention</button>` : ''}${_pendingTxnIds.has(String(txn.id))
+          ? ' · <span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''}</div>
       </div>
       <div class="txn-amt" style="color:${inkC};">${incoming ? '+' : ''}${fmtWithCur(txn.amount, txn.currency)}${(showsPair && diffCur) ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
@@ -4775,7 +4980,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     <div class="txn-ico" style="background:${isPayback?'var(--amber-s)':catBg(txn.category)}">${isPayback?'↩️':catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
-      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : '', _pendingTxnIds.has(String(txn.id)) ? '<span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''].filter(Boolean).join(' · ')}</div>
     </div>
     <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -8276,7 +8481,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
-    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck();
+    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems();
     ['account-modal','confirm-modal'].forEach(id=>document.getElementById(id).classList.remove('open'));
   }
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openTxnModal(); }
@@ -8634,6 +8839,9 @@ async function snLoadAll() {
     const goals    = goalsRes.data    || [];
     const accounts = accountsRes.data || [];
     const pref     = prefRes.data;
+    // What this device holds now, for any row with a change still queued.
+    const localCopy = { transactions: state.transactions, budgets: state.budgets, goals: state.goals,
+                        accounts: state.accounts, bills: state.bills };
 
 
     state.transactions = txns.map(t => ({
@@ -8737,6 +8945,10 @@ async function snLoadAll() {
     }
 
     // Retag legacy transfers now that their real category is known.
+    ['transactions', 'budgets', 'goals', 'accounts', 'bills'].forEach(tbl => {
+      state[tbl] = mergeWithOutbox(tbl, state[tbl] || [], localCopy[tbl]);
+    });
+    flushOutbox();
     const retagged = migrateTransferCategories();
     if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
     fillTransferPeers();
