@@ -1,0 +1,9 @@
+# Personal data: exported backups hold every transaction. Never publish them.
+pfmt_backup_*.json
+*.xlsx
+
+# ServiceNow-era files, kept locally but off the public site
+_archive/
+
+# macOS
+.DS_Store
