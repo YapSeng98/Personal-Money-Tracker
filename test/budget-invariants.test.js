@@ -57,6 +57,7 @@ const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPayb
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal',
   'parseTxnSearch', 'txnMatchesSearch',
   'monthFlowData', 'txnBalanceEffect', 'stmtKind', 'monthsBetween', 'buildStatement', 'stmtNum', 'crc32',
+  'stmtMonthEnd', 'netWorthSeries', 'niceTicks',
   'addDaysStr', 'recurDate', 'recurNextAfter', 'recurHalfWindow', 'recurAlreadyEntered'];
 
 const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
@@ -624,6 +625,24 @@ group('Statement — balances carry through and agree with Monthly In & Out');
   ok(dbs2.lines.length === state.transactions.filter(t => t.account === 'DBS' && t.date < '2026-10').length, 'every DBS row of both months is in the ledger');
   ok(API.monthsBetween('2025-11', '2026-02').join() === '2025-11,2025-12,2026-01,2026-02', 'a range crosses the new year');
   ok(API.crc32(new TextEncoder().encode('123456789')) === 0xCBF43926, 'the Excel file\'s zip checksum matches the standard check value');
+
+  // Net worth over time is the statement's closing balance, month by month.
+  const nwMonths = ['2026-07', '2026-08', '2026-09', '2026-10'];
+  const nw = API.netWorthSeries(nwMonths);
+  nwMonths.forEach((mk, i) => {
+    API.buildStatement(mk).sections.forEach(sec => {
+      const point = nw[sec.cur] && nw[sec.cur][i];
+      ok(point && near(point.total, sec.closeTot), `net worth ${sec.cur} ${mk}: equals the statement's closing balance`, `${point && point.total} vs ${sec.closeTot}`);
+    });
+  });
+  const latest = nw.SGD[nw.SGD.length - 1];
+  const sgdNow = state.accounts.filter(a => a.currency === 'SGD').reduce((t, a) => t + API.effectiveBal(a), 0);
+  ok(near(latest.total, sgdNow), 'net worth: the latest month end equals today\'s account balances', `${latest.total} vs ${sgdNow}`);
+  ok(latest.accounts.length === 2 && near(latest.accounts.reduce((t, a) => t + a.balance, 0), latest.total), 'net worth: each point is its accounts added up');
+  ok(!('USD' in nw) && 'MYR' in nw, 'net worth: one series per currency that has accounts, never mixed');
+  const t1 = API.niceTicks(17000, 18813.1, 4), step = t1[1] - t1[0];
+  ok(t1[0] <= 17000 && t1[t1.length - 1] >= 18813.1 && t1.length <= 6 && /^(1|2|5)0*$/.test(String(step)), 'chart ticks: round steps that cover the range', t1.join());
+  ok(API.niceTicks(5, 5, 4).length >= 2, 'chart ticks: a flat line still gets an axis');
 
   // The Monthly Review donut lists every category spent in the month at its
   // getBudgetSpent figure; their sum must be the Expenses tile, paybacks and all.

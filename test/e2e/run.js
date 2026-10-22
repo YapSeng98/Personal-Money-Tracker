@@ -248,7 +248,10 @@ async function main() {
         ['review-light', '?view=review&theme=light', { width: 1280, height: 1100, mobile: false }],
         ['in-out-open', '?view=msum-open&theme=light', { width: 1280, height: 1300, mobile: false }],
         ['statement', '?view=stmt&theme=dark', { width: 1440, height: 1400, mobile: false }],
-        ['phone-in-out', '?view=msum-open&theme=dark', { width: 390, height: 1200, mobile: true }]]) {
+        ['phone-in-out', '?view=msum-open&theme=dark', { width: 390, height: 1200, mobile: true }],
+        ['net-worth-dark', '?view=accounts&theme=dark', { width: 1440, height: 900, mobile: false }],
+        ['net-worth-light', '?view=accounts&theme=light', { width: 1280, height: 900, mobile: false }],
+        ['net-worth-phone', '?view=accounts&theme=dark', { width: 390, height: 1100, mobile: true }]]) {
         await screenshot(browser.dt, url + query, size, path.join(out, name + '.png'));
       }
       console.log(`screenshots saved to ${out}`);

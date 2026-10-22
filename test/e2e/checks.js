@@ -6,6 +6,7 @@
     if (VIEW === 'review') { document.getElementById('analytics-chart').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
+    if (VIEW === 'accounts') { state.balancesMasked = false; showView('accounts'); return; }
     if (VIEW === 'stmt') { openStatement(M1); return; }
     if (VIEW === 'print') { openStatement(M1); document.body.classList.add('stmt-printing'); return; }
 
@@ -31,6 +32,9 @@
 
     try {
       ok(!/maximum-scale/.test($('meta[name="viewport"]').content), 'layout: pinch-zoom is allowed');
+      ok(getComputedStyle($('#sync-badge')).display === 'none', 'layout: no empty sync badge in the top bar when nothing is waiting');
+      ok($$('[hidden]').every(el => getComputedStyle(el).display === 'none'), 'layout: everything marked hidden is actually hidden',
+         $$('[hidden]').filter(el => getComputedStyle(el).display !== 'none').map(el => el.id || el.className).join());
 
       // ── Monthly Review: a donut and every category ──────────────────────
       nav('analytics'); await wait(20);
@@ -401,7 +405,7 @@
       window.__sb.failWrites = true;
       const offline = await addViaForm('Offline lunch', 12.34);
       ok(offline && outbox().length === 1 && outbox()[0].kind === 'upsert', 'outbox: a change made offline is kept and queued', JSON.stringify(outbox().map(o => o.kind)));
-      ok(!$('#sync-badge').hidden && /1 not synced/.test($('#sync-badge').textContent), 'outbox: the badge says one change is waiting', $('#sync-badge').textContent);
+      ok(!$('#sync-badge').hidden && getComputedStyle($('#sync-badge')).display !== 'none' && /1 not synced/.test($('#sync-badge').textContent), 'outbox: the badge shows, saying one change is waiting', $('#sync-badge').textContent);
       nav('transactions'); state.filterMonth = M1;
       ['filter-period', 'filter-type', 'filter-cat', 'filter-cur', 'filter-acc', 'search-input'].forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
       renderTransactions();
@@ -413,7 +417,7 @@
       await flushOutbox();
       const ups = window.__sb.calls.filter(c => c.op === 'upsert' && c.row && c.row.id === offline.id);
       ok(ups.length === 1 && outbox().length === 0, 'outbox: back online, it is sent exactly once', ups.length);
-      ok($('#sync-badge').hidden, 'outbox: the badge clears');
+      ok($('#sync-badge').hidden && getComputedStyle($('#sync-badge')).display === 'none', 'outbox: the badge clears, and is really gone from the screen');
       server.transactions.push(asServer(offline));
 
       window.__sb.failWrites = true;
@@ -517,6 +521,38 @@
       state.accounts = state.accounts.filter(a => a.id !== accId && a.name !== 'OKX Wallet');
       state.transactions = state.transactions.filter(t => t.account !== 'BingX Main' && t.description !== 'Buy USDT');
       renderAll();
+
+      // ── Net worth over time (Accounts) ──────────────────────────────────
+      state.balancesMasked = true; nav('accounts'); await wait(20);
+      const nwCurs = $$('#networth-body .nw-cur .review-code').map(c => c.textContent);
+      ok(nwCurs.join() === 'SGD,MYR,USD', 'net worth: one chart per currency, home currency first', nwCurs.join());
+      ok($$('#networth-body .nw-total').every(b => b.textContent === '••••••') && !$$('#networth-body .nw-axis').some(t => /\d{3}/.test(t.textContent) && /\$|RM/.test(t.textContent)),
+         'net worth: hidden balances stay hidden — no totals and no axis amounts');
+      state.balancesMasked = false; renderAll(); await wait(20);
+      const later = (a, cur) => state.transactions.filter(t => t.account === a.name && (t.currency || state.currency) === cur && t.date > stmtMonthEnd(M0)).reduce((s2, t) => s2 + txnBalanceEffect(t), 0);
+      ['SGD', 'MYR', 'USD'].forEach(cur => {
+        const want = state.accounts.filter(a => a.currency === cur).reduce((s2, a) => s2 + effectiveBal(a) - later(a, cur), 0);
+        const sec = $$('#networth-body .nw-cur').find(x => $('.review-code', x).textContent === cur);
+        ok(sec && $('.nw-total', sec).textContent === fmtSigned(Math.round(want * 100) / 100, cur), `net worth ${cur}: the headline is today's balances added up`, sec && $('.nw-total', sec).textContent + ' vs ' + fmtSigned(want, cur));
+      });
+      const sgdChart = $('#networth-body .nw-chart[data-cur="SGD"]');
+      const monthLabels = $$('text.nw-axis[text-anchor="middle"]', sgdChart).map(t => t.textContent);
+      const thisMonth = new Date(+M0.slice(0, 4), +M0.slice(5, 7) - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
+      ok(sgdChart && $('.nw-line', sgdChart).getAttribute('d').split('L').length === 12 && monthLabels.length >= 6 && monthLabels[monthLabels.length - 1] === thisMonth,
+         'net worth: twelve month ends on the line, months labelled (every other one when narrow), this month always', monthLabels.join());
+      const labelBoxes = $$('text.nw-axis[text-anchor="middle"]', sgdChart).map(t => t.getBoundingClientRect());
+      ok(labelBoxes.every((r, i) => i === 0 || r.left >= labelBoxes[i - 1].right), 'net worth: month labels never overlap');
+      const svgBox = $('svg', sgdChart).getBoundingClientRect();
+      $('svg', sgdChart).dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: svgBox.right - 14, clientY: svgBox.top + 40 }));
+      const tipText = $('.nw-tip', sgdChart).textContent;
+      ok(!$('.nw-tip', sgdChart).hidden && tipText.includes(getMonthLabel(M0)) && /DBS Checking/.test(tipText), 'net worth: pointing at the chart shows that month with each account', tipText.slice(0, 120));
+      sgdChart.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      ok($('.nw-tip', sgdChart).textContent.includes(getMonthLabel(M1)), 'net worth: the arrow keys step through the months');
+      $('svg', sgdChart).dispatchEvent(new PointerEvent('pointerleave'));
+      ok($('.nw-tip', sgdChart).hidden, 'net worth: the tooltip goes when the pointer leaves');
+      ok($$('#networth-body .nw-cur')[0].querySelectorAll('.nw-table tbody tr').length === 12, 'net worth: the same numbers are there as a table');
+      ok(sgdChart.getBoundingClientRect().right <= innerWidth + 1 && $('.nw-tip', sgdChart).offsetLeft >= 0, 'net worth: the chart and its tooltip stay on screen');
+      state.balancesMasked = true;
 
       // ── Only the open page draws; the others catch up when opened ───────
       nav('dashboard'); await wait(10);

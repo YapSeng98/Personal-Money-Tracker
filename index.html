@@ -579,6 +579,40 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .type-tab{white-space:nowrap;min-width:0;padding:8px 4px;}
 .type-tab:disabled{opacity:.35;cursor:not-allowed;}
 /* Data check: broken transfer or asset pairs, never hidden, always fixable. */
+/* Net worth: one small line chart per currency (currencies never share an
+   axis), a 2px line over a ~10% wash, hairline grid, an end dot, and a
+   crosshair tooltip with the month's account-by-account balances. */
+.nw-sub{font-size:12px;color:var(--muted);}
+#networth-panel .panel-header{flex-wrap:wrap;gap:4px 14px;}
+#networth-panel .panel-title{white-space:nowrap;}
+.nw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:24px 36px;}
+.nw-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;}
+.nw-total{font-family:var(--fd);font-size:24px;font-weight:700;letter-spacing:-.5px;}
+.nw-chg{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;}
+.nw-chg.up{background:var(--jade-s);color:var(--jade-d);}
+.nw-chg.down{background:var(--coral-s);color:var(--coral);}
+.nw-chg.flat{background:var(--surface);color:var(--muted);}
+.nw-chart{position:relative;height:190px;outline:none;}
+.nw-chart:focus-visible{box-shadow:0 0 0 2px var(--indigo);border-radius:8px;}
+.nw-chart svg{display:block;width:100%;height:100%;overflow:visible;}
+.nw-grid-line{stroke:var(--border);stroke-width:1;}
+.nw-axis{fill:var(--muted);font-size:10px;font-family:var(--ff);}
+.nw-line{fill:none;stroke:var(--indigo);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+.nw-area{fill:var(--indigo);fill-opacity:.1;}
+.nw-dot{fill:var(--indigo);stroke:var(--card);stroke-width:2;}
+.nw-cross{stroke:var(--muted);stroke-width:1;}
+.nw-tip{position:absolute;top:0;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;
+  font-size:11.5px;color:var(--ink);box-shadow:0 10px 30px -12px rgba(0,0,0,.35);min-width:170px;z-index:2;}
+.nw-tip b{display:block;font-family:var(--fd);font-size:14px;margin:2px 0 4px;}
+.nw-tip .row{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);}
+.nw-tip .row span:last-child{font-family:var(--fm);}
+.nw-table{margin-top:8px;font-size:12px;}
+.nw-table summary{cursor:pointer;color:var(--indigo);font-weight:600;font-size:12px;}
+.nw-table table{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
+.nw-table th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:4px 6px;border-bottom:1px solid var(--border);}
+.nw-table th:first-child,.nw-table td:first-child{text-align:left;}
+.nw-table td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--border);font-family:var(--fm);}
+.nw-table td:first-child{font-family:var(--ff);}
 .sync-badge{background:var(--amber-s);color:var(--amber);border:1px solid var(--amber);font-weight:700;}
 .sync-badge.bad{background:var(--coral-s);color:var(--coral);border-color:var(--coral);}
 /* .btn sets display, which beats the hidden attribute: without this the
@@ -1343,6 +1377,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
     <!-- ════ ACCOUNTS ════ -->
     <div class="view" id="view-accounts">
+      <div class="panel" style="margin-bottom:20px;" id="networth-panel">
+        <div class="panel-header"><div class="panel-title">Net worth</div><span class="nw-sub">Every account's balance at each month end · last 12 months</span></div>
+        <div id="networth-body"></div>
+      </div>
       <div class="responsive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div class="panel">
           <div class="panel-header"><div class="panel-title">My Accounts</div>
@@ -3673,6 +3711,145 @@ function removeTransactionsWithUndo(legs, msg) {
   );
 }
 
+
+// ═══════════════════════════════════════════════
+// NET WORTH OVER TIME
+// ═══════════════════════════════════════════════
+// Month-end balances of every account, per currency: its starting balance
+// plus every row booked to it up to that month's last day. effectiveBal() and
+// the statement's closing balance use the same rule, so the chart can't
+// disagree with either. Currencies are never added together.
+function netWorthSeries(months) {
+  const curOf = x => x.currency || state.currency;
+  const ends = months.map(stmtMonthEnd);
+  const out = {};
+  state.accounts.forEach(a => {
+    const cur = curOf(a);
+    const rows = state.transactions.filter(t => t.account === a.name && curOf(t) === cur)
+      .map(t => [t.date, txnBalanceEffect(t)]).sort((x, y) => x[0].localeCompare(y[0]));
+    const series = out[cur] = out[cur] || months.map(mk => ({ mk, total: 0, accounts: [] }));
+    let bal = +a.balance || 0, i = 0;
+    ends.forEach((end, k) => {
+      while (i < rows.length && rows[i][0] <= end) { bal += rows[i][1]; i++; }
+      const b = Math.round(bal * 100) / 100;
+      series[k].total = Math.round((series[k].total + b) * 100) / 100;
+      series[k].accounts.push({ name: a.name, balance: b });
+    });
+  });
+  return out;
+}
+
+// Round axis ticks: 1, 2 or 5 times a power of ten, about four of them.
+function niceTicks(lo, hi, count) {
+  if (lo === hi) { const pad = Math.abs(lo) * 0.1 || 1; lo -= pad; hi += pad; }
+  const raw = (hi - lo) / Math.max(1, count - 1);
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 5, 10].map(m => m * pow).find(s => s >= raw);
+  const ticks = [];
+  for (let v = Math.floor(lo / step) * step; v <= hi + step * 1e-9; v += step) ticks.push(Math.round(v * 100) / 100);
+  if (ticks[ticks.length - 1] < hi) ticks.push(ticks[ticks.length - 1] + step);
+  return ticks;
+}
+
+const _nwData = {};
+let _nwObserver = null;
+function renderNetWorth() {
+  const body = document.getElementById('networth-body');
+  if (!body) return;
+  if (!state.accounts.length) {
+    body.innerHTML = '<div class="empty"><div class="icon">📈</div><p>Add an account to see your net worth over time.</p></div>';
+    return;
+  }
+  const now = localYM();
+  const months = monthsBetween(localYM(new Date(+now.slice(0, 4), +now.slice(5, 7) - 12, 1)), now);
+  const series = netWorthSeries(months);
+  const curs = Object.keys(series).sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b));
+  const short = mk => new Date(+mk.slice(0, 4), +mk.slice(5, 7) - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
+  body.innerHTML = `<div class="nw-grid">${curs.map(cur => {
+    const s = series[cur], last = s[s.length - 1], prev = s[s.length - 2];
+    const chg = Math.round((last.total - prev.total) * 100) / 100;
+    const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
+    _nwData[cur] = s;
+    return `<section class="nw-cur">
+      <div class="nw-head"><span class="review-code">${esc(cur)}</span><b class="nw-total">${maskAmt(fmtSigned(last.total, cur))}</b>
+        <span class="nw-chg ${cls}">${chg > 0 ? '▲' : chg < 0 ? '▼' : '•'} ${maskAmt(fmtWithCur(chg, cur))} since ${short(prev.mk)}</span></div>
+      <div class="nw-chart" data-cur="${esc(cur)}" tabindex="0" role="img"
+           aria-label="${esc(cur)} net worth by month end; use the arrow keys to read each month"></div>
+      <details class="nw-table"><summary>See the numbers</summary><table>
+        <thead><tr><th>Month end</th><th>Net worth</th><th>Change</th></tr></thead>
+        <tbody>${s.slice().reverse().map((p, i, arr) => {
+          const before = arr[i + 1];
+          return `<tr><td>${getMonthLabel(p.mk)}</td><td>${maskAmt(fmtSigned(p.total, cur))}</td><td>${before ? maskAmt(fmtSigned(Math.round((p.total - before.total) * 100) / 100, cur)) : '—'}</td></tr>`;
+        }).join('')}</tbody></table></details>
+    </section>`;
+  }).join('')}</div>`;
+  body.querySelectorAll('.nw-chart').forEach(el => drawNetWorthChart(el));
+  if (!_nwObserver && typeof ResizeObserver !== 'undefined') {
+    _nwObserver = new ResizeObserver(() => document.querySelectorAll('#networth-body .nw-chart').forEach(drawNetWorthChart));
+  }
+  if (_nwObserver) { _nwObserver.disconnect(); body.querySelectorAll('.nw-chart').forEach(el => _nwObserver.observe(el)); }
+}
+
+function drawNetWorthChart(el) {
+  const cur = el.dataset.cur, s = _nwData[cur];
+  if (!s) return;
+  const W = el.clientWidth || 600, H = el.clientHeight || 190;
+  const L = state.balancesMasked ? 10 : 64, R = 12, T = 10, B = 22;
+  const vals = s.map(p => p.total);
+  const ticks = niceTicks(Math.min(...vals), Math.max(...vals), 4);
+  const lo = ticks[0], hi = ticks[ticks.length - 1];
+  const x = i => L + (s.length === 1 ? (W - L - R) / 2 : i * (W - L - R) / (s.length - 1));
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  const pts = s.map((p, i) => [x(i), y(p.total)]);
+  const line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)} ${H - B} L${pts[0][0].toFixed(1)} ${H - B} Z`;
+  const short = mk => new Date(+mk.slice(0, 4), +mk.slice(5, 7) - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
+  const every = W < 480 ? 2 : 1;
+  const yAxis = ticks.map(t => `<line class="nw-grid-line" x1="${L}" x2="${W - R}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"></line>`
+    + (state.balancesMasked ? '' : `<text class="nw-axis" x="${L - 8}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${fmtSigned(t, cur).replace(/\.00$/, '')}</text>`)).join('');
+  const xAxis = s.map((p, i) => ((s.length - 1 - i) % every === 0)
+    ? `<text class="nw-axis" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${short(p.mk)}</text>` : '').join('');
+  const end = pts[pts.length - 1];
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${yAxis}${xAxis}
+    <path class="nw-area" d="${area}"></path><path class="nw-line" d="${line}"></path>
+    <line class="nw-cross" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"></line>
+    <circle class="nw-dot nw-hover" r="4.5" cx="0" cy="0" visibility="hidden"></circle>
+    <circle class="nw-dot" r="4.5" cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}"></circle>
+    <rect x="${L}" y="0" width="${W - L - R}" height="${H}" fill="transparent" class="nw-hit"></rect></svg>
+    <div class="nw-tip" hidden></div>`;
+  const svg = el.querySelector('svg'), tip = el.querySelector('.nw-tip');
+  const cross = svg.querySelector('.nw-cross'), dot = svg.querySelector('.nw-hover');
+  const show = i => {
+    i = Math.max(0, Math.min(s.length - 1, i));
+    el.dataset.at = i;
+    const p = s[i], before = s[i - 1], q = pts[i];
+    cross.setAttribute('x1', q[0]); cross.setAttribute('x2', q[0]); cross.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', q[0]); dot.setAttribute('cy', q[1]); dot.setAttribute('visibility', 'visible');
+    const accts = p.accounts.filter(a => a.balance).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+    tip.innerHTML = `${getMonthLabel(p.mk)}<b>${maskAmt(fmtSigned(p.total, cur))}</b>`
+      + (before ? `<div class="row"><span>Change</span><span>${maskAmt(fmtSigned(Math.round((p.total - before.total) * 100) / 100, cur))}</span></div>` : '')
+      + accts.slice(0, 6).map(a => `<div class="row"><span>${esc(a.name)}</span><span>${maskAmt(fmtSigned(a.balance, cur))}</span></div>`).join('')
+      + (accts.length > 6 ? `<div class="row"><span>${accts.length - 6} more</span><span></span></div>` : '');
+    tip.hidden = false;
+    const left = Math.min(Math.max(q[0] + 12, 0), W - tip.offsetWidth);
+    tip.style.left = (q[0] + 12 + tip.offsetWidth > W ? Math.max(0, q[0] - 12 - tip.offsetWidth) : left) + 'px';
+  };
+  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); delete el.dataset.at; };
+  const nearest = ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) * (W / r.width);
+    return Math.round((px - L) / ((W - L - R) / Math.max(1, s.length - 1)));
+  };
+  svg.addEventListener('pointermove', ev => show(nearest(ev)));
+  svg.addEventListener('pointerleave', hide);
+  el.onkeydown = ev => {
+    if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+    ev.preventDefault();
+    const at = el.dataset.at === undefined ? s.length - 1 : +el.dataset.at;
+    show(at + (ev.key === 'ArrowRight' ? 1 : -1));
+  };
+  el.onblur = hide;
+}
 
 // ═══════════════════════════════════════════════
 // DATA CHECK — broken transfer and asset pairs
@@ -7544,6 +7721,7 @@ function setMaskBtnIcon() {
 
 function renderAccounts() {
   setMaskBtnIcon();
+  renderNetWorth();
 
   // Every downstream block here assumes at least one account (currency
   // grouping, net worth, allocation) — without this guard, zero accounts
