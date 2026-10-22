@@ -2,7 +2,8 @@
 /*
  * Browser end-to-end tests: the real index.html, in headless Chrome.
  *
- * Run:  node test/e2e/run.js            (desktop, laptop and phone sizes)
+ * Run:  node test/e2e/run.js            (desktop, laptop and phone sizes, then offline)
+ *       node test/e2e/run.js --no-offline (skip the offline run, which needs network)
  *       node test/e2e/run.js --shots DIR (also save screenshots of key screens)
  *
  * Needs Node 22+ (for its built-in WebSocket) and Google Chrome or Chromium;
@@ -155,6 +156,58 @@ async function screenshot(dt, url, size, file) {
   await dt.send('Target.closeTarget', { targetId: page.targetId });
 }
 
+// The offline shell: serve the real app from localhost (service workers need a
+// secure origin), let sw.js cache it, stop the server, and reload. The page has
+// to come back from the cache with its library. Needs network for the first,
+// online load of supabase-js from the CDN.
+async function runOffline(dt) {
+  const http = require('http');
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.json': 'application/json' };
+  const sockets = new Set();
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
+    const file = path.join(ROOT, rel);
+    if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' });
+    fs.createReadStream(file).pipe(res);
+  });
+  server.on('connection', s => { sockets.add(s); s.on('close', () => sockets.delete(s)); });
+  await new Promise(r => server.listen(0, 'localhost', r));
+  const url = `http://localhost:${server.address().port}/index.html`;
+  const results = [];
+  const ok = (cond, name, detail) => results.push({ ok: !!cond, name, detail: cond ? '' : String(detail === undefined ? '' : detail) });
+  const page = await openPage(dt, url, { width: 1280, height: 900, mobile: false });
+  const until = async (expr, ms = 30000) => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) { if (await page.evaluate(expr).catch(() => false)) return true; await sleep(200); }
+    return false;
+  };
+  const evalAsync = async expression =>
+    (await dt.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, page.sessionId)).result.value;
+  try {
+    ok(await until("!!navigator.serviceWorker && !!navigator.serviceWorker.controller"), 'offline: the service worker installs and takes over the page');
+    const manifest = await evalAsync("fetch('manifest.webmanifest').then(r => r.json()).then(m => m.name + '|' + m.icons.length + '|' + m.display)").catch(e => String(e));
+    ok(/PFMT.*\|3\|standalone/.test(manifest), 'install: the manifest names the app, with 3 icons, standalone', manifest);
+    const icons = await evalAsync("Promise.all(['icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png'].map(u => fetch(u).then(r => r.ok))).then(a => a.every(Boolean))");
+    ok(icons, 'install: every icon it lists exists');
+    await dt.send('Page.reload', {}, page.sessionId);
+    await until("document.readyState === 'complete' && typeof window.supabase === 'object'");
+    await sleep(1500);
+    const cached = await evalAsync("caches.open('pfmt-shell-v1').then(c => c.keys()).then(k => k.map(r => r.url).join(' '))");
+    ok(/index\.html/.test(cached) && /supabase-js@2\.118\.0/.test(cached), 'offline: the page and its pinned library are cached', cached);
+    server.close(); sockets.forEach(s => s.destroy());
+    await dt.send('Page.reload', {}, page.sessionId);
+    const back = await until("document.readyState === 'complete' && !!document.getElementById('view-dashboard') && typeof window.supabase === 'object'", 20000);
+    ok(back, 'offline: with the site unreachable, the app still opens, library and all');
+    const apiCached = await evalAsync("caches.open('pfmt-shell-v1').then(c => c.keys()).then(k => k.map(r => new URL(r.url).hostname).filter(h => h.endsWith('supabase.co')).length)");
+    ok(apiCached === 0, 'offline: no Supabase data request is ever cached', apiCached);
+  } finally {
+    server.close(); sockets.forEach(s => s.destroy());
+    await dt.send('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+  }
+  return { results, errors: page.errors.filter(e => !/Failed to fetch|ERR_|NetworkError|Load failed/.test(e)) };
+}
+
 async function main() {
   if (typeof WebSocket === 'undefined') { console.error('Node 22 or newer is needed (built-in WebSocket).'); process.exit(1); }
   const chrome = findChrome();
@@ -175,6 +228,14 @@ async function main() {
       const bad = results.filter(r => !r.ok);
       failed += bad.length + errors.length;
       console.log(`${bad.length || errors.length ? 'FAIL' : 'PASS'} ${run.name}: ${results.length - bad.length} checks passed, ${bad.length} failed, ${errors.length} page errors`);
+      bad.forEach(r => console.log(`  ✗ ${r.name}${r.detail ? ' — ' + r.detail.slice(0, 300) : ''}`));
+      errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+    }
+    if (!process.argv.includes('--no-offline')) {
+      const { results, errors } = await runOffline(browser.dt);
+      const bad = results.filter(r => !r.ok);
+      failed += bad.length + errors.length;
+      console.log(`${bad.length || errors.length ? 'FAIL' : 'PASS'} offline shell and install: ${results.length - bad.length} checks passed, ${bad.length} failed, ${errors.length} page errors`);
       bad.forEach(r => console.log(`  ✗ ${r.name}${r.detail ? ' — ' + r.detail.slice(0, 300) : ''}`));
       errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
     }
