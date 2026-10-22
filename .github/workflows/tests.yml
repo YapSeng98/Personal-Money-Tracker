@@ -1,0 +1,53 @@
+# Every push and pull request runs the whole suite: the money-rule and data
+# tests (test/run-all.js) and the browser tests (test/e2e/run.js), on Linux
+# with the runner's own Chrome. No packages are installed; the repo has none.
+#
+# Deploying only when the tests pass: in the repo's Settings → Pages, set
+# Source to "GitHub Actions". Until then GitHub keeps deploying main the old
+# way on every push, and the deploy job below fails harmlessly (it is marked
+# continue-on-error, so the run still shows the tests' result).
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: index.html and its twin are identical
+        run: cmp index.html daily-money-tracker-app.html
+      - name: Money rules, data integrity, outbox, App Lock
+        run: node test/run-all.js
+      - name: Browser tests (desktop, laptop, phone)
+        run: node test/e2e/run.js
+        env:
+          CI: 'true'
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
