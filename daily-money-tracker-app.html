@@ -1280,7 +1280,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <div class="panel" style="margin-bottom:20px;">
         <div class="panel-header">
           <div class="panel-title">Monthly In &amp; Out</div>
-          <button class="btn btn-ghost btn-sm" onclick="exportMonthlySummaryCSV()" title="Download this table as CSV">⬇ CSV</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="downloadInOut('xlsx')" title="Every month in this range with each transaction and a running balance, formatted for Excel, Numbers or Google Sheets">⬇ Excel</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadInOut('csv')" title="The same as the Excel file, as plain CSV">⬇ CSV</button>
+          </div>
         </div>
         <div class="msum-intro">
           <span><span id="msum-range-note">Follows the range picked above.</span> Tap a month to see every line behind it.</span>
@@ -1593,7 +1596,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         </div>
       </div>
       <div class="stmt-tb-group">
-        <button class="btn btn-ghost" onclick="downloadStatementCSV()" title="Opens in Excel, Numbers or Google Sheets">⬇ Excel (CSV)</button>
+        <button class="btn btn-ghost" onclick="downloadStatement('xlsx')" title="Formatted for Excel, Numbers or Google Sheets">⬇ Excel</button>
+        <button class="btn btn-ghost" onclick="downloadStatement('csv')" title="The same as the Excel file, as plain CSV">⬇ CSV</button>
         <button class="btn btn-primary" onclick="printStatement()" title="Pick Save as PDF in the print window to keep a copy">🖨 PDF / Print</button>
         <button class="modal-close" onclick="closeStatement()" aria-label="Close">✕</button>
       </div>
@@ -6313,24 +6317,51 @@ function stmtKind(t) {
   return '';
 }
 
-function buildStatement(mk) {
+// The months from fromMk to toMk inclusive, oldest first, as 'YYYY-MM'.
+function monthsBetween(fromMk, toMk) {
+  const out = [];
+  let y = +fromMk.slice(0, 4), m = +fromMk.slice(5, 7);
+  const ty = +toMk.slice(0, 4), tm = +toMk.slice(5, 7);
+  while ((y < ty || (y === ty && m <= tm)) && out.length < 600) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`);
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+// A statement for one month, or for every month from fromMk to toMk. Money in
+// and out are tallied month by month through monthlyInOut() and
+// monthFlowData(), so a range is exactly its months added together. Balances
+// open on the first day of fromMk and close on the last day of toMk.
+function buildStatement(fromMk, toMk) {
+  toMk = toMk || fromMk;
+  const months = monthsBetween(fromMk, toMk);
+  const monthSet = new Set(months);
   const r2 = v => Math.round(v * 100) / 100;
   const curOf = x => x.currency || state.currency;
-  const start = mk + '-01';
-  const inMonth = t => t.date.slice(0, 7) === mk;
+  const start = fromMk + '-01';
+  const inRange = t => monthSet.has(t.date.slice(0, 7));
   const oldestFirst = (a, b) => a.date.localeCompare(b.date) || (a.created || '').localeCompare(b.created || '');
-  const { byCur } = monthlyInOut([mk]);
+  const add = (into, from) => Object.entries(from).forEach(([k, v]) => { into[k] = (into[k] || 0) + v; });
+  const { byCur } = monthlyInOut(months);
   const curs = new Set(Object.keys(byCur));
-  state.transactions.forEach(t => { if (inMonth(t)) curs.add(curOf(t)); });
+  state.transactions.forEach(t => { if (inRange(t)) curs.add(curOf(t)); });
   state.accounts.forEach(a => curs.add(curOf(a)));
 
   const sections = [...curs].sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b)).map(cur => {
-    const flow = (byCur[cur] && byCur[cur][mk]) || { inc: 0, exp: 0, xIn: 0, xOut: 0, back: 0 };
-    const d = monthFlowData(cur, mk);
+    const byMonth = months.filter(mk => byCur[cur] && byCur[cur][mk]).map(mk => Object.assign({ mk }, byCur[cur][mk]));
+    const flow = { inc: 0, exp: 0, xIn: 0, xOut: 0, back: 0 };
+    byMonth.forEach(r => Object.keys(flow).forEach(k => { flow[k] += r[k]; }));
+    Object.keys(flow).forEach(k => { flow[k] = r2(flow[k]); });
+    const incByCat = {}, spentByCat = {}, backByCat = {};
+    months.forEach(mk => {
+      const d = monthFlowData(cur, mk);
+      add(incByCat, d.incByCat); add(spentByCat, d.spentByCat); add(backByCat, d.backByCat);
+    });
     const byAmt = (a, b) => b.amt - a.amt || a.cat.localeCompare(b.cat);
-    const income = Object.entries(d.incByCat).map(([cat, amt]) => ({ cat, amt: r2(amt) })).sort(byAmt);
-    const spending = Object.entries(d.spentByCat).map(([cat, spent]) => {
-      const back = d.backByCat[cat] || 0;
+    const income = Object.entries(incByCat).map(([cat, amt]) => ({ cat, amt: r2(amt) })).sort(byAmt);
+    const spending = Object.entries(spentByCat).map(([cat, spent]) => {
+      const back = backByCat[cat] || 0;
       return { cat, amt: r2(spent - back), spent: r2(spent), back: r2(back) };
     }).sort(byAmt);
     const moneyIn  = r2(flow.inc + flow.back + flow.xIn);
@@ -6342,7 +6373,7 @@ function buildStatement(mk) {
       const linked  = state.transactions.filter(t => t.account === a.name && curOf(t) === cur);
       const opening = r2((+a.balance || 0) + linked.filter(t => t.date < start).reduce((s, t) => s + txnBalanceEffect(t), 0));
       let bal = opening, tIn = 0, tOut = 0;
-      const lines = linked.filter(inMonth).sort(oldestFirst).map(t => {
+      const lines = linked.filter(inRange).sort(oldestFirst).map(t => {
         const e = txnBalanceEffect(t);
         bal = r2(bal + e);
         if (e > 0) tIn += e; else tOut -= e;
@@ -6352,17 +6383,17 @@ function buildStatement(mk) {
     }).filter(x => x.lines.length || x.opening !== 0);
     // Booked to no account in this currency (or none at all), so no balance
     // moved — but the money still counts in the flow above.
-    const unlinked = state.transactions.filter(t => inMonth(t) && curOf(t) === cur && !names.has(t.account)).sort(oldestFirst);
+    const unlinked = state.transactions.filter(t => inRange(t) && curOf(t) === cur && !names.has(t.account)).sort(oldestFirst);
     const openTot  = r2(accounts.reduce((s, x) => s + x.opening, 0));
     const closeTot = r2(accounts.reduce((s, x) => s + x.closing, 0));
     const net = r2(moneyIn - moneyOut);
-    return { cur, flow, income, spending, moneyIn, moneyOut, net, kept: r2(flow.inc - flow.exp),
+    return { cur, flow, byMonth, income, spending, moneyIn, moneyOut, net, kept: r2(flow.inc - flow.exp),
              accounts, unlinked, openTot, closeTot,
              accIn:  r2(accounts.reduce((s, x) => s + x.moneyIn, 0)),
              accOut: r2(accounts.reduce((s, x) => s + x.moneyOut, 0)),
              gap: accounts.length ? r2(closeTot - openTot - net) : 0 };
   }).filter(s => s.accounts.length || s.unlinked.length || s.moneyIn || s.moneyOut);
-  return { mk, sections };
+  return { fromMk, toMk, months, sections };
 }
 
 // Accounting style: thousands separators, two decimals, negatives in brackets
@@ -6516,89 +6547,289 @@ function printStatement() {
   window.print();
 }
 
-// The same statement as rows Excel, Numbers or Google Sheets can open: plain
-// numbers (no currency symbols) so they can be summed, one block per section.
-function downloadStatementCSV() {
-  const mk = _stmtMonth, end = stmtMonthEnd(mk);
-  const { sections } = buildStatement(mk);
-  const out = [];
-  const row = (...cells) => out.push(cells.map(c =>
-    typeof c === 'number' ? (Math.round(c * 100) / 100).toFixed(2) : (c === '' || c == null ? '' : csvCell(c))).join(','));
-  const blank = () => out.push('');
-  row('PFMT Monthly Statement', getMonthLabel(mk));
-  row('Period', `${mk}-01`, end);
-  row('Generated', `${localDateStr()} ${new Date().toTimeString().slice(0, 5)}`);
-  if (state.displayName || state.userEmail) row('Prepared for', state.displayName || state.userEmail);
-  blank();
-  row('SUMMARY');
-  row('Currency', 'Money in', 'Money out', 'Net flow', 'Opening balance', 'Closing balance');
-  sections.forEach(s => row(s.cur, s.moneyIn, s.moneyOut, s.net, s.accounts.length ? s.openTot : '', s.accounts.length ? s.closeTot : ''));
-  sections.forEach(s => {
+// ═══════════════════════════════════════════════
+// STATEMENT DOWNLOADS — Excel (.xlsx) and CSV
+// ═══════════════════════════════════════════════
+// statementSheets() lays a statement out once, as sheets of rows; xlsxBlob()
+// formats those rows and sheetsToCSV() flattens them, so the Excel file and the
+// CSV always carry the same figures. The monthly statement uses it for one
+// month, Monthly In & Out for its whole range.
+
+// A cell is a plain value or { v, s }, s naming a style in XLSX_STYLE. Dates
+// are 'YYYY-MM-DD' strings with a date style; money is already rounded.
+function statementSheets(st, title) {
+  const single = st.months.length === 1;
+  const end = stmtMonthEnd(st.toMk);
+  const period = `${fmtDate(st.fromMk + '-01')} – ${fmtDate(end)}`;
+  const now = new Date();
+  const who = state.displayName || state.userEmail || '';
+  const r2 = v => { const r = Math.round(v * 100) / 100; return r === 0 ? 0 : r; };
+  const cell = (v, s) => ({ v, s });
+  const M = v => cell(r2(v), 'money');
+  const H = (labels, numFrom) => labels.map((l, i) => cell(l, i >= numFrom ? 'headNum' : 'head'));
+  const ruled = (style, n) => Array.from({ length: n }, () => cell(null, style));
+  const shortMonth = mk => new Date(+mk.slice(0, 4), +mk.slice(5, 7) - 1, 1).toLocaleDateString('en-SG', { month: 'short', year: 'numeric' });
+  const kind = t => ({ claim: 'Claim', payback: 'Payback', exchange: 'Exchange', transfer: 'Transfer', 'asset purchase': 'Asset purchase', asset: 'Asset' })[stmtKind(t)]
+    || ({ income: 'Income', expense: 'Spending' })[t.type] || t.type;
+  const details = a => [a.type, a.institution].filter(Boolean).join(' · ');
+
+  const summary = [
+    [cell('PFMT · Daily Money Tracker', 'muted')],
+    [cell(title, 'title')],
+    ['Period', period],
+    ['Generated', `${fmtDate(localDateStr(now))}, ${now.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit' })}`],
+  ];
+  if (who) summary.push(['Prepared for', who]);
+  summary.push([], [cell('Summary', 'section')],
+    H(['Currency', 'Money in', 'Money out', 'Net flow', 'Opening balance', 'Closing balance'], 1),
+    ...st.sections.map(s => [cell(s.cur, 'bold'), M(s.moneyIn), M(s.moneyOut), M(s.net),
+      s.accounts.length ? M(s.openTot) : null, s.accounts.length ? M(s.closeTot) : null]));
+  st.sections.forEach(s => {
+    if (!s.byMonth.length) return;
+    summary.push([], [cell(`${s.cur} by month`, 'section')],
+      H(['Month', 'Income', 'Spending', 'Kept', 'Exchanged in', 'Exchanged out', 'Refunds & claims', 'Net'], 1),
+      ...s.byMonth.map(r => [shortMonth(r.mk), M(r.inc), M(r.exp), M(r.inc - r.exp), M(r.xIn), M(r.xOut), M(r.back),
+        M(r.inc - r.exp + r.xIn - r.xOut + r.back)]),
+      [cell('Total', 'totalLabel'), ...[s.flow.inc, s.flow.exp, s.kept, s.flow.xIn, s.flow.xOut, s.flow.back, s.net].map(v => cell(r2(v), 'moneyTotal'))]);
+  });
+  summary.push([], [cell('Every transaction is listed under its currency, account by account, with a running balance like a bank statement.', 'muted')]);
+  const sheets = [{ name: 'Summary', cols: [18, 15, 15, 15, 17, 17, 17, 15], rows: summary }];
+
+  st.sections.forEach(s => {
     const c = s.cur;
+    const rows = [[cell(c + (CUR_NAME[c] ? ' · ' + CUR_NAME[c] : ''), 'title')], [cell(period, 'muted')], []];
     if (s.moneyIn || s.moneyOut) {
-      blank();
-      row(`${c} MONEY IN AND OUT`);
-      row('Section', 'Line', `Amount (${c})`);
-      s.income.forEach(x => row('Money in', `Income: ${x.cat}`, x.amt));
-      row('Money in', 'Total income', s.flow.inc);
-      row('Money in', 'Refunds & claims', s.flow.back);
-      row('Money in', 'Exchanged in', s.flow.xIn);
-      row('Money in', 'Total money in', s.moneyIn);
-      s.spending.forEach(x => row('Money out', `Spending: ${x.cat}`, x.amt));
-      row('Money out', 'Total spending', s.flow.exp);
-      row('Money out', 'Exchanged out', s.flow.xOut);
-      row('Money out', 'Total money out', s.moneyOut);
-      row('', 'Net cash flow', s.net);
-      row('', 'Kept (income less spending)', s.kept);
+      rows.push([cell('Money in and out', 'section')], H(['Line', '', '', '', 'Money in', 'Money out', 'Net'], 4));
+      s.income.forEach(x => rows.push([`Income: ${x.cat}`, null, null, null, M(x.amt)]));
+      rows.push(['Refunds & claims', null, null, null, M(s.flow.back)],
+                ['Exchanged in from other currencies', null, null, null, M(s.flow.xIn)]);
+      // Notes go in column C so a long label in A can spill across the empty B.
+      s.spending.forEach(x => rows.push([`Spending: ${x.cat}`, null,
+        x.back ? cell(`${stmtNum(x.spent)} spent, ${stmtNum(x.back)} paid back`, 'muted') : null, null, null, M(x.amt)]));
+      rows.push(['Exchanged out to other currencies', null, null, null, null, M(s.flow.xOut)],
+        [cell('Total', 'totalLabel'), ...ruled('totalLabel', 3), cell(r2(s.moneyIn), 'moneyTotal'), cell(r2(s.moneyOut), 'moneyTotal'), cell(r2(s.net), 'moneyTotal')],
+        [cell('Kept: income less spending, before refunds and exchanges', 'muted'), null, null, null, null, null, M(s.kept)],
+        []);
     }
+
+    rows.push([cell('Account balances', 'section')]);
     if (s.accounts.length) {
-      blank();
-      row(`${c} ACCOUNT BALANCES`);
-      row('Account', 'Opening', 'Money in', 'Money out', 'Closing');
-      s.accounts.forEach(x => row(x.a.name, x.opening, x.moneyIn, x.moneyOut, x.closing));
-      row('Total', s.openTot, s.accIn, s.accOut, s.closeTot);
+      rows.push(H(['Account', '', 'Details', 'Opening', 'Money in', 'Money out', 'Closing'], 3),
+        ...s.accounts.map(x => [x.a.name, null, cell(details(x.a), 'muted'), M(x.opening), M(x.moneyIn), M(x.moneyOut), M(x.closing)]),
+        [cell('Total', 'totalLabel'), ...ruled('totalLabel', 2), cell(r2(s.openTot), 'moneyTotal'), cell(r2(s.accIn), 'moneyTotal'),
+         cell(r2(s.accOut), 'moneyTotal'), cell(r2(s.closeTot), 'moneyTotal')]);
+      if (s.gap) rows.push([cell(`Your ${c} accounts changed by ${stmtNum(s.closeTot - s.openTot)} while net cash flow is ${stmtNum(s.net)}: `
+        + (s.unlinked.length ? `${s.unlinked.length} transaction${s.unlinked.length > 1 ? 's are' : ' is'} not booked to a ${c} account (listed below).`
+                             : 'usually a move between your own accounts recorded on one side only.'), 'muted')]);
+    } else {
+      rows.push([cell(`No ${c} accounts yet.`, 'muted')]);
     }
-    if (s.accounts.some(x => x.lines.length) || s.unlinked.length) {
-      blank();
-      row(`${c} TRANSACTIONS`);
-      row('Account', 'Date', 'Description', 'Category', 'Kind', 'Money in', 'Money out', 'Balance');
-      s.accounts.filter(x => x.lines.length).forEach(x => {
-        row(x.a.name, `${mk}-01`, 'Opening balance', '', '', '', '', x.opening);
-        x.lines.forEach(({ t, e, bal }) => row(x.a.name, t.date, t.description || '', t.category || '', stmtKind(t) || t.type, e > 0 ? e : '', e < 0 ? -e : '', bal));
-        row(x.a.name, end, 'Closing balance', '', '', x.moneyIn, x.moneyOut, x.closing);
+    rows.push([]);
+
+    const ledgers = s.accounts.filter(x => x.lines.length);
+    if (ledgers.length || s.unlinked.length) rows.push([cell('Transactions', 'section')]);
+    ledgers.forEach(x => {
+      rows.push([cell(x.a.name, 'bold'), null, cell(details(x.a), 'muted')],
+        H(['Date', 'Description', 'Category', 'Type', 'Money in', 'Money out', 'Balance'], 4));
+      // One block per month: the balance it starts from, its rows, its totals.
+      const groups = [];
+      x.lines.forEach(l => {
+        const mk = l.t.date.slice(0, 7);
+        if (!groups.length || groups[groups.length - 1].mk !== mk) groups.push({ mk, lines: [] });
+        groups[groups.length - 1].lines.push(l);
       });
+      groups.forEach((g, i) => {
+        const first = g.lines[0];
+        rows.push([cell(i === 0 ? st.fromMk + '-01' : g.mk + '-01', 'balDate'), cell(i === 0 ? 'Opening balance' : 'Balance brought forward', 'balLabel'),
+          ...ruled('balLabel', 4), cell(r2(i === 0 ? x.opening : first.bal - first.e), 'bal')]);
+        let mIn = 0, mOut = 0;
+        g.lines.forEach(({ t, e, bal }) => {
+          if (e > 0) mIn += e; else mOut -= e;
+          rows.push([cell(t.date, 'date'), t.description || '', t.category || '', kind(t), e > 0 ? M(e) : null, e < 0 ? M(-e) : null, M(bal)]);
+        });
+        if (!single) rows.push([cell(null, 'subLabel'), cell(`Total for ${getMonthLabel(g.mk)}`, 'subLabel'), ...ruled('subLabel', 2),
+          cell(r2(mIn), 'sub'), cell(r2(mOut), 'sub'), cell(null, 'subLabel')]);
+      });
+      rows.push([cell(end, 'balDate'), cell('Closing balance', 'balLabel'), ...ruled('balLabel', 2),
+        cell(r2(x.moneyIn), 'bal'), cell(r2(x.moneyOut), 'bal'), cell(r2(x.closing), 'bal')], []);
+    });
+    if (s.unlinked.length) {
+      let uIn = 0, uOut = 0;
+      rows.push([cell('Not linked to an account', 'bold'), null, cell(`these don't change any ${c} account balance in PFMT`, 'muted')],
+        H(['Date', 'Description', 'Category', 'Account recorded', 'Money in', 'Money out', ''], 4));
       s.unlinked.forEach(t => {
         const e = txnBalanceEffect(t);
-        row(t.account || '(no account)', t.date, t.description || '', t.category || '', 'not linked to an account', e > 0 ? e : '', e < 0 ? -e : '', '');
+        if (e > 0) uIn += e; else uOut -= e;
+        rows.push([cell(t.date, 'date'), t.description || '', t.category || '', t.account || '—', e > 0 ? M(e) : null, e < 0 ? M(-e) : null]);
       });
+      rows.push([cell(null, 'subLabel'), cell('Total', 'subLabel'), ...ruled('subLabel', 2), cell(r2(uIn), 'sub'), cell(r2(uOut), 'sub'), cell(null, 'subLabel')]);
     }
+    sheets.push({ name: c, cols: [14, 40, 20, 16, 14, 14, 15], rows });
+  });
+  return sheets;
+}
+
+// The same rows as a CSV: plain numbers a spreadsheet can add up, dates as
+// YYYY-MM-DD, and a blank line where the Excel file starts a new sheet.
+function sheetsToCSV(sheets) {
+  const out = [];
+  sheets.forEach((sh, i) => {
+    if (i) out.push('');
+    sh.rows.forEach(r => {
+      const vals = r.map(c => (c && typeof c === 'object') ? c.v : c);
+      while (vals.length && (vals[vals.length - 1] == null || vals[vals.length - 1] === '')) vals.pop();
+      out.push(vals.map(v => typeof v === 'number' ? v.toFixed(2) : (v == null || v === '' ? '' : csvCell(v))).join(','));
+    });
   });
   // The byte-order mark tells Excel the file is UTF-8, so S$, RM and any
   // Chinese descriptions survive the trip.
-  downloadBlob(new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `pfmt_statement_${mk}.csv`);
+  return '﻿' + out.join('\r\n');
+}
+
+function crc32(bytes) {
+  let table = crc32.table;
+  if (!table) {
+    table = crc32.table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      table[n] = c >>> 0;
+    }
+  }
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = table[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+// An uncompressed zip, which is all an .xlsx needs to be.
+function zipStore(files, type) {
+  const enc = new TextEncoder(), now = new Date();
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  const record = (size, fields) => {
+    const dv = new DataView(new ArrayBuffer(size));
+    fields.forEach(([at, v, bytes]) => bytes === 4 ? dv.setUint32(at, v, true) : dv.setUint16(at, v, true));
+    return dv;
+  };
+  const parts = [], central = [];
+  let offset = 0;
+  files.forEach(({ name, text }) => {
+    const nameBytes = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+    // 0x0800: the file name is UTF-8.
+    parts.push(record(30, [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, time, 2], [12, date, 2],
+      [14, crc, 4], [18, data.length, 4], [22, data.length, 4], [26, nameBytes.length, 2], [28, 0, 2]]), nameBytes, data);
+    central.push(record(46, [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, time, 2], [14, date, 2],
+      [16, crc, 4], [20, data.length, 4], [24, data.length, 4], [28, nameBytes.length, 2], [30, 0, 2], [32, 0, 2],
+      [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, offset, 4]]), nameBytes);
+    offset += 30 + nameBytes.length + data.length;
+  });
+  const size = central.reduce((t, c) => t + c.byteLength, 0);
+  const end = record(22, [[0, 0x06054b50, 4], [4, 0, 2], [6, 0, 2], [8, files.length, 2], [10, files.length, 2],
+    [12, size, 4], [16, offset, 4], [20, 0, 2]]);
+  return new Blob([...parts, ...central, end], { type });
+}
+
+const XLSX_STYLE = { title: 1, muted: 2, head: 3, headNum: 4, money: 5, subLabel: 6, sub: 7, totalLabel: 8, moneyTotal: 9,
+                     date: 10, bold: 11, section: 12, balLabel: 13, bal: 14, balDate: 15 };
+
+// A formatted .xlsx from statementSheets(): bold headers on a grey band, set
+// column widths, money in accounting format, real dates, no gridlines. Written
+// by hand rather than with a library; it opens in Excel, Numbers and Sheets.
+function xlsxBlob(sheets) {
+  const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const ns = 'http://schemas.openxmlformats.org';
+  const x = v => String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const strings = [], seen = new Map();
+  const str = v => { if (!seen.has(v)) { seen.set(v, strings.length); strings.push(v); } return seen.get(v); };
+  const colName = i => { let n = ''; for (i++; i; i = Math.floor((i - 1) / 26)) n = String.fromCharCode(65 + (i - 1) % 26) + n; return n; };
+
+  const sheetXml = sh => {
+    const rows = sh.rows.map((r, ri) => {
+      const cells = r.map((c, ci) => {
+        const { v, s } = c && typeof c === 'object' ? c : { v: c };
+        const ref = colName(ci) + (ri + 1), st = s ? ` s="${XLSX_STYLE[s]}"` : '';
+        if (v === null || v === undefined || v === '') return st ? `<c r="${ref}"${st}/>` : '';
+        if (typeof v === 'number') return `<c r="${ref}"${st}><v>${v}</v></c>`;
+        if ((s === 'date' || s === 'balDate') && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          const [y, m, d] = v.split('-').map(Number);
+          return `<c r="${ref}"${st}><v>${Date.UTC(y, m - 1, d) / 86400000 + 25569}</v></c>`;
+        }
+        return `<c r="${ref}"${st} t="s"><v>${str(String(v))}</v></c>`;
+      }).join('');
+      return cells ? `<row r="${ri + 1}">${cells}</row>` : '';
+    }).join('');
+    const cols = (sh.cols || []).map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
+    return `${head}<worksheet xmlns="${ns}/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>`
+      + `<sheetFormatPr defaultRowHeight="15"/>${cols ? `<cols>${cols}</cols>` : ''}<sheetData>${rows}</sheetData></worksheet>`;
+  };
+  // Built before sharedStrings.xml, which lists the strings these collect.
+  const sheetFiles = sheets.map((sh, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: sheetXml(sh) }));
+
+  const font = (bold, size, color) => `<font>${bold ? '<b/>' : ''}<sz val="${size}"/>${color ? `<color rgb="${color}"/>` : ''}<name val="Calibri"/><family val="2"/></font>`;
+  const xf = (fmt, fontId, fill, border, align) => `<xf numFmtId="${fmt}" fontId="${fontId}" fillId="${fill}" borderId="${border}" xfId="0"`
+    + (fmt ? ' applyNumberFormat="1"' : '') + (fontId ? ' applyFont="1"' : '') + (fill ? ' applyFill="1"' : '') + (border ? ' applyBorder="1"' : '')
+    + (align ? ` applyAlignment="1"><alignment horizontal="${align}"/></xf>` : '/>');
+  const solid = rgb => `<fill><patternFill patternType="solid"><fgColor rgb="${rgb}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const styles = `${head}<styleSheet xmlns="${ns}/spreadsheetml/2006/main">`
+    + '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00;(#,##0.00);&quot;–&quot;"/><numFmt numFmtId="165" formatCode="d mmm yyyy"/></numFmts>'
+    + `<fonts count="5">${font(0, 11)}${font(1, 11)}${font(1, 15)}${font(0, 10, 'FF6B7280')}${font(1, 12, 'FF4F46E5')}</fonts>`
+    + `<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${solid('FFEEF0F4')}${solid('FFF6F7F9')}</fills>`
+    + '<borders count="4"><border><left/><right/><top/><bottom/><diagonal/></border>'
+    + '<border><left/><right/><top/><bottom style="thin"><color rgb="FF111827"/></bottom><diagonal/></border>'
+    + '<border><left/><right/><top style="thin"><color rgb="FF9CA3AF"/></top><bottom/><diagonal/></border>'
+    + '<border><left/><right/><top style="thin"><color rgb="FF111827"/></top><bottom style="double"><color rgb="FF111827"/></bottom><diagonal/></border></borders>'
+    + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+    // In XLSX_STYLE order: plain, title, muted, head, headNum, money, subLabel,
+    // sub, totalLabel, moneyTotal, date, bold, section, balLabel, bal, balDate.
+    + '<cellXfs count="16">' + xf(0, 0, 0, 0) + xf(0, 2, 0, 0) + xf(0, 3, 0, 0) + xf(0, 1, 2, 1) + xf(0, 1, 2, 1, 'right')
+    + xf(164, 0, 0, 0) + xf(0, 1, 0, 2) + xf(164, 1, 0, 2) + xf(0, 1, 0, 3) + xf(164, 1, 0, 3) + xf(165, 0, 0, 0, 'left')
+    + xf(0, 1, 0, 0) + xf(0, 4, 0, 0) + xf(0, 1, 3, 0) + xf(164, 1, 3, 0) + xf(165, 1, 3, 0, 'left') + '</cellXfs>'
+    + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+  const sheetName = (n, i) => String(n).replace(/[\[\]:*?\/\\]/g, ' ').slice(0, 31) || `Sheet${i + 1}`;
+  const rel = (id, type, target) => `<Relationship Id="${id}" Type="${ns}/officeDocument/2006/relationships/${type}" Target="${target}"/>`;
+  const ct = (part, type) => `<Override PartName="${part}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.${type}+xml"/>`;
+  const files = [
+    { name: '[Content_Types].xml', text: `${head}<Types xmlns="${ns}/package/2006/content-types">`
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+      + ct('/xl/workbook.xml', 'sheet.main') + sheets.map((_, i) => ct(`/xl/worksheets/sheet${i + 1}.xml`, 'worksheet')).join('')
+      + ct('/xl/styles.xml', 'styles') + ct('/xl/sharedStrings.xml', 'sharedStrings') + '</Types>' },
+    { name: '_rels/.rels', text: `${head}<Relationships xmlns="${ns}/package/2006/relationships">${rel('rId1', 'officeDocument', 'xl/workbook.xml')}</Relationships>` },
+    { name: 'xl/workbook.xml', text: `${head}<workbook xmlns="${ns}/spreadsheetml/2006/main" xmlns:r="${ns}/officeDocument/2006/relationships"><sheets>`
+      + sheets.map((sh, i) => `<sheet name="${x(sheetName(sh.name, i))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', text: `${head}<Relationships xmlns="${ns}/package/2006/relationships">`
+      + sheets.map((_, i) => rel(`rId${i + 1}`, 'worksheet', `worksheets/sheet${i + 1}.xml`)).join('')
+      + rel('rIdStyles', 'styles', 'styles.xml') + rel('rIdStrings', 'sharedStrings', 'sharedStrings.xml') + '</Relationships>' },
+    { name: 'xl/styles.xml', text: styles },
+    ...sheetFiles,
+    { name: 'xl/sharedStrings.xml', text: `${head}<sst xmlns="${ns}/spreadsheetml/2006/main">`
+      + strings.map(v => `<si><t xml:space="preserve">${x(v)}</t></si>`).join('') + '</sst>' },
+  ];
+  return zipStore(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+
+function downloadStatementFile(st, title, base, format) {
+  const sheets = statementSheets(st, title);
+  if (format === 'xlsx') downloadBlob(xlsxBlob(sheets), base + '.xlsx');
+  else downloadBlob(new Blob([sheetsToCSV(sheets)], { type: 'text/csv;charset=utf-8' }), base + '.csv');
+}
+
+// From the statement window: the month it is showing.
+function downloadStatement(format) {
+  const mk = _stmtMonth;
+  downloadStatementFile(buildStatement(mk), 'Monthly statement', `pfmt_statement_${mk}`, format);
   showToast(`Statement for ${getMonthLabel(mk)} downloaded`, 'success');
 }
 
-function exportMonthlySummaryCSV() {
-  const { months, byCur } = monthlyInOut();
-  const currencies = Object.keys(byCur).sort();
-  if (!currencies.length) { showToast('Nothing to export for this range', 'warning'); return; }
-  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = [['Currency','Month','Income','Spending','Kept','Exchanged In','Exchanged Out','Refunds & Claims','Net'].map(q).join(',')];
-  currencies.forEach(cur => {
-    months.filter(mk => byCur[cur][mk]).forEach(mk => {
-      const { inc, exp, xIn, xOut, back } = byCur[cur][mk];
-      lines.push([cur, mk, inc.toFixed(2), exp.toFixed(2), (inc - exp).toFixed(2),
-                  xIn.toFixed(2), xOut.toFixed(2), back.toFixed(2),
-                  (inc - exp + xIn - xOut + back).toFixed(2)].map(q).join(','));
-    });
-  });
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `pfmt_monthly_in_out_${state.trendMonths || 6}m.csv`;
-  a.click();
-  showToast('Monthly summary exported', 'success');
+// From Monthly In & Out: its whole range, oldest month to this one.
+function downloadInOut(format) {
+  const keys = summaryMonthKeys();
+  const from = keys[keys.length - 1], to = keys[0];
+  const st = buildStatement(from, to);
+  if (!st.sections.length) { showToast('Nothing to export for this range', 'warning'); return; }
+  downloadStatementFile(st, 'Money in and out', `pfmt_money_in_out_${from}_to_${to}`, format);
+  showToast(`Money in and out for ${getMonthLabel(from)} – ${getMonthLabel(to)} downloaded`, 'success');
 }
 
 function showTrendDetail(mk, cur, amt, el) {

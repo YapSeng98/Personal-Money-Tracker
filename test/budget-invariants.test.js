@@ -56,7 +56,7 @@ const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPayb
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',
   'getBudgetLimit', 'isBudgetOver', 'effectiveBal',
   'parseTxnSearch', 'txnMatchesSearch',
-  'monthFlowData', 'txnBalanceEffect', 'stmtKind', 'buildStatement', 'stmtNum',
+  'monthFlowData', 'txnBalanceEffect', 'stmtKind', 'monthsBetween', 'buildStatement', 'stmtNum', 'crc32',
   'addDaysStr', 'recurDate', 'recurNextAfter', 'recurHalfWindow', 'recurAlreadyEntered'];
 
 const state = { currency: 'SGD', filterMonth: '2026-09', transactions: [], budgets: [], goals: [], accounts: [] };
@@ -607,6 +607,21 @@ group('Statement — balances carry through and agree with Monthly In & Out');
      && API.stmtKind(state.transactions[7]) === 'claim', 'transfers, exchanges and claims are labelled');
   ok(API.stmtNum(-1234.5) === '(1,234.50)' && API.stmtNum(0) === '–' && API.stmtNum(0.004) === '–',
      'accounting format: brackets for negatives, a dash for nothing');
+
+  // Monthly In & Out downloads a statement for its whole range: it must open
+  // like its first month, close like its last, and be the months added up.
+  const range = API.buildStatement('2026-08', '2026-09');
+  const aug = API.buildStatement('2026-08').sections.find(s => s.cur === 'SGD');
+  const both = range.sections.find(s => s.cur === 'SGD');
+  ok(range.months.join() === '2026-08,2026-09' && both.byMonth.map(r => r.mk).join() === '2026-08,2026-09', 'a range lists its months oldest first');
+  ok(near(both.openTot, aug.openTot) && near(both.closeTot, sgd.closeTot), 'a two-month statement opens like August and closes like September',
+     `open ${both.openTot}/${aug.openTot}, close ${both.closeTot}/${sgd.closeTot}`);
+  ok(near(both.moneyIn, aug.moneyIn + sgd.moneyIn) && near(both.moneyOut, aug.moneyOut + sgd.moneyOut), 'its money in and out are the two months added together');
+  ok(near(both.spending.reduce((t, x) => t + x.amt, 0), both.flow.exp), 'its spending lines still add up to its spending total');
+  const dbs2 = both.accounts.find(x => x.a.name === 'DBS');
+  ok(dbs2.lines.length === state.transactions.filter(t => t.account === 'DBS' && t.date < '2026-10').length, 'every DBS row of both months is in the ledger');
+  ok(API.monthsBetween('2025-11', '2026-02').join() === '2025-11,2025-12,2026-01,2026-02', 'a range crosses the new year');
+  ok(API.crc32(new TextEncoder().encode('123456789')) === 0xCBF43926, 'the Excel file\'s zip checksum matches the standard check value');
 
   // The Monthly Review donut lists every category spent in the month at its
   // getBudgetSpent figure; their sum must be the Expenses tile, paybacks and all.
