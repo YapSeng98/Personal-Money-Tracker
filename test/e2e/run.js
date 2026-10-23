@@ -251,7 +251,9 @@ async function main() {
         ['phone-in-out', '?view=msum-open&theme=dark', { width: 390, height: 1200, mobile: true }],
         ['net-worth-dark', '?view=accounts&theme=dark', { width: 1440, height: 900, mobile: false }],
         ['net-worth-light', '?view=accounts&theme=light', { width: 1280, height: 900, mobile: false }],
-        ['net-worth-phone', '?view=accounts&theme=dark', { width: 390, height: 1100, mobile: true }]]) {
+        ['net-worth-phone', '?view=accounts&theme=dark', { width: 390, height: 1100, mobile: true }],
+        ['import-desktop', '?view=import&theme=light', { width: 1440, height: 900, mobile: false }],
+        ['import-phone', '?view=import&theme=dark', { width: 390, height: 900, mobile: true }]]) {
         await screenshot(browser.dt, url + query, size, path.join(out, name + '.png'));
       }
       console.log(`screenshots saved to ${out}`);

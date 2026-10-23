@@ -49,7 +49,7 @@ function fakeClient() {
       };
       const done = () => ({ then: (res, rej) => Promise.resolve(answer()).then(res, rej) });
       return {
-        upsert(row) { call.kind = 'upsert'; call.row = row; return done(); },
+        upsert(row) { call.kind = 'upsert'; call.row = row; call.rows = Array.isArray(row) ? row : [row]; return done(); },
         update(patch) { call.kind = 'update'; call.patch = patch; return { eq(_, id) { call.id = id; return done(); } }; },
         delete() { call.kind = 'delete'; return { eq(_, id) { call.id = id; return done(); } }; }
       };
@@ -125,17 +125,33 @@ const kinds = () => state.outbox.map(o => o.kind + ':' + o.rowId).join(' ');
   await API.flushOutbox();
   ok(server.calls.length === 1 && kinds() === 'upsert:a upsert:b' && state.outbox[0].tries === 1, 'it stops at the first failure and keeps everything', kinds());
   await API.flushOutbox();
-  ok(server.calls.length === 3 && state.outbox.length === 0, 'the next attempt sends both, in order');
+  ok(server.calls.length === 2 && server.calls[1].rows.map(r => r.id).join() === 'a,b' && state.outbox.length === 0, 'the next attempt sends both, in order');
 
   group('A refusal moves aside; the rest carries on');
   reset();
   API.enqueueWrite('transactions', 'upsert', 'bad', { id: 'bad', currency: 'XYZ' });
   API.enqueueWrite('transactions', 'upsert', 'good', { id: 'good' });
-  server.plan.push({ code: '23514', message: 'violates check constraint' });
+  server.plan.push({ code: '23514', message: 'violates check constraint' }, { code: '23514', message: 'violates check constraint' });
   await API.flushOutbox();
   ok(state.outboxRejected.length === 1 && state.outboxRejected[0].rowId === 'bad' && /check constraint/.test(state.outboxRejected[0].lastError),
      'the refused write is kept, with the reason', JSON.stringify(state.outboxRejected));
-  ok(state.outbox.length === 0 && server.calls.length === 2, 'and the next write still goes');
+  ok(state.outbox.length === 0 && server.calls.length === 3, 'a batch refused for one row is resent row by row, so the good row still goes', server.calls.length);
+
+  group('Batching: runs of inserts go in one request');
+  reset();
+  for (let i = 0; i < 250; i++) API.enqueueWrite('transactions', 'upsert', 'imp' + i, { id: 'imp' + i });
+  await API.flushOutbox();
+  ok(server.calls.length === 3 && server.calls.map(c => c.rows.length).join() === '100,100,50' && state.outbox.length === 0,
+     '250 new rows go in three requests of at most 100', server.calls.map(c => c.rows.length).join());
+  ok(server.calls.flatMap(c => c.rows.map(r => r.id)).join() === Array.from({ length: 250 }, (_, i) => 'imp' + i).join(), 'in their original order, each once');
+  reset();
+  API.enqueueWrite('transactions', 'upsert', 'p', { id: 'p' });
+  API.enqueueWrite('transactions', 'update', 'q', { amount: 1 });
+  API.enqueueWrite('transactions', 'upsert', 'r', { id: 'r' });
+  API.enqueueWrite('budgets', 'upsert', 's', { id: 's' });
+  await API.flushOutbox();
+  ok(server.calls.map(c => c.kind + ':' + c.table).join() === 'upsert:transactions,update:transactions,upsert:transactions,upsert:budgets',
+     'a batch never jumps another write or mixes tables', server.calls.map(c => c.kind + ':' + c.table).join());
 
   group('Another account\'s writes stay put');
   reset();

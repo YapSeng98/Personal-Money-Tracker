@@ -7,6 +7,12 @@
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'accounts') { state.balancesMasked = false; showView('accounts'); return; }
+    if (VIEW === 'import') {
+      const mo = new Date(+M1.slice(0, 4), +M1.slice(5, 7) - 1, 1).toLocaleDateString('en-GB', { month: 'short' }), y = M1.slice(0, 4);
+      showView('transactions'); openImport();
+      await loadImportFile({ name: 'DBS statement.csv', text: async () => `Transaction Date,Reference,Debit Amount,Credit Amount,Transaction Ref1,Transaction Ref2\n07 ${mo} ${y},POS,432.00,,DENTAL,CLINIC\n24 ${mo} ${y},POS,23.45,,NETS,FAIRPRICE XTRA\n25 ${mo} ${y},UMC,18.20,,GRAB* A-9X2,SINGAPORE\n26 ${mo} ${y},ICT,,1200.00,SALARY,ACME PTE LTD\n27 ${mo} ${y},POS,9.80,,KOPITIAM,TOA PAYOH` });
+      return;
+    }
     if (VIEW === 'stmt') { openStatement(M1); return; }
     if (VIEW === 'print') { openStatement(M1); document.body.classList.add('stmt-printing'); return; }
 
@@ -366,9 +372,9 @@
       state.userId = 'test-user'; window.__sb.calls.length = 0;
       await saveTransferPair({ amt: 50, recvAmt: 50, desc: 'Peer test', cat: 'Transfer', from: 'DBS Checking', to: 'OCBC Savings',
                                fromCur: 'SGD', toCur: 'SGD', date: M0 + '-05', notes: '' });
-      const sent = window.__sb.calls.filter(c => c.op === 'upsert' && c.row && c.row.description === 'Peer test');
-      ok(sent.length === 2 && sent.find(c => c.row.type === 'expense').row.transfer_peer === 'OCBC Savings'
-         && sent.find(c => c.row.type === 'income').row.transfer_peer === 'DBS Checking', 'sync: a new transfer sends each side\'s other account');
+      const sent = window.__sb.calls.filter(c => c.op === 'upsert').flatMap(c => Array.isArray(c.row) ? c.row : [c.row]).filter(r => r && r.description === 'Peer test');
+      ok(sent.length === 2 && sent.find(r => r.type === 'expense').transfer_peer === 'OCBC Savings'
+         && sent.find(r => r.type === 'income').transfer_peer === 'DBS Checking', 'sync: a new transfer sends each side\'s other account');
       const u1 = crypto.randomUUID(), u2 = crypto.randomUUID();
       state.transactions.push(leg({ id: u1, date: M1 + '-07', type: 'expense', amount: 9, account: 'DBS Checking', description: 'Old pair', transferGroup: 'tg_old', transferPeer: '' }),
                               leg({ id: u2, date: M1 + '-07', type: 'income', amount: 9, account: 'OCBC Savings', description: 'Old pair', transferGroup: 'tg_old', transferPeer: '' }));
@@ -553,6 +559,65 @@
       ok($$('#networth-body .nw-cur')[0].querySelectorAll('.nw-table tbody tr').length === 12, 'net worth: the same numbers are there as a table');
       ok(sgdChart.getBoundingClientRect().right <= innerWidth + 1 && $('.nw-tip', sgdChart).offsetLeft >= 0, 'net worth: the chart and its tooltip stay on screen');
       state.balancesMasked = true;
+
+      // ── Import a bank statement (CSV) ───────────────────────────────────
+      const mon = mk => new Date(+mk.slice(0, 4), +mk.slice(5, 7) - 1, 1).toLocaleDateString('en-GB', { month: 'short' });
+      const yr = M1.slice(0, 4);
+      const csv = `Account Details For:,DBS Checking 123-45678-9\nStatement as at:,28 ${mon(M1)} ${yr}\n\n`
+        + `Transaction Date,Reference,Debit Amount,Credit Amount,Transaction Ref1,Transaction Ref2,Transaction Ref3\n`
+        + `07 ${mon(M1)} ${yr},POS,432.00,,DENTAL,CLINIC,\n`
+        + `24 ${mon(M1)} ${yr},POS,23.45,,NETS,FAIRPRICE XTRA,\n`
+        + `25 ${mon(M1)} ${yr},UMC,18.20,,GRAB* A-9X2,SINGAPORE,\n`
+        + `26 ${mon(M1)} ${yr},ICT,,1200.00,SALARY,ACME PTE LTD,BONUS\n`;
+      const fileOf = (text, name) => ({ name, text: async () => text });
+      nav('transactions'); await wait(10);
+      $$('#view-transactions .panel-header button').find(b => /Import/.test(b.textContent)).click(); await wait(10);
+      ok($('#import-modal').classList.contains('open') && /CSV/.test($('#imp-body').textContent), 'import: the button opens the importer');
+      await loadImportFile(fileOf('just,some\nwords,here\n', 'notes.csv'));
+      ok(/No table of dated rows/.test($('#imp-body').textContent), 'import: a file with no dated rows says so plainly');
+      state.userId = 'test-user'; state.outbox = []; window.__sb.calls.length = 0;
+      await loadImportFile(fileOf(csv, 'DBS statement Oct.csv'));
+      ok($('#imp-account').value === 'DBS Checking', 'import: the account is guessed from the file name', $('#imp-account').value);
+      ok(/4 rows/.test($('.imp-summary').textContent) && /3 to add/.test($('.imp-summary').textContent) && /1 already in your book/.test($('.imp-summary').textContent),
+         'import: four rows read, the one already recorded is left out', $('.imp-summary').textContent);
+      const impRows = $$('.imp-table tbody tr');
+      const rowOf = re => impRows.find(r => re.test(r.textContent));
+      ok(rowOf(/DENTAL/) && !$('input[type=checkbox]', rowOf(/DENTAL/)).checked && /Already in your book/.test(rowOf(/DENTAL/).textContent), 'import: the duplicate is unticked and says what it matches');
+      ok($('.imp-cat', rowOf(/GRAB/)).value === 'Transport' && $('.imp-cat', rowOf(/SALARY/)).value === 'Salary' && $('.imp-cat', rowOf(/FAIRPRICE/)).value === 'Groceries',
+         'import: categories come from the book and from keywords', [$('.imp-cat', rowOf(/GRAB/)).value, $('.imp-cat', rowOf(/SALARY/)).value, $('.imp-cat', rowOf(/FAIRPRICE/)).value].join());
+      ok(/1,200\.00/.test(rowOf(/SALARY/).textContent) && rowOf(/SALARY/).children[4].textContent.trim() !== '', 'import: a credit lands in money in');
+      const groc = $('.imp-cat', rowOf(/FAIRPRICE/)); groc.value = 'Food & Drink'; groc.dispatchEvent(new Event('change'));
+      ok($('.imp-cat', $$('.imp-table tbody tr').find(r => /FAIRPRICE/.test(r.textContent))).value === 'Food & Drink', 'import: a category you change is kept');
+      ok(document.documentElement.scrollWidth <= innerWidth + 1, 'import: the dialog fits the screen');
+      ok(!$('.imp-cols').open && /Transaction Date/.test($('.imp-cols summary').textContent) && /Debit Amount \/ Credit Amount/.test($('.imp-cols summary').textContent),
+         'import: when every column is found, the column choices fold into one line that names them', $('.imp-cols summary').textContent);
+      ok($('.imp-table-wrap').scrollWidth <= $('.imp-table-wrap').clientWidth + 1, 'import: the rows fit without scrolling sideways',
+         $('.imp-table-wrap').scrollWidth + ' > ' + $('.imp-table-wrap').clientWidth);
+      ok(parseFloat(getComputedStyle($('.imp-cat')).paddingRight) >= 24, 'import: the category name has room beside its arrow');
+      ok(getComputedStyle($('.imp-table th.n')).fontFamily === getComputedStyle($$('.imp-table th')[1]).fontFamily, 'import: every column heading uses the same font');
+      $('#imp-go').click(); await wait(20); await flushOutbox();
+      const added = state.transactions.filter(t => /^Imported from DBS statement/.test(t.notes || ''));
+      ok(added.length === 3 && added.every(t => t.account === 'DBS Checking' && t.currency === 'SGD') && added.find(t => /FAIRPRICE/.test(t.description)).category === 'Food & Drink',
+         'import: three transactions added to the account, with the chosen categories', added.length);
+      const batches = window.__sb.calls.filter(c => c.op === 'upsert' && Array.isArray(c.row));
+      ok(batches.length === 1 && batches[0].row.length === 3, 'import: they reach the server in one request', JSON.stringify(window.__sb.calls.map(c => c.op)));
+      ok(Object.values(state.importPrefs || {}).some(p => p.account === 'DBS Checking'), 'import: the column choices are remembered for this bank');
+      window.__sb.calls.length = 0;
+      _runPendingUndo(); await flushOutbox();
+      ok(!state.transactions.some(t => /^Imported from DBS statement/.test(t.notes || '')) && window.__sb.calls.filter(c => c.op === 'delete').length === 3,
+         'import: Undo removes all three, on the server too');
+      openImport(); await loadImportFile(fileOf(csv, 'DBS statement Oct.csv'));
+      $('#imp-go').click(); await wait(20); await flushOutbox();
+      openImport(); await loadImportFile(fileOf(csv, 'DBS statement Oct.csv'));
+      ok(/0 to add/.test($('.imp-summary').textContent) && /4 already in your book/.test($('.imp-summary').textContent) && $('#imp-go').disabled,
+         'import: importing the same file again adds nothing', $('.imp-summary').textContent);
+      await loadImportFile(fileOf(`Date,Details\n07 ${mon(M1)} ${yr},COFFEE\n24 ${mon(M1)} ${yr},TEA\n`, 'no amounts.csv'));
+      ok($('.imp-cols') && $('.imp-cols').open && /weren’t found/.test($('.imp-cols summary').textContent) && $('#imp-go').disabled,
+         'import: when a column is missing, the column choices open and nothing can be added', $('#imp-body').textContent.slice(0, 120));
+      closeImport();
+      state.transactions = state.transactions.filter(t => !/^Imported from/.test(t.notes || ''));
+      state.userId = null; state.outbox = []; state.importPrefs = {};
+      renderAll();
 
       // ── Only the open page draws; the others catch up when opened ───────
       nav('dashboard'); await wait(10);

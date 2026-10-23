@@ -17,6 +17,7 @@ const SUITES = [
   'data-integrity.test.js',      // transfer pairs: never broken, never hidden
   'outbox.test.js',              // writes queue until the server has them
   'app-lock.test.js',            // the PIN is stored salted, old PINs upgrade
+  'import.test.js',              // bank statement CSVs: columns, dates, amounts, duplicates, categories
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 

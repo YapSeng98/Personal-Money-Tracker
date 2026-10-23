@@ -613,6 +613,53 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .nw-table th:first-child,.nw-table td:first-child{text-align:left;}
 .nw-table td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--border);font-family:var(--fm);}
 .nw-table td:first-child{font-family:var(--ff);}
+/* Import: a wide dialog with the column choices above a preview table. */
+.modal.imp-modal{width:min(980px,96vw);}
+.imp-intro{font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.55;max-width:62ch;}
+.imp-file{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;margin-bottom:14px;}
+.imp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 14px;margin-bottom:12px;}
+.imp-grid label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.imp-grid label.imp-check{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink2);font-size:12px;}
+.imp-summary{font-size:13px;padding:10px 12px;border-radius:10px;background:var(--surface);margin-bottom:10px;}
+.imp-table-wrap{max-height:46vh;overflow:auto;border:1px solid var(--border);border-radius:12px;}
+.imp-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px;}
+.imp-table th{position:sticky;top:0;background:var(--card);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px;border-bottom:1px solid var(--border);}
+.imp-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top;}
+.imp-table th.n{text-align:right;}
+.imp-table td.n{text-align:right;font-family:var(--fm);white-space:nowrap;}
+.imp-table td.n.in{color:var(--jade-d);}
+.imp-table .d{white-space:nowrap;color:var(--ink2);}
+.imp-table tr.off td{opacity:.5;}
+.imp-table .imp-cat{padding:4px 28px 4px 10px;background-position:right 9px center;font-size:12px;width:auto;}
+.imp-all{display:none;}
+.imp-acc{max-width:360px;}
+.imp-cols{margin-bottom:12px;border:1px solid var(--border);border-radius:12px;}
+.imp-cols>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:13px;color:var(--ink2);}
+.imp-cols>summary::-webkit-details-marker{display:none;}
+.imp-cols>summary::after{content:'';margin-left:auto;width:8px;height:8px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);transition:transform .15s;flex-shrink:0;}
+.imp-cols[open]>summary::after{transform:rotate(-135deg);}
+.imp-cols>summary b{color:var(--ink);}
+.imp-cols>summary>span{min-width:0;line-height:1.5;}
+.imp-cols .imp-grid{padding:0 12px 12px;margin:0;}
+@media (max-width:640px){
+  .imp-table{min-width:0;}
+  .imp-table thead tr{display:flex;}
+  .imp-table th{position:static;border:0;padding:8px 10px;}
+  .imp-table th:not(:first-child){display:none;}
+  .imp-all{display:inline;margin-left:6px;}
+  .imp-table tbody tr{display:grid;grid-template-columns:26px minmax(0,1fr) auto;column-gap:8px;grid-template-areas:"chk desc amt" "chk date amt" "chk cat cat";padding:10px;border-top:1px solid var(--border);}
+  .imp-table tbody td{border:0;padding:0;}
+  .imp-table tbody td:nth-child(1){grid-area:chk;}
+  .imp-table tbody td:nth-child(2){grid-area:date;font-size:11.5px;}
+  .imp-table tbody td:nth-child(3){grid-area:desc;font-weight:600;overflow-wrap:anywhere;}
+  .imp-table tbody td:nth-child(4){grid-area:cat;margin-top:6px;}
+  .imp-table tbody td.n{grid-area:amt;}
+  .imp-table tbody td.n:empty{display:none;}
+  .imp-table tbody td[colspan]{grid-column:1/-1;}
+}
+.imp-dup{font-size:11px;color:var(--amber);margin-top:2px;}
+.imp-why{font-size:10.5px;color:var(--muted);margin-top:2px;}
+.imp-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
 .sync-badge{background:var(--amber-s);color:var(--amber);border:1px solid var(--amber);font-weight:700;}
 .sync-badge.bad{background:var(--coral-s);color:var(--coral);border-color:var(--coral);}
 /* .btn sets display, which beats the hidden attribute: without this the
@@ -1130,6 +1177,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="panel-header">
           <div class="panel-title">All Transactions</div>
           <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="openImport()" title="Add the rows of a bank statement exported as CSV">⬆ Import</button>
             <button class="btn btn-ghost btn-sm" onclick="openStatement(state.filterMonth)" title="View, save as PDF or download this month's statement">📄 Statement</button>
             <button class="btn btn-ghost btn-sm" id="bulk-toggle-btn" onclick="toggleBulkMode()" data-lkey="bulk_select_btn">☑️ Select</button>
             <button class="btn btn-jade btn-sm" onclick="openTxnModal()">+ Add</button>
@@ -1644,6 +1692,20 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   <button class="bnav-item" data-bview="goals" onclick="showView('goals')"><span class="bnav-ico">🎯</span><span class="bnav-lbl" data-bkey="bnav_goals">Goals</span></button>
   <button class="bnav-item" data-bview="analytics" onclick="showView('analytics')"><span class="bnav-ico">📈</span><span class="bnav-lbl" data-bkey="bnav_review">Stats</span></button>
 </nav>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- IMPORT A BANK STATEMENT                      -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="import-modal">
+  <div class="modal imp-modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
+    <div class="modal-header">
+      <div class="modal-title" id="import-title">Import a bank statement</div>
+      <button class="modal-close" onclick="closeImport()" aria-label="Close">✕</button>
+    </div>
+    <input type="file" id="imp-file" accept=".csv,.txt,text/csv" hidden onchange="onImportFile(this)">
+    <div id="imp-body"></div>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════════════ -->
 <!-- CHANGES THE SERVER REFUSED                   -->
@@ -2431,6 +2493,7 @@ function saveState() {
       geminiKey: state.geminiKey,
       aiModel: state.aiModel,
       outbox: state.outbox || [],
+      importPrefs: state.importPrefs || {},
       outboxRejected: state.outboxRejected || [],
       budgetCur: state.budgetCur,
       lastSync: state.lastSync,
@@ -3198,17 +3261,33 @@ function flushOutbox() {
         const now = Date.now();
         const op = outbox().find(o => o.userId === state.userId && !(o.notBefore > now));
         if (!op) break;
-        op.sending = true;
+        // Consecutive inserts into one table (an import, say) go in one request
+        // of up to 100 rows rather than one request each.
+        const batch = [op];
+        if (op.kind === 'upsert' && !op.single) {
+          for (let k = outbox().indexOf(op) + 1; k < outbox().length && batch.length < 100; k++) {
+            const o = outbox()[k];
+            if (o.kind !== 'upsert' || o.table !== op.table || o.userId !== op.userId || o.sending || o.single || o.notBefore > now) break;
+            batch.push(o);
+          }
+        }
+        batch.forEach(o => { o.sending = true; });
         let error = null;
         try {
           const q = sb.from(op.table);
-          const res = op.kind === 'upsert' ? await q.upsert(op.payload)
+          const res = op.kind === 'upsert' ? await q.upsert(batch.length > 1 ? batch.map(o => o.payload) : op.payload)
                     : op.kind === 'update' ? await q.update(op.payload).eq('id', op.rowId)
                     : await q.delete().eq('id', op.rowId);
           error = res && res.error;
         } catch (e) { error = e; }
-        op.sending = false;
-        if (!error) { state.outbox = outbox().filter(o => o !== op); saveState(); continue; }
+        batch.forEach(o => { o.sending = false; });
+        if (!error) { state.outbox = outbox().filter(o => !batch.includes(o)); saveState(); continue; }
+        if (batch.length > 1 && isPermanentDbError(error)) {
+          // One bad row refuses the whole request: send these one by one to find it.
+          batch.forEach(o => { o.single = true; });
+          saveState();
+          continue;
+        }
         op.tries++;
         op.lastError = error.message || String(error);
         if (isPermanentDbError(error)) {
@@ -3849,6 +3928,456 @@ function drawNetWorthChart(el) {
     show(at + (ev.key === 'ArrowRight' ? 1 : -1));
   };
   el.onblur = hide;
+}
+
+// ═══════════════════════════════════════════════
+// IMPORT A BANK STATEMENT (CSV)
+// ═══════════════════════════════════════════════
+// The pieces below are pure, so the tests run them directly: read the file
+// into rows, find the table under the bank's header lines, guess which column
+// is which, read dates and amounts in the shapes banks use, spot rows already
+// in the book, and suggest a category from the user's own history.
+
+// CSV with quoted fields, doubled quotes, line breaks inside quotes, and a
+// comma, semicolon or tab separator (whichever the first lines use most).
+function parseCSV(text) {
+  text = String(text || '').replace(/^﻿/, '');
+  const sample = text.split(/\r?\n/).slice(0, 10).join('\n');
+  const count = ch => (sample.match(new RegExp(ch === '\t' ? '\t' : '\\' + ch, 'g')) || []).length;
+  const sep = [',', ';', '\t'].sort((a, b) => count(b) - count(a))[0];
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === sep) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = '';
+      if (row.some(v => v.trim() !== '')) rows.push(row.map(v => v.trim()));
+      row = [];
+    } else cell += c;
+  }
+  row.push(cell);
+  if (row.some(v => v.trim() !== '')) rows.push(row.map(v => v.trim()));
+  return rows;
+}
+
+const MONTHS3 = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+
+// The date's parts as [a, b, year] for day/month-ambiguous shapes, or a fixed
+// 'YYYY-MM-DD' when the shape says which is which. null when it isn't a date.
+function dateParts(s) {
+  s = String(s || '').trim();
+  let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (m) return { fixed: [+m[1], +m[2], +m[3]] };
+  m = s.match(/^(\d{1,2})[\s\-/.]([A-Za-z]{3,4})[A-Za-z]*[\s\-/.,]*(\d{2,4})/);
+  if (m && MONTHS3[m[2].toLowerCase()]) return { fixed: [fullYear(+m[3]), MONTHS3[m[2].toLowerCase()], +m[1]] };
+  m = s.match(/^([A-Za-z]{3,4})[A-Za-z]*[\s\-/.]+(\d{1,2}),?[\s\-/.]+(\d{2,4})/);
+  if (m && MONTHS3[m[1].toLowerCase()]) return { fixed: [fullYear(+m[3]), MONTHS3[m[1].toLowerCase()], +m[2]] };
+  m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/);
+  if (m) return { a: +m[1], b: +m[2], y: fullYear(+m[3]) };
+  return null;
+}
+function fullYear(y) { return y < 100 ? 2000 + y : y; }
+
+// Day/month order for a whole column: a first part over 12 can only be a day,
+// a second part over 12 only a day. Singapore and Malaysian banks write day
+// first, so that is the answer when nothing in the file decides it.
+function detectDateOrder(values) {
+  let dayFirst = 0, monthFirst = 0;
+  values.forEach(v => {
+    const p = dateParts(v);
+    if (!p || p.fixed) return;
+    if (p.a > 12) dayFirst++;
+    if (p.b > 12) monthFirst++;
+  });
+  return monthFirst > dayFirst ? 'mdy' : 'dmy';
+}
+
+function parseImportDate(s, order) {
+  const p = dateParts(s);
+  if (!p) return null;
+  const [y, mo, d] = p.fixed || (order === 'mdy' ? [p.y, p.a, p.b] : [p.y, p.b, p.a]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCMonth() !== mo - 1) return null;   // 31 Feb and the like
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+// "1,234.50", "-12.30", "(45.00)", "S$12.30", "RM 1 200", "12.30 CR", "12.30-"
+// → a signed number; '' and '-' → null.
+function parseImportAmount(s) {
+  let t = String(s == null ? '' : s).trim();
+  if (!t || t === '-' || t === '—') return null;
+  let neg = false;
+  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1); }
+  if (/\bDR\.?$/i.test(t)) { neg = true; t = t.replace(/\bDR\.?$/i, ''); }
+  else if (/\bCR\.?$/i.test(t)) { t = t.replace(/\bCR\.?$/i, ''); }
+  if (/-\s*$/.test(t)) { neg = !neg; t = t.replace(/-\s*$/, ''); }
+  t = t.replace(/[^0-9.,\-]/g, '');
+  if (t.startsWith('-')) { neg = !neg; t = t.slice(1); }
+  // "1.234,50" (European) vs "1,234.50": the last separator is the decimal point.
+  if (/,\d{1,2}$/.test(t) && t.indexOf('.') !== -1 && t.lastIndexOf(',') > t.lastIndexOf('.')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+  else t = t.replace(/,/g, '');
+  const n = parseFloat(t);
+  if (!isFinite(n)) return null;
+  return Math.round((neg ? -n : n) * 100) / 100;
+}
+
+// Finds the table: the longest run of rows with the same width in which most
+// rows carry a date. The row just above it is the header when it has no date.
+function findImportTable(rows) {
+  let best = null;
+  for (let i = 0; i < rows.length; i++) {
+    const width = rows[i].length;
+    if (width < 2) continue;
+    let j = i, dated = 0;
+    while (j < rows.length && rows[j].length === width) { if (rows[j].some(v => dateParts(v))) dated++; j++; }
+    const len = j - i;
+    if (dated >= Math.max(1, Math.ceil(len * 0.6)) && (!best || dated > best.dated)) best = { start: i, end: j, dated, width };
+    if (j > i + 1) i = j - 1;
+  }
+  if (!best) return null;
+  let start = best.start, header = null;
+  if (!rows[start].some(v => dateParts(v))) { header = rows[start]; start++; }
+  else if (best.start > 0 && rows[best.start - 1].length === best.width && !rows[best.start - 1].some(v => dateParts(v))) header = rows[best.start - 1];
+  const body = rows.slice(start, best.end).filter(r => r.some(v => dateParts(v)));
+  return { header: header || rows[start].map((_, k) => `Column ${k + 1}`), rows: body, hasHeader: !!header };
+}
+
+// Which column is which, from the header's words first and the values second.
+function detectImportColumns(table) {
+  const h = table.header.map(x => String(x).toLowerCase());
+  const taken = new Set();
+  const find = re => { const k = h.findIndex((x, i) => !taken.has(i) && re.test(x)); if (k !== -1) taken.add(k); return k; };
+  const cols = { date: -1, desc: [], amount: -1, out: -1, in: -1, sign: -1 };
+  // The DR/CR marker first, so "Debit/Credit" is never read as money out.
+  cols.sign = find(/^(dr\s*\/\s*cr|cr\s*\/\s*dr|debit\s*\/\s*credit|credit\s*\/\s*debit|type|txn type)$/);
+  cols.date = find(/(^|\s)(transaction\s*)?date|posting date|trans\.? date|日期/);
+  if (cols.date === -1) cols.date = find(/date/);
+  cols.out = find(/debit|withdraw|money out|paid out|^out\b|spent|\bdr\b/);
+  cols.in  = find(/credit(?!\s*card)|deposit|money in|paid in|^in\b|received|\bcr\b/);
+  cols.amount = find(/^amount|amount\s*\(|transaction amount|^amt|金额/);
+  // Real description columns first; a bare "Reference" (often just a code like
+  // POS or ICT) only when there is nothing better.
+  const free = k => ![cols.date, cols.out, cols.in, cols.amount, cols.sign].includes(k) && !/balance|value date/.test(h[k]);
+  h.forEach((x, k) => { if (free(k) && /description|details|particulars|narrative|merchant|payee|remark|memo|transaction ref|ref\s?\d/.test(x)) cols.desc.push(k); });
+  if (!cols.desc.length) h.forEach((x, k) => { if (free(k) && /reference|transaction/.test(x)) cols.desc.push(k); });
+  // Values decide what the header couldn't.
+  const colValues = k => table.rows.map(r => r[k]).filter(v => v != null && v !== '');
+  if (cols.date === -1) {
+    let bestK = -1, bestN = 0;
+    h.forEach((_, k) => { const n = colValues(k).filter(v => dateParts(v)).length; if (n > bestN) { bestN = n; bestK = k; } });
+    cols.date = bestK;
+  }
+  if (cols.amount === -1 && cols.out === -1 && cols.in === -1) {
+    const numeric = h.map((_, k) => k).filter(k => k !== cols.date && !/balance/.test(h[k]) &&
+      colValues(k).length && colValues(k).filter(v => parseImportAmount(v) !== null).length >= colValues(k).length * 0.8);
+    if (numeric.length) cols.amount = numeric[0];
+  }
+  if (!cols.desc.length) {
+    let bestK = -1, bestLen = 0;
+    h.forEach((_, k) => {
+      if ([cols.date, cols.amount, cols.out, cols.in, cols.sign].includes(k)) return;
+      const len = colValues(k).reduce((t, v) => t + (parseImportAmount(v) === null ? v.length : 0), 0);
+      if (len > bestLen) { bestLen = len; bestK = k; }
+    });
+    if (bestK !== -1) cols.desc = [bestK];
+  }
+  return cols;
+}
+
+// Rows → transactions-to-be, with money leaving negative.
+function readImportRows(table, cols, opts) {
+  const order = opts.dateOrder || detectDateOrder(table.rows.map(r => r[cols.date]));
+  const out = [];
+  table.rows.forEach((r, i) => {
+    const date = parseImportDate(r[cols.date], order);
+    if (!date) return;
+    let amt = null;
+    if (cols.out !== -1 || cols.in !== -1) {
+      const o = cols.out !== -1 ? parseImportAmount(r[cols.out]) : null;
+      const n = cols.in !== -1 ? parseImportAmount(r[cols.in]) : null;
+      if (o === null && n === null) return;
+      amt = Math.round(((n ? Math.abs(n) : 0) - (o ? Math.abs(o) : 0)) * 100) / 100;
+    } else if (cols.amount !== -1) {
+      amt = parseImportAmount(r[cols.amount]);
+      if (amt === null) return;
+      if (cols.sign !== -1 && /^\s*d/i.test(r[cols.sign] || '')) amt = -Math.abs(amt);
+      else if (cols.sign !== -1 && /^\s*c/i.test(r[cols.sign] || '')) amt = Math.abs(amt);
+      if (opts.flip) amt = -amt;
+    }
+    if (amt === null || amt === 0) return;
+    const desc = cols.desc.map(k => r[k]).filter(Boolean).join(' · ').replace(/\s+/g, ' ').trim();
+    out.push({ line: i, date, amount: Math.abs(amt), type: amt < 0 ? 'expense' : 'income', description: desc || '(no description)' });
+  });
+  return out;
+}
+
+// One existing row can match one imported row: same account and currency,
+// same direction and amount, dated the same day or one day apart (banks post
+// a day late). Closest date wins.
+function findImportDuplicates(rows, account, currency, txns) {
+  const sameDir = (r, t) => (r.type === 'expense') === (t.type === 'expense');
+  const pool = txns.filter(t => t.account === account && (t.currency || currency) === currency);
+  const used = new Set();
+  const dayGap = (a, b) => Math.abs((Date.parse(a) - Date.parse(b)) / 864e5);
+  return rows.map(r => {
+    let best = null;
+    pool.forEach(t => {
+      if (used.has(t) || !sameDir(r, t) || Math.abs(t.amount - r.amount) > 0.005) return;
+      const gap = dayGap(t.date, r.date);
+      if (gap <= 1 && (!best || gap < best.gap)) best = { t, gap };
+    });
+    if (best) used.add(best.t);
+    return best ? best.t : null;
+  });
+}
+
+const IMPORT_KEYWORDS = [
+  [/\bgrab(?!food)|gojek|\bmrt\b|\bbus\b|taxi|comfort|cdg|simplygo|ez-?link|transitlink|\btng\b|touch ?n ?go|petrol|shell|esso|caltex|\bspc\b|parking|toll|ktm|lrt/, 'Transport'],
+  [/fairprice|ntuc|sheng siong|cold storage|giant|redmart|mydin|aeon|lotus|jaya grocer|99 speedmart|market/, 'Groceries'],
+  [/grabfood|foodpanda|deliveroo|restaurant|cafe|coffee|kopi|starbucks|mcdonald|kfc|subway|toast|bakery|food|dining|kitchen|eatery|hawker|zus|tealive|chagee|mixue/, 'Food & Drink'],
+  [/shopee|lazada|amazon|taobao|uniqlo|ikea|decathlon|watsons|guardian|daiso|zalora/, 'Shopping'],
+  [/singtel|starhub|\bm1\b|circles|sp services|sp group|unifi|\btm\b|\btnb\b|maxis|celcom|digi|umobile|insurance|aia|prudential|great eastern|netflix|spotify|icloud|google|apple\.com|subscription|bill/, 'Bills'],
+  [/clinic|hospital|pharmacy|dental|medical|guardian health|polyclinic/, 'Health'],
+  [/cinema|\bgv\b|shaw|tgv|steam|playstation|nintendo|concert|klook/, 'Entertainment'],
+  [/airline|airasia|scoot|singapore airlines|agoda|booking\.com|airbnb|hotel|expedia|trip\.com/, 'Travel'],
+  [/rent\b|rental|landlord/, 'Rental'],
+  [/tuition|course|udemy|coursera|school|university|ptptn/, 'Education'],
+  [/gym|fitness|sport|badminton|futsal|swim/, 'Sport'],
+];
+const IMPORT_INCOME_KEYWORDS = [
+  [/salary|payroll|giro.*sal|wages/, 'Salary'],
+  [/dividend|interest|bonus interest|profit/, 'Investment'],
+  [/freelance|invoice|commission/, 'Freelance'],
+];
+
+// A category for an imported row, learned from the user's own book: the same
+// description gets the category it had most often; otherwise the category
+// whose descriptions share the most (rarest-first) words; otherwise keywords;
+// otherwise Other. Plain expense/income rows only — transfers teach nothing.
+function buildCategoryModel(txns) {
+  const byDesc = new Map(), words = new Map(), docs = { expense: 0, income: 0 };
+  const tokens = s => [...new Set(String(s || '').toLowerCase().replace(/[^a-z一-鿿 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 3))];
+  txns.forEach(t => {
+    if (t.transferGroup || (t.type !== 'expense' && t.type !== 'income') || !t.category) return;
+    const key = t.type + '|' + String(t.description || '').trim().toLowerCase();
+    const m = byDesc.get(key) || new Map(); m.set(t.category, (m.get(t.category) || 0) + 1); byDesc.set(key, m);
+    docs[t.type]++;
+    tokens(t.description).forEach(w => {
+      const k = t.type + '|' + w;
+      const e = words.get(k) || { n: 0, cats: new Map() };
+      e.n++; e.cats.set(t.category, (e.cats.get(t.category) || 0) + 1); words.set(k, e);
+    });
+  });
+  return { byDesc, words, docs, tokens };
+}
+function suggestImportCategory(model, row) {
+  const top = m => [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+  const exact = model.byDesc.get(row.type + '|' + row.description.trim().toLowerCase());
+  if (exact) return { category: top(exact), why: 'same description before' };
+  const score = new Map();
+  model.tokens(row.description).forEach(w => {
+    const e = model.words.get(row.type + '|' + w);
+    if (!e) return;
+    const idf = Math.log(1 + (model.docs[row.type] || 1) / e.n);
+    e.cats.forEach((c, cat) => score.set(cat, (score.get(cat) || 0) + idf * c / e.n));
+  });
+  if (score.size) {
+    const [cat] = [...score.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+    return { category: cat, why: 'similar to past transactions' };
+  }
+  const d = row.description.toLowerCase();
+  const hit = (row.type === 'income' ? IMPORT_INCOME_KEYWORDS : IMPORT_KEYWORDS).find(([re]) => re.test(d));
+  if (hit) return { category: hit[1], why: 'keyword' };
+  return { category: 'Other', why: '' };
+}
+
+const IMPORT_INCOME_CATS = ['Salary', 'Freelance', 'Investment', 'Other'];
+let _imp = null;
+
+function openImport() {
+  _imp = null;
+  const input = document.getElementById('imp-file');
+  if (input) input.value = '';
+  renderImport();
+  document.getElementById('import-modal').classList.add('open');
+}
+function closeImport() { document.getElementById('import-modal').classList.remove('open'); }
+
+async function onImportFile(input) {
+  const file = input.files && input.files[0];
+  if (file) await loadImportFile(file);
+}
+
+// file: anything with .name and .text() (a File, or a stand-in in the tests).
+async function loadImportFile(file) {
+  const text = await file.text();
+  const table = findImportTable(parseCSV(text));
+  if (!table || !table.rows.length) {
+    _imp = { name: file.name, error: 'No table of dated rows was found in this file. Export it from your bank as CSV and try again.' };
+    renderImport();
+    return;
+  }
+  const sig = table.header.join('|').toLowerCase();
+  const pref = (state.importPrefs || {})[sig];
+  const fname = (file.name || '').toLowerCase();
+  const guess = state.accounts.find(a => fname.includes(a.name.toLowerCase()) || (a.institution && fname.includes(a.institution.toLowerCase())));
+  _imp = {
+    name: file.name, sig, table,
+    cols: pref ? pref.cols : detectImportColumns(table),
+    order: pref ? pref.order : detectDateOrder(table.rows.map(r => r[detectImportColumns(table).date])),
+    flip: pref ? pref.flip : false,
+    account: pref && state.accounts.some(a => a.name === pref.account) ? pref.account : (guess ? guess.name : ''),
+    picks: {}
+  };
+  const acc = state.accounts.find(a => a.name === _imp.account);
+  if (!pref && acc && acc.type === 'Credit Card' && _imp.cols.amount !== -1) _imp.flip = true;
+  renderImport();
+}
+
+function importItems() {
+  if (!_imp || !_imp.table) return [];
+  const acc = state.accounts.find(a => a.name === _imp.account);
+  const currency = acc ? (acc.currency || state.currency) : state.currency;
+  const rows = readImportRows(_imp.table, _imp.cols, { dateOrder: _imp.order, flip: _imp.flip });
+  const dups = acc ? findImportDuplicates(rows, acc.name, currency, state.transactions) : rows.map(() => null);
+  const model = buildCategoryModel(state.transactions);
+  return rows.map((r, i) => {
+    const pick = _imp.picks[r.line] || {};
+    const sug = suggestImportCategory(model, r);
+    return Object.assign({}, r, { dup: dups[i], include: pick.include !== undefined ? pick.include : !dups[i],
+      category: pick.category || sug.category, why: pick.category ? '' : sug.why });
+  });
+}
+
+function impSet(key, value) {
+  if (!_imp) return;
+  if (key === 'flip') _imp.flip = !!value;
+  else if (key === 'order' || key === 'account') _imp[key] = value;
+  else if (key === 'desc') _imp.cols.desc = value === 'auto' ? _imp.autoDesc.slice() : (value === '' ? [] : [+value]);
+  else _imp.cols[key] = value === '' ? -1 : +value;
+  if (key === 'amount' && value !== '') { _imp.cols.out = -1; _imp.cols.in = -1; }
+  if ((key === 'out' || key === 'in') && value !== '') _imp.cols.amount = -1;
+  renderImport();
+}
+function impPick(line, field, value) {
+  if (!_imp) return;
+  _imp.picks[line] = Object.assign(_imp.picks[line] || {}, { [field]: value });
+  renderImport();
+}
+function impPickAll(on) {
+  importItems().forEach(it => { _imp.picks[it.line] = Object.assign(_imp.picks[it.line] || {}, { include: on }); });
+  renderImport();
+}
+
+function renderImport() {
+  const body = document.getElementById('imp-body');
+  if (!body) return;
+  if (!_imp) {
+    body.innerHTML = `<p class="imp-intro">Export a statement from your bank's website or app as a <b>CSV</b> file, then choose it here.
+      The columns are read automatically, rows already in your book are left out, and each row gets a category from your own history.</p>
+      <label class="btn btn-primary" for="imp-file">Choose a CSV file</label>`;
+    return;
+  }
+  if (_imp.error) {
+    body.innerHTML = `<div class="dc-why">⚠ ${esc(_imp.error)}</div><label class="btn btn-ghost" for="imp-file">Choose another file</label>`;
+    return;
+  }
+  const t = _imp.table, c = _imp.cols;
+  if (!_imp.autoDesc) _imp.autoDesc = c.desc.slice();
+  const colOpts = (sel, blank) => `<option value="">${blank}</option>` + t.header.map((hd, k) =>
+    `<option value="${k}" ${sel === k ? 'selected' : ''}>${esc(hd || 'Column ' + (k + 1))}</option>`).join('');
+  const descSel = c.desc.length > 1 ? 'auto' : (c.desc[0] === undefined ? '' : c.desc[0]);
+  const descOpts = `<option value="">—</option>` + (_imp.autoDesc.length > 1 ? `<option value="auto" ${descSel === 'auto' ? 'selected' : ''}>${esc(_imp.autoDesc.map(k => t.header[k]).join(' + '))}</option>` : '')
+    + t.header.map((hd, k) => `<option value="${k}" ${descSel === k ? 'selected' : ''}>${esc(hd || 'Column ' + (k + 1))}</option>`).join('');
+  const acc = state.accounts.find(a => a.name === _imp.account);
+  const items = importItems();
+  const adding = items.filter(i => i.include);
+  const dupN = items.filter(i => i.dup).length;
+  const cur = acc ? (acc.currency || state.currency) : state.currency;
+  const catOpts = (it) => (it.type === 'income' ? IMPORT_INCOME_CATS : EXPENSE_CATS)
+    .map(cat => `<option ${cat === it.category ? 'selected' : ''}>${esc(cat)}</option>`).join('');
+  const rows = items.map(it => `<tr class="${it.include ? '' : 'off'}">
+      <td><input type="checkbox" ${it.include ? 'checked' : ''} onchange="impPick(${it.line},'include',this.checked)" aria-label="Import this row"></td>
+      <td class="d">${fmtDate(it.date)}</td>
+      <td>${esc(it.description)}${it.dup ? `<div class="imp-dup">Already in your book: ${esc(it.dup.description || '')} · ${fmtDate(it.dup.date)}</div>` : ''}</td>
+      <td><select class="form-input imp-cat" onchange="impPick(${it.line},'category',this.value)">${catOpts(it)}</select>${it.why ? `<div class="imp-why">${esc(it.why)}</div>` : ''}</td>
+      <td class="n in">${it.type === 'income' ? '+' + fmtWithCur(it.amount, cur) : ''}</td>
+      <td class="n">${it.type === 'expense' ? fmtWithCur(it.amount, cur) : ''}</td></tr>`).join('');
+  const noAmount = c.amount === -1 && c.out === -1 && c.in === -1;
+  const colName = k => esc(t.header[k] || 'Column ' + (k + 1));
+  const colsFound = !noAmount && c.date !== -1 && c.desc.length > 0;
+  const colsOpen = _imp.colsOpen === undefined ? !colsFound : _imp.colsOpen;
+  const colsLine = colsFound
+    ? `Columns: <b>${colName(c.date)}</b> · <b>${c.desc.map(colName).join(' + ')}</b> · <b>${c.amount !== -1 ? colName(c.amount) : [c.out, c.in].filter(k => k !== -1).map(colName).join(' / ')}</b>`
+    : '⚠ Some columns weren’t found. Choose them here.';
+  body.innerHTML = `<div class="imp-file"><b>${esc(_imp.name)}</b> · ${t.rows.length} row${t.rows.length === 1 ? '' : 's'} found
+      <label class="btn btn-ghost btn-sm" for="imp-file">Choose another file</label></div>
+    <div class="imp-grid imp-acc">
+      <label>Account<select class="form-input" id="imp-account" onchange="impSet('account',this.value)">
+        <option value="">Pick the account…</option>${state.accounts.map(a => `<option ${a.name === _imp.account ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
+    </div>
+    <details class="imp-cols" ${colsOpen ? 'open' : ''} ontoggle="if(_imp)_imp.colsOpen=this.open"><summary><span>${colsLine}</span></summary>
+    <div class="imp-grid">
+      <label>Dates are<select class="form-input" id="imp-order" onchange="impSet('order',this.value)">
+        <option value="dmy" ${_imp.order === 'dmy' ? 'selected' : ''}>Day / month</option><option value="mdy" ${_imp.order === 'mdy' ? 'selected' : ''}>Month / day</option></select></label>
+      <label>Date column<select class="form-input" id="imp-col-date" onchange="impSet('date',this.value)">${colOpts(c.date, '—')}</select></label>
+      <label>Description<select class="form-input" id="imp-col-desc" onchange="impSet('desc',this.value)">${descOpts}</select></label>
+      <label>Amount (signed)<select class="form-input" id="imp-col-amount" onchange="impSet('amount',this.value)">${colOpts(c.amount, '— not used')}</select></label>
+      <label>Money out<select class="form-input" id="imp-col-out" onchange="impSet('out',this.value)">${colOpts(c.out, '— not used')}</select></label>
+      <label>Money in<select class="form-input" id="imp-col-in" onchange="impSet('in',this.value)">${colOpts(c.in, '— not used')}</select></label>
+      <label class="imp-check"><input type="checkbox" id="imp-flip" ${_imp.flip ? 'checked' : ''} onchange="impSet('flip',this.checked)"> Spending shows as a positive amount (credit card)</label>
+    </div></details>
+    <div class="imp-summary">${noAmount ? '⚠ Choose the amount column, or the money out and money in columns.' : !acc ? '⚠ Pick the account this statement is for.'
+      : `${items.length} row${items.length === 1 ? '' : 's'} · <b>${adding.length} to add</b>${dupN ? ` · ${dupN} already in your book (unticked)` : ''}`}</div>
+    <div class="imp-table-wrap"><table class="imp-table">
+      <thead><tr><th><input type="checkbox" ${adding.length && adding.length === items.length ? 'checked' : ''} onchange="impPickAll(this.checked)" aria-label="Import every row"><span class="imp-all">Select all</span></th>
+        <th>Date</th><th>Description</th><th>Category</th><th class="n">Money in</th><th class="n">Money out</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="imp-why">No rows could be read with these columns.</td></tr>'}</tbody></table></div>
+    <div class="imp-actions"><button class="btn btn-ghost" onclick="closeImport()">Cancel</button>
+      <button class="btn btn-primary" id="imp-go" ${!acc || !adding.length ? 'disabled' : ''} onclick="commitImport()">Add ${adding.length} transaction${adding.length === 1 ? '' : 's'}</button></div>`;
+}
+
+function commitImport() {
+  const acc = _imp && state.accounts.find(a => a.name === _imp.account);
+  if (!acc) return;
+  const currency = acc.currency || state.currency;
+  const picked = importItems().filter(i => i.include);
+  if (!picked.length) return;
+  const created = picked.map(i => ({ id: newId(), type: i.type, amount: i.amount, description: i.description, category: i.category,
+    account: acc.name, date: i.date, notes: 'Imported from ' + _imp.name, currency, created: nowStamp() }));
+  state.transactions.unshift(...created);
+  // The same bank's next file opens with these columns already chosen.
+  state.importPrefs = Object.assign({}, state.importPrefs, { [_imp.sig]: { cols: _imp.cols, order: _imp.order, flip: _imp.flip, account: acc.name } });
+  if (state.userId) {
+    created.forEach(t => enqueueWrite('transactions', 'upsert', t.id, { id: t.id, user_id: state.userId, type: t.type, amount: t.amount,
+      description: t.description, category: t.category, account: t.account, date: t.date, notes: t.notes, currency: t.currency }));
+  }
+  saveState();
+  flushOutbox();
+  const name = _imp.name;
+  closeImport();
+  renderAll();
+  undoToast(`Added ${created.length} transaction${created.length === 1 ? '' : 's'} from ${name}`, () => {
+    const ids = new Set(created.map(t => t.id));
+    state.transactions = state.transactions.filter(t => !ids.has(t.id));
+    created.forEach(t => {
+      const queued = outbox().find(o => o.table === 'transactions' && o.rowId === t.id && !o.sending);
+      if (queued) state.outbox = outbox().filter(o => o !== queued);
+      else if (state.userId) enqueueWrite('transactions', 'delete', t.id);
+    });
+    saveState();
+    flushOutbox();
+    renderAll();
+  }, () => {}, 10000);
 }
 
 // ═══════════════════════════════════════════════
@@ -8743,7 +9272,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
-    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems();
+    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems(); closeImport();
     ['account-modal','confirm-modal'].forEach(id=>document.getElementById(id).classList.remove('open'));
   }
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openTxnModal(); }
