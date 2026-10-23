@@ -235,12 +235,12 @@ rule. See [Telegram alerts](#telegram-alerts).
 | Page | What it does |
 |---|---|
 | Dashboard | Per-currency balance/income/expense hero, KPI cards, spend-by-category |
-| Transactions | Full list with month/type/currency filters, bulk select, undo, a **Data check** for broken transfer pairs, and a **Statement** button |
+| Transactions | Full list with month/type/currency filters, bulk select, undo, a **Data check** for broken transfer pairs, a **Statement** button, and **Import** for a bank's CSV statement |
 | Budgets | Per-currency budgets with rollover, plus "Plan from Salary" allocator |
 | **Bills** | The monthly checklist — see below |
 | Goals | Savings goals, optionally tracking a real account |
 | Analytics | Monthly Review (a donut per currency of every category spent), the **monthly statement** (view, PDF, Excel, CSV), spending trend, and Monthly In & Out (range totals, per-month bars, Excel and CSV downloads) |
-| Accounts | Balances, allocation, debt ratio |
+| Accounts | Balances, **net worth over time** (a line per currency, with a table view), allocation, debt ratio |
 | Settings | Account, profile, password, appearance, app lock, **Telegram alerts**, AI key, backup, data |
 
 **Mobile (≤900px).** The sidebar becomes a hamburger drawer and a bottom bar
@@ -259,11 +259,21 @@ server's rows with what is still queued (`mergeWithOutbox`), so a change that
 hadn't landed is never overwritten and a deleted row can't come back. Inserts
 are upserts, so a retry never duplicates. The badge in the top bar shows what is
 waiting, and anything the server refuses (a constraint, a missing column) can be
-retried or discarded from there.
+retried or discarded from there. Consecutive inserts into the same table go up
+to 100 per request; if the server refuses a batch, each row is retried alone so
+one bad row can't hold up the rest.
 
 **Transfers and asset purchases are pairs** of rows sharing a `transferGroup`.
 `pairProblems()` finds any that aren't one expense plus one income/asset on two
 accounts; those are never hidden from the list, and the Data check fixes them.
+
+**Importing a bank statement.** `parseCSV` reads the file, `findImportTable`
+skips any preamble to the table of dated rows, and `detectImportColumns` picks
+the date, description and amount columns (one signed amount, or money out and
+money in). Rows already in the book are matched one-to-one within a day
+(`findImportDuplicates`) and left unticked. Categories come from the book's own
+history first (`suggestImportCategory`), then from keywords. The column choices
+are remembered per bank, keyed by the header row.
 
 **Offline and installable.** `manifest.webmanifest` and `icons/` let the app be
 added to a home screen; `sw.js` caches the page and its pinned libraries
@@ -373,7 +383,7 @@ Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 ## Tests
 
 ```bash
-node test/run-all.js        # 350 checks, no browser needed
+node test/run-all.js        # 401 checks, no browser needed
 node test/e2e/run.js        # the real page in headless Chrome (needs Node 22+ and Chrome)
 node test/perf/bench.js     # how long a redraw takes with 5,000 transactions
 ```
@@ -384,19 +394,21 @@ wrong — not that a test is stale.
 
 | Suite | Checks | Protects |
 |---|---|---|
-| `budget-invariants.test.js` | 173 | budget figures never negative, never more than the Transactions list shows, bars always 0–100%, rollover capped, cash vs P&L conservation, currencies never mixed, every surface reporting the *same* month total, and statements that reconcile (opening + in − out = closing, a range equals its months added up) |
+| `budget-invariants.test.js` | 184 | budget figures never negative, never more than the Transactions list shows, bars always 0–100%, rollover capped, cash vs P&L conservation, currencies never mixed, every surface reporting the *same* month total, and statements that reconcile (opening + in − out = closing, a range equals its months added up), and a net worth line that matches every month's closing balance and ends on today's balances |
 | `bills-and-alerts.test.js` | 72 | the two copies of the shared rules are identical; one transaction never ticks two bills; a match is a real match; due dates survive short months; an alert never contradicts the budget card |
 | `pfmt-notify.test.mjs` | 48 | the Edge Function itself, under a stubbed Deno and a stubbed network — auth gates, claim-before-send, one message not many, HTML escaping, failed sends releasing their claims; the cron run is pinned to a date |
 | `data-integrity.test.js` | 17 | every broken transfer-pair shape is named, and no list ever hides a row it should show (3,000 randomised lists) |
-| `outbox.test.js` | 32 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed |
+| `outbox.test.js` | 35 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed; inserts go up in batches and a refused batch falls back to one row at a time |
+| `import.test.js` | 37 | bank CSVs with header lines, quoted fields, either date order and no header row; signed, split or DR/CR amounts; credit cards where spending is positive; duplicates matched one-to-one; categories learned from the book |
 | `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
 
 The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
 swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
 writes), loads dated-relative-to-today test data (`seed.js`), and clicks through
-the app (`checks.js`): about 200 checks at desktop, laptop and true 390px phone
+the app (`checks.js`): about 235 checks at desktop, laptop and true 390px phone
 sizes, covering the statement and its downloads, Monthly In & Out, the Data
-check, offline saves surviving a reload, deletes not coming back, USDT, App Lock
+check, offline saves surviving a reload, deletes not coming back, USDT, the net
+worth chart, importing a CSV (and importing it twice), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
 
