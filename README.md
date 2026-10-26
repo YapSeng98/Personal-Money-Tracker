@@ -412,6 +412,17 @@ worth chart, importing a CSV (and importing it twice), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
 
+The **phone-fit audit** (`fit.js`) opens every page, window and menu — 34
+screens, with long names, seven-figure amounts and USDT in the data — and
+measures what a person would notice on a phone: anything past the screen edge,
+boxes that scroll sideways, text cut off, squeezed or on top of other text,
+picker labels running under their arrow, text under 10px, inputs under 16px
+(iPhone zooms in on those), controls too small to tap (WCAG 2.5.8) or hidden
+behind the bottom bar, and windows wider than the screen. Every run checks
+320px, 360px in Chinese, 390px and a phone on its side; `--fit` checks every
+size with a report, and `--fit-shots DIR` saves screenshots of every screen,
+scrolled top to bottom.
+
 GitHub Actions (`.github/workflows/tests.yml`) runs both suites on every push.
 
 These exist because of a real bug. A payback larger than the month's spending

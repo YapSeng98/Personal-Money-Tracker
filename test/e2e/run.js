@@ -2,9 +2,13 @@
 /*
  * Browser end-to-end tests: the real index.html, in headless Chrome.
  *
- * Run:  node test/e2e/run.js            (desktop, laptop and phone sizes, then offline)
+ * Run:  node test/e2e/run.js            (desktop, laptop and phone sizes, phone fit, then offline)
  *       node test/e2e/run.js --no-offline (skip the offline run, which needs network)
+ *       node test/e2e/run.js --no-fit    (skip the phone-fit audit)
  *       node test/e2e/run.js --shots DIR (also save screenshots of key screens)
+ *       node test/e2e/run.js --fit       (only the phone-fit audit, at every size, with a full report)
+ *       node test/e2e/run.js --fit-shots DIR [--widths=320,390] [--themes=dark,light]
+ *                                         (screenshots of every screen, scrolled top to bottom)
  *
  * Needs Node 22+ (for its built-in WebSocket) and Google Chrome or Chromium;
  * set CHROME_PATH if Chrome isn't found. No other dependencies, matching the
@@ -46,7 +50,7 @@ function buildPage(dir) {
   const cdn = page.match(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js[^"]*"[^>]*><\/script>/);
   if (!cdn) throw new Error('could not find the supabase-js <script> tag in index.html');
   page = replaceOnce(page, cdn[0], `<script>${read('fake-supabase.js')}</script>`, 'supabase-js tag');
-  page = replaceOnce(page, '  startApp();\n})();', `${read('seed.js')}\n${read('checks.js')}\n})();`, 'startApp() call in init');
+  page = replaceOnce(page, '  startApp();\n})();', `${read('seed.js')}\n${read('checks.js')}\n${read('fit.js')}\n})();`, 'startApp() call in init');
   // Screenshots should show the finished state, not a modal's fade-in.
   page = page.replace('</style>', '.modal{animation:none!important}</style>');
   const file = path.join(dir, 'app.html');
@@ -208,6 +212,55 @@ async function runOffline(dt) {
   return { results, errors: page.errors.filter(e => !/Failed to fetch|ERR_|NetworkError|Load failed/.test(e)) };
 }
 
+// Phone fit: fit.js's audit at the common phone sizes, a phone on its side, a
+// tablet, and once in Chinese. Returns each problem with the sizes it shows at.
+// The everyday run covers the extremes: the smallest phone, a common one in
+// Chinese, and a phone on its side. --fit covers them all.
+const FIT_QUICK = ['320', '360 zh', '390', '844×390'];
+const FIT_SIZES = [
+  { name: '320', query: '', size: { width: 320, height: 568, mobile: true } },
+  { name: '360', query: '', size: { width: 360, height: 740, mobile: true } },
+  { name: '360 zh', query: '&lang=zh', size: { width: 360, height: 740, mobile: true } },
+  { name: '375', query: '', size: { width: 375, height: 667, mobile: true } },
+  { name: '390', query: '', size: { width: 390, height: 844, mobile: true } },
+  { name: '430', query: '', size: { width: 430, height: 932, mobile: true } },
+  { name: '844×390', query: '', size: { width: 844, height: 390, mobile: true } },
+  { name: '768', query: '', size: { width: 768, height: 1024, mobile: true } },
+];
+async function runFit(dt, url, quick) {
+  const merged = new Map(), errors = [];
+  const pick = quick ? FIT_QUICK : (process.argv.find(a => a.startsWith('--sizes=')) || '').slice(8).split(',').filter(Boolean);
+  for (const fit of FIT_SIZES.filter(f => !pick.length || pick.includes(f.name))) {
+    const out = await runChecks(dt, url + '?view=fit&theme=dark' + fit.query, fit.size);
+    errors.push(...(out.errors || []).map(e => `${fit.name}: ${e}`));
+    if (!out.findings) { errors.push(`${fit.name}: the audit did not finish`); continue; }
+    out.findings.forEach(f => {
+      const k = [f.kind, f.screen, f.at, f.text].join('|');
+      if (!merged.has(k)) merged.set(k, Object.assign({}, f, { sizes: [], details: [] }));
+      const m = merged.get(k); m.sizes.push(fit.name); m.details.push(f.detail);
+    });
+  }
+  return { findings: [...merged.values()], errors };
+}
+
+async function fitShots(dt, url, out, widths, themes) {
+  const page0 = await runChecks(dt, url + '?view=fit&theme=dark', { width: 390, height: 844, mobile: true });
+  for (const width of widths) for (const theme of themes) for (const screen of page0.screens) {
+    const size = { width, height: width > 600 ? 390 : Math.round(width * 2.16), mobile: true };
+    const page = await openPage(dt, `${url}?view=fit&screen=${screen}&theme=${theme}`, size);
+    await sleep(1200);
+    const [sh, ch] = await page.evaluate('(() => { const s = window.__fitScroller ? __fitScroller() : document.scrollingElement; return [s.scrollHeight, s.clientHeight]; })()') || [0, 0];
+    const stops = [0];
+    for (let y = Math.round(ch * 0.8); y < sh - ch * 0.2 && stops.length < 8; y += Math.round(ch * 0.8)) stops.push(Math.min(y, sh - ch));
+    for (let i = 0; i < stops.length; i++) {
+      if (i) { await page.evaluate(`__fitScroller().scrollTop = ${stops[i]}`); await sleep(150); }
+      const { data } = await dt.send('Page.captureScreenshot', { format: 'png' }, page.sessionId);
+      fs.writeFileSync(path.join(out, `${width}-${theme}-${screen}-${i + 1}.png`), Buffer.from(data, 'base64'));
+    }
+    await dt.send('Target.closeTarget', { targetId: page.targetId });
+  }
+}
+
 async function main() {
   if (typeof WebSocket === 'undefined') { console.error('Node 22 or newer is needed (built-in WebSocket).'); process.exit(1); }
   const chrome = findChrome();
@@ -222,6 +275,30 @@ async function main() {
     { name: 'phone (390px, dark)', query: '?theme=dark', size: { width: 390, height: 844, mobile: true } },
   ];
   let failed = 0;
+  if (process.argv.includes('--fit') || process.argv.includes('--fit-shots')) {
+    try {
+      const at = process.argv.indexOf('--fit-shots');
+      if (at > 0) {
+        const out = path.resolve(process.argv[at + 1] || 'fit-shots');
+        fs.mkdirSync(out, { recursive: true });
+        const widths = (process.argv.find(a => a.startsWith('--widths=')) || '--widths=390').slice(9).split(',').map(Number);
+        const themes = (process.argv.find(a => a.startsWith('--themes=')) || '--themes=dark').slice(9).split(',');
+        await fitShots(browser.dt, url, out, widths, themes);
+        console.log(`screenshots saved to ${out}`);
+      } else {
+        const { findings, errors } = await runFit(browser.dt, url);
+        const kinds = [...new Set(findings.map(f => f.kind))];
+        kinds.forEach(kind => {
+          const list = findings.filter(f => f.kind === kind);
+          console.log(`\n${kind} (${list.length})`);
+          list.forEach(f => console.log(`  [${f.screen}] ${f.at}${f.text ? ' “' + f.text + '”' : ''} — ${f.details[0]} @ ${f.sizes.join(', ')}`));
+        });
+        errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+        console.log(`\n${findings.length} findings, ${errors.length} errors`);
+      }
+    } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+    return;
+  }
   try {
     for (const run of runs) {
       const { results, errors } = await runChecks(browser.dt, url + run.query, run.size);
@@ -229,6 +306,13 @@ async function main() {
       failed += bad.length + errors.length;
       console.log(`${bad.length || errors.length ? 'FAIL' : 'PASS'} ${run.name}: ${results.length - bad.length} checks passed, ${bad.length} failed, ${errors.length} page errors`);
       bad.forEach(r => console.log(`  ✗ ${r.name}${r.detail ? ' — ' + r.detail.slice(0, 300) : ''}`));
+      errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+    }
+    if (!process.argv.includes('--no-fit')) {
+      const { findings, errors } = await runFit(browser.dt, url, true);
+      failed += findings.length + errors.length;
+      console.log(`${findings.length || errors.length ? 'FAIL' : 'PASS'} phone fit (${FIT_QUICK.join(', ')}; every page, window and menu): ${findings.length} problem${findings.length === 1 ? '' : 's'}, ${errors.length} page errors`);
+      findings.forEach(f => console.log(`  ✗ ${f.kind} [${f.screen}] ${f.at}${f.text ? ' “' + f.text + '”' : ''} — ${f.details[0]} @ ${f.sizes.join(', ')}`));
       errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
     }
     if (!process.argv.includes('--no-offline')) {

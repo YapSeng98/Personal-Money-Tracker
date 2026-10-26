@@ -3,6 +3,7 @@
   // stops, for screenshots. Results go into a pre#e2e element as JSON.
   const VIEW = P.get('view') || 'checks';
   setTimeout(async () => {
+    if (VIEW === 'fit') return;
     if (VIEW === 'review') { document.getElementById('analytics-chart').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
@@ -263,9 +264,15 @@
         sgdRow().click(); await wait(10);
         const wrap = $('#monthly-summary .msum-wrap'), tbl = $('table', wrap);
         ok(tbl.scrollWidth <= wrap.clientWidth + 1, 'phone: Monthly In & Out fits without sideways scrolling', `${tbl.scrollWidth} vs ${wrap.clientWidth}`);
-        const netTh = $$('thead th', wrap).find(th => th.classList.contains('msum-net'));
-        ok(netTh && netTh.getBoundingClientRect().right <= wrap.getBoundingClientRect().right + 1 && netTh.getBoundingClientRect().width > 60,
-           'phone: with a month open, Net still sits inside the table', netTh && netTh.getBoundingClientRect().width);
+        // A phone shows each month as a card: month and net, then income and spending.
+        const right = wrap.getBoundingClientRect().right + 1;
+        const nets = $$('tr.msum-row > td:last-child, tr.msum-total > td:last-child', wrap);
+        ok(nets.length && nets.every(td => td.getBoundingClientRect().right <= right), 'phone: with a month open, every Net sits inside the card',
+           nets.map(td => Math.round(td.getBoundingClientRect().right)).join() + ' vs ' + Math.round(right));
+        const figures = $$('tr.msum-row > td, tr.msum-total > td', wrap).filter(td => td.offsetParent);
+        ok(figures.every(td => td.scrollWidth <= td.clientWidth + 1 && td.getBoundingClientRect().right <= right), 'phone: no month, income, spending or net is cut short',
+           figures.filter(td => td.scrollWidth > td.clientWidth + 1).map(td => td.textContent.trim()).join(' | '));
+        ok(/Income/.test(getComputedStyle($('tr.msum-row > td:nth-child(3)', wrap), '::before').content), 'phone: each card labels its figures');
         ok($$('tr.msum-row td', wrap).filter(td => getComputedStyle(td).visibility !== 'hidden').every(td => td.scrollWidth <= td.clientWidth + 1),
            'phone: no figure is cut off');
         sgdRow().click(); await wait(10);
