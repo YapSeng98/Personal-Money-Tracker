@@ -489,6 +489,24 @@
       await saveAccount();
       const okx = state.accounts.find(a => a.name === 'OKX Wallet');
       ok(okx && okx.currency === 'USDT', 'usdt: a USDT account can be created');
+      // A Crypto account type: a new one defaults to USDT and gets a coin icon.
+      openAccountModal();
+      ok([...$('#acc-type').options].some(o => o.textContent === 'Crypto'), 'crypto: the account type picker offers Crypto');
+      $('#acc-type').value = 'Crypto'; $('#acc-type').dispatchEvent(new Event('change'));
+      ok($('#acc-currency').value === 'USDT' && /Binance/.test($('#acc-institution').placeholder), 'crypto: picking Crypto for a new account sets USDT', $('#acc-currency').value);
+      $('#acc-name').value = 'Binance Spot'; $('#acc-balance').value = '250'; $('#acc-institution').value = 'Binance';
+      await saveAccount();
+      const bnb = state.accounts.find(a => a.name === 'Binance Spot');
+      ok(bnb && bnb.type === 'Crypto' && bnb.currency === 'USDT' && bnb.icon === '🪙', 'crypto: saved as a USDT Crypto account with a coin icon', bnb && [bnb.type, bnb.currency, bnb.icon].join());
+      openTxnModal();
+      ok([...$('#txn-account').options].some(o => o.textContent.trim() === '🪙 Binance Spot'), 'crypto: it shows with its coin in the account picker');
+      closeTxnModal();
+      openAccountModal(state.accounts.find(a => a.name === 'DBS Checking').id);
+      $('#acc-type').value = 'Crypto'; $('#acc-type').dispatchEvent(new Event('change'));
+      ok($('#acc-currency').value === 'SGD', 'crypto: switching an existing account to Crypto leaves its currency alone', $('#acc-currency').value);
+      $('#account-modal').classList.remove('open');
+      state.accounts = state.accounts.filter(a => a.name !== 'Binance Spot');
+      if (bnb) state.outbox = (state.outbox || []).filter(o => o.rowId !== String(bnb.id));
       openTxnModal(); setType('transfer', $('#tab-transfer'));
       setSelectVal('txn-account', 'DBS Checking'); $('#txn-currency').value = 'SGD';
       $('#txn-amount').value = '135'; $('#txn-desc').value = 'Buy USDT'; $('#txn-date').value = M0 + '-06';

@@ -170,7 +170,7 @@ Seven tables, all in `public`, all with RLS on and a `user_id` referencing
 |---|---|---|
 | `id` | uuid | client-generated (`crypto.randomUUID()`) |
 | `name` | text | unique per user in practice; transactions reference it by name |
-| `type` | text | Checking, Savings, Credit Card, Investment, … |
+| `type` | text | Checking, Savings, Credit Card, Cash, Investment, Crypto (a new Crypto account defaults to USDT) |
 | `institution` | text | |
 | `currency` | text | SGD · USD · AUD · MYR · USDT |
 | `starting_balance` | numeric | the balance *before* any transaction in the book |

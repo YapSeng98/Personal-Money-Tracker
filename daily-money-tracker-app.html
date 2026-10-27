@@ -2218,7 +2218,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     </div>
     <div class="form-group"><label class="form-label">Account Name</label><input class="form-input" type="text" id="acc-name" placeholder="e.g. DBS Multiplier"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option></select></div>
+      <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="acc-type" onchange="onAccountTypeChange()"><option>Checking</option><option>Savings</option><option>Credit Card</option><option>Cash</option><option>Investment</option><option>Crypto</option></select></div>
       <div class="form-group"><label class="form-label">Currency</label><select class="form-input" id="acc-currency"><option value="SGD">SGD</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="MYR">MYR</option><option value="USDT">USDT</option></select></div>
     </div>
     <div class="form-row">
@@ -3211,7 +3211,7 @@ function accountOptionsHTML(accounts) {
     (byCur[c] = byCur[c] || []).push(a);
   });
   const curs = Object.keys(byCur).sort();
-  const opt = a => `<option value="${esc(a.name)}">${a.icon || '🏦'} ${esc(a.name)}</option>`;
+  const opt = a => `<option value="${esc(a.name)}">${a.icon || accountIcon(a.type)} ${esc(a.name)}</option>`;
   if (curs.length <= 1) return accounts.map(opt).join('');
   return curs.map(c => `<optgroup label="${c}">${byCur[c].map(opt).join('')}</optgroup>`).join('');
 }
@@ -4843,6 +4843,21 @@ async function deleteGoal(id) {
 // Account
 let _editingAccountId = null;
 
+function accountIcon(type) {
+  const ty = type || '';
+  return ty.includes('Credit') ? '💳' : ty.includes('Cash') ? '💵' : ty.includes('Crypto') ? '🪙' : '🏦';
+}
+
+// A new crypto account (an exchange or a wallet) is almost always held in
+// USDT, so picking the type picks the currency too; it can still be changed.
+// An existing account keeps its currency: changing that relabels its history,
+// which saveAccount asks about separately.
+function onAccountTypeChange() {
+  const crypto = document.getElementById('acc-type').value === 'Crypto';
+  if (crypto && _editingAccountId === null) document.getElementById('acc-currency').value = 'USDT';
+  document.getElementById('acc-institution').placeholder = crypto ? 'e.g. Binance, OKX, Coinbase…' : 'e.g. DBS, OCBC, UOB…';
+}
+
 function openAccountModal(id = null) {
   _editingAccountId = id;
   const isEdit = id !== null;
@@ -4863,6 +4878,7 @@ function openAccountModal(id = null) {
     document.getElementById('acc-institution').value = '';
     document.getElementById('acc-currency').value    = state.currency;
   }
+  document.getElementById('acc-institution').placeholder = document.getElementById('acc-type').value === 'Crypto' ? 'e.g. Binance, OKX, Coinbase…' : 'e.g. DBS, OCBC, UOB…';
   document.getElementById('account-modal').classList.add('open');
 }
 
@@ -4873,7 +4889,7 @@ async function saveAccount() {
   const institution = document.getElementById('acc-institution').value;
   const currency    = document.getElementById('acc-currency').value;
   if (!name) { showToast(t('toast_enter_account_name'), 'error'); return; }
-  const icon = type === 'Credit Card' ? '💳' : type === 'Cash' ? '💵' : '🏦';
+  const icon = accountIcon(type);
   const dbPayload = { name, type, institution, starting_balance: balance, currency };
 
   if (_editingAccountId !== null) {
@@ -8424,7 +8440,7 @@ function renderAccounts() {
     const bal = effectiveBal(a);
     const isNeg = bal < 0;
     return `<div class="account-row">
-        <div class="account-ico" style="background:${isNeg?'var(--coral-s)':'var(--jade-s)'};">${a.icon||((a.type||'').includes('Credit')?'💳':(a.type||'').includes('Cash')?'💵':'🏦')}</div>
+        <div class="account-ico" style="background:${isNeg?'var(--coral-s)':'var(--jade-s)'};">${a.icon||accountIcon(a.type)}</div>
         <div class="account-body">
           <div class="account-name">${esc(a.name)}</div>
           <div class="account-type">${esc(a.institution)} · ${esc(a.type)}</div>
