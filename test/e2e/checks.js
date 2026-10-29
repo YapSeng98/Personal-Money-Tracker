@@ -583,6 +583,37 @@
       ok($('.nw-tip', sgdChart).hidden, 'net worth: the tooltip goes when the pointer leaves');
       ok($$('#networth-body .nw-cur')[0].querySelectorAll('.nw-table tbody tr').length === 12, 'net worth: the same numbers are there as a table');
       ok(sgdChart.getBoundingClientRect().right <= innerWidth + 1 && $('.nw-tip', sgdChart).offsetLeft >= 0, 'net worth: the chart and its tooltip stay on screen');
+
+      // ── My Accounts summary: one aligned table across currencies ────────
+      state.balancesMasked = false;
+      state.accounts.push({ id: 'cc-myr', name: 'Maybank Card', type: 'Credit Card', institution: 'Maybank', balance: -350, currency: 'MYR', icon: '💳' });
+      renderAccounts(); await wait(10);
+      const sumRows = $$('#accounts-list .acc-sum-row:not(.acc-sum-hd)');
+      const curs = sumRows.map(r => $('.acc-sum-cur', r).textContent);
+      ok(curs[0] === state.currency && curs.slice(1).join() === curs.slice(1).sort().join(), 'accounts summary: home currency first, then the rest A to Z', curs.join());
+      ok($$('#accounts-list .acc-sum-hd').length === 1, 'accounts summary: the column names appear once, not on every currency');
+      const usdRow = sumRows.find(r => /USD/.test($('.acc-sum-cur', r).textContent));
+      ok(usdRow && $('.acc-sum-cell:nth-child(3) .acc-sum-v', usdRow).classList.contains('zero'), 'accounts summary: nothing owed reads muted, not red');
+      const myrRow = sumRows.find(r => $('.acc-sum-cur', r).textContent === 'MYR');
+      ok(myrRow && myrRow.classList.contains('has-debt') && /350\.00/.test($('.acc-sum-cell:nth-child(3)', myrRow).textContent), 'accounts summary: a card balance counts as debt', myrRow && myrRow.textContent.replace(/\s+/g, ' '));
+      // Wide enough for the table (the header shows all three columns), or the compact lines.
+      const tableLayout = getComputedStyle($('#accounts-list .acc-sum-hd').children[1]).display !== 'none';
+      if (tableLayout) {
+        const rightOf = (r, n) => Math.round($(`.acc-sum-cell:nth-child(${n})`, r).getBoundingClientRect().right);
+        ok([2, 3, 4].every(n => new Set(sumRows.map(r => rightOf(r, n))).size === 1), 'accounts summary: every amount lines up with the one above it',
+           [2, 3, 4].map(n => sumRows.map(r => rightOf(r, n)).join('/')).join(' · '));
+      } else {
+        const shown = r => $$('.acc-sum-cell[data-l]', r).filter(c => getComputedStyle(c).display !== 'none').length;
+        ok(shown(myrRow) === 2 && sumRows.filter(r => !r.classList.contains('has-debt')).every(r => shown(r) === 0),
+           'accounts summary, compact: a currency shows assets and debt only when something is owed', sumRows.map(shown).join());
+        ok(sumRows.every(r => r.scrollWidth <= r.clientWidth + 1), 'accounts summary, compact: every line fits');
+        const hd = $('#accounts-list .acc-sum-hd');
+        ok(hd && [...hd.children].filter(c => getComputedStyle(c).display !== 'none').map(c => c.textContent).join('|') === '|' + t('acc_net_worth'),
+           'accounts summary, compact: it says its figure is net worth', hd && hd.textContent);
+      }
+      ok(innerWidth > 600 || !tableLayout, 'phone: the accounts summary uses the compact lines');
+      state.accounts = state.accounts.filter(a => a.id !== 'cc-myr');
+      renderAccounts();
       state.balancesMasked = true;
 
       // ── Import a bank statement (CSV) ───────────────────────────────────

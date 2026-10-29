@@ -787,6 +787,41 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .account-name{font-size:13px;font-weight:700;overflow-wrap:anywhere;}
 .account-type{font-size:11px;color:var(--muted);overflow-wrap:anywhere;}
 .account-side{display:flex;align-items:center;margin-left:auto;flex-shrink:0;}
+/* Accounts summary: one table, every amount in the same column across currencies. */
+.acc-sum{container-type:inline-size;}
+.acc-sum-row{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));gap:10px;align-items:baseline;padding:10px 2px;border-bottom:1px solid var(--border);}
+.acc-sum-row:last-child{border-bottom:0;padding-bottom:2px;}
+.acc-sum-hd{padding-top:0;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}
+.acc-sum-hd span,.acc-sum-cell{text-align:right;min-width:0;}
+.acc-sum-cur{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--sky);}
+.acc-sum-v{font-family:var(--fm);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.acc-sum-v.in{color:var(--jade-d);}
+.acc-sum-v.out{color:var(--coral);}
+.acc-sum-v.zero{color:var(--muted);font-weight:500;}
+.acc-sum-v.net{color:var(--ink);}
+.acc-sum-v.net.neg{color:var(--coral);}
+.acc-sum-one{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;}
+.acc-sum-one>div{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.acc-sum-one .acc-sum-v{font-family:var(--fd);font-size:20px;}
+.acc-sum-lbl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+/* Narrow: each currency is one line, its net worth; when something is owed,
+   assets and debt follow on lines of their own. */
+@container (max-width:420px){
+  .acc-sum-hd{grid-template-areas:"cur net";}
+  .acc-sum-hd>span:first-child{grid-area:cur;}
+  .acc-sum-hd>span:nth-child(2),.acc-sum-hd>span:nth-child(3){display:none;}
+  .acc-sum-hd>span:nth-child(4){grid-area:net;}
+  .acc-sum-row{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"cur net" "as as" "db db";row-gap:4px;padding:10px 0;}
+  .acc-sum-cur{grid-area:cur;font-size:12px;}
+  .acc-sum-net{grid-area:net;}
+  .acc-sum-net .acc-sum-v{font-size:15px;}
+  .acc-sum-cell:nth-child(2){grid-area:as;}
+  .acc-sum-cell:nth-child(3){grid-area:db;}
+  .acc-sum-cell[data-l]{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  .acc-sum-cell[data-l]::before{content:attr(data-l);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+  .acc-sum-cell[data-l] .acc-sum-v{font-size:12px;}
+  .acc-sum-row:not(.has-debt) .acc-sum-cell[data-l]{display:none;}
+}
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
 
 /* ── ANALYTICS ── */
@@ -4843,6 +4878,10 @@ async function deleteGoal(id) {
 // Account
 let _editingAccountId = null;
 
+function byHomeCurrency(a, b) {
+  return (b === state.currency) - (a === state.currency) || a.localeCompare(b);
+}
+
 function accountIcon(type) {
   const ty = type || '';
   return ty.includes('Credit') ? '💳' : ty.includes('Cash') ? '💵' : ty.includes('Crypto') ? '🪙' : '🏦';
@@ -8412,27 +8451,35 @@ function renderAccounts() {
   });
   // Deliberately no cross-currency total here: adding S$ to RM produces a
   // number that means nothing, and every figure below is rendered per currency.
-  const curEntries  = Object.entries(byCur);
+  // Home currency first, then the rest alphabetically, as everywhere else.
+  const curEntries  = Object.entries(byCur).sort(([a], [b]) => byHomeCurrency(a, b));
+  // Nothing owed (or nothing held) reads muted, not as an alarm in red.
+  const money = (v, cur, cls) => `<span class="acc-sum-v ${v ? cls : 'zero'}">${maskAmt(fmtWithCur(v, cur))}</span>`;
 
-  // Summary block — per-currency rows like goals summary
+  // Summary block. One currency: three big figures. Several: one table with a
+  // shared header, so every amount sits in the same column as the one above.
   const summaryHTML = curEntries.length === 1
     ? (() => {
         const [cur, d] = curEntries[0];
-        return `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_assets')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--jade-d)">${maskAmt(fmtWithCur(d.assets,cur))}</div></div>
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_total_debt')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--coral)">${maskAmt(fmtWithCur(d.debt,cur))}</div></div>
-          <div><div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('acc_net_worth')}</div><div style="font-family:var(--fd);font-size:20px;font-weight:700;">${maskAmt(fmtSigned(d.assets-d.debt,cur))}</div></div>
+        const net = d.assets - d.debt;
+        return `<div class="acc-sum-one">
+          <div><span class="acc-sum-lbl">${t('acc_total_assets')}</span>${money(d.assets, cur, 'in')}</div>
+          <div><span class="acc-sum-lbl">${t('acc_total_debt')}</span>${money(d.debt, cur, 'out')}</div>
+          <div><span class="acc-sum-lbl">${t('acc_net_worth')}</span><span class="acc-sum-v net${net < 0 ? ' neg' : ''}">${maskAmt(fmtSigned(net, cur))}</span></div>
         </div>`;
       })()
-    : curEntries.map(([cur, d]) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
-          <div style="display:flex;gap:12px;text-align:right;flex-wrap:wrap;justify-content:flex-end;min-width:0;">
-            <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_assets')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--jade-d)">${maskAmt(fmtWithCur(d.assets,cur))}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_total_debt')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;color:var(--coral)">${maskAmt(fmtWithCur(d.debt,cur))}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;">${t('acc_net_worth')}</div><div style="font-family:var(--fm);font-size:13px;font-weight:700;">${maskAmt(fmtSigned(d.assets-d.debt,cur))}</div></div>
-          </div>
-        </div>`).join('');
+    : `<div class="acc-sum">
+        <div class="acc-sum-row acc-sum-hd"><span></span><span>${t('acc_total_assets')}</span><span>${t('acc_total_debt')}</span><span>${t('acc_net_worth')}</span></div>
+        ${curEntries.map(([cur, d]) => {
+          const net = d.assets - d.debt;
+          return `<div class="acc-sum-row${d.debt ? ' has-debt' : ''}">
+            <span class="acc-sum-cur">${esc(cur)}</span>
+            <span class="acc-sum-cell" data-l="${t('acc_total_assets')}">${money(d.assets, cur, 'in')}</span>
+            <span class="acc-sum-cell" data-l="${t('acc_total_debt')}">${money(d.debt, cur, 'out')}</span>
+            <span class="acc-sum-cell acc-sum-net"><span class="acc-sum-v net${net < 0 ? ' neg' : ''}">${maskAmt(fmtSigned(net, cur))}</span></span>
+          </div>`;
+        }).join('')}
+      </div>`;
 
   const isMultiCurAcc = curEntries.length > 1;
   const accountRowHTML = a => {
@@ -8463,7 +8510,7 @@ function renderAccounts() {
     (accountsByCur[c] = accountsByCur[c] || []).push(a);
   });
   const rowsHTML = isMultiCurAcc
-    ? Object.entries(accountsByCur).map(([cur, accs], i) => {
+    ? Object.entries(accountsByCur).sort(([a], [b]) => byHomeCurrency(a, b)).map(([cur, accs], i) => {
         const net = accs.reduce((s,a)=>s+effectiveBal(a),0);
         return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'18px':'4px'} 0 8px;">
           <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
