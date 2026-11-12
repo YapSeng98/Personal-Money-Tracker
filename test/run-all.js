@@ -18,6 +18,7 @@ const SUITES = [
   'outbox.test.js',              // writes queue until the server has them
   'app-lock.test.js',            // the PIN is stored salted, old PINs upgrade
   'import.test.js',              // bank statement CSVs: columns, dates, amounts, duplicates, categories
+  'statement.test.js',           // the monthly statement against independent figures, random and real books
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 

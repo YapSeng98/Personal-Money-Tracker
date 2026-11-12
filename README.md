@@ -82,9 +82,10 @@ kept for the original filename.
 ```
 
 **Sync model.** Every change updates local state and `localStorage` first, then
-goes to Supabase fire-and-forget. The app stays usable with a bad connection;
-a failed write raises a toast rather than losing the edit. On load, `snLoadAll()`
-pulls every table fresh and overwrites the cache.
+waits in an outbox until Supabase confirms it (see [Frontend](#frontend)). The
+app stays usable with a bad connection and nothing is lost. On load,
+`snLoadAll()` pulls every table fresh and merges it with whatever this device
+still has waiting, so a change that hadn't landed is never overwritten.
 
 **Row Level Security** is the whole authorisation story: every table carries a
 `user_id` and a policy of `auth.uid() = user_id` for select, insert, update and
@@ -162,7 +163,7 @@ fails if anyone forgot. **Never edit the generated copy.**
 
 ## Data model
 
-Seven tables, all in `public`, all with RLS on and a `user_id` referencing
+Eight tables, all in `public`, all with RLS on and a `user_id` referencing
 `auth.users`. Full DDL: [`supabase/migrations/`](supabase/migrations/).
 
 ### `accounts`
@@ -197,7 +198,7 @@ transaction in that account's currency, recomputed on render.
 |---|---|---|
 | `category`, `currency` | text | unique together per user — the same category can be budgeted separately in each currency |
 | `amount` | numeric | the monthly limit |
-| `alert_pct` | int | when to warn, default 80 |
+| `alert_amount` | numeric | the amount at which to warn ("tell me at S$380 of S$400"); empty means 80% of the limit (migration 003) |
 | `rollover` | boolean | carry last month's unused room into this one |
 | `spent` | numeric | **dead column** — spend is always recomputed from transactions |
 
@@ -227,6 +228,10 @@ One row per user: `currency`, `language`, `theme`, `budget_alerts`, `now_assist`
 ### `notifications_sent`
 `(user_id, kind, dedupe_key)` — used for bill reminders only; that primary key *is* the "once as due, once if late"
 rule. See [Telegram alerts](#telegram-alerts).
+
+### `backups`
+`taken_at`, `device`, `counts` — a note each time a backup is downloaded, so the
+"time for a backup" reminder follows the person across devices (migration 005).
 
 ---
 
@@ -383,7 +388,7 @@ Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 ## Tests
 
 ```bash
-node test/run-all.js        # 401 checks, no browser needed
+node test/run-all.js        # about 241,600 checks, no browser needed
 node test/e2e/run.js        # the real page in headless Chrome (needs Node 22+ and Chrome)
 node test/perf/bench.js     # how long a redraw takes with 5,000 transactions
 ```
@@ -401,18 +406,19 @@ wrong — not that a test is stale.
 | `outbox.test.js` | 35 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed; inserts go up in batches and a refused batch falls back to one row at a time |
 | `import.test.js` | 37 | bank CSVs with header lines, quoted fields, either date order and no header row; signed, split or DR/CR amounts; credit cards where spending is positive; duplicates matched one-to-one; categories learned from the book |
 | `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
+| `statement.test.js` | 241,188 | the monthly statement against figures worked out independently, on 400 random books holding every awkward case (several currencies, cards in debt, transfers, exchanges, asset purchases, oversized paybacks, claims, unfunded holdings, rows booked to no account, one-sided transfers) over months crossing a year end and February: every row exactly once, opening + in − out = closing line by line, each month opening where the last closed, money in and out equal to the dashboard's, every column adding to its total, the gap between balances and cash flow explained cause by cause, a range equal to its months, the Excel/CSV figures the same, no CSV cell a spreadsheet would run as a formula. `PFMT_BACKUP=~/PFMT_Backups/<date>` also checks every month of every book in a real backup |
 
 The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
 swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
 writes), loads dated-relative-to-today test data (`seed.js`), and clicks through
-the app (`checks.js`): about 235 checks at desktop, laptop and true 390px phone
+the app (`checks.js`): about 255 checks at desktop, laptop and true 390px phone
 sizes, covering the statement and its downloads, Monthly In & Out, the Data
 check, offline saves surviving a reload, deletes not coming back, USDT, the net
 worth chart, importing a CSV (and importing it twice), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
 
-The **phone-fit audit** (`fit.js`) opens every page, window and menu — 34
+The **phone-fit audit** (`fit.js`) opens every page, window and menu — 36
 screens, with long names, seven-figure amounts and USDT in the data — and
 measures what a person would notice on a phone: anything past the screen edge,
 boxes that scroll sideways, text cut off, squeezed or on top of other text,
@@ -422,6 +428,12 @@ behind the bottom bar, and windows wider than the screen. Every run checks
 320px, 360px in Chinese, 390px and a phone on its side; `--fit` checks every
 size with a report, and `--fit-shots DIR` saves screenshots of every screen,
 scrolled top to bottom.
+
+`--pdf DIR` saves the monthly statement as PDF exactly as Print → Save as PDF
+makes it. With `--backup ~/PFMT_Backups/<date> --user <id prefix>` it prints
+every month of a real book read from a local backup; nothing leaves the
+machine. If headless Chrome freezes (it very occasionally does, in its graphics
+process), the runner says so and runs those checks again in a fresh browser.
 
 GitHub Actions (`.github/workflows/tests.yml`) runs both suites on every push.
 

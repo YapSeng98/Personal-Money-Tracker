@@ -387,6 +387,9 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .stmt-table tr.tot td{font-weight:700;border-top:1px solid var(--p-ink);border-bottom:3px double var(--p-ink);}
 .stmt-table tr.bal td{background:var(--p-tint);font-weight:600;}
 .stmt-ledger{min-width:600px;}
+.stmt-table tr.stmt-cap{display:none;}
+.stmt-cap th{padding:10px 8px 4px;border-bottom:0;font-size:12px;letter-spacing:0;text-transform:none;color:var(--p-ink);}
+.stmt-cap th span{margin-left:8px;font-size:10.5px;font-weight:500;color:var(--p-muted);}
 .stmt-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px 32px;align-items:start;}
 .stmt-net{margin-top:14px;}
 .stmt-net td{font-size:13px;}
@@ -453,6 +456,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
   body.stmt-printing .stmt-paper{max-width:none;padding:0;box-shadow:none;border-radius:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   body.stmt-printing .stmt-tw{overflow:visible;}
   body.stmt-printing .stmt-ledger{min-width:0;}
+  body.stmt-printing .stmt-table tr.stmt-cap{display:table-row;}
+  body.stmt-printing .stmt-acct{display:none;}
   .stmt-table thead{display:table-header-group;}
   .stmt-table tr{break-inside:avoid;}
   .stmt-h2,.stmt-h3,.stmt-h4{break-after:avoid;}
@@ -7768,10 +7773,58 @@ function buildStatement(fromMk, toMk) {
 // Accounting style: thousands separators, two decimals, negatives in brackets
 // and a dash for nothing.
 function stmtNum(v) {
-  const r = Math.round(v * 100) / 100;
+  const r = Math.sign(v) * Math.round(Math.abs(v) * 100) / 100;
   if (Math.abs(r) < 0.005) return '–';
   const s = Math.abs(r).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return r < 0 ? `(${s})` : s;
+}
+
+// Why a currency's accounts moved by a different amount than its net cash
+// flow, cause by cause. The parts always add up to s.gap exactly (a test holds
+// them to it): rows booked to no account in this currency, transfers with only
+// one side in these accounts for the period, and holdings recorded without a
+// funding account. Everything else moves a balance and the cash flow alike.
+function stmtGapNote(s) {
+  const c = s.cur, n = stmtNum, r2 = v => Math.round(v * 100) / 100;
+  const flowOf = t => {
+    if (t.type === 'payback') return t.amount;
+    if (t.type !== 'income' && t.type !== 'expense' && t.type !== 'asset') return 0;
+    if (t.transferGroup) return isCrossCurrencyLeg(t) ? txnBalanceEffect(t) : 0;
+    return t.type === 'asset' ? 0 : txnBalanceEffect(t);
+  };
+  const lines = s.accounts.flatMap(x => x.lines);
+  const byGroup = new Map();
+  lines.filter(l => l.t.transferGroup && !isCrossCurrencyLeg(l.t))
+       .forEach(l => byGroup.set(l.t.transferGroup, (byGroup.get(l.t.transferGroup) || 0) + l.e));
+  const oneSided = [...byGroup.values()].filter(v => Math.abs(v) >= 0.005);
+  const held = lines.filter(l => l.t.type === 'asset' && !l.t.transferGroup);
+  const plural = (k, word) => `${k} ${word}${k > 1 ? 's' : ''}`;
+  const parts = [
+    { kind: 'unlinked', amount: r2(s.unlinked.reduce((v, t) => v - flowOf(t), 0)), count: s.unlinked.length,
+      say: k => `${plural(k, 'transaction')} not booked to any ${c} account, listed at the end of this section` },
+    { kind: 'one-sided', amount: r2(oneSided.reduce((v, x) => v + x, 0)), count: oneSided.length,
+      say: k => `${plural(k, 'transfer')} with only one side in your ${c} accounts for this period` },
+    { kind: 'holding', amount: r2(held.reduce((v, l) => v + l.e, 0)), count: held.length,
+      say: k => `${plural(k, 'holding')} recorded without a funding account` },
+  ].filter(p => p.amount);
+  // Brackets mean a negative figure on this statement, so amounts lead each
+  // cause rather than following it in brackets.
+  const said = parts.map(p => `${n(p.amount)} from ${p.say(p.count)}`);
+  const list = said.length > 1 ? said.slice(0, -1).join('; ') + '; and ' + said[said.length - 1] : '';
+  const text = `Your ${c} accounts changed by ${n(s.closeTot - s.openTot)}, while net cash flow is ${n(s.net)}. `
+    + (parts.length === 1 ? `The difference, ${n(s.gap)}, comes from ${parts[0].say(parts[0].count)}.`
+       : list ? `The difference, ${n(s.gap)}, is ${list}.` : `The difference is ${n(s.gap)}.`);
+  return { parts, text };
+}
+
+// Account money in and out count every movement, including moves between the
+// person's own accounts and paybacks; the summary counts only money entering
+// or leaving the currency. Said once, so two different "money in" figures for
+// one currency don't read as a mistake.
+function stmtFlowNote(s) {
+  if (s.gap || !s.accounts.length || (Math.abs(s.accIn - s.moneyIn) < 0.005 && Math.abs(s.accOut - s.moneyOut) < 0.005)) return '';
+  return `Money in and out for accounts include moves between your own ${s.cur} accounts and paybacks, which the summary above `
+    + `leaves out or takes off spending. Both come to the same net change of ${stmtNum(s.net)}.`;
 }
 
 function stmtMonthEnd(mk) {
@@ -7795,6 +7848,8 @@ function renderStatement() {
       + `<tr class="sub"><td>${subLabel}</td><td class="n">${n(subTotal)}</td></tr>`
     : `<tr><td>${title}</td><td class="n">${n(0)}</td></tr>`;
 
+  // A broken pair dated after this month doesn't touch these figures.
+  const broken = pairProblems().filter(p => p.legs.some(l => l.date <= end));
   const head = `<div class="stmt-head">
       <div>
         <div class="stmt-brand">PFMT<small>Daily Money Tracker</small></div>
@@ -7807,7 +7862,7 @@ function renderStatement() {
         <div>Generated ${stamp}</div>
       </div>
     </div>
-    ${pairProblems().length ? `<div class="stmt-flag">⚠ ${pairProblems().length} transfer${pairProblems().length > 1 ? 's don\'t' : ' doesn\'t'} form a proper pair. The balances below count ${pairProblems().length > 1 ? 'them' : 'it'} as recorded; fix ${pairProblems().length > 1 ? 'them' : 'it'} under Transactions → Review.</div>` : ''}
+    ${broken.length ? `<div class="stmt-flag">⚠ ${broken.length} transfer${broken.length > 1 ? 's don\'t' : ' doesn\'t'} form a proper pair. The balances below count ${broken.length > 1 ? 'them' : 'it'} as recorded; fix ${broken.length > 1 ? 'them' : 'it'} under Transactions → Review.</div>` : ''}
     ${mk === localYM() ? `<div class="stmt-flag">${label} isn't over yet, so these figures will change as you add transactions.</div>`
       : mk > localYM() ? `<div class="stmt-flag">${label} hasn't started yet.</div>` : ''}`;
 
@@ -7840,9 +7895,8 @@ function renderStatement() {
       </tbody></table>
       <p class="stmt-note">Kept (income less spending, before refunds and exchanges): ${n(s.kept)}</p>`;
 
-    const gapNote = s.gap ? `<p class="stmt-note">Your ${c} accounts changed by ${n(s.closeTot - s.openTot)}, while net cash flow is ${n(s.net)}. ${s.unlinked.length
-      ? `The difference comes from ${s.unlinked.length} transaction${s.unlinked.length > 1 ? 's' : ''} not booked to a ${c} account, listed at the end of this section.`
-      : 'The difference is usually a move between your own accounts that was recorded on one side only.'}</p>` : '';
+    const gapNote = s.gap ? `<p class="stmt-note">${esc(stmtGapNote(s).text)}</p>`
+      : stmtFlowNote(s) ? `<p class="stmt-note">${esc(stmtFlowNote(s))}</p>` : '';
     const bal4 = (o, i, out, c) => `<td class="n" data-l="Opening">${n(o)}</td><td class="n" data-l="Money in">${n(i)}</td><td class="n" data-l="Money out">${n(out)}</td><td class="n" data-l="Closing">${n(c)}</td>`;
     const balances = s.accounts.length ? `<div class="stmt-tw"><table class="stmt-table stmt-cards">
         <thead><tr><th>Account</th><th class="n">Opening</th><th class="n">Money in</th><th class="n">Money out</th><th class="n">Closing</th></tr></thead>
@@ -7852,10 +7906,14 @@ function renderStatement() {
         </tbody></table></div>${gapNote}`
       : `<p class="stmt-note">No ${c} accounts yet. Add one under Accounts to see opening and closing balances here.</p>`;
 
+    // A long ledger runs across printed pages; its caption row sits in the
+    // table head, so the account is named again on every page (print only —
+    // on screen the heading above does that).
+    const cap = (name, sub, span) => `<tr class="stmt-cap"><th colspan="${span}">${name}<span>${sub ? sub + ' · ' : ''}${c}</span></th></tr>`;
     const ledgers = s.accounts.filter(x => x.lines.length).map(x => `
-      <div class="stmt-h4">${esc(x.a.name)}${acctSub(x.a) ? `<span>${acctSub(x.a)}</span>` : ''}</div>
+      <div class="stmt-h4 stmt-acct">${esc(x.a.name)}${acctSub(x.a) ? `<span>${acctSub(x.a)}</span>` : ''}</div>
       <div class="stmt-tw"><table class="stmt-table stmt-ledger">
-        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="n">Money in</th><th class="n">Money out</th><th class="n">Balance</th></tr></thead>
+        <thead>${cap(esc(x.a.name), acctSub(x.a), 6)}<tr><th>Date</th><th>Description</th><th>Category</th><th class="n">Money in</th><th class="n">Money out</th><th class="n">Balance</th></tr></thead>
         <tbody>
           <tr class="bal"><td class="d">${fmtDate(mk + '-01')}</td><td colspan="4" class="ds">Opening balance</td><td class="n bl">${n(x.opening)}</td></tr>
           ${x.lines.map(({ t, e, bal }) => `<tr><td class="d">${fmtDate(t.date)}</td><td class="ds">${esc(t.description || '—')}</td><td class="c">${catCell(t)}</td>${inOut(e)}<td class="n bl">${n(bal)}</td></tr>`).join('')}
@@ -7865,9 +7923,9 @@ function renderStatement() {
     const uIn  = s.unlinked.reduce((t, x) => t + Math.max(0, txnBalanceEffect(x)), 0);
     const uOut = s.unlinked.reduce((t, x) => t + Math.max(0, -txnBalanceEffect(x)), 0);
     const unlinked = s.unlinked.length ? `
-      <div class="stmt-h4">Not linked to an account<span>these don't change any ${c} account balance in PFMT</span></div>
+      <div class="stmt-h4 stmt-acct">Not linked to an account<span>these don't change any ${c} account balance in PFMT</span></div>
       <div class="stmt-tw"><table class="stmt-table stmt-ledger">
-        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account recorded</th><th class="n">Money in</th><th class="n">Money out</th></tr></thead>
+        <thead>${cap('Not linked to an account', '', 6)}<tr><th>Date</th><th>Description</th><th>Category</th><th>Account recorded</th><th class="n">Money in</th><th class="n">Money out</th></tr></thead>
         <tbody>${s.unlinked.map(t => `<tr><td class="d">${fmtDate(t.date)}</td><td class="ds">${esc(t.description || '—')}</td><td class="c">${catCell(t)}</td><td class="c ac">${esc(t.account || '—')}</td>${inOut(txnBalanceEffect(t))}</tr>`).join('')}
           <tr class="sub"><td></td><td colspan="3" class="ds">Total</td><td class="n in" data-l="Money in">${n(uIn)}</td><td class="n out" data-l="Money out">${n(uOut)}</td></tr>
         </tbody></table></div>` : '';
@@ -7897,7 +7955,7 @@ function openStatement(mk) {
 }
 function closeStatement() {
   document.getElementById('stmt-modal').classList.remove('open');
-  document.body.classList.remove('stmt-printing');
+  stmtPrintMode(false);
 }
 function statementShift(delta) {
   const [y, m] = _stmtMonth.split('-').map(Number);
@@ -7910,12 +7968,23 @@ function statementShift(delta) {
 function printStatement() {
   const title = document.title;
   document.title = `PFMT Statement ${_stmtMonth}`;
-  document.body.classList.add('stmt-printing');
+  stmtPrintMode(true);
   window.addEventListener('afterprint', () => {
     document.title = title;
-    document.body.classList.remove('stmt-printing');
+    stmtPrintMode(false);
   }, { once: true });
   window.print();
+}
+// Print mode: only the statement paper, with the statement's name and
+// "Page n of N" at the foot of every page (browsers without page margin boxes
+// simply leave them out).
+function stmtPrintMode(on) {
+  document.body.classList.toggle('stmt-printing', on);
+  let el = document.getElementById('stmt-page-style');
+  if (!el) { el = document.createElement('style'); el.id = 'stmt-page-style'; document.head.appendChild(el); }
+  const name = `PFMT · Monthly statement · ${getMonthLabel(_stmtMonth)}`.replace(/["\\]/g, '');
+  const foot = 'font:8.5px Inter,Arial,sans-serif;color:#6B7280;';
+  el.textContent = on ? `@media print{@page{@bottom-left{content:"${name}";${foot}}@bottom-right{content:"Page " counter(page) " of " counter(pages);${foot}}}}` : '';
 }
 
 // ═══════════════════════════════════════════════
@@ -7989,9 +8058,8 @@ function statementSheets(st, title) {
         ...s.accounts.map(x => [x.a.name, null, cell(details(x.a), 'muted'), M(x.opening), M(x.moneyIn), M(x.moneyOut), M(x.closing)]),
         [cell('Total', 'totalLabel'), ...ruled('totalLabel', 2), cell(r2(s.openTot), 'moneyTotal'), cell(r2(s.accIn), 'moneyTotal'),
          cell(r2(s.accOut), 'moneyTotal'), cell(r2(s.closeTot), 'moneyTotal')]);
-      if (s.gap) rows.push([cell(`Your ${c} accounts changed by ${stmtNum(s.closeTot - s.openTot)} while net cash flow is ${stmtNum(s.net)}: `
-        + (s.unlinked.length ? `${s.unlinked.length} transaction${s.unlinked.length > 1 ? 's are' : ' is'} not booked to a ${c} account (listed below).`
-                             : 'usually a move between your own accounts recorded on one side only.'), 'muted')]);
+      const note = s.gap ? stmtGapNote(s).text : stmtFlowNote(s);
+      if (note) rows.push([cell(note, 'muted')]);
     } else {
       rows.push([cell(`No ${c} accounts yet.`, 'muted')]);
     }
@@ -8841,7 +8909,10 @@ function buildSummary() {
 // Shared by every export: hands the file to the browser, then releases the
 // object URL — without the revoke each export leaks its blob for the life of
 // the page, which adds up for anyone taking a backup habitually.
-const csvCell = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+// Text starting with = + - or @ is run by Excel as a formula: "-S$12 refund"
+// shows #NAME?, and "=HYPERLINK(…)" becomes a live link. A leading apostrophe
+// is the standard way to keep such a cell as text.
+const csvCell = v => { const s = String(v ?? ''); return `"${(/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replace(/"/g,'""')}"`; };
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -8861,7 +8932,8 @@ function exportCSV() {
   );
   const csv = [hdr, ...rows].map(r => r.join(',')).join('\n');
   // every row, not just the filtered month
-  downloadBlob(new Blob([csv], { type: 'text/csv' }), `pfmt_transactions_all_${localDateStr()}.csv`);
+  // The byte-order mark tells Excel the file is UTF-8, so Chinese descriptions survive.
+  downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv' }), `pfmt_transactions_all_${localDateStr()}.csv`);
   showToast(t('toast_csv_downloaded'), 'success');
 }
 
@@ -8880,7 +8952,7 @@ function exportAccountsCSV() {
             (+a.balance || 0).toFixed(2), effectiveBal(a).toFixed(2), n];
   });
   const csv = [hdr.map(q), ...rows].map(r => r.join(',')).join('\n');
-  downloadBlob(new Blob([csv], { type: 'text/csv' }), `pfmt_accounts_${localDateStr()}.csv`);
+  downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv' }), `pfmt_accounts_${localDateStr()}.csv`);
   showToast(`${state.accounts.length} account${state.accounts.length>1?'s':''} exported`, 'success');
 }
 

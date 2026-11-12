@@ -9,6 +9,10 @@
  *       node test/e2e/run.js --fit       (only the phone-fit audit, at every size, with a full report)
  *       node test/e2e/run.js --fit-shots DIR [--widths=320,390] [--themes=dark,light]
  *                                         (screenshots of every screen, scrolled top to bottom)
+ *       node test/e2e/run.js --pdf DIR [--backup ~/PFMT_Backups/<date> --user <id prefix>]
+ *                                         (the monthly statement saved as PDF, as Print → Save as PDF
+ *                                          makes it; with --backup, every month of a real book,
+ *                                          read from a local backup and kept on this machine)
  *
  * Needs Node 22+ (for its built-in WebSocket) and Google Chrome or Chromium;
  * set CHROME_PATH if Chrome isn't found. No other dependencies, matching the
@@ -45,12 +49,38 @@ function replaceOnce(text, pattern, replacement, what) {
   return text.replace(pattern, () => replacement);
 }
 
-function buildPage(dir) {
+// The test data, or one person's book read from a local backup (--backup).
+function seedSource(backup, user) {
+  if (!backup) return read('seed.js');
+  const dir = backup.replace(/^~/, os.homedir());
+  const load = t => JSON.parse(fs.readFileSync(path.join(dir, t + '.json'), 'utf8'));
+  const txns = load('transactions');
+  const uid = [...new Set(txns.map(t => t.user_id))].find(u => u.startsWith(user || ''));
+  if (!uid) throw new Error(`no book in ${dir} whose user id starts with "${user}"`);
+  const mine = rows => rows.filter(r => r.user_id === uid);
+  const pref = mine(load('preferences'))[0] || {};
+  const book = {
+    currency: pref.currency || 'SGD', displayName: pref.display_name || '',
+    accounts: mine(load('accounts')).map(a => ({ id: a.id, name: a.name, type: a.type, institution: a.institution || '', currency: a.currency || 'SGD', balance: +a.starting_balance, icon: a.icon || '' })),
+    transactions: mine(txns).map(t => ({ id: t.id, type: t.type, amount: +t.amount, description: t.description, category: t.category, account: t.account,
+      date: t.date, notes: t.notes || '', currency: t.currency || 'SGD', transferGroup: t.transfer_group || '',
+      created: t.created_at ? new Date(t.created_at).toISOString().slice(0, 19).replace('T', ' ') : '' })),
+  };
+  return `  const P = new URLSearchParams(location.search);
+  const M0 = localYM(), M1 = prevMonthKey(M0), M2 = prevMonthKey(M1);
+  const BOOK = ${JSON.stringify(book)};
+  Object.assign(state, BOOK, { theme: P.get('theme') || 'light', language: 'en', reviewMonth: M1, filterMonth: M1 });
+  applyTheme(); renderAll();
+  document.getElementById('login-overlay').style.display = 'none';
+  window.__bookMonths = [...new Set(BOOK.transactions.map(t => t.date.slice(0, 7)))].sort();`;
+}
+
+function buildPage(dir, backup, user) {
   let page = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const cdn = page.match(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js[^"]*"[^>]*><\/script>/);
   if (!cdn) throw new Error('could not find the supabase-js <script> tag in index.html');
   page = replaceOnce(page, cdn[0], `<script>${read('fake-supabase.js')}</script>`, 'supabase-js tag');
-  page = replaceOnce(page, '  startApp();\n})();', `${read('seed.js')}\n${read('checks.js')}\n${read('fit.js')}\n})();`, 'startApp() call in init');
+  page = replaceOnce(page, '  startApp();\n})();', `${seedSource(backup, user)}\n${read('checks.js')}\n${read('fit.js')}\n})();`, 'startApp() call in init');
   // Screenshots should show the finished state, not a modal's fade-in.
   page = page.replace('</style>', '.modal{animation:none!important}</style>');
   const file = path.join(dir, 'app.html');
@@ -87,13 +117,24 @@ class DevTools {
     this.ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
     return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
   }
+  // The same, but giving up after ms: a page whose browser has frozen never
+  // answers, and the whole run would wait on it for ever.
+  sendWithin(ms, method, params = {}, sessionId) {
+    let timer;
+    return Promise.race([this.send(method, params, sessionId),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${method}: no answer in ${ms / 1000}s`)), ms); })])
+      .finally(() => clearTimeout(timer));
+  }
   on(handler) { this.handlers.push(handler); }
   close() { try { this.ws.close(); } catch (_) {} }
 }
 
 async function launch(chrome) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'pfmt-chrome-'));
+  // The three --disable-…background… flags stop Chrome slowing the timers of
+  // a page that isn't the front tab, which the audit's waits depend on.
   const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--remote-debugging-port=0',
+    '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
     `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
     ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   const url = await new Promise((resolve, reject) => {
@@ -123,33 +164,60 @@ async function openPage(dt, url, { width, height, mobile }) {
   const { sessionId } = await dt.send('Target.attachToTarget', { targetId, flatten: true });
   const errors = [];
   dt.on(msg => {
-    if (msg.sessionId !== sessionId || msg.method !== 'Runtime.exceptionThrown') return;
-    const d = msg.params.exceptionDetails;
-    errors.push('uncaught: ' + ((d.exception && d.exception.description) || d.text).split('\n')[0]);
+    if (msg.sessionId !== sessionId) return;
+    if (msg.method === 'Runtime.exceptionThrown') {
+      const d = msg.params.exceptionDetails;
+      errors.push('uncaught: ' + ((d.exception && d.exception.description) || d.text).split('\n')[0]);
+    }
+    // A native dialog (print, alert, confirm) freezes the page and every call
+    // into it, so the run would hang. Say which, and dismiss it.
+    if (msg.method === 'Page.javascriptDialogOpening') {
+      errors.push(`a ${msg.params.type} dialog opened: "${String(msg.params.message).slice(0, 120)}"`);
+      dt.send('Page.handleJavaScriptDialog', { accept: false }, sessionId).catch(() => {});
+    }
   });
-  await dt.send('Runtime.enable', {}, sessionId);
-  await dt.send('Page.enable', {}, sessionId);
-  await dt.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }, sessionId);
-  await dt.send('Page.navigate', { url }, sessionId);
-  const evaluate = async expression =>
-    (await dt.send('Runtime.evaluate', { expression, returnByValue: true }, sessionId)).result.value;
+  await dt.sendWithin(30000, 'Runtime.enable', {}, sessionId);
+  await dt.sendWithin(30000, 'Page.enable', {}, sessionId);
+  await dt.sendWithin(30000, 'Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }, sessionId);
+  await dt.sendWithin(30000, 'Page.navigate', { url }, sessionId);
+  const evaluate = async (expression, ms = 30000) =>
+    (await dt.sendWithin(ms, 'Runtime.evaluate', { expression, returnByValue: true }, sessionId)).result.value;
   return { sessionId, targetId, errors, evaluate };
 }
 
 async function runChecks(dt, url, size) {
-  const page = await openPage(dt, url, size);
+  let page;
+  try { page = await openPage(dt, url, size); }
+  catch (e) { return { stalled: true, results: [{ ok: false, name: 'the page opened', detail: e.message }], errors: [] }; }
   const deadline = Date.now() + 180000;
-  let text = null;
+  let text = null, stalled = false;
   while (Date.now() < deadline) {
-    text = await page.evaluate("(document.getElementById('e2e') || {}).textContent || null").catch(() => null);
+    try { text = await page.evaluate("(document.getElementById('e2e') || {}).textContent || null"); }
+    catch (e) { if (/no answer/.test(e.message)) { stalled = true; break; } text = null; }
     if (text) break;
     await sleep(250);
   }
-  await dt.send('Target.closeTarget', { targetId: page.targetId });
+  await dt.sendWithin(10000, 'Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+  if (stalled) return { stalled: true, results: [{ ok: false, name: 'the page finished its checks', detail: 'the browser stopped answering' }], errors: page.errors };
   if (!text) return { results: [{ ok: false, name: 'the page finished its checks', detail: 'no results within 3 minutes' }], errors: page.errors };
   const out = JSON.parse(text);
   out.errors = [...page.errors, ...out.errors];
   return out;
+}
+
+// Headless Chrome very occasionally freezes in its graphics process: the page
+// goes quiet and never answers. Checks run in a fresh browser once more when
+// that happens, and the report says so, so a frozen browser is never mistaken
+// for (or hides) a failing check.
+let browser = null, chromePath = null;
+async function checked(url, size) {
+  const out = await runChecks(browser.dt, url, size);
+  if (!out.stalled) return out;
+  browser.stop();
+  browser = await launch(chromePath);
+  const again = await runChecks(browser.dt, url, size);
+  again.retried = true;
+  return again;
 }
 
 async function screenshot(dt, url, size, file) {
@@ -231,7 +299,8 @@ async function runFit(dt, url, quick) {
   const merged = new Map(), errors = [];
   const pick = quick ? FIT_QUICK : (process.argv.find(a => a.startsWith('--sizes=')) || '').slice(8).split(',').filter(Boolean);
   for (const fit of FIT_SIZES.filter(f => !pick.length || pick.includes(f.name))) {
-    const out = await runChecks(dt, url + '?view=fit&theme=dark' + fit.query, fit.size);
+    const out = await checked(url + '?view=fit&theme=dark' + fit.query, fit.size);
+    if (out.retried) console.log(`  (fit ${fit.name}: the browser froze; ran again in a fresh one)`);
     errors.push(...(out.errors || []).map(e => `${fit.name}: ${e}`));
     if (!out.findings) { errors.push(`${fit.name}: the audit did not finish`); continue; }
     out.findings.forEach(f => {
@@ -266,8 +335,10 @@ async function main() {
   const chrome = findChrome();
   if (!chrome) { console.error('Chrome or Chromium not found. Set CHROME_PATH.'); process.exit(1); }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pfmt-e2e-'));
-  const url = buildPage(dir);
-  const browser = await launch(chrome);
+  const argOf = name => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
+  const url = buildPage(dir, argOf('--backup'), argOf('--user'));
+  chromePath = chrome;
+  browser = await launch(chrome);
 
   const runs = [
     { name: 'desktop (1440px, dark)', query: '?theme=dark', size: { width: 1440, height: 1200, mobile: false } },
@@ -275,6 +346,26 @@ async function main() {
     { name: 'phone (390px, dark)', query: '?theme=dark', size: { width: 390, height: 844, mobile: true } },
   ];
   let failed = 0;
+  if (process.argv.includes('--pdf')) {
+    try {
+      const out = path.resolve(argOf('--pdf') || 'statement-pdfs');
+      fs.mkdirSync(out, { recursive: true });
+      // Which months: every month of a real book, or the test data's last two.
+      const probe = await openPage(browser.dt, url + '?view=none', { width: 1280, height: 900, mobile: false });
+      await sleep(1500);
+      const months = await probe.evaluate("window.__bookMonths || [prevMonthKey(localYM()), localYM()]");
+      await browser.dt.send('Target.closeTarget', { targetId: probe.targetId });
+      for (const mk of months) {
+        const page = await openPage(browser.dt, `${url}?view=print&month=${mk}&theme=dark`, { width: 1280, height: 900, mobile: false });
+        await sleep(1200);
+        const { data } = await browser.dt.send('Page.printToPDF', { printBackground: true, preferCSSPageSize: true }, page.sessionId);
+        fs.writeFileSync(path.join(out, `statement-${mk}.pdf`), Buffer.from(data, 'base64'));
+        await browser.dt.send('Target.closeTarget', { targetId: page.targetId });
+      }
+      console.log(`${months.length} statement PDF${months.length === 1 ? '' : 's'} saved to ${out}`);
+    } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+    return;
+  }
   if (process.argv.includes('--fit') || process.argv.includes('--fit-shots')) {
     try {
       const at = process.argv.indexOf('--fit-shots');
@@ -301,7 +392,8 @@ async function main() {
   }
   try {
     for (const run of runs) {
-      const { results, errors } = await runChecks(browser.dt, url + run.query, run.size);
+      const { results, errors, retried } = await checked(url + run.query, run.size);
+      if (retried) console.log(`  (${run.name}: the browser froze; ran again in a fresh one)`);
       const bad = results.filter(r => !r.ok);
       failed += bad.length + errors.length;
       console.log(`${bad.length || errors.length ? 'FAIL' : 'PASS'} ${run.name}: ${results.length - bad.length} checks passed, ${bad.length} failed, ${errors.length} page errors`);

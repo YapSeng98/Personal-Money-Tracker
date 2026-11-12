@@ -3,7 +3,7 @@
   // stops, for screenshots. Results go into a pre#e2e element as JSON.
   const VIEW = P.get('view') || 'checks';
   setTimeout(async () => {
-    if (VIEW === 'fit') return;
+    if (VIEW === 'fit' || VIEW === 'none') return;
     if (VIEW === 'review') { document.getElementById('analytics-chart').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
@@ -15,7 +15,7 @@
       return;
     }
     if (VIEW === 'stmt') { openStatement(M1); return; }
-    if (VIEW === 'print') { openStatement(M1); document.body.classList.add('stmt-printing'); return; }
+    if (VIEW === 'print') { openStatement(P.get('month') || M1); stmtPrintMode(true); return; }
 
     const R = [], errors = [];
     window.addEventListener('error', e => errors.push('error: ' + e.message));
@@ -214,6 +214,36 @@
       ok(sc.rows.some(r => r[0] === 'Spending: Rental' && near(+r[5], 1000)), 'statement csv: spending is broken down by category');
       const sX = capture(() => $$('#stmt-modal .stmt-toolbar button').find(b => /Excel/.test(b.textContent)).click());
       ok(sX && sX.name === `pfmt_statement_${mk}.xlsx` && await isZip(sX.blob), 'statement excel: an .xlsx named for the month');
+
+      // Every CSV download: the UTF-8 marker, and text that looks like a formula stays text.
+      state.transactions.unshift({ id: 'csv-f', date: M1 + '-15', type: 'expense', amount: 1, category: 'Other', account: 'DBS Checking', currency: 'SGD', description: '-S$12 refund', notes: '=1+1', created: M1 + '-15 09:00:00' });
+      const bytesOf = async got => got ? new Uint8Array(await got.blob.arrayBuffer()) : new Uint8Array();
+      const hasBom = b => b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF;
+      const tBytes = await bytesOf(capture(() => exportCSV()));
+      const tText = new TextDecoder().decode(tBytes);
+      ok(hasBom(tBytes), 'transactions csv: starts with the UTF-8 marker Excel needs');
+      ok(tText.includes(`"'-S$12 refund"`) && tText.includes(`"'=1+1"`) && !/,"[=+@-]/.test(tText.replace(/^\uFEFF/, '')),
+         'transactions csv: text that looks like a formula is kept as text', tText.split('\n').find(l => /S\$12/.test(l)));
+      ok(hasBom(await bytesOf(capture(() => exportAccountsCSV()))), 'accounts csv: starts with the UTF-8 marker');
+      state.transactions = state.transactions.filter(t => t.id !== 'csv-f');
+
+      // Printing: each ledger names its account on every page; page numbers at the foot.
+      openStatement(mk);
+      const ledgerTables = $$('#stmt-paper .stmt-ledger');
+      ok(ledgerTables.length && ledgerTables.every(tb => $('thead .stmt-cap', tb) && getComputedStyle($('thead .stmt-cap', tb)).display === 'none'),
+         'pdf: every ledger carries its account name in its table head, hidden on screen');
+      ok($$('#stmt-paper .stmt-ledger .stmt-cap th').map(th => th.textContent).some(x => /^DBS Checking.*SGD$/.test(x)), 'pdf: the repeated name says the account and currency',
+         $$('#stmt-paper .stmt-cap th').map(th => th.textContent).join(' | '));
+      stmtPrintMode(true);
+      ok(/counter\(pages\)/.test($('#stmt-page-style').textContent) && $('#stmt-page-style').textContent.includes(getMonthLabel(mk)), 'pdf: page numbers and the statement name at the foot of each page');
+      stmtPrintMode(false);
+      ok($('#stmt-page-style').textContent === '' && !document.body.classList.contains('stmt-printing'), 'pdf: leaving print mode clears the page footer');
+
+      // The note under Account balances names its causes and adds up.
+      const sgdSec = buildStatement(mk).sections.find(x => x.cur === 'SGD');
+      ok(sgdSec.gap && /1 transaction not booked to any SGD account/.test($('#stmt-paper').textContent) && $('#stmt-paper').textContent.includes(stmtNum(sgdSec.gap)),
+         'statement: the note says exactly why SGD balances and cash flow differ', $$('#stmt-paper .stmt-note').map(p => p.textContent).find(t => /changed by/.test(t)));
+      closeStatement();
       closeStatement();
 
       nav('transactions'); await wait(20);
@@ -336,6 +366,8 @@
       $('#search-input').value = ''; $('#filter-type').value = ''; renderTransactions();
       openStatement(M0);
       ok(/don't form a proper pair/.test($('#stmt-paper').textContent), 'data check: the statement warns while a pair is broken');
+      openStatement(M2);
+      ok(!/don't form a proper pair/.test($('#stmt-paper').textContent), 'data check: an earlier month\'s statement, which the broken pair can\'t touch, doesn\'t warn');
       closeStatement();
       $('#data-banner button').click(); await wait(10);
       ok($('#datacheck-modal').classList.contains('open') && $$('#datacheck-list .dc-item').length === 3, 'data check: Review lists all three');
