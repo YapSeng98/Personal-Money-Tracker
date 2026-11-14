@@ -407,6 +407,80 @@
       closeTxnModal();
       state.transactions = state.transactions.filter(t => t.transferGroup !== 'ag_lock');
 
+      // ── Descriptions used before ────────────────────────────────────────
+      {
+        const d = $('#txn-desc'), list = $('#txn-desc-list');
+        const enter = () => { d.focus(); d.dispatchEvent(new Event('focus')); };
+        const type = s => { d.value = s; d.dispatchEvent(new Event('input', { bubbles: true })); };
+        const key = k => { const e = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }); d.dispatchEvent(e); return e; };
+        const open = () => !list.hidden && getComputedStyle(list).display !== 'none';
+        const rows = () => $$('.desc-opt', list);
+        const names = () => rows().map(r => $('.desc-t', r).textContent);
+        const tap = text => { const r = rows().find(x => $('.desc-t', x).textContent === text); const md = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+                              r.dispatchEvent(md); r.click(); return md.defaultPrevented; };
+        state.transactions.push(leg({ id: 'ds-x', date: M1 + '-03', type: 'expense', amount: 7, category: 'Other', description: '<img src=x onerror="window.__dsx=1">Kaya & co' }));
+
+        openTxnModal(); setType('expense', $('#tab-expense'));
+        setSelectVal('txn-account', 'OCBC Savings'); onTxnAccountChange(); setSelectVal('txn-cat', 'Health');
+        enter();
+        ok(open() && rows().length === 5 && d.getAttribute('aria-expanded') === 'true', 'suggest: entering an empty Description offers five used before', names().join(' | '));
+        ok(!names().some(n => /salary|Interest|To OCBC|SGD to/.test(n)), 'suggest: ...only spending, no income or transfers', names().join(' | '));
+        type('gr');
+        ok(names().join() === 'Groceries and meals,MRT and Grab', 'suggest: "gr" offers what starts with it, then what has a word starting with it', names().join(' | '));
+        ok(rows()[0].querySelector('.desc-t').innerHTML === '<b>Gr</b>oceries and meals' && rows()[1].querySelector('.desc-t').innerHTML === 'MRT and <b>Gr</b>ab', 'suggest: what was typed is in bold', rows().map(r => r.querySelector('.desc-t').innerHTML).join(' | '));
+        ok($('.desc-m', rows()[1]).textContent === '🚇 Transport · S$168.53', 'suggest: each shows its category and the last amount', $('.desc-m', rows()[1]).textContent);
+        ok(tap('MRT and Grab'), 'suggest: pressing on one keeps the focus in the box, so the list stays until the tap lands');
+        ok(d.value === 'MRT and Grab' && $('#txn-cat').value === 'Transport', 'suggest: tapping one fills the description and its category', `${d.value} / ${$('#txn-cat').value}`);
+        ok($('#txn-account').value === 'OCBC Savings' && $('#txn-currency').value === 'SGD', 'suggest: ...and leaves the account you chose alone', $('#txn-account').value);
+        ok(!open() && d.getAttribute('aria-expanded') === 'false', 'suggest: the list closes after a pick');
+        enter();
+        ok(!open(), 'suggest: going back into a box that holds a description used before shows nothing until you type');
+        type('kopo');
+        ok(names().join() === 'Kopi and toast', 'suggest: one typo still finds it', names().join(' | '));
+        type('mo');
+        ok(key('ArrowDown').defaultPrevented && rows()[0].classList.contains('active') && d.getAttribute('aria-activedescendant') === rows()[0].id && rows()[0].getAttribute('aria-selected') === 'true',
+           'suggest: the down arrow highlights the first, for screen readers too');
+        key('ArrowUp'); key('ArrowDown');
+        ok(rows()[0].classList.contains('active'), 'suggest: up from the first wraps to the last, down comes back');
+        ok(key('Enter').defaultPrevented && d.value === 'Movie' && $('#txn-cat').value === 'Entertainment' && document.activeElement === d, 'suggest: Enter picks the highlighted one and stays in the box', `${d.value} / ${$('#txn-cat').value}`);
+        type('kaya');
+        ok(names().join() === '<img src=x onerror="window.__dsx=1">Kaya & co' && !$('img', list) && !window.__dsx, 'suggest: a description is shown as text, never run as markup', list.innerHTML);
+        type('k');
+        key('Escape');
+        ok(!open() && $('#txn-modal').classList.contains('open'), 'suggest: Escape closes the list but not the form');
+        key('Escape');
+        ok(!$('#txn-modal').classList.contains('open'), 'suggest: a second Escape closes the form as before');
+        openTxnModal(); type('k');
+        d.dispatchEvent(new Event('blur'));
+        ok(!open(), 'suggest: leaving the box closes the list');
+        type('k'); closeTxnModal(); openTxnModal();
+        ok(!open(), 'suggest: closing the form closes the list, and it does not come back on reopening');
+        closeTxnModal();
+
+        // Spelled unlike the suggestion it belongs to, so only the editing rule keeps the list shut.
+        state.transactions.push(leg({ id: 'ds-y', date: M2 + '-02', type: 'expense', amount: 900, category: 'Rental', account: 'DBS Checking', description: 'room  rent' }));
+        openTxnModal('ds-y'); enter();
+        ok(!open(), 'suggest: opening a row to edit it offers nothing on entering the box');
+        type('ro');
+        ok(names()[0] === 'Room rent', 'suggest: ...but typing still does', names().join(' | '));
+        closeTxnModal();
+
+        openTxnModal(); setType('income', $('#tab-income')); type('s');
+        ok(names().slice(0, 2).join() === 'September salary,August salary' && !names().some(n => /Room|Movie/.test(n)), 'suggest: income offers income, the latest first', names().join(' | '));
+        closeTxnModal();
+
+        openTxnModal(); setType('transfer', $('#tab-transfer'));
+        setSelectVal('txn-account', 'OCBC Savings'); onTxnAccountChange();
+        type('sgd');
+        ok(names().join() === 'SGD to MYR,SGD to USD', 'suggest: a transfer offers transfers', names().join(' | '));
+        ok($('.desc-m', rows()[1]).textContent === 'DBS Checking → Wise USD · S$135.00', 'suggest: ...showing where from and to', $('.desc-m', rows()[1]).textContent);
+        tap('SGD to USD');
+        ok($('#txn-account').value === 'DBS Checking' && $('#txn-to-account').value === 'Wise USD', 'suggest: picking a transfer fills both accounts', `${$('#txn-account').value} → ${$('#txn-to-account').value}`);
+        ok($('#txn-currency').value === 'SGD' && $('#txn-recv-group').style.display === 'block', 'suggest: ...and the form follows: SGD sent, the USD received box shows');
+        closeTxnModal();
+        state.transactions = state.transactions.filter(t => t.id !== 'ds-x' && t.id !== 'ds-y');
+      }
+
       // ── What a pair sends to the server ─────────────────────────────────
       state.userId = 'test-user'; window.__sb.calls.length = 0;
       await saveTransferPair({ amt: 50, recvAmt: 50, desc: 'Peer test', cat: 'Transfer', from: 'DBS Checking', to: 'OCBC Savings',

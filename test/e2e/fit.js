@@ -69,6 +69,8 @@
       'txn-asset': () => txnType('asset'),
       'txn-payback': () => txnType('payback'),
       'txn-edit': () => openTxnModal(long.id),
+      'txn-suggest': () => { txnType('expense'); $('#txn-desc').value = 'a'; showDescSuggestions(); },
+      'txn-suggest-transfer': () => { txnType('transfer'); showDescSuggestions(); },
       'budget-new': () => openBudgetModal(),
       'budget-edit': () => openBudgetModal(1),
       'bill-new': () => openBillModal(),

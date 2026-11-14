@@ -272,6 +272,18 @@ one bad row can't hold up the rest.
 `pairProblems()` finds any that aren't one expense plus one income/asset on two
 accounts; those are never hidden from the list, and the Data check fixes them.
 
+**Descriptions used before.** The Description box lists up to five past
+descriptions as you type, from the same kind of row (spending, income, a
+payback, a transfer or a purchase). What starts with what you typed comes first.
+Then come descriptions with a word starting with each typed word, then ones
+containing it anywhere (for Chinese), then near misses with one typo. Within
+each, recent use counts most (`buildDescIndex`, `suggestDescriptions`).
+Entering an empty box lists your most used lately. Picking one fills in the
+category it usually had. A transfer or purchase also fills in both accounts.
+A plain row keeps the account you chose, because repeats are often paid from a
+different account. Arrow keys, Enter and Escape work, and screen readers
+announce the list (an ARIA combobox).
+
 **Importing a bank statement.** `parseCSV` reads the file, `findImportTable`
 skips any preamble to the table of dated rows, and `detectImportColumns` picks
 the date, description and amount columns (one signed amount, or money out and
@@ -388,7 +400,7 @@ Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 ## Tests
 
 ```bash
-node test/run-all.js        # about 241,600 checks, no browser needed
+node test/run-all.js        # about 310,000 checks, no browser needed
 node test/e2e/run.js        # the real page in headless Chrome (needs Node 22+ and Chrome)
 node test/perf/bench.js     # how long a redraw takes with 5,000 transactions
 ```
@@ -406,19 +418,21 @@ wrong — not that a test is stale.
 | `outbox.test.js` | 35 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed; inserts go up in batches and a refused batch falls back to one row at a time |
 | `import.test.js` | 37 | bank CSVs with header lines, quoted fields, either date order and no header row; signed, split or DR/CR amounts; credit cards where spending is positive; duplicates matched one-to-one; categories learned from the book |
 | `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
+| `descriptions.test.js` | 68,418 | what the Description box offers. One entry per description however it was capitalised or spaced. Only the kind of row being added, each pair offered once. Starts-with first, then word starts in any order, Chinese from anywhere, then one typo exactly (against a full edit-distance calculation). Recent use outranks old. The usual category fills in, and both accounts of a transfer or purchase. Descriptions show as text, never markup. Covers 300 random books. `PFMT_BACKUP=~/PFMT_Backups/<date>` also replays a real book in date order and reports how often what you wrote would have been offered after 0–3 letters |
 | `statement.test.js` | 241,188 | the monthly statement against figures worked out independently, on 400 random books holding every awkward case (several currencies, cards in debt, transfers, exchanges, asset purchases, oversized paybacks, claims, unfunded holdings, rows booked to no account, one-sided transfers) over months crossing a year end and February: every row exactly once, opening + in − out = closing line by line, each month opening where the last closed, money in and out equal to the dashboard's, every column adding to its total, the gap between balances and cash flow explained cause by cause, a range equal to its months, the Excel/CSV figures the same, no CSV cell a spreadsheet would run as a formula. `PFMT_BACKUP=~/PFMT_Backups/<date>` also checks every month of every book in a real backup |
 
 The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
 swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
 writes), loads dated-relative-to-today test data (`seed.js`), and clicks through
-the app (`checks.js`): about 255 checks at desktop, laptop and true 390px phone
+the app (`checks.js`): about 285 checks at desktop, laptop and true 390px phone
 sizes, covering the statement and its downloads, Monthly In & Out, the Data
 check, offline saves surviving a reload, deletes not coming back, USDT, the net
-worth chart, importing a CSV (and importing it twice), App Lock
+worth chart, importing a CSV (and importing it twice), description suggestions
+(typing, tapping, the arrow keys, Escape, a transfer filling both accounts), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
 
-The **phone-fit audit** (`fit.js`) opens every page, window and menu — 36
+The **phone-fit audit** (`fit.js`) opens every page, window and menu — 38
 screens, with long names, seven-figure amounts and USDT in the data — and
 measures what a person would notice on a phone: anything past the screen edge,
 boxes that scroll sideways, text cut off, squeezed or on top of other text,

@@ -763,6 +763,15 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .form-actions{display:flex;gap:10px;margin-top:22px;}
 .form-actions .btn{flex:1;justify-content:center;padding:12px;}
 .form-divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+/* Descriptions used before, listed under the Description box. In the flow of
+   the form rather than floating over it, so nothing below is covered; long
+   ones wrap instead of being cut short. */
+.desc-list{margin-top:6px;padding:4px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);}
+.desc-opt{display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:44px;padding:7px 10px;border-radius:9px;cursor:pointer;}
+.desc-opt:hover,.desc-opt.active{background:var(--indigo-s);}
+.desc-t{font-size:14px;color:var(--ink);overflow-wrap:anywhere;}
+.desc-t b{font-weight:800;}
+.desc-m{font-size:11.5px;color:var(--muted);overflow-wrap:anywhere;}
 
 /* contribution quick-add */
 .contrib-row{display:flex;gap:8px;margin-top:8px;}
@@ -1974,7 +1983,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     </div>
     <div class="form-group">
       <label class="form-label">Description</label>
-      <input class="form-input" type="text" id="txn-desc" placeholder="e.g. Grab Coffee, NTUC FairPrice">
+      <input class="form-input" type="text" id="txn-desc" placeholder="e.g. Grab Coffee, NTUC FairPrice" autocomplete="off"
+             role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="txn-desc-list"
+             onfocus="showDescSuggestions(true)" oninput="showDescSuggestions()" onkeydown="onDescKey(event)" onblur="hideDescSuggestions()">
+      <div class="desc-list" id="txn-desc-list" role="listbox" aria-label="Descriptions used before" hidden></div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -3036,6 +3048,7 @@ function lockTypeTabs(allowed) {
 function openTxnModal(id = null) {
   const editing = id !== null;
   lockTypeTabs(null);
+  hideDescSuggestions();
   document.getElementById('txn-modal-title').textContent  = editing ? t('modal_edit_txn') : t('modal_add_txn');
   document.getElementById('txn-edit-badge').textContent   = t('modal_editing_txn');
   document.getElementById('txn-edit-badge').style.display = editing ? 'inline-flex' : 'none';
@@ -3145,7 +3158,7 @@ function openTxnModal(id = null) {
   document.getElementById('txn-modal').classList.add('open');
   setTimeout(() => document.getElementById('txn-amount').focus(), 100);
 }
-function closeTxnModal() { document.getElementById('txn-modal').classList.remove('open'); }
+function closeTxnModal() { hideDescSuggestions(); document.getElementById('txn-modal').classList.remove('open'); }
 
 function setType(type, el) {
   state.currentType = type;
@@ -3295,6 +3308,182 @@ function setSelectVal(id, val) {
   const sel = document.getElementById(id);
   if (!sel) return;
   for (let o of sel.options) { if (o.value === val || o.text.includes(val)) { sel.value = o.value; return; } }
+}
+
+// ═══════════════════════════════════════════════
+// DESCRIPTION SUGGESTIONS
+// ═══════════════════════════════════════════════
+// The Description box offers back what you've written before, so a repeat
+// ("Lunch", "Transfer money from UOB to DBS") is one tap, not a retype. One
+// suggestion per description however it was capitalised or spaced, under its
+// latest spelling, and only from the same kind of row: spending suggests
+// spending, a transfer suggests transfers.
+//
+// Picking one fills in the category it usually had. A transfer or asset
+// purchase also fills in both accounts, since its description names the
+// move. A plain row keeps the account you chose: in a real book one repeat in
+// five was paid from a different account than the time before.
+
+// The kind of row a description belongs to. A pair is offered once, by the
+// leg the form edits: a transfer's outgoing side, a purchase's holding.
+function descKind(t) {
+  if (!t.transferGroup) return t.type;
+  if (isAssetGroup(t)) return t.type === 'asset' ? 'asset' : null;
+  return t.type === 'expense' ? 'transfer' : null;
+}
+const descWords = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+
+function buildDescIndex(txns, today) {
+  const now = Date.parse(today), by = new Map();
+  txns.forEach(t => {
+    const kind = descKind(t), text = String(t.description || '').replace(/\s+/g, ' ').trim();
+    if (!kind || !text || text === '(no description)') return;
+    const key = kind + '|' + text.toLowerCase();
+    let e = by.get(key);
+    if (!e) by.set(key, e = { kind, lower: text.toLowerCase(), words: descWords(text), weight: 0, uses: 0, cats: new Map(), at: '', last: null });
+    // A use counts half as much every 90 days, so this month's habits come
+    // first and a one-off from last year sinks.
+    const w = Math.pow(0.5, Math.max(0, (now - Date.parse(t.date)) / 864e5) / 90) || 0;
+    e.uses++; e.weight += w;
+    if (t.category) e.cats.set(t.category, (e.cats.get(t.category) || 0) + w);
+    const at = (t.date || '') + ' ' + (t.created || '');
+    if (!e.last || at >= e.at) { e.at = at; e.last = t; e.text = text; }
+  });
+  return [...by.values()].map(e => {
+    // The category it had most, recent uses counting more; a tie goes to the latest.
+    const cat = [...e.cats.entries()].sort((a, b) => b[1] - a[1] || (b[0] === e.last.category) - (a[0] === e.last.category))[0];
+    const peer = e.last.transferGroup ? transferPartner(e.last) : null;
+    return { kind: e.kind, text: e.text, lower: e.lower, words: e.words, weight: e.weight, uses: e.uses, at: e.at,
+             category: cat ? cat[0] : '', account: e.last.account || '', other: (peer && peer.account) || '',
+             amount: +e.last.amount || 0, currency: e.last.currency || '' };
+  });
+}
+
+// True when a and b differ by at most one letter wrong, missing, extra, or
+// swapped with its neighbour.
+function oneEditApart(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  const rest = (x, y) => a.slice(x) === b.slice(y);
+  return rest(i, i) || rest(i + 1, i + 1) || rest(i + 1, i) || rest(i, i + 1)
+      || (a[i] === b[i + 1] && a[i + 1] === b[i] && rest(i + 2, i + 2));
+}
+
+// What to offer for what's been typed, best first: descriptions that start
+// with it; then ones with a word starting with each typed word, in any order;
+// then ones containing it anywhere (Chinese has no spaces to start words at);
+// then the same with one typo in a word of four letters or more. Within each,
+// the most used lately. Nothing typed offers the most used lately.
+function suggestDescriptions(index, kind, typed, limit) {
+  const q = String(typed || '').replace(/\s+/g, ' ').trim().toLowerCase(), qw = descWords(q);
+  const near = (w, x) => w.length >= 4 && [w.length - 1, w.length, w.length + 1].some(n => n <= x.length && oneEditApart(w, x.slice(0, n)));
+  const hits = [];
+  index.forEach(e => {
+    if (e.kind !== kind) return;
+    const tier = !q || e.lower.startsWith(q) ? 0
+      : qw.length && qw.every(w => e.words.some(x => x.startsWith(w))) ? 1
+      : e.lower.includes(q) ? 2
+      : qw.length && qw.every(w => e.words.some(x => x.startsWith(w) || near(w, x))) ? 3 : -1;
+    if (tier >= 0) hits.push({ e, tier });
+  });
+  return hits.sort((a, b) => a.tier - b.tier || b.e.weight - a.e.weight || (a.e.at < b.e.at) - (a.e.at > b.e.at) || a.e.lower.localeCompare(b.e.lower))
+    .slice(0, limit).map(h => h.e);
+}
+
+// The description with what was typed in bold: the run it matched, or the
+// start of each word it matched.
+function descMarked(text, typed) {
+  const lower = text.toLowerCase(), q = typed.toLowerCase(), on = new Array(text.length).fill(false);
+  if (q && lower.length === text.length) {
+    const at = lower.indexOf(q);
+    if (at >= 0) on.fill(true, at, at + q.length);
+    else for (const m of lower.matchAll(/[\p{L}\p{N}]+/gu)) {
+      const w = descWords(q).find(w => m[0].startsWith(w));
+      if (w) on.fill(true, m.index, m.index + w.length);
+    }
+  }
+  let html = '';
+  for (let i = 0, j; i < text.length; i = j) {
+    for (j = i; j < text.length && on[j] === on[i]; j++);
+    html += on[i] ? `<b>${esc(text.slice(i, j))}</b>` : esc(text.slice(i, j));
+  }
+  return html;
+}
+
+function descMeta(e) {
+  const amt = fmtWithCur(e.amount, e.currency);
+  if (e.kind === 'transfer') return `${e.account || '—'} → ${e.other || '—'} · ${amt}`;
+  return (e.category ? `${catIcon(e.category)} ${e.category} · ` : '') + amt;
+}
+
+let _descIndex = null, _descShown = [], _descActive = -1;
+
+function showDescSuggestions(focused) {
+  const input = document.getElementById('txn-desc');
+  // Rebuilt each time the box is entered: cheap, and never out of date.
+  if (focused || !_descIndex) _descIndex = buildDescIndex(state.transactions, localDateStr());
+  let found = suggestDescriptions(_descIndex, state.currentType, input.value, 5);
+  // Entering the box of a row being edited, or one already holding a
+  // description you've used, shows nothing until you type.
+  if (focused && (document.getElementById('txn-edit-id').value || found.some(e => e.text === input.value.trim()))) found = [];
+  _descShown = found; _descActive = -1;
+  renderDescSuggestions();
+}
+function hideDescSuggestions() {
+  if (!_descShown.length) return;
+  _descShown = []; _descActive = -1;
+  renderDescSuggestions();
+}
+function renderDescSuggestions() {
+  const input = document.getElementById('txn-desc'), list = document.getElementById('txn-desc-list');
+  if (!input || !list) return;
+  const typed = input.value.replace(/\s+/g, ' ').trim();
+  // mousedown is cancelled so a tap doesn't take focus from the box (which
+  // would close the list before the tap lands).
+  list.innerHTML = _descShown.map((e, i) => `<div class="desc-opt${i === _descActive ? ' active' : ''}" id="txn-desc-opt-${i}" role="option" aria-selected="${i === _descActive}"
+    onmousedown="event.preventDefault()" onclick="pickDescSuggestion(${i})"><span class="desc-t">${descMarked(e.text, typed)}</span><span class="desc-m">${esc(descMeta(e))}</span></div>`).join('');
+  list.hidden = !_descShown.length;
+  input.setAttribute('aria-expanded', String(!!_descShown.length));
+  if (_descActive < 0) { input.removeAttribute('aria-activedescendant'); return; }
+  input.setAttribute('aria-activedescendant', 'txn-desc-opt-' + _descActive);
+  document.getElementById('txn-desc-opt-' + _descActive).scrollIntoView({ block: 'nearest' });
+}
+
+function pickDescSuggestion(i, fromKeys) {
+  const e = _descShown[i];
+  if (!e) return;
+  const input = document.getElementById('txn-desc');
+  const has = (id, v) => !!v && [...document.getElementById(id).options].some(o => o.value === v);
+  input.value = e.text;
+  if ((e.kind === 'transfer' || e.kind === 'asset') && has('txn-account', e.account)) {
+    document.getElementById('txn-account').value = e.account;
+    onTxnAccountChange();
+    if (e.kind === 'transfer' && has('txn-to-account', e.other)) { document.getElementById('txn-to-account').value = e.other; updateTransferUI(); }
+    if (e.kind === 'asset' && has('txn-fund-account', e.other)) { document.getElementById('txn-fund-account').value = e.other; updateAssetUI(); }
+  }
+  if (has('txn-cat', e.category)) document.getElementById('txn-cat').value = e.category;
+  hideDescSuggestions();
+  // A tap is done with the box, so the phone keyboard can go; the arrow keys
+  // and Enter stay in it.
+  if (!fromKeys) input.blur();
+}
+
+function onDescKey(ev) {
+  if (ev.isComposing) return;   // still choosing characters in a Chinese input method
+  const n = _descShown.length;
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    ev.preventDefault();
+    if (!n) { showDescSuggestions(); if (_descShown.length) { _descActive = 0; renderDescSuggestions(); } return; }
+    _descActive = ev.key === 'ArrowDown' ? (_descActive + 1) % n : (_descActive <= 0 ? n - 1 : _descActive - 1);
+    renderDescSuggestions();
+  } else if (ev.key === 'Enter' && n && _descActive >= 0) {
+    ev.preventDefault();
+    pickDescSuggestion(_descActive, true);
+  } else if (ev.key === 'Escape' && n) {
+    ev.stopPropagation();   // closes the list, not the whole form
+    hideDescSuggestions();
+  }
 }
 
 // ═══════════════════════════════════════════════

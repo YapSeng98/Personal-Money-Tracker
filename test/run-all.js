@@ -19,6 +19,7 @@ const SUITES = [
   'app-lock.test.js',            // the PIN is stored salted, old PINs upgrade
   'import.test.js',              // bank statement CSVs: columns, dates, amounts, duplicates, categories
   'statement.test.js',           // the monthly statement against independent figures, random and real books
+  'descriptions.test.js',        // what the Description box offers, in what order, and what a pick fills in
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 
