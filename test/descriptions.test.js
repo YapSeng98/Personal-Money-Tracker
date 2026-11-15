@@ -200,7 +200,7 @@ group('One typo, exactly');
   ok(!A('lunch', 'lnuhc') && !A('lunch', 'lu') && !A('ab', 'abcd') && !A('abcd', 'badc') && !A('abc', 'cab'), 'two edits apart are refused');
   // Against a reference edit distance (optimal string alignment) on random pairs.
   let seed = 7;
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = Math.imul(seed ^ (seed >>> 15), 1 | seed); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
   const word = () => Array.from({ length: Math.floor(rnd() * 6) }, () => 'abc'[Math.floor(rnd() * 3)]).join('');
   const osa = (a, b) => {
     const d = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => i || j ? (i ? (j ? 0 : i) : j) : 0));
@@ -218,8 +218,8 @@ group('One typo, exactly');
 
 group('Random books');
 {
-  let seed = 20261114;
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  let seed = +(process.env.SEED || 20261114);
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = Math.imul(seed ^ (seed >>> 15), 1 | seed); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
   const pick = a => a[Math.floor(rnd() * a.length)];
   const WORDS = ['lunch', 'dinner', 'grab', 'taxi', 'mrt', 'kopi', 'ntuc', 'fairprice', 'shopee', 'lazada', 'rent', 'salary', 'bonus', 'top', 'up',
     'wise', 'uob', 'dbs', 'cimb', 'transfer', 'money', 'from', 'to', 'gym', 'netflix', '咖啡', '午餐', '戏票', 'lily', '姐', 'birthday', '(cc)', '#2', 'a-1'];

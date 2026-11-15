@@ -400,7 +400,7 @@ Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 ## Tests
 
 ```bash
-node test/run-all.js        # about 310,000 checks, no browser needed
+node test/run-all.js        # about 315,000 checks, no browser needed
 node test/e2e/run.js        # the real page in headless Chrome (needs Node 22+ and Chrome)
 node test/perf/bench.js     # how long a redraw takes with 5,000 transactions
 ```
@@ -418,19 +418,40 @@ wrong — not that a test is stale.
 | `outbox.test.js` | 35 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed; inserts go up in batches and a refused batch falls back to one row at a time |
 | `import.test.js` | 37 | bank CSVs with header lines, quoted fields, either date order and no header row; signed, split or DR/CR amounts; credit cards where spending is positive; duplicates matched one-to-one; categories learned from the book |
 | `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
-| `descriptions.test.js` | 68,418 | what the Description box offers. One entry per description however it was capitalised or spaced. Only the kind of row being added, each pair offered once. Starts-with first, then word starts in any order, Chinese from anywhere, then one typo exactly (against a full edit-distance calculation). Recent use outranks old. The usual category fills in, and both accounts of a transfer or purchase. Descriptions show as text, never markup. Covers 300 random books. `PFMT_BACKUP=~/PFMT_Backups/<date>` also replays a real book in date order and reports how often what you wrote would have been offered after 0–3 letters |
-| `statement.test.js` | 241,188 | the monthly statement against figures worked out independently, on 400 random books holding every awkward case (several currencies, cards in debt, transfers, exchanges, asset purchases, oversized paybacks, claims, unfunded holdings, rows booked to no account, one-sided transfers) over months crossing a year end and February: every row exactly once, opening + in − out = closing line by line, each month opening where the last closed, money in and out equal to the dashboard's, every column adding to its total, the gap between balances and cash flow explained cause by cause, a range equal to its months, the Excel/CSV figures the same, no CSV cell a spreadsheet would run as a formula. `PFMT_BACKUP=~/PFMT_Backups/<date>` also checks every month of every book in a real backup |
+| `descriptions.test.js` | 68,324 | what the Description box offers. One entry per description however it was capitalised or spaced. Only the kind of row being added, each pair offered once. Starts-with first, then word starts in any order, Chinese from anywhere, then one typo exactly (against a full edit-distance calculation). Recent use outranks old. The usual category fills in, and both accounts of a transfer or purchase. Descriptions show as text, never markup. Covers 300 random books (`SEED=n` tries another 300). `PFMT_BACKUP=~/PFMT_Backups/<date>` also replays a real book in date order and reports how often what you wrote would have been offered after 0–3 letters |
+| `statement.test.js` | 246,920 | the monthly statement against figures worked out independently, on 400 random books (`SEED=n` tries another 400) holding every awkward case (several currencies, cards in debt, transfers, exchanges, asset purchases, oversized paybacks, claims, unfunded holdings, rows booked to no account, one-sided transfers) over months crossing a year end and February: every row exactly once, opening + in − out = closing line by line, each month opening where the last closed, money in and out equal to the dashboard's, every column adding to its total, the gap between balances and cash flow explained cause by cause, a range equal to its months, the Excel/CSV figures the same, no CSV cell a spreadsheet would run as a formula. `PFMT_BACKUP=~/PFMT_Backups/<date>` also checks every month of every book in a real backup |
 
 The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
 swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
-writes), loads dated-relative-to-today test data (`seed.js`), and clicks through
-the app (`checks.js`): about 285 checks at desktop, laptop and true 390px phone
+writes, or apply them under the real schema's rules), loads dated-relative-to-today test data (`seed.js`), and clicks through
+the app (`checks.js`): about 300 checks at desktop, laptop and true 390px phone
 sizes, covering the statement and its downloads, Monthly In & Out, the Data
-check, offline saves surviving a reload, deletes not coming back, USDT, the net
+check (and its Edit repairing every shape it offers to), a search count matching
+the lines shown, offline saves surviving a reload, deletes not coming back, USDT, the net
 worth chart, importing a CSV (and importing it twice), description suggestions
 (typing, tapping, the arrow keys, Escape, a transfer filling both accounts), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
+
+**Random use** (`fuzz.js`) drives the real app through long runs of everyday
+actions, picked at random: adding, editing and deleting every kind of row (with
+and without undo), bulk delete and recategorise, repeats coming due, renaming
+accounts and changing their type or currency, reusing a name, deleting
+accounts, goals, bills, planning budgets from a salary, repairing broken pairs
+through the Data check, another device changing rows on the server, dropping
+the connection and reloading. The fake server applies writes the way Postgres
+would: an unknown column, a blank or malformed date, a non-uuid id or a missing
+required value is refused. After every action the whole book is checked: no
+broken pairs, every row in its account's currency and naming an account that
+exists, every balance equal to its starting balance plus its rows, goals equal
+to the accounts they track, repeats only on their schedule and never twice,
+editing a field changing nothing else, undo restoring exactly, nothing left
+unsent or refused once online, the server holding exactly what the screen
+shows, a reload showing exactly what was there, and another device's change
+arriving. Every run includes six runs of 200 actions; `--fuzz --seeds=N
+--steps=M` runs more, and `--backup … --user …` runs them on a copy of a real
+book. `--health --backup … --user …` loads a real book the way the app does
+and checks all of it, and that loading it twice changes nothing.
 
 The **phone-fit audit** (`fit.js`) opens every page, window and menu — 38
 screens, with long names, seven-figure amounts and USDT in the data — and
@@ -502,6 +523,15 @@ custom SMTP in Auth settings removes the cap.
 **`budgets.spent` is dead data.** Left over from the ServiceNow backend, which
 maintained it with a business rule. Nothing reads it — spend is always recomputed
 from transactions. It is kept only so an old backup still restores.
+
+**Accounts are found by name.** Rows, goals and bills point at an account by
+its name, so names are unique (case and spacing aside) and renaming one
+repoints everything. A row whose account was deleted keeps that name; opening
+it shows "(no longer an account)" rather than quietly picking another account.
+
+**`transfer_peer` on the server can be stale for old pairs.** The other side's
+account name is rebuilt from the partner row on every load, so nothing reads
+the stored copy; old pairs that never had it filled keep it empty there.
 
 **Currencies are never converted.** Every figure stays in the currency it was
 entered in and totals are grouped per currency. A cross-currency transfer takes

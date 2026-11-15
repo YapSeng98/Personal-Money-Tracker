@@ -2420,6 +2420,7 @@ const TRANSLATIONS = {
     toast_csv_downloaded:'CSV downloaded', toast_sn_exported:'SN JSON exported',
     toast_budget_saved:'Budget saved', toast_budget_updated:'Budget updated ✓',
     toast_budget_deleted:'Budget deleted', toast_budget_exists:'Budget for this category already exists',
+    toast_account_exists:'You already have an account called {name}',
     toast_goal_saved:'Goal saved', toast_goal_updated:'Goal updated ✓',
     toast_goal_deleted:'Goal deleted',
     toast_undone:'Restored', btn_undo:'Undo',
@@ -2559,6 +2560,7 @@ const TRANSLATIONS = {
     toast_csv_downloaded:'CSV 已下载', toast_sn_exported:'SN JSON 已导出',
     toast_budget_saved:'预算已保存', toast_budget_updated:'预算已更新 ✓',
     toast_budget_deleted:'预算已删除', toast_budget_exists:'该类别的预算已存在',
+    toast_account_exists:'已有名为 {name} 的账户',
     toast_goal_saved:'目标已保存', toast_goal_updated:'目标已更新 ✓',
     toast_undone:'已恢复', btn_undo:'撤销',
     toast_bulk_txn_deleted:'已删除 {n} 笔交易', toast_bulk_cat_applied:'已为 {n} 笔交易更新类别',
@@ -3080,7 +3082,9 @@ function openTxnModal(id = null) {
     if (txn.transferGroup) {
       const legs = state.transactions.filter(x => x.transferGroup === txn.transferGroup);
       const out  = legs.find(x => x.type === 'expense') || txn;
-      const inc  = legs.find(x => x.type === 'income');
+      // The other row, even when both are marked the same way round (the
+      // Data check's Edit): the form then says which way the money went.
+      const inc  = legs.find(x => x.type === 'income' && x !== out) || legs.find(x => x !== out && x.type !== 'asset');
       const assetLeg = legs.find(x => x.type === 'asset');
 
       // A funded asset is a pair too, but it belongs on the Asset tab with its
@@ -3092,11 +3096,12 @@ function openTxnModal(id = null) {
         document.getElementById('txn-desc').value     = assetLeg.description;
         document.getElementById('txn-date').value     = assetLeg.date;
         document.getElementById('txn-notes').value    = assetLeg.notes || '';
-        setSelectVal('txn-cat', assetLeg.category);
-        setSelectVal('txn-account', assetLeg.account);
+        setSelectVal('txn-cat', assetLeg.category, goneCategoryLabel(assetLeg.category));
+        setSelectVal('txn-account', assetLeg.account, goneAccountLabel(assetLeg.account));
         document.getElementById('txn-currency').value = assetLeg.currency || state.currency;
         document.getElementById('txn-amount').value   = assetLeg.amount;
-        populateFundAccounts(out && out !== assetLeg ? out.account : '');
+        const fundLeg = legs.find(x => x !== assetLeg);
+        populateFundAccounts(fundLeg ? fundLeg.account : '');
         updateAssetUI();
         document.getElementById('txn-edit-id').value = assetLeg.id;
         document.getElementById('save-txn-btn').textContent = t('modal_update_txn');
@@ -3110,8 +3115,8 @@ function openTxnModal(id = null) {
       document.getElementById('txn-desc').value     = out.description;
       document.getElementById('txn-date').value     = out.date;
       document.getElementById('txn-notes').value    = out.notes || '';
-      setSelectVal('txn-cat', out.category);
-      setSelectVal('txn-account', out.account);
+      setSelectVal('txn-cat', out.category, goneCategoryLabel(out.category));
+      setSelectVal('txn-account', out.account, goneAccountLabel(out.account));
       document.getElementById('txn-currency').value = out.currency || state.currency;
       document.getElementById('txn-amount').value   = out.amount;
       populateToAccounts(inc ? inc.account : '');
@@ -3128,8 +3133,8 @@ function openTxnModal(id = null) {
     document.getElementById('txn-desc').value    = txn.description;
     document.getElementById('txn-date').value    = txn.date;
     document.getElementById('txn-notes').value   = txn.notes || '';
-    setSelectVal('txn-cat',      txn.category);
-    setSelectVal('txn-account',  txn.account);
+    setSelectVal('txn-cat',      txn.category, goneCategoryLabel(txn.category));
+    setSelectVal('txn-account',  txn.account, goneAccountLabel(txn.account));
     document.getElementById('txn-currency').value = txn.currency || state.currency;
     // setType() ran before the account/currency were filled in, so the funding
     // list was built against the previous account — it offered the holding
@@ -3222,9 +3227,13 @@ function populateFundAccounts(selected) {
   const dest = document.getElementById('txn-account').value;
   const keep = selected !== undefined ? selected : sel.value;
   const opts = state.accounts.filter(a => a.name !== dest && (a.currency || state.currency) === cur);
+  // A purchase paid from an account since deleted keeps that source, rather
+  // than an edit quietly dropping the funding side.
+  const gone = keep && !state.accounts.some(a => a.name === keep);
   sel.innerHTML = '<option value="">— None —</option>'
-    + opts.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
-  sel.value = opts.some(a => a.name === keep) ? keep : '';
+    + opts.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('')
+    + (gone ? `<option value="${esc(keep)}">${esc(goneAccountLabel(keep))}</option>` : '');
+  sel.value = opts.some(a => a.name === keep) || gone ? keep : '';
 }
 
 function updateAssetUI() {
@@ -3277,8 +3286,11 @@ function populateToAccounts(selected) {
   if (!sel) return;
   const keep = selected !== undefined ? selected : sel.value;
   const opts = state.accounts.filter(a => a.name !== from);
-  sel.innerHTML = '<option value="">— Select destination —</option>' + accountOptionsHTML(opts);
-  if (opts.some(a => a.name === keep)) sel.value = keep;
+  // A transfer to an account since deleted keeps that destination.
+  const gone = keep && !state.accounts.some(a => a.name === keep);
+  sel.innerHTML = '<option value="">— Select destination —</option>' + accountOptionsHTML(opts)
+    + (gone ? `<option value="${esc(keep)}">${esc(goneAccountLabel(keep))}</option>` : '');
+  if (opts.some(a => a.name === keep) || gone) sel.value = keep;
 }
 
 // Cross-currency transfers can't be derived — the app holds no FX rates — so the
@@ -3296,19 +3308,59 @@ function updateTransferUI() {
 
   const fromCur = curSel.value;
   const toName  = document.getElementById('txn-to-account').value;
-  const toAcc   = state.accounts.find(a => a.name === toName);
-  const toCur   = toAcc ? (toAcc.currency || state.currency) : fromCur;
-  const differs = !!toAcc && toCur !== fromCur;
+  const toCur   = transferToCur(toName, fromCur);
+  const differs = transferAsksReceived(toName, fromCur);
   document.getElementById('txn-recv-group').style.display = differs ? 'block' : 'none';
   document.getElementById('txn-recv-label').textContent   = `Amount Received (${toCur})`;
   document.getElementById('txn-amount-label').textContent = differs ? `Amount Sent (${fromCur})` : 'Amount Sent';
 }
 
-function setSelectVal(id, val) {
+// The currency a transfer arrives in: the destination account's, or for an
+// account since deleted, the currency the transfer being edited already
+// arrived in. Taking the sending currency there turned an SGD → MYR transfer's
+// MYR side into SGD on any edit.
+function transferToCur(toName, fromCur) {
+  const acc = state.accounts.find(a => a.name === toName);
+  if (acc) return acc.currency || state.currency;
+  const p = editingTransferLegs();
+  return p && p.inc.account === toName ? (p.inc.currency || state.currency) : fromCur;
+}
+// Whether the form asks for the amount received: when the currencies differ,
+// and when editing a transfer whose two sides already differ (an account's
+// currency changed since). Otherwise saving set what arrived to what was sent.
+function transferAsksReceived(toName, fromCur) {
+  if (!toName) return false;
+  if (transferToCur(toName, fromCur) !== fromCur) return true;
+  const p = editingTransferLegs();
+  return !!p && p.inc.account === toName && p.inc.amount !== p.out.amount;
+}
+function editingTransferLegs() {
+  const editId = document.getElementById('txn-edit-id').value;
+  const row = editId !== '' && state.transactions.find(x => x.id == editId);
+  if (!row || !row.transferGroup) return null;
+  const legs = state.transactions.filter(x => x.transferGroup === row.transferGroup);
+  const out = legs.find(x => x.type === 'expense'), inc = legs.find(x => x.type === 'income');
+  return out && inc ? { out, inc } : null;
+}
+
+// Selects exactly val. An option is never chosen because its text merely
+// contains val: that put a row booked to "BingX" on "BingX Crypto Acc" when
+// that one came first, and saving then moved the row. With a label, a value
+// the list doesn't offer (an account since deleted, a category from another
+// type) is added as it is, so opening a row and saving it never quietly
+// changes it; without one, the picker is left as it was.
+function setSelectVal(id, val, missingLabel) {
   const sel = document.getElementById(id);
   if (!sel) return;
-  for (let o of sel.options) { if (o.value === val || o.text.includes(val)) { sel.value = o.value; return; } }
+  val = val == null ? '' : String(val);
+  if (![...sel.options].some(o => o.value === val)) {
+    if (missingLabel === undefined) return;
+    sel.appendChild(new Option(missingLabel, val));
+  }
+  sel.value = val;
 }
+const goneAccountLabel = name => name ? `${name} (no longer an account)` : '— No account —';
+const goneCategoryLabel = cat => cat ? `${catIcon(cat)} ${cat}` : '—';
 
 // ═══════════════════════════════════════════════
 // DESCRIPTION SUGGESTIONS
@@ -3803,7 +3855,9 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
   const assetRow = state.transactions.find(t => t.id == editId);
   if (!assetRow) { showToast('Transaction not found', 'error'); return; }
   const group    = assetRow.transferGroup || '';
-  const expenseLeg = group ? state.transactions.find(t => t.transferGroup === group && t.type === 'expense') : null;
+  // The funding side is the group's other row, even one wrongly marked as
+  // money arriving: adding a new one beside it made three rows of a pair.
+  const expenseLeg = group ? state.transactions.find(t => t.transferGroup === group && t.id !== assetRow.id && t.type !== 'asset') : null;
 
   Object.assign(assetRow, { type:'asset', amount:amt, description:desc, category:cat,
                             account:to, currency, date, notes });
@@ -3818,7 +3872,7 @@ async function updateAssetFunding(editId, { amt, desc, cat, to, currency, date, 
   };
 
   if (fundFrom && expenseLeg) {
-    Object.assign(expenseLeg, { amount:amt, description:desc, category:cat,
+    Object.assign(expenseLeg, { type:'expense', amount:amt, description:desc, category:cat,
                                 account:fundFrom, currency, date, notes });
     assetRow.transferPeer   = fundFrom;
     expenseLeg.transferPeer = to;
@@ -3903,8 +3957,15 @@ async function updateTransferPair(editId, { amt, recvAmt, desc, cat, from, to, f
   const anchor = state.transactions.find(x => x.id == editId);
   if (!anchor || !anchor.transferGroup) { showToast('Transfer not found', 'error'); return; }
   const legs = state.transactions.filter(x => x.transferGroup === anchor.transferGroup);
-  const out  = legs.find(x => x.type === 'expense');
-  const inc  = legs.find(x => x.type === 'income');
+  let out = legs.find(x => x.type === 'expense');
+  let inc = legs.find(x => x.type === 'income');
+  // Two rows both marked leaving, or both arriving (the Data check's Edit):
+  // the row the form treated as leaving takes that role, the other arrives.
+  if (legs.length === 2 && !legs.some(x => x.type === 'asset') && (!out || !inc)) {
+    out = out || legs.find(x => x.id == editId) || legs[0];
+    inc = legs.find(x => x !== out);
+    out.type = 'expense'; inc.type = 'income';
+  }
   if (!out || !inc) { showToast('This transfer is missing a side — delete and re-add it.', 'error'); return; }
 
   Object.assign(out, { amount: amt,     account: from, currency: fromCur, transferPeer: to,
@@ -3972,9 +4033,8 @@ async function saveTransaction() {
     if (!acct)            { showToast('Choose the account the money leaves from', 'error'); return; }
     if (!toAcct)          { showToast('Choose the destination account', 'error'); return; }
     if (toAcct === acct)  { showToast('From and To must be different accounts', 'error'); return; }
-    const toAccObj = state.accounts.find(a => a.name === toAcct);
-    const toCur    = toAccObj ? (toAccObj.currency || state.currency) : currency;
-    const differs  = toCur !== currency;
+    const toCur    = transferToCur(toAcct, currency);
+    const differs  = transferAsksReceived(toAcct, currency);
     const recvRaw  = parseFloat(document.getElementById('txn-amount-recv').value);
     const recvAmt  = differs ? recvRaw : amt;
     if (differs && (!recvAmt || recvAmt <= 0)) {
@@ -5017,7 +5077,8 @@ async function saveGoal() {
   if (!name)                { showToast(t('toast_enter_goal_name'), 'error');   return; }
   if (!target || target<=0) { showToast(t('toast_enter_goal_target'), 'error'); return; }
 
-  const dbPayload = { name, icon, target, current, monthly, target_date: date, remarks, currency,
+  // A cleared date is null: the column is a date, and Postgres refuses ''.
+  const dbPayload = { name, icon, target, current, monthly, target_date: date || null, remarks, currency,
     linked_account: linkedAccount || null };
 
   if (editId !== '') {
@@ -5122,8 +5183,14 @@ async function saveAccount() {
   const institution = document.getElementById('acc-institution').value;
   const currency    = document.getElementById('acc-currency').value;
   if (!name) { showToast(t('toast_enter_account_name'), 'error'); return; }
+  // Rows, goals and bills find their account by name, so two accounts sharing
+  // one would each count the other's rows in its balance.
+  const clash = state.accounts.find(a => a.name.trim().toLowerCase() === name.toLowerCase() && String(a.id) !== String(_editingAccountId));
+  if (clash) { showToast(t('toast_account_exists').replace('{name}', clash.name), 'error'); return; }
   const icon = accountIcon(type);
-  const dbPayload = { name, type, institution, starting_balance: balance, currency };
+  // The icon follows the type, so it is sent on every save: leaving it out of
+  // edits showed the new icon until a reload brought the old one back.
+  const dbPayload = { name, type, institution, starting_balance: balance, currency, icon };
 
   if (_editingAccountId !== null) {
     const idx = state.accounts.findIndex(a => a.id == _editingAccountId);
@@ -5185,7 +5252,7 @@ async function saveAccount() {
     const acc = { id: newId(), name, type, institution, balance, icon, currency };
     state.accounts.push(acc);
     if (state.userId) {
-      dbInsert('accounts', { id: acc.id, user_id: state.userId, ...dbPayload, icon })
+      dbInsert('accounts', { id: acc.id, user_id: state.userId, ...dbPayload })
         .catch(e => showToast('Sync failed: ' + e.message, 'error'));
     } else {
       showToast('Not signed in — account saved locally only. Please sign in to sync.', 'error');
@@ -5202,7 +5269,8 @@ async function deleteAccount(id) {
   const acc = state.accounts.find(a => a.id == id);
   const ok = await showConfirm(t('confirm_del_account'), t('confirm_del_account_msg'), t('confirm_delete')||'Delete', 'btn-coral');
   if (!ok) return;
-  state.accounts = state.accounts.filter(a => a.id !== id);
+  // The id comes from the page as text; a local account's may be a number.
+  state.accounts = state.accounts.filter(a => String(a.id) !== String(id));
   saveState();
   renderAll();
   showToast(t('toast_account_deleted'), 'info');
@@ -5906,6 +5974,9 @@ function dayTotalHTML(rows) {
   const byCur = {}, xByCur = {};
   rows.forEach(t => {
     if (t.type === 'asset') return;                       // moves into a holding, not a daily flow
+    // An old-style "transfer" row moves no balance (txnBalanceEffect), so it
+    // isn't money in for the day either.
+    if (t.type === 'transfer') return;
     if (!isFlow(t)) {
       // A same-currency transfer's two legs cancel out, so correctly nothing
       // shows. Crossing currencies, real money still left one currency and
@@ -6322,7 +6393,12 @@ function searchSummaryHTML(txns, allMonths) {
     by[c].out ? `<span class="msum-out">−${fmtWithCur(by[c].out, c)} out</span>` : '',
     by[c].in  ? `<span class="msum-in">+${fmtWithCur(by[c].in, c)} in</span>` : ''
   ].filter(Boolean).join(' · ')).filter(Boolean).join(' &nbsp;|&nbsp; ');
-  return `<div class="search-summary"><strong>${txns.length} result${txns.length === 1 ? '' : 's'}</strong> ${allMonths ? 'across all months' : 'in ' + getMonthLabel(state.filterMonth)}${money ? ' · ' + money : ''}</div>`;
+  // Counted the way the list below shows them: a transfer is one line, not
+  // its two rows, so the count matches what you can see.
+  const byDay = {};
+  txns.forEach(t => (byDay[t.date] = byDay[t.date] || []).push(t));
+  const n = Object.values(byDay).reduce((sum, day) => sum + collapseTransfers(day).length, 0);
+  return `<div class="search-summary"><strong>${n} result${n === 1 ? '' : 's'}</strong> ${allMonths ? 'across all months' : 'in ' + getMonthLabel(state.filterMonth)}${money ? ' · ' + money : ''}</div>`;
 }
 
 // Set while a search has switched the period to All Time on its own, so
@@ -6676,9 +6752,12 @@ async function applySalaryPlanToBudgets() {
     if (idx >= 0) {
       const existing = state.budgets[idx];
       existing.amount = amount;
+      // A budget with no alert gets the usual 80% here too, not only on the
+      // server (where it appeared only after a reload).
+      existing.alertAmount = existing.alertAmount || Math.round(amount * 0.8 * 100) / 100;
       const rid = _snId(existing);
       if (state.userId && rid) {
-        dbUpdate('budgets', rid, { amount, alert_amount: existing.alertAmount || Math.round(amount * 0.8 * 100) / 100, currency: cur })
+        dbUpdate('budgets', rid, { amount, alert_amount: existing.alertAmount, currency: cur })
           .catch(e => showToast('Sync: ' + e.message, 'warning'));
       }
       updated++;
@@ -7028,8 +7107,8 @@ function openBillModal(id = null) {
   document.getElementById('bill-currency').value   = bill ? (bill.currency || state.currency) : state.currency;
   document.getElementById('bill-varies').checked   = bill ? !!bill.amountVaries : false;
   document.getElementById('bill-active').checked   = bill ? bill.isActive !== false : true;
-  setSelectVal('bill-cat', bill ? bill.category : 'Bills');
-  setSelectVal('bill-account', bill ? bill.account : '');
+  setSelectVal('bill-cat', bill ? bill.category : 'Bills', bill ? goneCategoryLabel(bill.category) : undefined);
+  setSelectVal('bill-account', bill ? bill.account : '', bill && bill.account ? goneAccountLabel(bill.account) : undefined);
 
   document.getElementById('bill-modal').classList.add('open');
   setTimeout(() => document.getElementById('bill-name').focus(), 100);

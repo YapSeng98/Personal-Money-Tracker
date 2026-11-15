@@ -5,8 +5,105 @@
 //   window.__sb.failWrites  true: writes fail the way a dropped connection does
 //   window.__sb.failWith    an error object: writes are refused with it, the way
 //                           a database constraint refuses a row
+//   window.__sb.apply       true: writes change the tables, checked the way
+//                           Postgres checks them (the schema below, from
+//                           supabase/migrations): an unknown column, a blank
+//                           or malformed date, a non-uuid id, a missing
+//                           required value or a duplicate id is refused with
+//                           Postgres's own error code
 (function () {
-  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {} };
+  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {}, apply: false };
+  // column: [type, required, default]
+  const S = (o) => o;
+  const SCHEMA = {
+    transactions: S({ id: ['uuid', 1], user_id: ['uuid', 1], type: ['text', 1], amount: ['numeric', 1], description: ['text', 1, ''],
+      category: ['text'], account: ['text'], date: ['date', 1], notes: ['text', 1, ''], currency: ['text', 1, 'SGD'],
+      transfer_group: ['text'], transfer_peer: ['text'], is_recurring: ['bool', 1, false], recurring_frequency: ['text'],
+      next_run_date: ['date'], created_at: ['ts', 1], recurring_source: ['uuid'] }),
+    accounts: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], type: ['text', 1, 'Checking'], institution: ['text', 1, ''],
+      currency: ['text', 1, 'SGD'], starting_balance: ['numeric', 1, 0], is_active: ['bool', 1, true], icon: ['text', 1, ''], created_at: ['ts', 1] }),
+    budgets: S({ id: ['uuid', 1], user_id: ['uuid', 1], category: ['text', 1], amount: ['numeric', 1], spent: ['numeric', 1, 0],
+      alert_amount: ['numeric', 1, 0], currency: ['text', 1, 'SGD'], rollover: ['bool', 1, false], period_start: ['date'], period_end: ['date'], created_at: ['ts', 1] }),
+    goals: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], icon: ['text', 1, '🎯'], target: ['numeric', 1], current: ['numeric', 1, 0],
+      monthly: ['numeric', 1, 0], target_date: ['date'], remarks: ['text', 1, ''], currency: ['text', 1, 'SGD'], linked_account: ['text'], created_at: ['ts', 1] }),
+    bills: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], amount: ['numeric', 1, 0], currency: ['text', 1, 'SGD'], category: ['text', 1, 'Bills'],
+      account: ['text'], due_day: ['int', 1, 1], amount_varies: ['bool', 1, false], is_active: ['bool', 1, true], notes: ['text', 1, ''], created_at: ['ts', 1] }),
+    backups: S({ id: ['uuid', 1], user_id: ['uuid', 1], taken_at: ['ts', 1], file_name: ['text', 1, ''], counts: ['json', 1, {}], device: ['text', 1, ''] })
+  };
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const err = (code, message) => ({ code, message });
+  // The value as Postgres would store it, or an error.
+  function cell(table, col, v) {
+    const def = SCHEMA[table][col];
+    if (!def) return { e: err('PGRST204', `Could not find the '${col}' column of '${table}' in the schema cache`) };
+    const [type, required] = def;
+    if (v === null || v === undefined) return required ? { e: err('23502', `null value in column "${col}" of relation "${table}" violates not-null constraint`) } : { v: null };
+    if (type === 'date') {
+      const ok = typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
+      return ok ? { v } : { e: err('22007', `invalid input syntax for type date: "${v}"`) };
+    }
+    if (type === 'uuid') return UUID.test(String(v)) ? { v: String(v) } : { e: err('22P02', `invalid input syntax for type uuid: "${v}"`) };
+    if (type === 'numeric' || type === 'int') {
+      const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+      if (!Number.isFinite(n) || (type === 'int' && !Number.isInteger(n))) return { e: err('22P02', `invalid input syntax for type ${type === 'int' ? 'integer' : 'numeric'}: "${v}"`) };
+      return { v: n };
+    }
+    if (type === 'bool') return typeof v === 'boolean' ? { v } : { e: err('22P02', `invalid input syntax for type boolean: "${v}"`) };
+    if (type === 'text') return { v: String(v) };
+    return { v };
+  }
+  function checked(table, patch, base) {
+    const out = Object.assign({}, base || {});
+    for (const [k, v] of Object.entries(patch)) {
+      const c = cell(table, k, v);
+      if (c.e) return { e: c.e };
+      out[k] = c.v;
+    }
+    return { row: out };
+  }
+  function withDefaults(table, row) {
+    const out = {};
+    for (const [col, [, required, def]] of Object.entries(SCHEMA[table])) {
+      if (col in row) out[col] = row[col];
+      else if (col === 'created_at' || col === 'taken_at') out[col] = new Date().toISOString();
+      else if (def !== undefined) out[col] = def;
+      else if (required) return { e: err('23502', `null value in column "${col}" of relation "${table}" violates not-null constraint`) };
+      else out[col] = null;
+    }
+    return { row: out };
+  }
+  const matches = (row, filters) => filters.every(([k, a]) => k !== 'eq' || String(row[a[0]]) === String(a[1]));
+  function write(q) {
+    const table = q.table, rows = sb.tables[table] = sb.tables[table] || [];
+    if (!SCHEMA[table]) return null;   // preferences and the like: accepted, not modelled
+    if (q.op === 'insert' || q.op === 'upsert') {
+      const list = Array.isArray(q.row) ? q.row : [q.row];
+      const staged = [];
+      for (const r of list) {
+        const c = checked(table, r);
+        if (c.e) return c.e;
+        const i = rows.findIndex(x => String(x.id) === String(c.row.id));
+        if (i >= 0 && q.op === 'insert') return err('23505', `duplicate key value violates unique constraint "${table}_pkey"`);
+        if (i >= 0) { staged.push([i, Object.assign({}, rows[i], c.row)]); continue; }
+        const d = withDefaults(table, c.row);
+        if (d.e) return d.e;
+        staged.push([-1, d.row]);
+      }
+      staged.forEach(([i, r]) => { if (i >= 0) rows[i] = r; else rows.push(r); });
+      return null;
+    }
+    if (q.op === 'update') {
+      const hit = rows.filter(r => matches(r, q.filters));
+      for (const r of hit) {
+        const c = checked(table, q.patch, r);
+        if (c.e) return c.e;
+        Object.assign(r, c.row);
+      }
+      return null;
+    }
+    if (q.op === 'delete') { sb.tables[table] = rows.filter(r => !matches(r, q.filters)); return null; }
+    return null;
+  }
   function query(table) {
     const q = { table, op: 'select', filters: [] };
     const target = {
@@ -19,7 +116,7 @@
         sb.calls.push(q);
         let res;
         if (q.op === 'select') {
-          let rows = (sb.tables[table] || []).slice();
+          let rows = (sb.tables[table] || []).map(r => (sb.apply ? Object.assign({}, r) : r));
           const range = q.filters.find(f => f[0] === 'range');
           if (range) rows = rows.slice(range[1][0], range[1][1] + 1);
           const one = q.filters.some(f => f[0] === 'maybeSingle' || f[0] === 'single');
@@ -28,6 +125,8 @@
           res = { data: null, error: sb.failWith };
         } else if (sb.failWrites) {
           res = { data: null, error: { message: 'Failed to fetch', code: '' } };
+        } else if (sb.apply) {
+          res = { data: null, error: write(q) };
         } else {
           res = { data: null, error: null };
         }

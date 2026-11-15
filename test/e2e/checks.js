@@ -3,7 +3,7 @@
   // stops, for screenshots. Results go into a pre#e2e element as JSON.
   const VIEW = P.get('view') || 'checks';
   setTimeout(async () => {
-    if (VIEW === 'fit' || VIEW === 'none') return;
+    if (VIEW === 'fit' || VIEW === 'fuzz' || VIEW === 'health' || VIEW === 'none') return;
     if (VIEW === 'review') { document.getElementById('analytics-chart').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
@@ -385,6 +385,44 @@
       state.transactions = state.transactions.filter(t => t.id !== 'lone-1');
       state.filterMonth = M1; renderAll();
       ok(!$('#data-banner').textContent.trim(), 'data check: the banner goes once everything is fixed');
+
+      // Edit repairs each shape it is offered for: open it, say where the
+      // money went, save, and it is a proper pair.
+      const fixes = [
+        ['both leaving', 'tg_fix1', [['expense', 'DBS Checking'], ['expense', 'OCBC Savings']], () => {}],
+        ['both arriving', 'tg_fix2', [['income', 'DBS Checking'], ['income', 'OCBC Savings']], () => {}],
+        ['same account', 'tg_fix3', [['expense', 'DBS Checking'], ['income', 'DBS Checking']], () => { populateToAccounts('OCBC Savings'); updateTransferUI(); }],
+        ['a purchase with its funding marked arriving', 'ag_fix4', [['income', 'OCBC Savings'], ['asset', 'DBS Checking']], () => {}],
+      ];
+      for (const [shape, g, legsOf, adjust] of fixes) {
+        legsOf.forEach(([type, account], i) => state.transactions.push(leg({ id: `${g}-${i}`, date: M1 + '-09', type, amount: 75, account, description: 'Fix me ' + shape,
+          category: type === 'asset' ? 'Investment' : 'Transfer', transferGroup: g })));
+        const before = { dbs: effectiveBal(state.accounts.find(a => a.name === 'DBS Checking')), ocbc: effectiveBal(state.accounts.find(a => a.name === 'OCBC Savings')) };
+        ok(pairProblems().some(p => p.group === g), `data check edit (${shape}): starts broken`);
+        dataCheckEdit(g); adjust();
+        await saveTransaction(); await wait(10);
+        const legs = state.transactions.filter(t => t.transferGroup === g);
+        const types = legs.map(l => `${l.type} ${l.account}`).sort().join(', ');
+        ok(!pairProblems().some(p => p.group === g) && legs.length === 2, `data check edit (${shape}): saving makes it a proper pair`, types);
+        const want = g === 'ag_fix4' ? 'asset DBS Checking, expense OCBC Savings' : 'expense DBS Checking, income OCBC Savings';
+        ok(types === want, `data check edit (${shape}): the money goes the way the form said`, types);
+        const after = { dbs: effectiveBal(state.accounts.find(a => a.name === 'DBS Checking')), ocbc: effectiveBal(state.accounts.find(a => a.name === 'OCBC Savings')) };
+        const moved = [after.dbs - before.dbs, after.ocbc - before.ocbc];
+        const expectMoved = { tg_fix1: [0, 150], tg_fix2: [-150, 0], tg_fix3: [-75, 75], ag_fix4: [0, -150] }[g];
+        ok(near(moved[0], expectMoved[0]) && near(moved[1], expectMoved[1]), `data check edit (${shape}): balances move by exactly the repair`, moved.join(', '));
+        state.transactions = state.transactions.filter(t => t.transferGroup !== g);
+      }
+      renderAll();
+
+      // The search count is the number of lines it shows: a transfer is one.
+      nav('transactions'); state.filterMonth = M1;
+      ['filter-period', 'filter-type', 'filter-cat', 'filter-cur', 'filter-acc'].forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
+      for (const q of ['SGD to', 'To OCBC', 'a', 'Movie']) {
+        $('#search-input').value = q; renderTransactions();
+        const said = +(($('.search-summary strong') || {}).textContent || '').replace(/\D/g, '');
+        ok(said === $$('#all-txns .txn-row').length && said > 0, `search "${q}": the count is the number of lines shown`, `${said} said, ${$$('#all-txns .txn-row').length} shown`);
+      }
+      $('#search-input').value = ''; renderTransactions();
 
       // ── A pair can only be edited as that pair ──────────────────────────
       const tOut = state.transactions.find(t => t.transferGroup === 'tg_1' && t.type === 'expense');

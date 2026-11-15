@@ -80,8 +80,10 @@ const cents = v => Math.round(v * 100);
 const same = (a, b) => cents(a) === cents(b);
 
 // ── a seeded random source, so a failure can be reproduced ─────────────────
-let seed = 20261112;
-const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+let seed = +(process.env.SEED || 20261112);   // SEED=n tries a different set of books
+// mulberry32: an earlier multiply-and-add generator lost precision in doubles
+// and fell into a loop of 10,466 numbers, so most runs repeated each other.
+const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = Math.imul(seed ^ (seed >>> 15), 1 | seed); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
 const pick = a => a[Math.floor(rnd() * a.length)];
 const int = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
 const money = () => {

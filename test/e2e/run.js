@@ -5,6 +5,16 @@
  * Run:  node test/e2e/run.js            (desktop, laptop and phone sizes, phone fit, then offline)
  *       node test/e2e/run.js --no-offline (skip the offline run, which needs network)
  *       node test/e2e/run.js --no-fit    (skip the phone-fit audit)
+ *       node test/e2e/run.js --no-fuzz   (skip the short random-use pass)
+ *       node test/e2e/run.js --fuzz [--seeds=N --steps=M --first=K] [--backup DIR --user ID]
+ *                                          random everyday use through the real app
+ *                                          (fuzz.js) against a fake server that
+ *                                          checks writes as Postgres would; every
+ *                                          result checked after every action
+ *       node test/e2e/run.js --health --backup ~/PFMT_Backups/<date> --user <id prefix>
+ *                                          loads a real book the way the app does and
+ *                                          checks all of it, and that loading twice
+ *                                          changes nothing
  *       node test/e2e/run.js --shots DIR (also save screenshots of key screens)
  *       node test/e2e/run.js --fit       (only the phone-fit audit, at every size, with a full report)
  *       node test/e2e/run.js --fit-shots DIR [--widths=320,390] [--themes=dark,light]
@@ -66,8 +76,15 @@ function seedSource(backup, user) {
       date: t.date, notes: t.notes || '', currency: t.currency || 'SGD', transferGroup: t.transfer_group || '',
       created: t.created_at ? new Date(t.created_at).toISOString().slice(0, 19).replace('T', ' ') : '' })),
   };
+  // The same book as the server holds it, for views that load it through
+  // snLoadAll() (fuzz.js's health check and random use on a real book).
+  const server = { uid, tables: {} };
+  ['transactions', 'accounts', 'budgets', 'goals', 'bills', 'preferences'].forEach(t => {
+    try { server.tables[t] = mine(load(t)); } catch (e) { server.tables[t] = []; }
+  });
   return `  const P = new URLSearchParams(location.search);
   const M0 = localYM(), M1 = prevMonthKey(M0), M2 = prevMonthKey(M1);
+  window.__serverSeed = ${JSON.stringify(server)};
   const BOOK = ${JSON.stringify(book)};
   Object.assign(state, BOOK, { theme: P.get('theme') || 'light', language: 'en', reviewMonth: M1, filterMonth: M1 });
   applyTheme(); renderAll();
@@ -80,7 +97,7 @@ function buildPage(dir, backup, user) {
   const cdn = page.match(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js[^"]*"[^>]*><\/script>/);
   if (!cdn) throw new Error('could not find the supabase-js <script> tag in index.html');
   page = replaceOnce(page, cdn[0], `<script>${read('fake-supabase.js')}</script>`, 'supabase-js tag');
-  page = replaceOnce(page, '  startApp();\n})();', `${seedSource(backup, user)}\n${read('checks.js')}\n${read('fit.js')}\n})();`, 'startApp() call in init');
+  page = replaceOnce(page, '  startApp();\n})();', `${seedSource(backup, user)}\n${read('checks.js')}\n${read('fit.js')}\n${read('fuzz.js')}\n})();`, 'startApp() call in init');
   // Screenshots should show the finished state, not a modal's fade-in.
   page = page.replace('</style>', '.modal{animation:none!important}</style>');
   const file = path.join(dir, 'app.html');
@@ -185,11 +202,11 @@ async function openPage(dt, url, { width, height, mobile }) {
   return { sessionId, targetId, errors, evaluate };
 }
 
-async function runChecks(dt, url, size) {
+async function runChecks(dt, url, size, ms = 180000) {
   let page;
   try { page = await openPage(dt, url, size); }
   catch (e) { return { stalled: true, results: [{ ok: false, name: 'the page opened', detail: e.message }], errors: [] }; }
-  const deadline = Date.now() + 180000;
+  const deadline = Date.now() + ms;
   let text = null, stalled = false;
   while (Date.now() < deadline) {
     try { text = await page.evaluate("(document.getElementById('e2e') || {}).textContent || null"); }
@@ -199,7 +216,7 @@ async function runChecks(dt, url, size) {
   }
   await dt.sendWithin(10000, 'Target.closeTarget', { targetId: page.targetId }).catch(() => {});
   if (stalled) return { stalled: true, results: [{ ok: false, name: 'the page finished its checks', detail: 'the browser stopped answering' }], errors: page.errors };
-  if (!text) return { results: [{ ok: false, name: 'the page finished its checks', detail: 'no results within 3 minutes' }], errors: page.errors };
+  if (!text) return { results: [{ ok: false, name: 'the page finished its checks', detail: `no results within ${Math.round(ms / 60000)} minutes` }], errors: page.errors };
   const out = JSON.parse(text);
   out.errors = [...page.errors, ...out.errors];
   return out;
@@ -210,12 +227,12 @@ async function runChecks(dt, url, size) {
 // that happens, and the report says so, so a frozen browser is never mistaken
 // for (or hides) a failing check.
 let browser = null, chromePath = null;
-async function checked(url, size) {
-  const out = await runChecks(browser.dt, url, size);
+async function checked(url, size, ms) {
+  const out = await runChecks(browser.dt, url, size, ms);
   if (!out.stalled) return out;
   browser.stop();
   browser = await launch(chromePath);
-  const again = await runChecks(browser.dt, url, size);
+  const again = await runChecks(browser.dt, url, size, ms);
   again.retried = true;
   return again;
 }
@@ -330,6 +347,25 @@ async function fitShots(dt, url, out, widths, themes) {
   }
 }
 
+// Random use (fuzz.js): each seed is a different run of everyday actions
+// through the real app against a fake server that behaves like Postgres.
+async function runFuzz(url, first, seeds, steps, verbose) {
+  let failed = 0;
+  const kinds = new Map();
+  for (let seed = first; seed < first + seeds; seed++) {
+    const { results, errors, retried } = await checked(`${url}?view=fuzz&seed=${seed}&steps=${steps}`, { width: 1280, height: 900, mobile: false }, 600000);
+    if (retried) console.log(`  (seed ${seed}: the browser froze; ran again in a fresh one)`);
+    const bad = results.filter(r => !r.ok);
+    failed += bad.length + errors.length;
+    if (verbose) console.log(`  seed ${seed}: ${bad.length ? bad.length + ' problem' + (bad.length > 1 ? 's' : '') : 'all good'}${errors.length ? ', ' + errors.length + ' page errors' : ''} — ${(results.find(r => /ran \d/.test(r.name)) || {}).name || ''}`);
+    bad.forEach(r => { if (!kinds.has(r.name)) kinds.set(r.name, r.detail); });
+    errors.forEach(e => { if (!kinds.has('page error')) kinds.set('page error', e); });
+  }
+  console.log(`${failed ? 'FAIL' : 'PASS'} random use (${seeds} runs of ${steps} actions, every result checked after each): ${kinds.size} kind${kinds.size === 1 ? '' : 's'} of problem`);
+  kinds.forEach((d, name) => console.log(`  ✗ ${name}${d ? '\n      ' + d.slice(0, 900) : ''}`));
+  return failed;
+}
+
 async function main() {
   if (typeof WebSocket === 'undefined') { console.error('Node 22 or newer is needed (built-in WebSocket).'); process.exit(1); }
   const chrome = findChrome();
@@ -365,6 +401,27 @@ async function main() {
       console.log(`${months.length} statement PDF${months.length === 1 ? '' : 's'} saved to ${out}`);
     } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
     return;
+  }
+  if (process.argv.includes('--health')) {
+    try {
+      const { results, errors } = await checked(`${url}?view=health`, { width: 1280, height: 900, mobile: false }, 600000);
+      const bad = results.filter(r => !r.ok);
+      results.filter(r => r.note).forEach(r => console.log(`  · ${r.name.replace(/^health: /, '')}`));
+      results.filter(r => !r.note).forEach(r => console.log(`  ${r.ok ? '✓' : '✗'} ${r.name.replace(/^health: /, '')}${r.times > 1 ? ` (${r.times} checks)` : ''}${r.ok ? '' : '\n      ' + r.detail.slice(0, 900)}`));
+      errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+      console.log(`${bad.length || errors.length ? 'FAIL' : 'PASS'} health of the book: ${results.filter(r => !r.note).length - bad.length} checks passed, ${bad.length} failed`);
+      failed = bad.length + errors.length;
+    } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+    process.exit(failed ? 1 : 0);
+  }
+  if (process.argv.includes('--fuzz')) {
+    try {
+      const seeds = +(process.argv.find(a => a.startsWith('--seeds=')) || '--seeds=5').slice(8);
+      const steps = +(process.argv.find(a => a.startsWith('--steps=')) || '--steps=150').slice(8);
+      const first = +(process.argv.find(a => a.startsWith('--first=')) || '--first=1').slice(8);
+      failed = await runFuzz(url, first, seeds, steps, true);
+    } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+    process.exit(failed ? 1 : 0);
   }
   if (process.argv.includes('--fit') || process.argv.includes('--fit-shots')) {
     try {
@@ -406,6 +463,10 @@ async function main() {
       console.log(`${findings.length || errors.length ? 'FAIL' : 'PASS'} phone fit (${FIT_QUICK.join(', ')}; every page, window and menu): ${findings.length} problem${findings.length === 1 ? '' : 's'}, ${errors.length} page errors`);
       findings.forEach(f => console.log(`  ✗ ${f.kind} [${f.screen}] ${f.at}${f.text ? ' “' + f.text + '”' : ''} — ${f.details[0]} @ ${f.sizes.join(', ')}`));
       errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+    }
+    if (!process.argv.includes('--no-fuzz')) {
+      // A short pass of random use on every run; --fuzz runs as many as asked.
+      failed += await runFuzz(url, 1, 6, 200, false);
     }
     if (!process.argv.includes('--no-offline')) {
       const { results, errors } = await runOffline(browser.dt);
