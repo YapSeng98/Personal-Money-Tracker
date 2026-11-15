@@ -20,6 +20,7 @@ const SUITES = [
   'import.test.js',              // bank statement CSVs: columns, dates, amounts, duplicates, categories
   'statement.test.js',           // the monthly statement against independent figures, random and real books
   'descriptions.test.js',        // what the Description box offers, in what order, and what a pick fills in
+  'balance-and-fx.test.js',      // Update balance lands on the figure typed; the one-currency total converts once
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 

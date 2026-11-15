@@ -27,6 +27,7 @@
     const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
     const wait = ms => new Promise(r => setTimeout(r, ms));
     const near = (a, b) => Math.abs(a - b) < 0.006;
+    const r2 = v => Math.round(v * 100) / 100;
     const parseNum = s => {
       s = String(s).trim();
       if (s === '–' || s === '—' || s === '') return 0;
@@ -866,6 +867,131 @@
       ok(!/undefined|NaN/.test($('#analytics-chart').textContent + $('#monthly-summary').textContent), 'zh: no undefined or NaN');
       openStatement(mk); ok(!/undefined|NaN/.test($('#stmt-paper').textContent), 'zh: the statement renders'); closeStatement();
       state.language = 'en'; applyLanguage(); renderAll(); nav('analytics');
+
+      // ── Update balance ──────────────────────────────────────────────────
+      {
+        state.userId = null;
+        state.accounts.push({ id: 'acc-bx', name: 'Binance Test', type: 'Crypto', institution: 'Binance', balance: 1000, currency: 'USDT', icon: '🪙' });
+        nav('accounts'); state.balancesMasked = false; renderAccounts();
+        const rowOf = name => $$('#accounts-list .account-row').find(r => $('.account-name', r).textContent === name);
+        const dbs = state.accounts.find(a => a.name === 'DBS Checking'), bx = state.accounts.find(a => a.name === 'Binance Test');
+        const btn = rowOf('DBS Checking') && $$('button', rowOf('DBS Checking')).find(b => b.getAttribute('aria-label') === 'Update balance');
+        ok(!!btn, 'update balance: every account row has the button');
+        btn.click();
+        ok($('#balance-modal').classList.contains('open') && /DBS Checking/.test($('#bal-title').textContent) && $('#bal-date').value === localDateStr(), 'update balance: it opens on today for that account');
+        const had = balanceOn(dbs, localDateStr());
+        ok(new RegExp(fmtWithCur(had, 'SGD').replace(/[$.]/g, '\\$&')).test($('#bal-now').textContent), 'update balance: it says what the app has', $('#bal-now').textContent);
+        ok($('#bal-save').disabled, 'update balance: nothing to record until a balance is typed');
+        const typeIn = v => { $('#bal-actual').value = String(v); $('#bal-actual').dispatchEvent(new Event('input')); };
+        typeIn(had);
+        ok($('#bal-save').disabled && /matches already/.test($('#bal-diff').textContent), 'update balance: the same balance records nothing');
+        typeIn(r2(had + 123.45));
+        ok(/\+S\$123\.45/.test($('#bal-diff').textContent) && /correction/.test($('#bal-diff').textContent) && /count twice/.test($('#bal-diff').textContent) && !$('#bal-save').disabled,
+           'update balance: a bank account\'s difference is a correction, with the warning about missing rows', $('#bal-diff').textContent);
+        const n0 = state.transactions.length;
+        await saveBalanceUpdate(); await wait(10);
+        const corr = state.transactions[0];
+        ok(state.transactions.length === n0 + 1 && corr.type === 'income' && corr.amount === 123.45 && corr.account === 'DBS Checking' && corr.category === 'Other' && corr.description === 'Balance correction',
+           'update balance: one row brings the account to the balance typed', JSON.stringify(corr));
+        ok(near(effectiveBal(dbs), r2(had + 123.45)) && !$('#balance-modal').classList.contains('open'), 'update balance: the account now shows exactly that balance');
+        ok($('.account-bal', rowOf('DBS Checking')).textContent === fmtWithCur(r2(had + 123.45), 'SGD'), 'update balance: the Accounts page shows the new balance', $('.account-bal', rowOf('DBS Checking')).textContent);
+        // A crypto account, a loss, on an earlier day.
+        openBalanceModal(bx.id);
+        const day = addDaysStr(localDateStr(), -3);
+        state.transactions.push({ id: 'bx-later', type: 'income', amount: 50, description: 'Deposit', category: 'Investment', account: 'Binance Test', date: addDaysStr(localDateStr(), -1), currency: 'USDT', created: '' });
+        $('#bal-date').value = day; $('#bal-date').dispatchEvent(new Event('change'));
+        typeIn(900);
+        ok(/−USDT 100\.00/.test($('#bal-diff').textContent) && /loss \(Gain\/Loss\)/.test($('#bal-diff').textContent), 'update balance: an exchange account\'s difference is a gain or loss', $('#bal-diff').textContent);
+        await saveBalanceUpdate(); await wait(10);
+        const loss = state.transactions[0];
+        ok(loss.type === 'expense' && loss.amount === 100 && loss.category === 'Gain/Loss' && loss.description === 'Market loss' && loss.date === day && loss.currency === 'USDT',
+           'update balance: recorded as a Market loss under Gain/Loss on the day chosen', JSON.stringify(loss));
+        ok(balanceOn(bx, day) === 900 && effectiveBal(bx) === 950, 'update balance: that day ends at the balance typed, and a later deposit still counts after it', `${balanceOn(bx, day)} / ${effectiveBal(bx)}`);
+        ok(/Gain\/Loss/.test(loss.category) && catIcon('Gain/Loss') === '📊', 'update balance: Gain/Loss has its own icon');
+        openTxnModal(loss.id);
+        ok($('#txn-cat').value === 'Gain/Loss', 'update balance: opening the row keeps its Gain/Loss category', $('#txn-cat').value);
+        closeTxnModal();
+        state.transactions = state.transactions.filter(t => t !== corr && t !== loss && t.id !== 'bx-later');
+      }
+
+      // ── Net worth in one currency ───────────────────────────────────────
+      {
+        state.fx = undefined; window.__fxCalls.length = 0; window.__fxFail = false;
+        nav('accounts'); renderAccounts(); await wait(30);
+        ok(window.__fxCalls.length === 1 && /^https:\/\/api\.frankfurter\.dev\/v1\/latest\?base=SGD&symbols=[A-Z,]+$/.test(window.__fxCalls[0]),
+           'fx: today\'s rates are asked for once, sending nothing but currency codes', window.__fxCalls.join(' '));
+        ok(/symbols=MYR,USD$/.test(window.__fxCalls[0]), 'fx: only the currencies in use (USDT asks for the US dollar)', window.__fxCalls[0]);
+        const total = $('#accounts-list .acc-sum-total');
+        ok(!!total && /≈ SGD/.test(total.textContent), 'fx: the Accounts summary ends with a ≈ SGD total');
+        const per = {};
+        state.accounts.forEach(a => { const b = effectiveBal(a); per[a.currency] = (per[a.currency] || 0) + b; });
+        const rate = { SGD: 1, MYR: 3.1733, USD: 0.77634, USDT: 0.77634 };
+        const want = r2(Object.entries(per).reduce((s, [c, v]) => s + v / rate[c], 0));
+        ok(total && parseNum($('.acc-sum-net', total).textContent) === want, 'fx: the total is every currency\'s net worth at the day\'s rate', `${total && $('.acc-sum-net', total).textContent} vs ${want}`);
+        ok(/rates of 13 Nov 2026/.test($('.acc-fx-note').textContent) && /USDT at the US dollar rate/.test($('.acc-fx-note').textContent), 'fx: the note says whose rates and that USDT counts as dollars', $('.acc-fx-note').textContent);
+        renderAccounts(); await wait(10);
+        ok(window.__fxCalls.length === 1, 'fx: not asked again the same day');
+        // Your own rate for one currency.
+        openFxModal();
+        ok($$('#fx-rows input').map(i => i.dataset.cur).join() === 'MYR,USD,USDT' && $('#fx-MYR').placeholder === '3.1733', 'fx: the rates window lists each currency with the day\'s rate', $$('#fx-rows input').map(i => i.dataset.cur + ':' + i.placeholder).join());
+        $('#fx-MYR').value = '3'; saveFxRates();
+        const want2 = r2(Object.entries(per).reduce((s, [c, v]) => s + v / (c === 'MYR' ? 3 : rate[c]), 0));
+        ok(parseNum($('.acc-sum-total .acc-sum-net').textContent) === want2 && /MYR set by you/.test($('.acc-fx-note').textContent), 'fx: a rate you set is used, and the note says so', $('.acc-fx-note').textContent);
+        useTodaysRates(); await wait(30);
+        ok(parseNum($('.acc-sum-total .acc-sum-net').textContent) === want && !/set by you/.test($('.acc-fx-note').textContent), 'fx: "Use today\'s rates" goes back to them');
+        // Offline with no rates yet: the total says what it leaves out.
+        state.fx = undefined; window.__fxFail = true; renderAccounts(); await wait(30);
+        ok(/Leaves out MYR, USD, USDT/.test($('.acc-fx-note').textContent) && parseNum($('.acc-sum-total .acc-sum-net').textContent) === r2(per.SGD), 'fx: offline with no rates, the total is the home currency and says what it leaves out', $('.acc-fx-note').textContent);
+        window.__fxFail = false;
+        state.balancesMasked = true; renderAccounts(); await wait(30);
+        ok(/••••••/.test($('.acc-sum-total').textContent), 'fx: hidden balances hide the total too');
+        state.balancesMasked = false;
+        state.accounts = state.accounts.filter(a => a.id !== 'acc-bx'); renderAccounts();
+      }
+
+      // ── Again today ─────────────────────────────────────────────────────
+      {
+        nav('transactions'); state.filterMonth = M1;
+        ['filter-period', 'filter-type', 'filter-cat', 'filter-cur', 'filter-acc', 'search-input'].forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
+        renderTransactions();
+        const movie = state.transactions.find(t => t.description === 'Movie');
+        const n0 = state.transactions.length;
+        const againBtn = id => $$('#all-txns .icon-btn.again').find(b => b.getAttribute('onclick') === `repeatToday('${id}')`);
+        ok(!!againBtn(movie.id) && againBtn(movie.id).getAttribute('aria-label') === 'Again today', 'again: every row has an Again today button');
+        againBtn(movie.id).click();
+        ok($('#txn-modal').classList.contains('open') && $('#txn-edit-id').value === '' && $('#txn-edit-badge').style.display === 'none' && $('#txn-modal-title').textContent === 'Add Transaction',
+           'again: it opens a new transaction, not an edit');
+        ok($('#txn-date').value === localDateStr() && $('#txn-amount').value === '20' && $('#txn-desc').value === 'Movie' && $('#txn-cat').value === 'Entertainment' && $('#txn-account').value === 'DBS Checking',
+           'again: dated today, with the same amount, description, category and account', [$('#txn-date').value, $('#txn-amount').value, $('#txn-desc').value, $('#txn-cat').value, $('#txn-account').value].join(' | '));
+        ok($('#txn-repeat').value === '' && $('#save-txn-btn').className.includes('btn-coral'), 'again: not set to repeat, and the button reads as a new expense');
+        $('#txn-amount').value = '22.5';
+        await saveTransaction(); await wait(10);
+        const copy = state.transactions.find(t => t.description === 'Movie' && t.date === localDateStr());
+        ok(state.transactions.length === n0 + 1 && copy && copy.amount === 22.5 && copy.id !== movie.id && movie.amount === 20 && movie.date === M1 + '-21',
+           'again: saving adds a new row and leaves the original alone', JSON.stringify(copy));
+        const out = state.transactions.find(t => t.transferGroup === 'tg_3' && t.type === 'expense');
+        repeatToday(out.id);
+        ok(state.currentType === 'transfer' && $('#txn-account').value === 'DBS Checking' && $('#txn-to-account').value === 'Wise USD' && $('#txn-amount-recv').value === '100' && ['expense', 'income', 'asset', 'payback'].every(k => !$('#tab-' + k).disabled),
+           'again: a currency exchange comes back with both accounts and both amounts, as a new one');
+        await saveTransaction(); await wait(10);
+        const pair = state.transactions.filter(t => t.transferGroup && t.transferGroup !== 'tg_3' && t.description === 'SGD to USD' && t.date === localDateStr());
+        ok(pair.length === 2 && !pairProblems().some(p => pair.some(l => l.transferGroup === p.group)) && state.transactions.filter(t => t.transferGroup === 'tg_3').length === 2,
+           'again: saving it makes a new proper pair, and the original pair is untouched', pair.map(l => `${l.type} ${l.account} ${l.amount}`).join(', '));
+        state.transactions = state.transactions.filter(t => t !== copy && !pair.includes(t));
+        // A transfer to an account since deleted, in another currency: the copy
+        // still arrives in that currency, with the amount that arrived.
+        state.transactions.push({ id: 'gone-out', type: 'expense', amount: 50, description: 'To my old MYR account', category: 'Transfer', account: 'DBS Checking', date: M1 + '-08', currency: 'SGD', transferGroup: 'tg_gone', transferPeer: 'Old MYR', created: '' },
+                                { id: 'gone-in', type: 'income', amount: 160, description: 'To my old MYR account', category: 'Transfer', account: 'Old MYR', date: M1 + '-08', currency: 'MYR', transferGroup: 'tg_gone', transferPeer: 'DBS Checking', created: '' });
+        repeatToday('gone-out');
+        ok($('#txn-to-account').value === 'Old MYR' && /no longer an account/.test($('#txn-to-account').selectedOptions[0].textContent) && $('#txn-recv-group').style.display === 'block' && $('#txn-amount-recv').value === '160',
+           'again: a transfer to a deleted account in another currency keeps that account and the amount that arrived');
+        await saveTransaction(); await wait(10);
+        const gonePair = state.transactions.filter(t => t.description === 'To my old MYR account' && t.date === localDateStr());
+        const goneIn = gonePair.find(t => t.type === 'income');
+        ok(gonePair.length === 2 && goneIn && goneIn.currency === 'MYR' && goneIn.amount === 160, 'again: ...and the copy arrives in MYR, not in the sending currency', JSON.stringify(goneIn));
+        state.transactions = state.transactions.filter(t => t.transferGroup !== 'tg_gone' && !gonePair.includes(t));
+        renderAll();
+      }
 
       // ── Empty states ────────────────────────────────────────────────────
       const savedT = state.transactions, savedA = state.accounts;

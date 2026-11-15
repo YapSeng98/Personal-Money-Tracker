@@ -262,6 +262,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .icon-btn.edit:hover{background:#dbeafe;}
 .icon-btn.del{background:var(--coral-s);color:var(--coral);}
 .icon-btn.del:hover{background:#fee2e2;}
+.icon-btn.again{background:var(--jade-s);color:var(--jade-d);font-weight:800;}
+.icon-btn.again:hover{background:#ccf7ea;}
 
 /* ── CHART BARS ── */
 .chart-bar-wrap{display:flex;flex-direction:column;gap:12px;}
@@ -837,6 +839,27 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   .acc-sum-row:not(.has-debt) .acc-sum-cell[data-l]{display:none;}
 }
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
+/* The one-currency total: an estimate at exchange rates, set apart from the
+   per-currency figures above it, which are exact. */
+.acc-sum-row.acc-sum-total{border-top:1.5px dashed var(--border);border-bottom:0;margin-top:2px;padding-top:12px;}
+.acc-sum-total .acc-sum-cur{color:var(--violet);}
+.acc-fx-note{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:8px;font-size:11.5px;color:var(--muted);}
+.acc-fx-note .fx-warn{color:var(--amber);font-weight:700;}
+.link-btn{background:none;border:none;padding:6px 2px;color:var(--indigo);font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px;min-height:24px;}
+.fx-intro{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 14px;}
+.fx-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin-bottom:12px;}
+.fx-row label{font-size:13px;font-weight:700;white-space:nowrap;}
+.fx-row .fx-was{font-size:11px;color:var(--muted);white-space:nowrap;}
+.fx-row .form-input{font-family:var(--fm);}
+/* Update balance */
+.bal-now{font-size:12.5px;color:var(--muted);margin:-4px 0 14px;line-height:1.5;}
+.bal-now b{color:var(--ink);font-family:var(--fm);}
+.bal-input{font-family:var(--fm);font-size:16px;font-weight:700;}
+.bal-diff{font-size:12.5px;line-height:1.5;min-height:1.5em;color:var(--muted);}
+.bal-diff b{font-family:var(--fm);}
+.bal-diff .up{color:var(--jade-d);}
+.bal-diff .down{color:var(--coral);}
+.bal-diff .tip{display:block;margin-top:6px;color:var(--amber);}
 
 /* ── ANALYTICS ── */
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
@@ -2285,6 +2308,51 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 </div>
 
 <!-- ════════════════════════════════════════════ -->
+<!-- UPDATE BALANCE                               -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="balance-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="bal-title">Update balance</div>
+      <button class="modal-close" onclick="closeBalanceModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="bal-date-label">Date</label>
+      <input class="form-input" type="date" id="bal-date" onchange="renderBalanceDiff()">
+    </div>
+    <div class="bal-now" id="bal-now"></div>
+    <div class="form-group">
+      <label class="form-label" id="bal-actual-label">Actual balance</label>
+      <input class="form-input bal-input" type="number" id="bal-actual" step="0.01" placeholder="0.00" oninput="renderBalanceDiff()">
+    </div>
+    <div class="bal-diff" id="bal-diff" aria-live="polite"></div>
+    <input type="hidden" id="bal-account-id" value="">
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeBalanceModal()" id="bal-cancel">Cancel</button>
+      <button class="btn btn-jade" id="bal-save" onclick="saveBalanceUpdate()">Record difference</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- EXCHANGE RATES (for the one-currency total)  -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="fx-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="fx-title">Exchange rates</div>
+      <button class="modal-close" onclick="closeFxModal()">✕</button>
+    </div>
+    <p class="fx-intro" id="fx-intro"></p>
+    <div id="fx-rows"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="useTodaysRates()" id="fx-today">Use today's rates</button>
+      <button class="btn btn-jade" onclick="saveFxRates()" id="fx-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
 <!-- CONFIRM DIALOG                               -->
 <!-- ════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="confirm-modal">
@@ -2421,6 +2489,9 @@ const TRANSLATIONS = {
     toast_budget_saved:'Budget saved', toast_budget_updated:'Budget updated ✓',
     toast_budget_deleted:'Budget deleted', toast_budget_exists:'Budget for this category already exists',
     toast_account_exists:'You already have an account called {name}',
+    bal_title:'Update {name}', bal_date:'Date', bal_actual:'Actual balance ({cur})', bal_record:'Record difference', bal_cancel:'Cancel',
+    bal_action:'Update balance', again_today:'Again today',
+    fx_title:'Exchange rates', fx_today:"Use today's rates", fx_save:'Save', fx_rates:'Rates', fx_total:'Total in {cur}',
     toast_goal_saved:'Goal saved', toast_goal_updated:'Goal updated ✓',
     toast_goal_deleted:'Goal deleted',
     toast_undone:'Restored', btn_undo:'Undo',
@@ -2561,6 +2632,9 @@ const TRANSLATIONS = {
     toast_budget_saved:'预算已保存', toast_budget_updated:'预算已更新 ✓',
     toast_budget_deleted:'预算已删除', toast_budget_exists:'该类别的预算已存在',
     toast_account_exists:'已有名为 {name} 的账户',
+    bal_title:'更新 {name}', bal_date:'日期', bal_actual:'实际余额 ({cur})', bal_record:'记录差额', bal_cancel:'取消',
+    bal_action:'更新余额', again_today:'今天再记一笔',
+    fx_title:'汇率', fx_today:'使用今日汇率', fx_save:'保存', fx_rates:'汇率', fx_total:'合计 ({cur})',
     toast_goal_saved:'目标已保存', toast_goal_updated:'目标已更新 ✓',
     toast_undone:'已恢复', btn_undo:'撤销',
     toast_bulk_txn_deleted:'已删除 {n} 笔交易', toast_bulk_cat_applied:'已为 {n} 笔交易更新类别',
@@ -2692,7 +2766,8 @@ function saveState() {
       monthlyIncomeTarget: state.monthlyIncomeTarget,
       lastBackupAt: state.lastBackupAt,
       lastBackupInfo: state.lastBackupInfo,
-      backupSnoozeUntil: state.backupSnoozeUntil
+      backupSnoozeUntil: state.backupSnoozeUntil,
+      fx: state.fx
     };
     localStorage.setItem(LS_KEY, JSON.stringify(toSave));
   } catch(e) { /* storage full or private mode */ }
@@ -3049,6 +3124,7 @@ function lockTypeTabs(allowed) {
 
 function openTxnModal(id = null) {
   const editing = id !== null;
+  _txnCopyOf = null;
   lockTypeTabs(null);
   hideDescSuggestions();
   document.getElementById('txn-modal-title').textContent  = editing ? t('modal_edit_txn') : t('modal_add_txn');
@@ -3165,16 +3241,38 @@ function openTxnModal(id = null) {
 }
 function closeTxnModal() { hideDescSuggestions(); document.getElementById('txn-modal').classList.remove('open'); }
 
+const saveBtnClass = type => type === 'expense' ? 'btn btn-coral' : type === 'income' ? 'btn btn-jade'
+  : type === 'asset' ? 'btn btn-purple' : type === 'payback' ? 'btn btn-amber' : 'btn btn-primary';
+
+// "Again today": the same transaction dated today, open in the form to adjust
+// and save, so the daily lunch is a tap and a Save. A transfer or purchase
+// comes with both its accounts. Nothing is written until Save.
+let _txnCopyOf = null;
+function repeatToday(id) {
+  if (!state.transactions.some(x => x.id == id)) return;
+  openTxnModal(id);                       // fills every field, both sides of a pair
+  _txnCopyOf = id;
+  const type = state.currentType;
+  document.getElementById('txn-edit-id').value = '';
+  lockTypeTabs(null);
+  document.getElementById('txn-modal-title').textContent = t('modal_add_txn');
+  document.getElementById('txn-edit-badge').style.display = 'none';
+  const btn = document.getElementById('save-txn-btn');
+  btn.textContent = t('modal_save_txn');
+  btn.className = saveBtnClass(type);
+  document.getElementById('txn-date').value = localDateStr();
+  document.getElementById('txn-repeat').value = '';
+  document.getElementById('txn-repeat-group').style.display = ['expense', 'income', 'payback'].includes(type) ? '' : 'none';
+  updateRepeatHint();
+  setTimeout(() => { const a = document.getElementById('txn-amount'); a.focus(); a.select(); }, 100);
+}
+
 function setType(type, el) {
   state.currentType = type;
   document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
   const saveBtn = document.getElementById('save-txn-btn');
-  if (!document.getElementById('txn-edit-id').value) {
-    saveBtn.className = type === 'expense' ? 'btn btn-coral' : type === 'income' ? 'btn btn-jade'
-                      : type === 'asset'   ? 'btn btn-purple' : type === 'payback' ? 'btn btn-amber'
-                      : 'btn btn-primary';
-  }
+  if (!document.getElementById('txn-edit-id').value) saveBtn.className = saveBtnClass(type);
   const catSel = document.getElementById('txn-cat');
   const income  = ['Salary','Freelance','Investment','Other'];
   // Investment appears in both lists: money going into a brokerage/fund is an
@@ -3227,13 +3325,16 @@ function populateFundAccounts(selected) {
   const dest = document.getElementById('txn-account').value;
   const keep = selected !== undefined ? selected : sel.value;
   const opts = state.accounts.filter(a => a.name !== dest && (a.currency || state.currency) === cur);
-  // A purchase paid from an account since deleted keeps that source, rather
-  // than an edit quietly dropping the funding side.
-  const gone = keep && !state.accounts.some(a => a.name === keep);
+  // A purchase keeps the source it was paid from even when this list can't
+  // offer it (an account since deleted, or one in another currency since a
+  // currency change), rather than an edit quietly dropping the funding side
+  // and leaving money that came from nowhere. Saving then says what's wrong.
+  const keptAcc = keep && keep !== dest && !opts.some(a => a.name === keep) ? state.accounts.find(a => a.name === keep) : null;
+  const stray = keep && keep !== dest && !opts.some(a => a.name === keep);
   sel.innerHTML = '<option value="">— None —</option>'
     + opts.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('')
-    + (gone ? `<option value="${esc(keep)}">${esc(goneAccountLabel(keep))}</option>` : '');
-  sel.value = opts.some(a => a.name === keep) || gone ? keep : '';
+    + (stray ? `<option value="${esc(keep)}">${esc(keptAcc ? `${keep} (${keptAcc.currency || state.currency} account)` : goneAccountLabel(keep))}</option>` : '');
+  sel.value = opts.some(a => a.name === keep) || stray ? keep : '';
 }
 
 function updateAssetUI() {
@@ -3334,8 +3435,10 @@ function transferAsksReceived(toName, fromCur) {
   const p = editingTransferLegs();
   return !!p && p.inc.account === toName && p.inc.amount !== p.out.amount;
 }
+// The transfer the form was filled from: the one being edited, or the one
+// "Again today" is copying.
 function editingTransferLegs() {
-  const editId = document.getElementById('txn-edit-id').value;
+  const editId = document.getElementById('txn-edit-id').value || _txnCopyOf || '';
   const row = editId !== '' && state.transactions.find(x => x.id == editId);
   if (!row || !row.transferGroup) return null;
   const legs = state.transactions.filter(x => x.transferGroup === row.transferGroup);
@@ -5265,6 +5368,234 @@ async function saveAccount() {
   showToast(t('toast_account_saved'), 'success');
 }
 
+// ═══════════════════════════════════════════════
+// UPDATE BALANCE
+// ═══════════════════════════════════════════════
+// Type in what the bank or exchange says an account holds, and the difference
+// from what the app has on that day is recorded as one row. For an investment
+// or crypto account the difference is the market's doing, so it is a Gain/Loss
+// row: a month's trading profit or loss shows without entering every trade.
+// For any other account it is a correction; a missing transaction entered
+// afterwards would then count twice, so the window says to look for it first.
+const GAIN_LOSS_CATEGORY = 'Gain/Loss';
+const isMarketAccount = a => a.type === 'Investment' || a.type === 'Crypto';
+
+// The balance at the end of a day: its starting balance plus every row up to it.
+function balanceOn(acc, date) {
+  const cur = acc.currency || state.currency;
+  const sum = state.transactions.filter(t => t.account === acc.name && (t.currency || state.currency) === cur && t.date <= date)
+    .reduce((s, t) => s + txnBalanceEffect(t), +acc.balance || 0);
+  return Math.round(sum * 100) / 100;
+}
+// The row that takes the account from what the app has to what it holds, or
+// null when they already agree to the cent.
+function balanceUpdateRow(acc, actual, date) {
+  const cur = acc.currency || state.currency;
+  const diff = Math.round((actual - balanceOn(acc, date)) * 100) / 100;
+  if (!diff) return null;
+  const market = isMarketAccount(acc);
+  return { type: diff > 0 ? 'income' : 'expense', amount: Math.abs(diff),
+    category: market ? GAIN_LOSS_CATEGORY : 'Other',
+    description: market ? (diff > 0 ? 'Market gain' : 'Market loss') : 'Balance correction',
+    account: acc.name, currency: cur, date, notes: `Balance updated to ${fmtSigned(actual, cur)}` };
+}
+
+function openBalanceModal(id) {
+  const acc = state.accounts.find(a => String(a.id) === String(id));
+  if (!acc) return;
+  const cur = acc.currency || state.currency;
+  document.getElementById('bal-account-id').value = acc.id;
+  document.getElementById('bal-title').textContent = t('bal_title').replace('{name}', acc.name);
+  document.getElementById('bal-date-label').textContent = t('bal_date');
+  document.getElementById('bal-actual-label').textContent = t('bal_actual').replace('{cur}', cur);
+  document.getElementById('bal-save').textContent = t('bal_record');
+  document.getElementById('bal-cancel').textContent = t('bal_cancel');
+  document.getElementById('bal-date').value = localDateStr();
+  document.getElementById('bal-actual').value = '';
+  renderBalanceDiff();
+  document.getElementById('balance-modal').classList.add('open');
+  setTimeout(() => document.getElementById('bal-actual').focus(), 100);
+}
+function closeBalanceModal() { document.getElementById('balance-modal').classList.remove('open'); }
+function balanceModalAccount() {
+  const id = document.getElementById('bal-account-id').value;
+  return state.accounts.find(a => String(a.id) === String(id)) || null;
+}
+
+function renderBalanceDiff() {
+  const acc = balanceModalAccount();
+  if (!acc) return;
+  const cur = acc.currency || state.currency;
+  const date = document.getElementById('bal-date').value || localDateStr();
+  const now = balanceOn(acc, date);
+  document.getElementById('bal-now').innerHTML = `The app has <b>${esc(fmtSigned(now, cur))}</b> in ${esc(acc.name)} at the end of ${esc(fmtDate(date))}.`;
+  const raw = document.getElementById('bal-actual').value.trim();
+  const actual = parseFloat(raw);
+  const row = raw !== '' && Number.isFinite(actual) ? balanceUpdateRow(acc, actual, date) : null;
+  const market = isMarketAccount(acc);
+  const el = document.getElementById('bal-diff');
+  if (raw === '' || !Number.isFinite(actual)) {
+    el.textContent = market ? 'Type what the exchange or broker shows. The difference is recorded as a gain or loss.'
+                            : 'Type what your bank shows. The difference is recorded as a correction.';
+  } else if (!row) {
+    el.textContent = 'That matches already. Nothing to record.';
+  } else {
+    const up = row.type === 'income';
+    const amt = `<b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${esc(fmtWithCur(row.amount, cur))}</b>`;
+    el.innerHTML = market
+      ? `${amt} will be recorded as a ${up ? 'gain' : 'loss'} (${esc(GAIN_LOSS_CATEGORY)}) on ${esc(fmtDate(date))}.`
+      : `${amt} will be recorded as a correction on ${esc(fmtDate(date))}.<span class="tip">If a transaction is missing, add it instead: entered later, it would count twice.</span>`;
+  }
+  document.getElementById('bal-save').disabled = !row;
+}
+
+async function saveBalanceUpdate() {
+  const acc = balanceModalAccount();
+  if (!acc) return;
+  const date = document.getElementById('bal-date').value;
+  const actual = parseFloat(document.getElementById('bal-actual').value);
+  if (!date) { showToast(t('toast_enter_date'), 'error'); return; }
+  if (!Number.isFinite(actual)) { showToast('Enter the balance the account shows', 'error'); return; }
+  const row = balanceUpdateRow(acc, actual, date);
+  if (!row) { showToast('That matches already. Nothing to record.', 'info'); return; }
+  const txn = { id: newId(), ...row, created: nowStamp() };
+  state.transactions.unshift(txn);
+  if (state.userId) {
+    dbInsert('transactions', { id: txn.id, user_id: state.userId, type: txn.type, amount: txn.amount, description: txn.description,
+      category: txn.category, account: txn.account, date: txn.date, notes: txn.notes, currency: txn.currency })
+      .catch(e => showToast('Sync failed: ' + e.message, 'error'));
+  }
+  saveState();
+  closeBalanceModal();
+  renderAll();
+  showToast(`${acc.name}: ${txn.type === 'income' ? '+' : '−'}${fmtWithCur(txn.amount, txn.currency)} recorded`, 'success');
+}
+
+// ═══════════════════════════════════════════════
+// NET WORTH IN ONE CURRENCY
+// ═══════════════════════════════════════════════
+// Every other figure stays in the currency it was entered in. This one adds
+// the currencies up, at the European Central Bank's rates for the day
+// (frankfurter.dev, sent nothing but currency codes) or at rates you set.
+// USDT has no ECB rate; it is counted at the US dollar's, which it tracks.
+const FX_URL = 'https://api.frankfurter.dev/v1/latest';
+const FX_KNOWN = ['AUD','BGN','BRL','CAD','CHF','CNY','CZK','DKK','EUR','GBP','HKD','HUF','IDR','ILS','INR','ISK','JPY','KRW','MXN','MYR','NOK','NZD','PHP','PLN','RON','SEK','SGD','THB','TRY','USD','ZAR'];
+const fxCode = c => (c === 'USDT' ? 'USD' : c);
+
+// Units of cur per one of the home currency, or null when there is none yet.
+function fxRate(cur) {
+  const home = state.currency;
+  if (fxCode(cur) === fxCode(home)) return 1;
+  const fx = state.fx || {};
+  const manual = (fx.manual || {})[cur];
+  if (manual > 0) return manual;
+  if (fx.base !== fxCode(home)) return null;
+  const r = (fx.rates || {})[fxCode(cur)];
+  return r > 0 ? r : null;
+}
+const fxCurrencies = () => [...new Set(state.accounts.map(a => a.currency || state.currency))]
+  .filter(c => fxCode(c) !== fxCode(state.currency)).sort();
+
+// Assets, debt and net worth per currency, added up in the home currency.
+// missing lists the currencies with no rate; they are left out of the total.
+function netWorthInHome() {
+  const out = { assets: 0, debt: 0, net: 0, missing: [] };
+  const per = {};
+  state.accounts.forEach(a => {
+    const c = a.currency || state.currency, b = effectiveBal(a);
+    per[c] = per[c] || { assets: 0, debt: 0 };
+    if (b > 0) per[c].assets += b; else per[c].debt += -b;
+  });
+  Object.entries(per).forEach(([c, v]) => {
+    const r = fxRate(c);
+    if (!r) { out.missing.push(c); return; }
+    out.assets += v.assets / r; out.debt += v.debt / r;
+  });
+  out.assets = Math.round(out.assets * 100) / 100;
+  out.debt = Math.round(out.debt * 100) / 100;
+  out.net = Math.round((out.assets - out.debt) * 100) / 100;
+  out.missing.sort();
+  return out;
+}
+
+let _fxFetching = null;
+// Today's rates, once a day per home currency; quietly does nothing offline.
+function refreshFxRates(force) {
+  const home = fxCode(state.currency);
+  const want = [...new Set(fxCurrencies().map(fxCode))].filter(c => c !== home && FX_KNOWN.includes(c)).sort();
+  const fx = state.fx || {};
+  if (!want.length || !FX_KNOWN.includes(home) || _fxFetching) return _fxFetching || Promise.resolve();
+  const fresh = fx.base === home && fx.fetchedOn === localDateStr() && want.every(c => (fx.rates || {})[c] > 0);
+  if (fresh && !force) return Promise.resolve();
+  _fxFetching = fetch(`${FX_URL}?base=${home}&symbols=${want.join(',')}`)
+    .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    .then(data => {
+      if (!data || !data.rates) throw new Error('no rates');
+      state.fx = { ...(state.fx || {}), base: home, date: data.date, rates: { ...(fx.base === home ? fx.rates : {}), ...data.rates }, fetchedOn: localDateStr() };
+      saveState();
+      if (activeViewName() === 'accounts') renderAccounts();
+    })
+    .catch(e => console.warn('exchange rates not fetched:', e.message))
+    .finally(() => { _fxFetching = null; });
+  return _fxFetching;
+}
+
+// The total as the last row of the Accounts summary, and the line under it
+// saying which rates made it.
+function netWorthTotalRow(money) {
+  const home = state.currency, tot = netWorthInHome();
+  return `<div class="acc-sum-row acc-sum-total${tot.debt ? ' has-debt' : ''}">
+      <span class="acc-sum-cur" title="${esc(t('fx_total').replace('{cur}', home))}">≈ ${esc(home)}</span>
+      <span class="acc-sum-cell" data-l="${t('acc_total_assets')}">${money(tot.assets, home, 'in')}</span>
+      <span class="acc-sum-cell" data-l="${t('acc_total_debt')}">${money(tot.debt, home, 'out')}</span>
+      <span class="acc-sum-cell acc-sum-net"><span class="acc-sum-v net${tot.net < 0 ? ' neg' : ''}">${maskAmt(fmtSigned(tot.net, home))}</span></span>
+    </div>`;
+}
+function netWorthRatesNote() {
+  const home = state.currency, tot = netWorthInHome(), fx = state.fx || {};
+  const curs = fxCurrencies();
+  const manual = curs.filter(c => ((fx.manual || {})[c] || 0) > 0);
+  const where = tot.missing.length
+    ? `<span class="fx-warn">Leaves out ${esc(tot.missing.join(', '))}: no exchange rate yet.</span>`
+    : `<span>${esc(t('fx_total').replace('{cur}', home))} at ${fx.date && manual.length < curs.length ? 'rates of ' + esc(fmtDate(fx.date)) : 'your rates'}${curs.includes('USDT') && !manual.includes('USDT') ? ' · USDT at the US dollar rate' : ''}${manual.length && manual.length < curs.length ? ' · ' + esc(manual.join(', ')) + ' set by you' : ''}</span>`;
+  return `<div class="acc-fx-note">${where}<button type="button" class="link-btn" onclick="openFxModal()">${t('fx_rates')}</button></div>`;
+}
+
+function openFxModal() {
+  const home = state.currency, fx = state.fx || {};
+  document.getElementById('fx-title').textContent = t('fx_title');
+  document.getElementById('fx-today').textContent = t('fx_today');
+  document.getElementById('fx-save').textContent = t('fx_save');
+  document.getElementById('fx-intro').textContent = `Used only for the ≈ ${home} total on Accounts. Leave a box empty to use the day's European Central Bank rate.`;
+  document.getElementById('fx-rows').innerHTML = fxCurrencies().map(c => {
+    const auto = fx.base === fxCode(home) ? (fx.rates || {})[fxCode(c)] : null;
+    const mine = (fx.manual || {})[c];
+    return `<div class="fx-row"><label for="fx-${esc(c)}">1 ${esc(home)} =</label>
+      <input class="form-input" type="number" step="any" min="0" id="fx-${esc(c)}" data-cur="${esc(c)}" value="${mine > 0 ? mine : ''}" placeholder="${auto ? auto : 'rate'}">
+      <span class="fx-was">${esc(c)}</span></div>`;
+  }).join('') || '<p class="fx-intro">All your accounts are in one currency.</p>';
+  document.getElementById('fx-modal').classList.add('open');
+}
+function closeFxModal() { document.getElementById('fx-modal').classList.remove('open'); }
+function saveFxRates() {
+  const manual = {};
+  document.querySelectorAll('#fx-rows input[data-cur]').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (v > 0) manual[inp.dataset.cur] = v;
+  });
+  state.fx = { ...(state.fx || {}), manual };
+  saveState();
+  closeFxModal();
+  renderAccounts();
+}
+function useTodaysRates() {
+  state.fx = { ...(state.fx || {}), manual: {} };
+  saveState();
+  closeFxModal();
+  refreshFxRates(true).then(() => renderAccounts());
+  renderAccounts();
+}
+
 async function deleteAccount(id) {
   const acc = state.accounts.find(a => a.id == id);
   const ok = await showConfirm(t('confirm_del_account'), t('confirm_del_account_msg'), t('confirm_delete')||'Delete', 'btn-coral');
@@ -5304,7 +5635,7 @@ const catBg = cat => document.documentElement.getAttribute('data-theme') === 'da
   ? (CAT_COLORS[cat] || '#6B7280') + '2E'
   : (CAT_BG[cat] || 'var(--surface)');
 
-const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Transfer':'🔄','Claims':'🧾','Other':'💰' }[cat] || '💰');
+const catIcon = cat => ({ 'Food & Drink':'🍜','Transport':'🚇','Groceries':'🛒','Shopping':'🛍️','Bills':'🏠','Rental':'🔑','Health':'🏥','Entertainment':'🎬','Sport':'⚽','Education':'📚','Travel':'✈️','Salary':'💼','Freelance':'💻','Investment':'📈','Property':'🏘️','Gold':'🥇','Vehicle':'🚗','Transfer':'🔄','Claims':'🧾','Gain/Loss':'📊','Other':'💰' }[cat] || '💰');
 
 // ── Month helpers ──────────────────────────────
 function getMonthLabel(ym) {
@@ -6182,6 +6513,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
       </div>
       <div class="txn-amt" style="color:${inkC};">${incoming ? '+' : ''}${fmtWithCur(txn.amount, txn.currency)}${(showsPair && diffCur) ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
+        <button class="icon-btn again" onclick="repeatToday('${txn.id}')" title="${t('again_today')}" aria-label="${t('again_today')}">↻</button>
         <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="${isAssetPair ? 'Edit asset' : 'Edit transfer'}">✏️</button>
         <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete (both sides)">🗑️</button>
       </div>` : ''}
@@ -6197,6 +6529,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     </div>
     <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
+      <button class="icon-btn again" onclick="repeatToday('${txn.id}')" title="${t('again_today')}" aria-label="${t('again_today')}">↻</button>
       <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit">✏️</button>
       <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete">🗑️</button>
     </div>` : ''}
@@ -8767,6 +9100,7 @@ function setMaskBtnIcon() {
 function renderAccounts() {
   setMaskBtnIcon();
   renderNetWorth();
+  refreshFxRates();
 
   // Every downstream block here assumes at least one account (currency
   // grouping, net worth, allocation) — without this guard, zero accounts
@@ -8785,8 +9119,8 @@ function renderAccounts() {
     const b = effectiveBal(a);
     if (b > 0) byCur[c].assets += b; else byCur[c].debt += Math.abs(b);
   });
-  // Deliberately no cross-currency total here: adding S$ to RM produces a
-  // number that means nothing, and every figure below is rendered per currency.
+  // Every figure here is per currency and exact. The one total across them is
+  // an estimate at exchange rates (netWorthTotalHTML), set apart below them.
   // Home currency first, then the rest alphabetically, as everywhere else.
   const curEntries  = Object.entries(byCur).sort(([a], [b]) => byHomeCurrency(a, b));
   // Nothing owed (or nothing held) reads muted, not as an alarm in red.
@@ -8815,7 +9149,8 @@ function renderAccounts() {
             <span class="acc-sum-cell acc-sum-net"><span class="acc-sum-v net${net < 0 ? ' neg' : ''}">${maskAmt(fmtSigned(net, cur))}</span></span>
           </div>`;
         }).join('')}
-      </div>`;
+        ${netWorthTotalRow(money)}
+      </div>${netWorthRatesNote()}`;
 
   const isMultiCurAcc = curEntries.length > 1;
   const accountRowHTML = a => {
@@ -8831,6 +9166,7 @@ function renderAccounts() {
         <div class="account-side">
         <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${maskAmt((isNeg?'-':'')+fmtWithCur(Math.abs(bal),cur))}</div>
         <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
+          <button onclick="openBalanceModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="${t('bal_action')}" aria-label="${t('bal_action')}">⚖️</button>
           <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
           <button onclick="deleteAccount('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Delete">🗑️</button>
         </div>

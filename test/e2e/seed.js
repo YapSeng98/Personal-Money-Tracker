@@ -55,6 +55,21 @@
     currency: 'SGD', reviewMonth: M1, filterMonth: M1, displayName: 'Test User', trendMonths: 12,
     theme: P.get('theme') || 'dark', language: 'en'
   });
+  // Exchange rates come from this fixed table, never the network: per one
+  // SGD, as frankfurter.dev reported them on 13 Nov 2026. __fxCalls records
+  // what was asked; __fxFail makes the next requests fail as offline would.
+  window.__fxCalls = [];
+  const FX_SGD = { SGD: 1, USD: 0.77634, MYR: 3.1733, AUD: 1.1441 };
+  const realFetch = window.fetch;
+  window.fetch = (url, opts) => {
+    if (!String(url).startsWith('https://api.frankfurter.dev/')) return realFetch(url, opts);
+    window.__fxCalls.push(String(url));
+    if (window.__fxFail) return Promise.reject(new TypeError('Failed to fetch'));
+    const q = new URL(url).searchParams, base = q.get('base');
+    const rates = {};
+    q.get('symbols').split(',').forEach(c => { rates[c] = Math.round(FX_SGD[c] / FX_SGD[base] * 1e5) / 1e5; });
+    return Promise.resolve(new Response(JSON.stringify({ amount: 1, base, date: '2026-11-13', rates }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  };
   applyTheme();
   renderAll();
   const loginOverlay = document.getElementById('login-overlay');

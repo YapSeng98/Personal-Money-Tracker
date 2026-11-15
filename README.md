@@ -240,12 +240,12 @@ rule. See [Telegram alerts](#telegram-alerts).
 | Page | What it does |
 |---|---|
 | Dashboard | Per-currency balance/income/expense hero, KPI cards, spend-by-category |
-| Transactions | Full list with month/type/currency filters, bulk select, undo, a **Data check** for broken transfer pairs, a **Statement** button, and **Import** for a bank's CSV statement |
+| Transactions | Full list with month/type/currency filters, bulk select, undo, **Again today** (↻) on every row, a **Data check** for broken transfer pairs, a **Statement** button, and **Import** for a bank's CSV statement |
 | Budgets | Per-currency budgets with rollover, plus "Plan from Salary" allocator |
 | **Bills** | The monthly checklist — see below |
 | Goals | Savings goals, optionally tracking a real account |
 | Analytics | Monthly Review (a donut per currency of every category spent), the **monthly statement** (view, PDF, Excel, CSV), spending trend, and Monthly In & Out (range totals, per-month bars, Excel and CSV downloads) |
-| Accounts | Balances, **net worth over time** (a line per currency, with a table view), allocation, debt ratio |
+| Accounts | Balances, **Update balance** (⚖️) on every account, **net worth over time** (a line per currency, with a table view), a **≈ total in your home currency** at the day's exchange rates, allocation, debt ratio |
 | Settings | Account, profile, password, appearance, app lock, **Telegram alerts**, AI key, backup, data |
 
 **Mobile (≤900px).** The sidebar becomes a hamburger drawer and a bottom bar
@@ -283,6 +283,26 @@ category it usually had. A transfer or purchase also fills in both accounts.
 A plain row keeps the account you chose, because repeats are often paid from a
 different account. Arrow keys, Enter and Escape work, and screen readers
 announce the list (an ARIA combobox).
+
+**Updating a balance.** ⚖️ on an account takes the balance the bank or
+exchange shows and records the difference from the app's figure for that day
+as one row (`balanceOn`, `balanceUpdateRow`). On an Investment or Crypto
+account it is a Gain/Loss row (Market gain or Market loss), so a month's
+trading profit or loss shows without entering every trade. On any other account
+it is a Balance correction, and the window warns that a missing transaction
+entered later would count twice.
+
+**Net worth in one currency.** Every figure stays in its own currency, with
+one exception: the ≈ total at the foot of the Accounts summary, which adds the
+currencies up at the European Central Bank's rates for the day. They come from
+frankfurter.dev once a day, sent nothing but currency codes, and are kept on
+the device; USDT counts at the US dollar's rate. Rates opens a window to set
+your own, per currency. With no rate for a currency yet (offline on first
+use), the total leaves it out and says so.
+
+**Again today.** ↻ on a transaction opens it as a new one dated today, with
+the same amount, description, category and account (both accounts and both
+amounts for a transfer), ready to adjust and save.
 
 **Importing a bank statement.** `parseCSV` reads the file, `findImportTable`
 skips any preamble to the table of dated rows, and `detectImportColumns` picks
@@ -400,7 +420,7 @@ Setup: [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 ## Tests
 
 ```bash
-node test/run-all.js        # about 315,000 checks, no browser needed
+node test/run-all.js        # about 350,000 checks, no browser needed
 node test/e2e/run.js        # the real page in headless Chrome (needs Node 22+ and Chrome)
 node test/perf/bench.js     # how long a redraw takes with 5,000 transactions
 ```
@@ -419,17 +439,22 @@ wrong — not that a test is stale.
 | `import.test.js` | 37 | bank CSVs with header lines, quoted fields, either date order and no header row; signed, split or DR/CR amounts; credit cards where spending is positive; duplicates matched one-to-one; categories learned from the book |
 | `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
 | `descriptions.test.js` | 68,324 | what the Description box offers. One entry per description however it was capitalised or spaced. Only the kind of row being added, each pair offered once. Starts-with first, then word starts in any order, Chinese from anywhere, then one typo exactly (against a full edit-distance calculation). Recent use outranks old. The usual category fills in, and both accounts of a transfer or purchase. Descriptions show as text, never markup. Covers 300 random books (`SEED=n` tries another 300). `PFMT_BACKUP=~/PFMT_Backups/<date>` also replays a real book in date order and reports how often what you wrote would have been offered after 0–3 letters |
+| `balance-and-fx.test.js` | 34,887 | Update balance and the one-currency total, on 400 random books (several currencies, cards in debt, rows after the day, rows in another account or currency): the row recorded brings that day to exactly the balance typed, leaves earlier days and other accounts alone and moves later days by the difference; a gain or loss on an investment or crypto account, a correction elsewhere, nothing when it already agrees. The total converts each currency once at its rate, USDT at the dollar's, your rate over the day's, and names any currency it has no rate for (2,000 random books against a total worked out in the test) |
 | `statement.test.js` | 246,920 | the monthly statement against figures worked out independently, on 400 random books (`SEED=n` tries another 400) holding every awkward case (several currencies, cards in debt, transfers, exchanges, asset purchases, oversized paybacks, claims, unfunded holdings, rows booked to no account, one-sided transfers) over months crossing a year end and February: every row exactly once, opening + in − out = closing line by line, each month opening where the last closed, money in and out equal to the dashboard's, every column adding to its total, the gap between balances and cash flow explained cause by cause, a range equal to its months, the Excel/CSV figures the same, no CSV cell a spreadsheet would run as a formula. `PFMT_BACKUP=~/PFMT_Backups/<date>` also checks every month of every book in a real backup |
 
 The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
 swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
-writes, or apply them under the real schema's rules), loads dated-relative-to-today test data (`seed.js`), and clicks through
-the app (`checks.js`): about 300 checks at desktop, laptop and true 390px phone
+writes, or apply them under the real schema's rules), loads dated-relative-to-today test data (`seed.js`, which also answers exchange-rate requests from a fixed table, so nothing goes to the network), and clicks through
+the app (`checks.js`): about 335 checks at desktop, laptop and true 390px phone
 sizes, covering the statement and its downloads, Monthly In & Out, the Data
 check (and its Edit repairing every shape it offers to), a search count matching
 the lines shown, offline saves surviving a reload, deletes not coming back, USDT, the net
 worth chart, importing a CSV (and importing it twice), description suggestions
-(typing, tapping, the arrow keys, Escape, a transfer filling both accounts), App Lock
+(typing, tapping, the arrow keys, Escape, a transfer filling both accounts),
+Update balance (a correction, a market loss on an earlier day, nothing when it
+agrees), the ≈ total (what is sent for rates, the sum, your own rate, offline,
+hidden balances) and Again today (a row, a currency exchange, a transfer to a
+deleted account), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
 
@@ -447,13 +472,14 @@ exists, every balance equal to its starting balance plus its rows, goals equal
 to the accounts they track, repeats only on their schedule and never twice,
 editing a field changing nothing else, undo restoring exactly, nothing left
 unsent or refused once online, the server holding exactly what the screen
-shows, a reload showing exactly what was there, and another device's change
-arriving. Every run includes six runs of 200 actions; `--fuzz --seeds=N
+shows, a reload showing exactly what was there, another device's change
+arriving, an updated balance landing on the figure typed, and Again today
+copying exactly. Every run includes six runs of 200 actions; `--fuzz --seeds=N
 --steps=M` runs more, and `--backup … --user …` runs them on a copy of a real
 book. `--health --backup … --user …` loads a real book the way the app does
 and checks all of it, and that loading it twice changes nothing.
 
-The **phone-fit audit** (`fit.js`) opens every page, window and menu — 38
+The **phone-fit audit** (`fit.js`) opens every page, window and menu — 41
 screens, with long names, seven-figure amounts and USDT in the data — and
 measures what a person would notice on a phone: anything past the screen edge,
 boxes that scroll sideways, text cut off, squeezed or on top of other text,
@@ -533,10 +559,12 @@ it shows "(no longer an account)" rather than quietly picking another account.
 account name is rebuilt from the partner row on every load, so nothing reads
 the stored copy; old pairs that never had it filled keep it empty there.
 
-**Currencies are never converted.** Every figure stays in the currency it was
-entered in and totals are grouped per currency. A cross-currency transfer takes
-both amounts from you rather than applying a rate; there is no FX rate anywhere
-in the app, by design.
+**Currencies are converted in one place only.** Every figure stays in the
+currency it was entered in and totals are grouped per currency. A
+cross-currency transfer takes both amounts from you rather than applying a
+rate. The single exception is the ≈ total on Accounts, an estimate at the day's
+ECB rates (or yours); nothing else reads those rates. Rates you set stay on
+the device that set them.
 
 **Transactions load in pages of 1,000 until none are left**, so there is no
 ceiling on how many a user can have. Nothing renders until every page is in; if

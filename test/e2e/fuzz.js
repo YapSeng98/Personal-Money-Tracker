@@ -218,6 +218,15 @@
         openTxnModal(t.id);
         const hold = accts().find(x => x.name === t.account && curOf(x) === (t.currency || state.currency));
         if (!hold) { closeTxnModal(); return null; }
+        // Sometimes only the amount: a funded purchase must stay funded.
+        if (chance(0.3)) {
+          const before = state.transactions.filter(x => x.transferGroup && x.transferGroup === t.transferGroup).length;
+          const n = toasts.length;
+          await save({ amount: money() });
+          const after = state.transactions.filter(x => x.transferGroup && x.transferGroup === t.transferGroup).length;
+          check(errorsSince(n).length || after === before, 'editing a purchase\'s amount keeps how it was paid for', () => `${before} rows in its pair before, ${after} after`);
+          return `edit purchase amount in ${hold.name}`;
+        }
         const src = chance(0.5) ? pick(sameCur(hold, accts())) : null;
         const errs = await save({ fund: src ? src.name : '', amount: chance(0.5) ? money() : undefined });
         check(!errs.length, 'a valid purchase edit is accepted', `${hold.name} from ${src ? src.name : 'nothing'}: ${errs.join('; ')}`);
@@ -350,6 +359,44 @@
         if ($('#salary-planner-body').style.display !== 'none') toggleSalaryPlanner();
         showView('settings');
         return `plan budgets in ${$('#sp-currency').value}`;
+      }],
+      [3, 'update an account to its real balance', async () => {
+        const a = pick(accts());
+        openBalanceModal(a.id);
+        const date = chance(0.7) ? today : addDaysStr(today, -int(0, 200));
+        $('#bal-date').value = date; $('#bal-date').dispatchEvent(new Event('change'));
+        const had = balanceOn(a, date), actual = chance(0.1) ? had : r2(had + (rnd() - 0.5) * (chance(0.1) ? 200000 : 2000));
+        $('#bal-actual').value = String(actual); $('#bal-actual').dispatchEvent(new Event('input'));
+        const n = state.transactions.length;
+        await saveBalanceUpdate(); closeBalanceModal();
+        check(balanceOn(a, date) === actual && state.transactions.length === n + (actual === had ? 0 : 1), 'updating a balance makes that day end at exactly what was typed, with one row',
+              () => `${a.name} on ${date}: ${balanceOn(a, date)} vs ${actual} (${state.transactions.length - n} rows)`);
+        return `update ${a.name} to ${actual}`;
+      }],
+      [4, 'again today', async () => {
+        const t = pick(state.transactions);
+        if (!t) return null;
+        const legs = t.transferGroup ? state.transactions.filter(x => x.transferGroup === t.transferGroup) : [t];
+        const ids = new Set(state.transactions.map(x => String(x.id)));
+        repeatToday(t.id);
+        const n = toasts.length;
+        await saveTransaction(); closeTxnModal();
+        const added = state.transactions.filter(x => !ids.has(String(x.id)));
+        // A purchase whose two sides are in different currencies (an account's
+        // currency changed since) can't be made again as it is: say so, add nothing.
+        if (legs.length === 2 && legs.some(x => x.type === 'asset') && legs[0].currency !== legs[1].currency) {
+          const fund = legs.find(x => x.type !== 'asset'), fundAcc = accts().find(a => a.name === fund.account);
+          if (fundAcc) check(errorsSince(n).length && !added.length, 'Again today refuses, rather than half-copies, a purchase across currencies', () => `added ${added.length}`);
+          else check(added.length === 2 && !pairProblems().length, 'Again today copies a purchase whose source was deleted as a whole pair', () => `added ${added.length}`);
+          return 'again today: a purchase across currencies';
+        }
+        // (A pair's copy takes the sending side's description for both sides, as every pair the app makes.)
+        const desc = String((legs.find(x => x.type === 'expense') || t).description).trim();
+        const shape = (x, copied) => [x.type, x.amount, x.account, x.currency || state.currency, copied || !t.transferGroup ? String(x.description).trim() : desc].join('|');
+        check(!errorsSince(n).length && added.length === legs.length && added.every(x => x.date === today && !x.isRecurring && !x.recurringSource)
+              && legs.map(x => shape(x)).sort().join() === added.map(x => shape(x, true)).sort().join(), 'Again today saves the same transaction dated today, as a new one',
+              () => `${errorsSince(n).join('; ')} | was ${legs.map(x => shape(x)).join(', ')} | added ${added.map(x => shape(x, true) + ' ' + x.date).join(', ')}`);
+        return `again today: ${t.transferGroup ? 'a pair' : t.type}`;
       }],
       [4, 'another device changes the book', async () => {
         // A row added, edited or deleted on the server by another device, then
