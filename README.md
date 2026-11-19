@@ -269,6 +269,12 @@ retried or discarded from there. Consecutive inserts into the same table go up
 to 100 per request; if the server refuses a batch, each row is retried alone so
 one bad row can't hold up the rest.
 
+**Other devices' changes arrive on return.** Coming back to the app (the
+page becoming visible again) at least a minute after the last load reloads the
+book quietly through the same path (`refreshOnReturn`), so a new account order
+or rows added on another device appear without a manual reload. It never runs
+under an open window, and a failure leaves the screen as it was.
+
 **Transfers and asset purchases are pairs** of rows sharing a `transferGroup`.
 `pairProblems()` finds any that aren't one expense plus one income/asset on two
 accounts; those are never hidden from the list, and the Data check fixes them.
@@ -308,7 +314,9 @@ goals, bills, the statement. Each move numbers every account by its place and
 writes the ones that changed to `sort_order`; a new account takes the next
 number, so numbers never tie. A load orders by `sort_order`, then by this
 device's own record of the order (`state.accountOrder`), which is all there is
-before migration 007.
+before migration 007 (Arrange then says the order is on this device only).
+The first load after 007 runs, on a device that was arranged, shares that
+order if no device has stored one yet; devices loading later adopt it.
 
 **Again today.** ↻ on a transaction opens it as a new one dated today, with
 the same amount, description, category and account (both accounts and both
@@ -464,7 +472,10 @@ worth chart, importing a CSV (and importing it twice), description suggestions
 Update balance (a correction, a market loss on an earlier day, nothing when it
 agrees), the ≈ total (what is sent for rates, the sum, your own rate, offline,
 hidden balances), Arrange (moving within a currency, the ends, focus, what is
-sent before and after migration 007, a reload on a fresh device) and Again today (a row, a currency exchange, a transfer to a
+sent before and after migration 007, a reload on a fresh device, the first
+device after 007 sharing its order and later ones adopting it, coming back to
+the app picking up another device's order but never under an open window) and
+Again today (a row, a currency exchange, a transfer to a
 deleted account), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
@@ -485,7 +496,8 @@ editing a field changing nothing else, undo restoring exactly, nothing left
 unsent or refused once online, the server holding exactly what the screen
 shows, a reload showing exactly what was there, another device's change
 arriving, an updated balance landing on the figure typed, Again today
-copying exactly, and the account order surviving every reload. Every third
+copying exactly, the account order surviving every reload, and another
+device's new order arriving on a reload or on coming back to the app. Every third
 run uses a database without migration 007. Every run includes six runs of 200 actions; `--fuzz --seeds=N
 --steps=M` runs more, and `--backup … --user …` runs them on a copy of a real
 book. `--health --backup … --user …` loads a real book the way the app does

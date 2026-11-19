@@ -389,6 +389,22 @@
         showView('settings');
         return `move ${a.name} ${dir}`;
       }],
+      [3, 'another device rearranges the accounts', async () => {
+        // Only once the database keeps the order, and not over this device's
+        // own account changes still waiting to be sent (those win).
+        if (!state.accountOrderSynced || S.failWrites || outbox().some(o => o.table === 'accounts')) return null;
+        await runRecurring(); renderAll(); await settle();
+        const rows = S.tables.accounts, perm = rows.map((_, i) => i);
+        for (let i = perm.length - 1; i > 0; i--) { const j = int(0, i); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+        rows.forEach((r, i) => { r.sort_order = perm[i]; });
+        const want = rows.slice().sort((x, y) => x.sort_order - y.sort_order).map(r => r.name);
+        const how = chance(0.5) ? 'reload' : 'coming back to the app';
+        if (how === 'reload') await reload();
+        else { state.lastSync = new Date(Date.now() - 5 * 60000).toISOString(); await refreshOnReturn(); await settle(); }
+        check(accts().map(a => a.name).join('|') === want.join('|'), 'another device\'s new order arrives, on a reload or on coming back to the app',
+              () => `${how}: ${accts().map(a => a.name).join(' | ')}\n      wanted ${want.join(' | ')}`);
+        return `laptop rearranges accounts (${how})`;
+      }],
       [3, 'update an account to its real balance', async () => {
         const a = pick(accts());
         openBalanceModal(a.id);

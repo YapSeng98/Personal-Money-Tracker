@@ -921,6 +921,45 @@
           state.outbox = []; await snLoadAll();
           ok(sgd().join() === keepOrder && state.accountOrderSynced === withCol, `arrange: a reload keeps the order ${withCol ? 'from the database' : 'kept on the device'}`, sgd().join(' | '));
         }
+        // Once migration 007 runs: the first device to load shares the order it
+        // was arranged in; a device loading after that adopts it.
+        const tablesWith = rows => ({ transactions: [], budgets: [], goals: [], bills: [], preferences: [], backups: [], accounts: rows });
+        const arranged = keepA.slice().reverse();          // this device's own arrangement
+        window.__sb.tables = tablesWith(keepA.map(a => Object.assign(asRow(a, 0, true), { sort_order: null })));
+        state.accountOrderSynced = false; state.accountOrder = arranged.map(a => String(a.id)); state.outbox = []; window.__sb.calls.length = 0;
+        await snLoadAll(); await wait(10);
+        const shared = window.__sb.calls.filter(c => c.op === 'update' && c.patch && 'sort_order' in c.patch);
+        ok(state.accounts.map(a => a.name).join() === arranged.map(a => a.name).join() && state.accountOrderSynced,
+           'sync: the first load after migration 007 keeps this device\'s arrangement', state.accounts.map(a => a.name).join(' | '));
+        ok(shared.length === 2 && shared.every(c => c.patch.sort_order === state.accounts.findIndex(a => String(a.id) === c.filters[0][1][1])),
+           'sync: ...and shares it, so the other devices get it without arranging again', JSON.stringify(shared.map(c => c.patch)));
+        window.__sb.calls.length = 0;
+        await snLoadAll();
+        ok(!window.__sb.calls.some(c => c.op === 'update'), 'sync: loading again shares nothing more');
+        const theirs = keepA.slice();                       // another device already stored this order
+        window.__sb.tables = tablesWith(theirs.map((a, k) => Object.assign(asRow(a, 0, true), { sort_order: k })));
+        state.accountOrderSynced = false; state.accountOrder = arranged.map(a => String(a.id)); window.__sb.calls.length = 0;
+        await snLoadAll();
+        ok(state.accounts.map(a => a.name).join() === theirs.map(a => a.name).join() && !window.__sb.calls.some(c => c.op === 'update'),
+           'sync: a device loading after that adopts the stored order instead of overwriting it', state.accounts.map(a => a.name).join(' | '));
+        // Coming back to the app picks up another device's new order without a reload.
+        const moved = theirs.slice(1).concat(theirs[0]);
+        window.__sb.tables = tablesWith(moved.map((a, k) => Object.assign(asRow(a, 0, true), { sort_order: k })));
+        state.lastSync = new Date(Date.now() - 5000).toISOString();
+        document.dispatchEvent(new Event('visibilitychange')); await wait(30);
+        ok(state.accounts.map(a => a.name).join() === theirs.map(a => a.name).join(), 'sync: within a minute of the last load, coming back does not reload');
+        state.lastSync = new Date(Date.now() - 5 * 60000).toISOString();
+        openTxnModal();
+        document.dispatchEvent(new Event('visibilitychange')); await wait(30);
+        ok(state.accounts.map(a => a.name).join() === theirs.map(a => a.name).join(), 'sync: nothing reloads under an open window');
+        closeTxnModal();
+        document.dispatchEvent(new Event('visibilitychange')); await wait(50);
+        ok(state.accounts.map(a => a.name).join() === moved.map(a => a.name).join(), 'sync: coming back to the app later picks up the order set on another device', state.accounts.map(a => a.name).join(' | '));
+        // In Arrange, a device-only order says so.
+        nav('accounts'); state.accountOrderSynced = false; _arrangingAccounts = true; renderAccounts();
+        ok(/this device only/.test($('.acc-arrange-hint').textContent), 'sync: before migration 007, Arrange says the order is kept on this device only');
+        state.accountOrderSynced = true; renderAccounts();
+        ok(!/this device only/.test($('.acc-arrange-hint').textContent), 'sync: ...and stops saying it once the database keeps the order');
         state.transactions = keepT; state.accounts = keepA; state.accountOrderSynced = false; state.outbox = []; state.userId = null;
         $('#acc-arrange-btn').click();
         ok(!$('#accounts-list .acc-move') && $$('#accounts-list .account-row button').some(b => b.title === 'Edit'), 'arrange: Done brings the usual buttons back');

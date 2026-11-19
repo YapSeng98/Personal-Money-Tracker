@@ -840,6 +840,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 }
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
 .acc-arrange-hint{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;}
+.acc-arrange-local{display:block;margin-top:4px;color:var(--amber);}
 .acc-move-btns{display:flex;gap:6px;flex-shrink:0;margin-left:8px;}
 .acc-move{width:36px;height:32px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);color:var(--indigo);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .acc-move:hover:not([disabled]){background:var(--indigo-s);border-color:var(--indigo);}
@@ -2499,6 +2500,7 @@ const TRANSLATIONS = {
     bal_action:'Update balance', again_today:'Again today',
     acc_arrange:'Arrange', acc_arrange_done:'Done', acc_move_up:'Move {name} up', acc_move_down:'Move {name} down',
     acc_arrange_hint:'Use ▲ and ▼ to change the order within each currency. Every account list in the app follows it.',
+    acc_arrange_local:'For now this order is kept on this device only. It syncs to your other devices once the database has the account order column (migration 007).',
     fx_title:'Exchange rates', fx_today:"Use today's rates", fx_save:'Save', fx_rates:'Rates', fx_total:'Total in {cur}',
     toast_goal_saved:'Goal saved', toast_goal_updated:'Goal updated ✓',
     toast_goal_deleted:'Goal deleted',
@@ -2644,6 +2646,7 @@ const TRANSLATIONS = {
     bal_action:'更新余额', again_today:'今天再记一笔',
     acc_arrange:'排序', acc_arrange_done:'完成', acc_move_up:'将 {name} 上移', acc_move_down:'将 {name} 下移',
     acc_arrange_hint:'用 ▲ 和 ▼ 调整同一币种内的顺序。应用中所有账户列表都按此顺序显示。',
+    acc_arrange_local:'目前此顺序只保存在本设备上。数据库加入账户顺序列（迁移 007）后，会同步到您的其他设备。',
     fx_title:'汇率', fx_today:'使用今日汇率', fx_save:'保存', fx_rates:'汇率', fx_total:'合计 ({cur})',
     toast_goal_saved:'目标已保存', toast_goal_updated:'目标已更新 ✓',
     toast_undone:'已恢复', btn_undo:'撤销',
@@ -3904,7 +3907,24 @@ async function discardRejected(opId) {
 }
 
 window.addEventListener('online', () => flushOutbox());
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushOutbox(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { flushOutbox(); refreshOnReturn(); } });
+
+// Coming back to the app after a while picks up what your other devices
+// changed (a new account order, rows added on the laptop) without a reload.
+// Skipped while a window is open, so nothing changes under a half-filled
+// form, and at most once a minute. Quiet: a failure here leaves the screen as
+// it was and says nothing; the next return or a reload tries again.
+let _returnRefresh = null;
+const RETURN_REFRESH_MS = 60000;
+function refreshOnReturn(now = Date.now()) {
+  if (_returnRefresh || !state.userId || (typeof navigator !== 'undefined' && navigator.onLine === false)) return _returnRefresh;
+  if (document.querySelector('.modal-backdrop.open') || (typeof _isCurrentlyLocked === 'function' && _isCurrentlyLocked())) return null;
+  if (state.lastSync && now - Date.parse(state.lastSync) < RETURN_REFRESH_MS) return null;
+  _returnRefresh = snLoadAll({ quiet: true })
+    .then(ok => { if (ok && !document.querySelector('.modal-backdrop.open')) renderAll(); return ok; })
+    .finally(() => { _returnRefresh = null; });
+  return _returnRefresh;
+}
 setInterval(() => { if (outbox().length) flushOutbox(); }, 30000);
 
 // Every write goes through the outbox, so none of these ever throws: a change
@@ -9273,7 +9293,7 @@ function renderAccounts() {
 
   document.getElementById('accounts-list').innerHTML = `
     <div style="background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:16px;">${summaryHTML}</div>
-    ${_arrangingAccounts ? `<p class="acc-arrange-hint">${t('acc_arrange_hint')}</p>` : ''}
+    ${_arrangingAccounts ? `<p class="acc-arrange-hint">${t('acc_arrange_hint')}${state.userId && !state.accountOrderSynced ? `<span class="acc-arrange-local">${t('acc_arrange_local')}</span>` : ''}</p>` : ''}
     ${rowsHTML}`;
   const arrangeBtn = document.getElementById('acc-arrange-btn');
   if (arrangeBtn) {
@@ -10588,7 +10608,7 @@ function _hideSNLogin() {
 }
 
 // ── Load all data from Supabase ────────────────────────────────
-async function snLoadAll() {
+async function snLoadAll({ quiet = false } = {}) {
   try {
     const uid = state.userId;
     const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes, backupsRes] = await Promise.all([
@@ -10704,6 +10724,7 @@ async function snLoadAll() {
     }));
     // Whether the database has sort_order (migration 007). A select returns
     // every column, so its rows say; with no accounts yet, nothing changes.
+    const wasOrderSynced = !!state.accountOrderSynced;
     if (accounts.length) state.accountOrderSynced = Object.prototype.hasOwnProperty.call(accounts[0], 'sort_order');
 
     if (pref) {
@@ -10732,6 +10753,17 @@ async function snLoadAll() {
       state[tbl] = mergeWithOutbox(tbl, state[tbl] || [], localCopy[tbl]);
     });
     state.accounts = orderAccounts(state.accounts);
+    // The first load after migration 007: if no device has stored an order
+    // yet and this one was arranged, it shares that order, so every device
+    // shows it without arranging again. A device that loads later adopts it.
+    if (state.accountOrderSynced && !wasOrderSynced && (state.accountOrder || []).length && state.accounts.length
+        && state.accounts.every(a => a.sortOrder == null)) {
+      state.accounts.forEach((a, k) => {
+        a.sortOrder = k;
+        const rid = _snId(a);
+        if (state.userId && rid) dbUpdate('accounts', rid, { sort_order: k }).catch(e => console.warn('account order not shared:', e.message));
+      });
+    }
     flushOutbox();
     const retagged = migrateTransferCategories();
     if (retagged) showToast(`Tagged ${retagged} existing transfer row${retagged>1?'s':''} as Transfer`, 'info');
@@ -10747,6 +10779,7 @@ async function snLoadAll() {
     // what stays on screen is the last complete copy — never a partial one.
     // The header says so for as long as it's true, not just in a passing toast.
     console.warn('snLoadAll failed:', e.message);
+    if (quiet) return false;
     state.syncFailed = true;
     updateLastSync();
     showToast('Could not load data from Supabase: ' + e.message, 'error');
