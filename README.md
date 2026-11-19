@@ -170,12 +170,13 @@ Eight tables, all in `public`, all with RLS on and a `user_id` referencing
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid | client-generated (`crypto.randomUUID()`) |
-| `name` | text | unique per user in practice; transactions reference it by name |
+| `name` | text | unique per user (the app refuses a second account with the same name); transactions reference it by name |
 | `type` | text | Checking, Savings, Credit Card, Cash, Investment, Crypto (a new Crypto account defaults to USDT) |
 | `institution` | text | |
 | `currency` | text | SGD · USD · AUD · MYR · USDT |
 | `starting_balance` | numeric | the balance *before* any transaction in the book |
 | `is_active` | boolean | inactive accounts stay for history, drop out of pickers |
+| `sort_order` | integer | the order set with Accounts → Arrange (migration 007); null until an account is moved |
 
 The displayed balance is never stored — it is `starting_balance` plus every
 transaction in that account's currency, recomputed on render.
@@ -245,7 +246,7 @@ rule. See [Telegram alerts](#telegram-alerts).
 | **Bills** | The monthly checklist — see below |
 | Goals | Savings goals, optionally tracking a real account |
 | Analytics | Monthly Review (a donut per currency of every category spent), the **monthly statement** (view, PDF, Excel, CSV), spending trend, and Monthly In & Out (range totals, per-month bars, Excel and CSV downloads) |
-| Accounts | Balances, **Update balance** (⚖️) on every account, **net worth over time** (a line per currency, with a table view), a **≈ total in your home currency** at the day's exchange rates, allocation, debt ratio |
+| Accounts | Balances, **Arrange** (▲ ▼ within each currency), **Update balance** (⚖️) on every account, **net worth over time** (a line per currency, with a table view), a **≈ total in your home currency** at the day's exchange rates, allocation, debt ratio |
 | Settings | Account, profile, password, appearance, app lock, **Telegram alerts**, AI key, backup, data |
 
 **Mobile (≤900px).** The sidebar becomes a hamburger drawer and a bottom bar
@@ -299,6 +300,15 @@ frankfurter.dev once a day, sent nothing but currency codes, and are kept on
 the device; USDT counts at the US dollar's rate. Rates opens a window to set
 your own, per currency. With no rate for a currency yet (offline on first
 use), the total leaves it out and says so.
+
+**Arranging accounts.** Arrange on My Accounts puts ▲ ▼ on every account to
+move it within its currency (the list is grouped by currency). `state.accounts`
+is kept in that order, so every account list follows it: the transaction form,
+goals, bills, the statement. Each move numbers every account by its place and
+writes the ones that changed to `sort_order`; a new account takes the next
+number, so numbers never tie. A load orders by `sort_order`, then by this
+device's own record of the order (`state.accountOrder`), which is all there is
+before migration 007.
 
 **Again today.** ↻ on a transaction opens it as a new one dated today, with
 the same amount, description, category and account (both accounts and both
@@ -453,7 +463,8 @@ worth chart, importing a CSV (and importing it twice), description suggestions
 (typing, tapping, the arrow keys, Escape, a transfer filling both accounts),
 Update balance (a correction, a market loss on an earlier day, nothing when it
 agrees), the ≈ total (what is sent for rates, the sum, your own rate, offline,
-hidden balances) and Again today (a row, a currency exchange, a transfer to a
+hidden balances), Arrange (moving within a currency, the ends, focus, what is
+sent before and after migration 007, a reload on a fresh device) and Again today (a row, a currency exchange, a transfer to a
 deleted account), App Lock
 and every page in both languages. A last run serves the app from localhost and
 reloads it with the server stopped to prove the offline shell.
@@ -473,13 +484,14 @@ to the accounts they track, repeats only on their schedule and never twice,
 editing a field changing nothing else, undo restoring exactly, nothing left
 unsent or refused once online, the server holding exactly what the screen
 shows, a reload showing exactly what was there, another device's change
-arriving, an updated balance landing on the figure typed, and Again today
-copying exactly. Every run includes six runs of 200 actions; `--fuzz --seeds=N
+arriving, an updated balance landing on the figure typed, Again today
+copying exactly, and the account order surviving every reload. Every third
+run uses a database without migration 007. Every run includes six runs of 200 actions; `--fuzz --seeds=N
 --steps=M` runs more, and `--backup … --user …` runs them on a copy of a real
 book. `--health --backup … --user …` loads a real book the way the app does
 and checks all of it, and that loading it twice changes nothing.
 
-The **phone-fit audit** (`fit.js`) opens every page, window and menu — 41
+The **phone-fit audit** (`fit.js`) opens every page, window and menu — 43
 screens, with long names, seven-figure amounts and USDT in the data — and
 measures what a person would notice on a phone: anything past the screen edge,
 boxes that scroll sideways, text cut off, squeezed or on top of other text,
@@ -524,8 +536,9 @@ cp index.html daily-money-tracker-app.html
 ### The database
 
 Run the files in [`supabase/migrations/`](supabase/migrations/) in order, in the
-Supabase SQL Editor: 001 (the original tables) through 006 (lets currency columns
-accept USDT). They are additive and safe to re-run.
+Supabase SQL Editor: 001 (the original tables) through 007 (remembers the order
+accounts are arranged in). They are additive and safe to re-run. Until 007 runs,
+the app keeps the account order on each device and never sends it.
 
 ### The Edge Function
 

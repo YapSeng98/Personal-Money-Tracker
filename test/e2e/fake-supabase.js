@@ -5,6 +5,9 @@
 //   window.__sb.failWrites  true: writes fail the way a dropped connection does
 //   window.__sb.failWith    an error object: writes are refused with it, the way
 //                           a database constraint refuses a row
+//   window.__sb.without     { table: [column] }: columns a migration hasn't
+//                           added yet (selects leave them out, writes naming
+//                           them are refused as Postgres would)
 //   window.__sb.apply       true: writes change the tables, checked the way
 //                           Postgres checks them (the schema below, from
 //                           supabase/migrations): an unknown column, a blank
@@ -12,7 +15,7 @@
 //                           required value or a duplicate id is refused with
 //                           Postgres's own error code
 (function () {
-  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {}, apply: false };
+  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {}, apply: false, without: {} };
   // column: [type, required, default]
   const S = (o) => o;
   const SCHEMA = {
@@ -21,7 +24,8 @@
       transfer_group: ['text'], transfer_peer: ['text'], is_recurring: ['bool', 1, false], recurring_frequency: ['text'],
       next_run_date: ['date'], created_at: ['ts', 1], recurring_source: ['uuid'] }),
     accounts: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], type: ['text', 1, 'Checking'], institution: ['text', 1, ''],
-      currency: ['text', 1, 'SGD'], starting_balance: ['numeric', 1, 0], is_active: ['bool', 1, true], icon: ['text', 1, ''], created_at: ['ts', 1] }),
+      currency: ['text', 1, 'SGD'], starting_balance: ['numeric', 1, 0], is_active: ['bool', 1, true], icon: ['text', 1, ''], created_at: ['ts', 1],
+      sort_order: ['int'] }),   // migration 007
     budgets: S({ id: ['uuid', 1], user_id: ['uuid', 1], category: ['text', 1], amount: ['numeric', 1], spent: ['numeric', 1, 0],
       alert_amount: ['numeric', 1, 0], currency: ['text', 1, 'SGD'], rollover: ['bool', 1, false], period_start: ['date'], period_end: ['date'], created_at: ['ts', 1] }),
     goals: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], icon: ['text', 1, '🎯'], target: ['numeric', 1], current: ['numeric', 1, 0],
@@ -33,8 +37,9 @@
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const err = (code, message) => ({ code, message });
   // The value as Postgres would store it, or an error.
+  const hasCol = (table, col) => !!SCHEMA[table][col] && !((sb.without[table] || []).includes(col));
   function cell(table, col, v) {
-    const def = SCHEMA[table][col];
+    const def = hasCol(table, col) && SCHEMA[table][col];
     if (!def) return { e: err('PGRST204', `Could not find the '${col}' column of '${table}' in the schema cache`) };
     const [type, required] = def;
     if (v === null || v === undefined) return required ? { e: err('23502', `null value in column "${col}" of relation "${table}" violates not-null constraint`) } : { v: null };
@@ -64,6 +69,7 @@
   function withDefaults(table, row) {
     const out = {};
     for (const [col, [, required, def]] of Object.entries(SCHEMA[table])) {
+      if (!hasCol(table, col)) continue;
       if (col in row) out[col] = row[col];
       else if (col === 'created_at' || col === 'taken_at') out[col] = new Date().toISOString();
       else if (def !== undefined) out[col] = def;
@@ -116,7 +122,13 @@
         sb.calls.push(q);
         let res;
         if (q.op === 'select') {
-          let rows = (sb.tables[table] || []).map(r => (sb.apply ? Object.assign({}, r) : r));
+          // As Postgres returns them: every column the table has, null where unset.
+          let rows = (sb.tables[table] || []).map(r => {
+            if (!sb.apply) return r;
+            const out = Object.assign({}, r);
+            if (SCHEMA[table]) Object.keys(SCHEMA[table]).forEach(c => { if (!hasCol(table, c)) delete out[c]; else if (!(c in out)) out[c] = null; });
+            return out;
+          });
           const range = q.filters.find(f => f[0] === 'range');
           if (range) rows = rows.slice(range[1][0], range[1][1] + 1);
           const one = q.filters.some(f => f[0] === 'maybeSingle' || f[0] === 'single');

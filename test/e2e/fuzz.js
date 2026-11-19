@@ -75,6 +75,9 @@
     };
     }
     S.apply = true;
+    // Every third run, a database that hasn't had migration 007: the order
+    // must still work, stay on the device, and never be sent.
+    if ((+(P.get('seed') || 1)) % 3 === 0) S.without = { accounts: ['sort_order'] };
     showView('settings');   // a light page to redraw after every step
 
     // Dialogs answer yes; the undo toast hands its two choices to the test;
@@ -360,6 +363,32 @@
         showView('settings');
         return `plan budgets in ${$('#sp-currency').value}`;
       }],
+      [4, 'move an account up or down', async () => {
+        const a = pick(accts()), dir = pick(['up', 'down']);
+        const same = accts().filter(x => curOf(x) === curOf(a)), at = same.indexOf(a);
+        const other = same[dir === 'up' ? at - 1 : at + 1];
+        const before = accts().map(x => x.name);
+        showView('accounts'); if (!_arrangingAccounts) toggleArrangeAccounts();
+        const btn = document.querySelector(`#accounts-list [data-move="${a.id}:${dir}"]`);
+        check(!!btn && btn.disabled === !other, 'each account has ▲ ▼, off at the ends of its currency', () => `${a.name} ${dir}: ${btn ? (btn.disabled ? 'disabled' : 'enabled') : 'missing'}, neighbour ${other ? other.name : 'none'}`);
+        if (btn && !btn.disabled) btn.click();
+        const after = accts().map(x => x.name);
+        if (other) {
+          const want = before.slice(); const i = want.indexOf(a.name), j = want.indexOf(other.name); [want[i], want[j]] = [want[j], want[i]];
+          check(after.join('|') === want.join('|'), 'moving swaps an account with its neighbour in the same currency, nothing else', () => `${before.join(' | ')}\n      → ${after.join(' | ')}`);
+        } else check(after.join('|') === before.join('|'), 'at the end of its currency, an account stays put');
+        const listed = [...document.querySelectorAll('#accounts-list .account-name')].map(e => e.textContent);
+        const grouped = [...new Set(accts().map(curOf))].sort(byHomeCurrency).flatMap(c => accts().filter(x => curOf(x) === c).map(x => x.name));
+        check(listed.join('|') === (new Set(accts().map(curOf)).size > 1 ? grouped : accts().map(x => x.name)).join('|'), 'the Accounts page lists them in that order', () => listed.join(' | '));
+        openTxnModal();
+        const picker = [...$('#txn-account').options].map(o => o.value);
+        closeTxnModal();
+        check(picker.join('|') === [...new Set(accts().map(curOf))].sort().flatMap(c => accts().filter(x => curOf(x) === c).map(x => x.name)).join('|') || (new Set(accts().map(curOf)).size === 1 && picker.join('|') === accts().map(x => x.name).join('|')),
+              'the transaction form offers accounts in the same order', () => picker.join(' | '));
+        if (chance(0.5)) toggleArrangeAccounts();
+        showView('settings');
+        return `move ${a.name} ${dir}`;
+      }],
       [3, 'update an account to its real balance', async () => {
         const a = pick(accts());
         openBalanceModal(a.id);
@@ -430,7 +459,7 @@
         expect.transactions.sort((a, b) => (a.id < b.id ? -1 : 1));
         await reload();
         // (A goal tracking an account follows its balance; that has its own check.)
-        const diff = firstDiff(expect, snap(), ['current']);
+        const diff = firstDiff(expect, snap(), ['current']);   // (sortOrder is on the server once synced, so it matches either way)
         check(!diff, 'another device\'s change arrives on reload, and nothing else changes', () => `${said}: ${diff}`);
         return said;
       }],
@@ -473,11 +502,12 @@
       [5, 'lose the connection', async () => { S.failWrites = true; offline = int(1, 4); return `offline for ${offline}`; }],
       [5, 'reload', async () => {
         await runRecurring(); renderAll(); await settle();
-        const before = snap();
+        const before = snap(), order = accts().map(a => a.name).join(' | ');
         await reload();
         const after = snap();
         const diff = firstDiff(before, after);
         check(!diff, 'a reload shows exactly what was there before', diff);
+        check(accts().map(a => a.name).join(' | ') === order, 'a reload keeps the accounts in the order you arranged', () => `${order}\n      became ${accts().map(a => a.name).join(' | ')}`);
         return S.failWrites ? 'reload while offline' : 'reload';
       }],
     ];
@@ -488,7 +518,7 @@
     const txnShape = t => ({ id: String(t.id), type: t.type, amount: +t.amount, description: N(t.description), category: N(t.category), account: N(t.account),
       date: t.date, notes: N(t.notes), currency: t.currency || state.currency, transferGroup: N(t.transferGroup), transferPeer: N(t.transferPeer),
       isRecurring: !!t.isRecurring, recurringFrequency: N(t.recurringFrequency), nextRunDate: N(t.nextRunDate), recurringSource: N(t.recurringSource) });
-    const accShape = a => ({ id: String(a.id), name: a.name, type: a.type, institution: N(a.institution), balance: +a.balance, currency: a.currency || 'SGD', icon: N(a.icon) });
+    const accShape = a => ({ id: String(a.id), name: a.name, type: a.type, institution: N(a.institution), balance: +a.balance, currency: a.currency || 'SGD', icon: N(a.icon), sortOrder: N(a.sortOrder) });
     const goalShape = g => ({ id: String(g.id), name: g.name, target: +g.target, current: +g.current, monthly: +g.monthly || 0, date: N(g.date), currency: g.currency, linkedAccount: N(g.linkedAccount) });
     const billShape = b => ({ id: String(b.id), name: b.name, amount: +b.amount, currency: b.currency, category: b.category, account: N(b.account), dueDay: b.dueDay, amountVaries: !!b.amountVaries, isActive: b.isActive !== false });
     const budgetShape = b => ({ id: String(b.id), category: b.category, amount: +b.amount, alertAmount: +b.alertAmount || 0, currency: b.currency });
@@ -512,7 +542,7 @@
       transactions: byId(S.tables.transactions || [], r => txnShape({ id: r.id, type: r.type, amount: r.amount, description: r.description, category: r.category,
         account: r.account, date: r.date, notes: r.notes, currency: r.currency, transferGroup: r.transfer_group, transferPeer: r.transfer_peer,
         isRecurring: r.is_recurring, recurringFrequency: r.recurring_frequency, nextRunDate: r.next_run_date, recurringSource: r.recurring_source })),
-      accounts: byId(S.tables.accounts || [], r => accShape({ id: r.id, name: r.name, type: r.type, institution: r.institution, balance: r.starting_balance, currency: r.currency, icon: r.icon })),
+      accounts: byId(S.tables.accounts || [], r => accShape({ id: r.id, name: r.name, type: r.type, institution: r.institution, balance: r.starting_balance, currency: r.currency, icon: r.icon, sortOrder: r.sort_order })),
       goals: byId(S.tables.goals || [], r => goalShape({ id: r.id, name: r.name, target: r.target, current: r.current, monthly: r.monthly, date: r.target_date, currency: r.currency, linkedAccount: r.linked_account })),
       bills: byId(S.tables.bills || [], r => billShape({ id: r.id, name: r.name, amount: r.amount, currency: r.currency, category: r.category, account: r.account, dueDay: r.due_day, amountVaries: r.amount_varies, isActive: r.is_active })),
       budgets: byId(S.tables.budgets || [], r => budgetShape({ id: r.id, category: r.category, amount: r.amount, alertAmount: r.alert_amount, currency: r.currency }))
@@ -577,7 +607,8 @@
         check(!refused.length, 'the server refuses nothing the app sends', () => refused.map(o => `${o.kind} ${o.table} ${JSON.stringify(o.payload || {}).slice(0, 120)}: ${o.lastError}`).join('; '));
         // A pair's other-side name is rebuilt from the other row on every load,
         // so the server's copy of it is never read.
-        const diff = firstDiff(snap(), serverSnap(), ['transferPeer']);
+        // (Before migration 007 the order lives on the device, not the server.)
+        const diff = firstDiff(snap(), serverSnap(), ['transferPeer', ...(state.accountOrderSynced ? [] : ['sortOrder'])]);
         check(!diff, 'online, the server holds exactly what the screen shows', diff ? 'screen vs server — ' + diff : '');
       }
     }

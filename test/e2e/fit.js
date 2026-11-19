@@ -61,6 +61,7 @@
       'analytics': () => showView('analytics'),
       'analytics-month-open': () => { showView('analytics'); toggleMonthDetail('SGD|' + M1); $('#monthly-summary').scrollIntoView({ block: 'start', behavior: 'instant' }); },
       'accounts': () => { state.balancesMasked = false; showView('accounts'); },
+      'accounts-arrange': () => { state.balancesMasked = false; showView('accounts'); toggleArrangeAccounts(); },
       'settings': () => showView('settings'),
       'menu': () => { showView('dashboard'); toggleSidebar(); },
       'txn-expense': () => txnType('expense'),
@@ -96,6 +97,7 @@
     };
     const closeAll = () => {
       if (bulkMode) toggleBulkMode();
+      if (_arrangingAccounts) toggleArrangeAccounts();
       const planner = $('#salary-planner-body'); if (planner && planner.style.display !== 'none') toggleSalaryPlanner();
       $$('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
       closeSidebar();

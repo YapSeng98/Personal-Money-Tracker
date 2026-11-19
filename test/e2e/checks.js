@@ -868,6 +868,66 @@
       openStatement(mk); ok(!/undefined|NaN/.test($('#stmt-paper').textContent), 'zh: the statement renders'); closeStatement();
       state.language = 'en'; applyLanguage(); renderAll(); nav('analytics');
 
+      // ── Arrange accounts ────────────────────────────────────────────────
+      {
+        const U1 = '11111111-1111-4111-8111-111111111111', U2 = '22222222-2222-4222-8222-222222222222';
+        state.accounts.push({ id: U1, name: 'Arrange One', type: 'Savings', institution: '', balance: 10, currency: 'SGD', icon: '🏦' },
+                            { id: U2, name: 'Arrange Two', type: 'Savings', institution: '', balance: 20, currency: 'SGD', icon: '🏦' });
+        state.balancesMasked = false; nav('accounts'); renderAccounts();
+        const sgd = () => state.accounts.filter(a => a.currency === 'SGD').map(a => a.name);
+        const listedSgd = () => $$('#accounts-list .account-name').map(e => e.textContent).filter(n => sgd().includes(n));
+        const mv = (name, dir) => { const a = state.accounts.find(x => x.name === name); return $(`#accounts-list [data-move="${a.id}:${dir}"]`); };
+        ok($('#acc-arrange-btn') && /Arrange/.test($('#acc-arrange-btn').textContent) && !$('#accounts-list .acc-move'), 'arrange: My Accounts has an Arrange button, and no move buttons until it is pressed');
+        $('#acc-arrange-btn').click();
+        ok($('#acc-arrange-btn').getAttribute('aria-pressed') === 'true' && $('#acc-arrange-btn').textContent === 'Done' && /▲ and ▼/.test(($('.acc-arrange-hint') || {}).textContent || ''),
+           'arrange: it shows ▲ ▼ with a line saying how, and the button becomes Done');
+        ok(!$$('#accounts-list .account-row button').some(b => /Edit|Delete|Update balance/.test(b.title)), 'arrange: edit, delete and update balance step aside while arranging');
+        const first = sgd()[0], last = sgd()[sgd().length - 1];
+        ok(mv(first, 'up').disabled && !mv(first, 'down').disabled && mv(last, 'down').disabled && !mv(last, 'up').disabled,
+           'arrange: ▲ is off for the first account in a currency, ▼ for the last');
+        ok(mv(first, 'down').getAttribute('aria-label') === `Move ${first} down`, 'arrange: each button names its account for screen readers', mv(first, 'down').getAttribute('aria-label'));
+        const before = sgd();
+        state.userId = 'test-user'; state.accountOrderSynced = false; window.__sb.calls.length = 0;
+        mv('Arrange Two', 'up').click(); await wait(10);
+        const want = before.slice(); const i = want.indexOf('Arrange Two'); [want[i - 1], want[i]] = [want[i], want[i - 1]];
+        ok(sgd().join() === want.join() && listedSgd().join() === want.join(), 'arrange: ▲ swaps it with the account above, on screen too', listedSgd().join(' | '));
+        ok(document.activeElement === mv('Arrange Two', 'up'), 'arrange: the focus stays on the button just pressed, so it can be pressed again');
+        ok(!window.__sb.calls.some(c => c.op === 'update' && c.patch && 'sort_order' in c.patch), 'arrange: before migration 007 the order stays on the device and nothing is sent',
+           JSON.stringify(window.__sb.calls.filter(c => c.op === 'update').map(c => c.patch)));
+        ok(JSON.stringify(state.accountOrder) === JSON.stringify(state.accounts.map(a => String(a.id))), 'arrange: ...where it is remembered');
+        state.accountOrderSynced = true; window.__sb.calls.length = 0;
+        const before2 = sgd();
+        mv('Arrange Two', 'up').click(); await wait(10);
+        const want2 = before2.slice(); const i2 = want2.indexOf('Arrange Two'); [want2[i2 - 1], want2[i2]] = [want2[i2], want2[i2 - 1]];
+        ok(sgd().join() === want2.join(), 'arrange: it moves past the next account in its own currency, never one in another', `${before2.join(' | ')} → ${sgd().join(' | ')}`);
+        const sent = window.__sb.calls.filter(c => c.op === 'update' && c.patch && 'sort_order' in c.patch);
+        ok(sent.length >= 1 && sent.every(c => c.patch.sort_order === state.accounts.findIndex(a => String(a.id) === c.filters[0][1][1])),
+           'arrange: with migration 007 the new positions are sent', JSON.stringify(sent.map(c => [c.filters[0][1][1], c.patch.sort_order])));
+        ok(state.accounts.every((a, k) => a.sortOrder === k), 'arrange: ...and every account is numbered by its place, so numbers never tie');
+        openTxnModal();
+        const picked = [...$('#txn-account').options].map(o => o.value).filter(n => sgd().includes(n));
+        closeTxnModal();
+        ok(picked.join() === sgd().join(), 'arrange: the transaction form lists the accounts in the new order', picked.join(' | '));
+        // A reload puts them back in that order: from sort_order once the
+        // database has it, from this device's record of it before then.
+        const asRow = (a, k, withCol) => Object.assign({ id: a.id, user_id: 'test-user', name: a.name, type: a.type, institution: a.institution, currency: a.currency,
+          starting_balance: a.balance, is_active: true, icon: a.icon }, withCol ? { sort_order: a.sortOrder ?? null } : {});
+        const keepT = state.transactions.slice(), keepA = state.accounts.slice(), keepOrder = sgd().join();
+        const keepLocal = state.accountOrder.slice();
+        for (const withCol of [true, false]) {
+          window.__sb.tables = { transactions: [], budgets: [], goals: [], bills: [], preferences: [], backups: [], accounts: keepA.slice().reverse().map((a, k) => asRow(a, k, withCol)) };
+          // With the column: a device that has never seen the order (only the database knows it).
+          state.accountOrder = withCol ? [] : keepLocal;
+          state.outbox = []; await snLoadAll();
+          ok(sgd().join() === keepOrder && state.accountOrderSynced === withCol, `arrange: a reload keeps the order ${withCol ? 'from the database' : 'kept on the device'}`, sgd().join(' | '));
+        }
+        state.transactions = keepT; state.accounts = keepA; state.accountOrderSynced = false; state.outbox = []; state.userId = null;
+        $('#acc-arrange-btn').click();
+        ok(!$('#accounts-list .acc-move') && $$('#accounts-list .account-row button').some(b => b.title === 'Edit'), 'arrange: Done brings the usual buttons back');
+        state.accounts = state.accounts.filter(a => a.id !== U1 && a.id !== U2);
+        renderAll();
+      }
+
       // ── Update balance ──────────────────────────────────────────────────
       {
         state.userId = null;
