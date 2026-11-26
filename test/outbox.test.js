@@ -198,6 +198,23 @@ const kinds = () => state.outbox.map(o => o.kind + ':' + o.rowId).join(' ');
   await flying; await API.flushOutbox();
   ok(server.calls.length === 2 && lastAmount('v') === 3 && state.outbox.length === 0, 'an edit made while its insert is in flight goes after it, not lost',
      JSON.stringify(server.calls));
+  // Found by random use: a goal's figure written offline three times. The
+  // first write was in flight and failed, so the second queued behind it; the
+  // third then folded into the FIRST, and the second, older figure went out
+  // last and stayed on the server.
+  const lastField = (id, f) => { const c = server.calls.filter(x => x.id === id).pop(); return c && c.patch[f]; };
+  reset();
+  API.enqueueWrite('goals', 'update', 'g', { current: 1 });
+  server.plan.push('offline');
+  const doomed = API.flushOutbox();
+  for (let spin = 0; spin < 1000 && !(state.outbox[0] && state.outbox[0].sending); spin++) await Promise.resolve();
+  API.enqueueWrite('goals', 'update', 'g', { current: 2 });         // while the first is in flight
+  await doomed;                                                      // it fails: both wait
+  API.enqueueWrite('goals', 'update', 'g', { current: 3 });         // a third change, still offline
+  await API.flushOutbox();
+  ok(lastField('g', 'current') === 3 && state.outbox.length === 0, 'after a failed send, a later change still lands last (regression)',
+     JSON.stringify(server.calls.map(c => c.patch)));
+  ok(server.calls.filter(c => c.id === 'g').length <= 3, '...without sending more than the changes made');
 
   group('A reload keeps what hasn\'t landed');
   reset();

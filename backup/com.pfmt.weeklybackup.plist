@@ -8,6 +8,8 @@
   <key>ProgramArguments</key>
   <array>
     <string>__SCRIPT_PATH__</string>
+    <string>--if-due</string>
+    <string>__DUE_DAYS__</string>
   </array>
 
   <!-- A launchd job does NOT inherit your shell environment, so the destination
@@ -19,13 +21,13 @@
     <key>__ENV_KEY__</key><string>__BACKUP_DIR__</string>
   </dict>
 
-  <!-- Weekly fills __PERIOD_KEY__ with Weekday (0 = Sunday); monthly fills it
-       with Day (1 = the 1st of the month). StartCalendarInterval fires on the
-       next wake if the Mac was asleep at the scheduled time, so a closed lid
-       only delays the run rather than skipping the period. -->
+  <!-- Every day at 09:00 the script asks whether a backup is due (7 days
+       since the last one for weekly, 28 for monthly) and does nothing if not.
+       So a run that fails (no network after waking) is retried the next
+       morning instead of a week later. StartCalendarInterval fires on the next
+       wake if the Mac was asleep at 09:00. -->
   <key>StartCalendarInterval</key>
   <dict>
-    <key>__PERIOD_KEY__</key><integer>__PERIOD_VAL__</integer>
     <key>Hour</key><integer>9</integer>
     <key>Minute</key><integer>0</integer>
   </dict>

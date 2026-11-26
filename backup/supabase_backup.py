@@ -4,7 +4,8 @@
 #
 #   ./setup_supabase_keychain.sh     once: stores the service-role key
 #   ./supabase_backup.py             take one now
-#   ./install_schedule.sh            weekly, Sunday 09:00
+#   ./supabase_backup.py --if-due 7  take one only if the newest is 7+ days old
+#   ./install_schedule.sh            weekly: checked every day at 09:00
 #
 # Writes ~/PFMT_Backups/<date>/<table>.json plus manifest.json.
 # Override the folder with PFMT_BACKUP_DIR and how many runs to keep with
@@ -129,9 +130,44 @@ def fetch_table(key, table):
     return rows
 
 
+def newest_backup_age(today):
+    """Days since the newest finished backup folder, or None if there is none."""
+    if not os.path.isdir(BACKUP_DIR):
+        return None
+    dates = []
+    for d in os.listdir(BACKUP_DIR):
+        try:
+            if os.path.isfile(os.path.join(BACKUP_DIR, d, 'manifest.json')):
+                dates.append(datetime.date.fromisoformat(d))
+        except ValueError:
+            pass                       # .logs, x.partial and anything else
+    return (today - max(dates)).days if dates else None
+
+
+# The schedule fires every day and asks whether a backup is due. A weekly
+# backup that fails (the Mac woke on 22 November 2026 with no network, retried
+# into the next day and gave up) is then retried the next morning, not a
+# week later. Nothing is fetched until a backup is due.
+def due(days, today):
+    age = newest_backup_age(today)
+    if age is not None and age < days:
+        log(f'not due: the newest backup is {age} day{"" if age == 1 else "s"} old (due at {days})')
+        return False
+    return True
+
+
 def main():
+    today_date = datetime.date.today()
+    if '--if-due' in sys.argv:
+        i = sys.argv.index('--if-due')
+        try:
+            days = int(sys.argv[i + 1])
+        except (IndexError, ValueError):
+            fail('--if-due needs a number of days, e.g. --if-due 7')
+        if not due(days, today_date):
+            return
     key = service_key()
-    today = datetime.date.today().isoformat()
+    today = today_date.isoformat()
     final = os.path.join(BACKUP_DIR, today)
     stage = final + '.partial'
     shutil.rmtree(stage, ignore_errors=True)

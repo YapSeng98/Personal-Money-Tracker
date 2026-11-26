@@ -39,6 +39,29 @@
       lastError: 'new row for relation "transactions" violates check constraint "transactions_currency_check"' }];
     window.__sb.failWrites = true;
     if (P.get('lang') === 'zh') state.language = 'zh';
+
+    // &poison=1: every piece of text a person types (descriptions, notes,
+    // account, goal and bill names, an institution, a category, the display
+    // name) carries markup that would run if any screen put it into the page
+    // as HTML. xssAudit() then looks for it on every screen.
+    const POISON = P.get('poison') === '1';
+    const BAD = n => `${n}"><img src=x data-xss="${n}" onerror="window.__xss=(window.__xss||[]).concat('${n}')"><b data-xss="${n}">'`;
+    if (POISON) {
+      const renamed = new Map();
+      state.accounts.forEach((a, i) => { if (i % 2 === 0) { renamed.set(a.name, BAD('account' + i)); a.name = renamed.get(a.name); a.institution = BAD('institution' + i); } });
+      const rn = v => renamed.get(v) || v;
+      state.transactions.forEach((t, i) => {
+        t.account = rn(t.account); if (t.transferPeer) t.transferPeer = rn(t.transferPeer);
+        if (i % 3 === 0) t.description = BAD('description' + i);
+        if (i % 4 === 0) t.notes = BAD('notes' + i);
+        if (i % 11 === 0 && !t.transferGroup) t.category = BAD('category' + i);
+      });
+      state.goals.forEach((g, i) => { g.name = BAD('goal' + i); g.remarks = BAD('remarks' + i); g.linkedAccount = rn(g.linkedAccount); });
+      state.bills.forEach((b, i) => { b.name = BAD('bill' + i); b.notes = BAD('billnotes' + i); b.account = rn(b.account); });
+      state.budgets.forEach((b, i) => { if (i === 0) b.category = BAD('budget' + i); });
+      state.displayName = BAD('name');
+      state.outboxRejected[0].lastError = BAD('server-error');
+    }
     applyLanguage();
     renderAll();
 
@@ -70,7 +93,7 @@
       'txn-asset': () => txnType('asset'),
       'txn-payback': () => txnType('payback'),
       'txn-edit': () => openTxnModal(long.id),
-      'txn-again': () => repeatToday(state.transactions.find(t => t.description === 'Kopi and toast').id),
+      'txn-again': () => repeatToday((state.transactions.find(t => t.description === 'Kopi and toast') || state.transactions.find(t => t.type === 'expense' && !t.transferGroup)).id),
       'txn-suggest': () => { txnType('expense'); $('#txn-desc').value = 'a'; showDescSuggestions(); },
       'txn-suggest-transfer': () => { txnType('transfer'); showDescSuggestions(); },
       'budget-new': () => openBudgetModal(),
@@ -276,6 +299,9 @@
       //    scrolled into view, nothing (like the bottom bar) sits on top.
       const controls = $$('a[href], button, input, select, textarea, summary, label[for], [onclick], [role="button"]', root)
         .filter(el => !(el.tagName === 'INPUT' && el.type === 'hidden') && shown(el) && !parked(el))
+        // A <label for> beside a full-size field is not a separate target: the
+        // field itself is (WCAG 2.5.8's "equivalent" exception).
+        .filter(el => { if (el.tagName !== 'LABEL') return true; const f = el.control; return !(f && shown(f) && f.getBoundingClientRect().height >= 24); })
         .filter((el, _, all) => !all.some(o => o !== el && o.contains(el) && o.tagName !== 'LABEL' && o.matches('button, a[href], [onclick], [role="button"]')));
       const boxOf = el => ((el.tagName === 'INPUT' && el.closest('label')) || el).getBoundingClientRect();
       const small = r => r.width < 24 || r.height < 24;
@@ -362,6 +388,133 @@
       return [...seen.values()];
     }
 
+    // ── &poison=1: nothing typed is ever run as markup ──
+    function xssAudit(screen) {
+      const out = [];
+      const add = (kind, el, detail) => out.push({ screen, kind, at: el ? name(el) : '', text: '', detail });
+      if (window.__xss && window.__xss.length) { add('typed text ran as code', null, window.__xss.join(', ')); window.__xss = []; }
+      document.querySelectorAll('[data-xss]').forEach(el => add('typed text became markup', el.parentElement, `<${el.tagName.toLowerCase()}> from ${el.getAttribute('data-xss')}`));
+      document.querySelectorAll('[onerror]').forEach(el => add('typed text became markup', el, 'an onerror attribute'));
+      return out;
+    }
+
+    // ── &a11y=1: what a screen-reader or keyboard user meets ──
+    // Names: every control says what it is (aria-label, a <label>, its own
+    // text), never only a symbol like ✏️ or ▲, and never only a placeholder.
+    // Contrast: text against what is actually behind it, WCAG AA (4.5:1, or
+    // 3:1 for large text). Focus: a control looks different when focused.
+    // Windows: an open one is announced as a dialog and holds the focus.
+    // Language: the page says which language it is in.
+    const toRGB = c => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+    const over = (top, bottom) => { const a = top.a + bottom.a * (1 - top.a); if (!a) return { r: 0, g: 0, b: 0, a: 0 };
+      return { r: (top.r * top.a + bottom.r * bottom.a * (1 - top.a)) / a, g: (top.g * top.a + bottom.g * bottom.a * (1 - top.a)) / a, b: (top.b * top.a + bottom.b * bottom.a * (1 - top.a)) / a, a }; };
+    const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    // What is painted behind an element: its own and its ancestors' backgrounds,
+    // stacked; null when an image or gradient is in the way (can't be measured).
+    const backdrop = el => {
+      const layers = [];
+      for (let e = el; e; e = e.parentElement) {
+        const s = getComputedStyle(e);
+        if (s.backgroundImage && s.backgroundImage !== 'none') return null;
+        const c = toRGB(s.backgroundColor);
+        if (c && c.a > 0) { layers.push(c); if (c.a >= 1) break; }
+      }
+      let base = { r: 255, g: 255, b: 255, a: 1 };
+      for (let i = layers.length - 1; i >= 0; i--) base = over(layers[i], base);
+      return base;
+    };
+    const accName = el => {
+      const by = el.getAttribute('aria-labelledby');
+      if (by) return by.split(/\s+/).map(id => (document.getElementById(id) || {}).textContent || '').join(' ').trim();
+      const al = (el.getAttribute('aria-label') || '').trim();
+      if (al) return al;
+      if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+        if (el.labels && el.labels.length) return [...el.labels].map(l => l.textContent).join(' ').trim();
+        if (/^(button|submit|reset)$/.test(el.type)) return el.value;
+        return (el.title || '').trim();
+      }
+      const own = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim() + [...el.querySelectorAll('img[alt]')].map(i => i.alt).join(' ');
+      return (own || el.title || '').trim();
+    };
+    const hasWords = s => /[\p{L}\p{N}]/u.test(s);
+    function a11yAudit(screen) {
+      const out = [];
+      const add = (kind, el, detail) => out.push({ screen, kind, at: el ? name(el) : '', text: el ? snippet(el) : '', detail: detail || '' });
+      const root = rootOf();
+      const visible = el => { if (el.closest('[aria-hidden="true"],[hidden]')) return false; for (let e = el; e && e.nodeType === 1; e = e.parentElement) { const s = getComputedStyle(e); if (s.display === 'none' || s.visibility === 'hidden' || +s.opacity === 0) return false; } const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; };
+      const controls = [...root.querySelectorAll('button, a[href], input, select, textarea, summary, [role="button"], [role="option"], [role="tab"], [onclick]')]
+        .filter(el => !(el.tagName === 'INPUT' && el.type === 'hidden') && visible(el));
+      controls.forEach(el => {
+        const n = accName(el), field = /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName);
+        if (field) {
+          if (!n) add(el.placeholder ? 'field labelled only by its placeholder' : 'field with no label', el, el.placeholder ? `placeholder “${el.placeholder}”` : el.id || el.type);
+        } else if (!n) add('control with no name', el);
+        else if (!hasWords(n)) add('control named only by a symbol', el, `reads as “${n}”`);
+        // Something clickable that isn't a real control can't be reached by keyboard.
+        const native = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY|LABEL)$/.test(el.tagName);
+        if (!native && el.hasAttribute('onclick') && !el.closest('button, a[href]') && el.getAttribute('role') !== 'option' && !(el.tabIndex >= 0 && el.getAttribute('role')))
+          add('clickable but not reachable by keyboard', el, `<${el.tagName.toLowerCase()}> with onclick, no role and tabindex`);
+      });
+      // An open window is a dialog with a name, and the focus is inside it.
+      // (Checked before the focus sampling below, which moves the focus.)
+      const win = root.classList && root.classList.contains('modal-backdrop') ? root : null;
+      if (win) {
+        const box = win.querySelector('[role="dialog"], [role="alertdialog"]') || (win.matches('[role="dialog"],[role="alertdialog"]') ? win : null);
+        if (!box) add('window not announced as a dialog', win);
+        else if (!box.getAttribute('aria-labelledby') && !box.getAttribute('aria-label')) add('dialog with no name', box);
+        else if (box.getAttribute('aria-modal') !== 'true') add('dialog not marked modal', box);
+        if (!win.contains(document.activeElement)) add('focus left behind the open window', win, `focus is on ${document.activeElement ? name(document.activeElement) : 'nothing'}`);
+      }
+      // Focus shows. Sampled, since focusing everything is slow; transitions
+      // are paused so the focused look is read, not its first frame.
+      const noAnim = document.createElement('style');
+      noAnim.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+      document.head.appendChild(noAnim);
+      controls.filter(el => !el.disabled).slice(0, 60).forEach(el => {
+        const look = () => { const s = getComputedStyle(el); return [s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0 ? 'o' : '', s.boxShadow, s.borderColor, s.backgroundColor, s.textDecorationLine].join('|'); };
+        if (document.activeElement === el) el.blur();   // already focused (a window's first field): compare against unfocused
+        const before = look();
+        el.focus({ preventScroll: true });
+        if (document.activeElement !== el) return;
+        const after = look();
+        el.blur();
+        if (after === before || (!after.startsWith('o') && after.split('|').slice(1).join('|') === before.split('|').slice(1).join('|'))) add('no visible focus', el);
+      });
+      noAnim.remove();
+      // Contrast of every piece of text.
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /\S/.test(n.nodeValue) ? 1 : 3 });
+      const done = new Set();
+      for (let t; (t = walker.nextNode());) {
+        const el = t.parentElement;
+        if (!el || done.has(el) || /^(SCRIPT|STYLE|OPTION|TITLE)$/.test(el.tagName) || !visible(el) || el.closest('[disabled], .acc-move[disabled]')) continue;
+        if (!hasWords(t.nodeValue)) continue;   // emoji and symbols are drawn in their own colours
+        done.add(el);
+        const s = getComputedStyle(el);
+        const fg = toRGB(s.color); if (!fg) continue;
+        let op = 1; for (let e = el; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
+        const bg = backdrop(el); if (!bg) continue;
+        const shown = over({ ...fg, a: fg.a * op }, bg);
+        const size = parseFloat(s.fontSize), bold = +s.fontWeight >= 700;
+        const need = size >= 24 || (size >= 18.66 && bold) ? 3 : 4.5;
+        const r = ratio(shown, bg);
+        if (r < need - 0.05) add('text contrast too low', el, `${r.toFixed(2)}:1, needs ${need}:1 (${s.color} on rgb(${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)}), ${size}px)`);
+      }
+      // Pictures and charts say what they show.
+      root.querySelectorAll('img').forEach(img => { if (visible(img) && !img.hasAttribute('alt')) add('image with no alt text', img); });
+      root.querySelectorAll('svg').forEach(svg => {
+        const r = svg.getBoundingClientRect();
+        if (!visible(svg) || r.width < 120 || r.height < 60 || svg.closest('[aria-hidden="true"]')) return;
+        if (!svg.getAttribute('aria-label') && !svg.getAttribute('aria-labelledby') && !svg.querySelector('title') && !svg.closest('[role="img"][aria-label]'))
+          add('chart with no description', svg);
+      });
+      const lang = document.documentElement.lang || '';
+      if ((state.language === 'zh') !== lang.startsWith('zh')) add('page language does not match what it shows', null, `lang="${lang}" while showing ${state.language}`);
+      const seen = new Map();
+      out.forEach(f => { const k = f.kind + '|' + f.at + '|' + f.text; if (seen.has(k)) seen.get(k).count++; else seen.set(k, Object.assign(f, { count: 1 })); });
+      return [...seen.values()];
+    }
+
     // Measure in the app's own fonts, not a fallback that is wider or narrower.
     await Promise.race([document.fonts.ready, wait(5000)]);
     const only = P.get('screen');
@@ -374,7 +527,7 @@
       // Let fades and slides finish, or a half-faded page looks hidden.
       const ending = document.getAnimations().filter(an => an.effect && an.effect.getComputedTiming().iterations !== Infinity);
       await Promise.race([Promise.all(ending.map(an => an.finished.catch(() => {}))), wait(2000)]);
-      findings.push(...audit(screen));
+      findings.push(...(P.get('a11y') === '1' ? a11yAudit(screen) : POISON ? xssAudit(screen) : audit(screen)));
     }
     closeAll();
     const pre = document.createElement('pre');

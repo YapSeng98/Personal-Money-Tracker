@@ -1,8 +1,10 @@
 # PFMT Weekly Backup
 
 Backs up **every user's data** straight from Supabase to a folder on this Mac,
-every Sunday at 09:00. Nothing to install — it uses the Python and curl that
-come with macOS.
+once a week. The job checks every morning at 09:00 and backs up when the newest
+backup is 7 days old, so a run that fails (the Mac woke with no network) is
+retried the next morning, not a week later. Nothing to install — it uses the
+Python and curl that come with macOS.
 
 ## Set it up once
 
@@ -18,7 +20,7 @@ come with macOS.
    cd backup
    ./setup_supabase_keychain.sh   # paste the key; it goes into the Keychain only
    ./supabase_backup.py           # take one now
-   ./install_schedule.sh          # every Sunday 09:00 from here on
+   ./install_schedule.sh          # weekly from here on, checked daily at 09:00
    ```
 
 ## What you get
@@ -53,7 +55,9 @@ export PFMT_BACKUP_DIR="$HOME/Dropbox/PFMT_Backups"   # default ~/PFMT_Backups
 export PFMT_KEEP_RUNS=26                              # default 12
 ```
 
-`./install_schedule.sh --monthly` runs on the 1st of each month instead.
+`./install_schedule.sh --monthly` backs up every 4 weeks instead.
+`./supabase_backup.py --if-due 7` backs up only if the newest backup is at
+least 7 days old; it is what the schedule runs.
 
 ## Check on it
 
@@ -64,7 +68,9 @@ tail ~/PFMT_Backups/.logs/launchd.*.log   # what the last run did
 ./install_schedule.sh --remove                      # stop it (keeps backups)
 ```
 
-A closed lid only delays a run to the next wake; it never skips the week.
+A closed lid only delays a run to the next wake. A run that fails anyway is
+tried again the next morning, and each failure shows a "PFMT backup failed"
+notification.
 
 Keep the folder out of `~/Documents`, `~/Desktop` and `~/Downloads`. macOS
 blocks background jobs from writing there, so the scheduled run fails even

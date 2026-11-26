@@ -6,6 +6,11 @@
  *       node test/e2e/run.js --no-offline (skip the offline run, which needs network)
  *       node test/e2e/run.js --no-fit    (skip the phone-fit audit)
  *       node test/e2e/run.js --no-fuzz   (skip the short random-use pass)
+ *       node test/e2e/run.js --no-a11y   (skip the accessibility and typed-markup passes)
+ *       node test/e2e/run.js --a11y [--all] (only the accessibility audit, at 390px and
+ *                                          360px in Chinese, light and dark, with a report)
+ *       node test/e2e/run.js --xss       (only the typed-markup pass: markup in every
+ *                                          text field, every screen checked for it)
  *       node test/e2e/run.js --fuzz [--seeds=N --steps=M --first=K] [--backup DIR --user ID]
  *                                          random everyday use through the real app
  *                                          (fuzz.js) against a fake server that
@@ -312,19 +317,21 @@ const FIT_SIZES = [
   { name: '844×390', query: '', size: { width: 844, height: 390, mobile: true } },
   { name: '768', query: '', size: { width: 768, height: 1024, mobile: true } },
 ];
-async function runFit(dt, url, quick) {
+async function runFit(dt, url, quick, mode = '', sizes = null) {
   const merged = new Map(), errors = [];
-  const pick = quick ? FIT_QUICK : (process.argv.find(a => a.startsWith('--sizes=')) || '').slice(8).split(',').filter(Boolean);
+  const pick = sizes || (quick ? FIT_QUICK : (process.argv.find(a => a.startsWith('--sizes=')) || '').slice(8).split(',').filter(Boolean));
   for (const fit of FIT_SIZES.filter(f => !pick.length || pick.includes(f.name))) {
-    const out = await checked(url + '?view=fit&theme=dark' + fit.query, fit.size);
+    for (const theme of mode === 'a11y' ? ['light', 'dark'] : ['dark']) {
+    const out = await checked(url + `?view=fit&theme=${theme}` + fit.query + (mode === 'a11y' ? '&a11y=1' : mode === 'xss' ? '&poison=1' : ''), fit.size);
     if (out.retried) console.log(`  (fit ${fit.name}: the browser froze; ran again in a fresh one)`);
     errors.push(...(out.errors || []).map(e => `${fit.name}: ${e}`));
     if (!out.findings) { errors.push(`${fit.name}: the audit did not finish`); continue; }
     out.findings.forEach(f => {
       const k = [f.kind, f.screen, f.at, f.text].join('|');
       if (!merged.has(k)) merged.set(k, Object.assign({}, f, { sizes: [], details: [] }));
-      const m = merged.get(k); m.sizes.push(fit.name); m.details.push(f.detail);
+      const m = merged.get(k); m.sizes.push(mode === 'a11y' ? `${fit.name} ${theme}` : fit.name); m.details.push(f.detail);
     });
+    }
   }
   return { findings: [...merged.values()], errors };
 }
@@ -414,6 +421,22 @@ async function main() {
     } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
     process.exit(failed ? 1 : 0);
   }
+  if (process.argv.includes('--a11y') || process.argv.includes('--xss')) {
+    try {
+      const mode = process.argv.includes('--a11y') ? 'a11y' : 'xss';
+      const { findings, errors } = await runFit(browser.dt, url, false, mode, mode === 'a11y' ? ['390', '360 zh'] : ['390']);
+      const kinds = [...new Set(findings.map(f => f.kind))];
+      kinds.forEach(kind => {
+        const list = findings.filter(f => f.kind === kind);
+        console.log(`\n${kind} (${list.length})`);
+        list.slice(0, process.argv.includes('--all') ? 1e9 : 25).forEach(f => console.log(`  [${f.screen}] ${f.at}${f.text ? ' “' + f.text + '”' : ''} — ${f.details[0]} @ ${f.sizes.join(', ')}`));
+      });
+      errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+      console.log(`\n${findings.length} findings, ${errors.length} errors`);
+      failed = findings.length + errors.length;
+    } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+    process.exit(failed ? 1 : 0);
+  }
   if (process.argv.includes('--fuzz')) {
     try {
       const seeds = +(process.argv.find(a => a.startsWith('--seeds=')) || '--seeds=5').slice(8);
@@ -463,6 +486,18 @@ async function main() {
       console.log(`${findings.length || errors.length ? 'FAIL' : 'PASS'} phone fit (${FIT_QUICK.join(', ')}; every page, window and menu): ${findings.length} problem${findings.length === 1 ? '' : 's'}, ${errors.length} page errors`);
       findings.forEach(f => console.log(`  ✗ ${f.kind} [${f.screen}] ${f.at}${f.text ? ' “' + f.text + '”' : ''} — ${f.details[0]} @ ${f.sizes.join(', ')}`));
       errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+    }
+    if (!process.argv.includes('--no-a11y')) {
+      // Accessibility (every screen at 390px, light and dark) and typed text
+      // never running as markup (every screen, with markup in every field).
+      for (const [mode, label] of [['a11y', 'accessibility (390px light and dark; names, labels, contrast, focus, dialogs, language)'],
+                                   ['xss', 'typed text never runs as code (markup in every field, every screen)']]) {
+        const { findings, errors } = await runFit(browser.dt, url, false, mode, ['390']);
+        failed += findings.length + errors.length;
+        console.log(`${findings.length || errors.length ? 'FAIL' : 'PASS'} ${label}: ${findings.length} problem${findings.length === 1 ? '' : 's'}, ${errors.length} page errors`);
+        findings.slice(0, 30).forEach(f => console.log(`  ✗ ${f.kind} [${f.screen}] ${f.at}${f.text ? ' “' + f.text + '”' : ''} — ${f.details[0]} @ ${f.sizes.join(', ')}`));
+        errors.forEach(e => console.log(`  ✗ page error: ${e.slice(0, 300)}`));
+      }
     }
     if (!process.argv.includes('--no-fuzz')) {
       // A short pass of random use on every run; --fuzz runs as many as asked.

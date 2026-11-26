@@ -31,6 +31,11 @@
   --amber:#F59E0B; --amber-s:#FFFBEB;
   --sky:#3B82F6; --sky-s:#EFF6FF;
   --violet:#8B5CF6; --violet-s:#F5F3FF;
+  /* Text versions of the accents. The bright accents above are for fills,
+     bars and icons; as text on a light card they read at 2–3.6:1 (amber 2.1).
+     These keep each hue at 4.5:1 or more on the card, the page and the
+     accent's own tint (WCAG AA). Dark mode redefines them below. */
+  --coral-t:#D42020; --jade-t:#007E5F; --sky-t:#2563EB; --amber-t:#B45309; --indigo-t:#4F46E5; --violet-t:#7C3AED;
   /* New signature accent — an electric indigo that anchors the "bold gradient
      glass" refresh. Layered with jade/violet into --grad-brand below so every
      hero surface, primary action and active state pulls from one gradient
@@ -69,6 +74,7 @@ html[data-theme="dark"] {
   --violet-s:rgba(139,92,246,.16);
   --indigo-s:rgba(99,102,241,.18);
   --jade-d:#2FE0AE;
+  --coral-t:#FF6B6B; --jade-t:#2FE0AE; --sky-t:#60A5FA; --amber-t:#F59E0B; --indigo-t:#818CF8; --violet-t:#A78BFA;
   --glass:rgba(19,25,43,.6); --glass-border:rgba(255,255,255,.07);
   --aurora-1:rgba(99,102,241,.18); --aurora-2:rgba(139,92,246,.18); --aurora-3:rgba(0,200,150,.14);
   --grid-line:rgba(140,170,220,.045);
@@ -122,7 +128,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .sidebar::after{content:'';position:absolute;bottom:-110px;right:-90px;width:230px;height:230px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(0,200,150,.2),transparent 70%);}
 .sidebar-logo{position:relative;z-index:1;padding:20px 20px 16px;font-family:var(--fd);font-size:18px;font-weight:700;color:white;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;}
 .sidebar-logo .pill{background:var(--grad-brand);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.5px;}
-.nav-section{position:relative;z-index:1;padding:20px 12px 8px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.3);}
+.nav-section{position:relative;z-index:1;padding:20px 12px 8px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.55);}
 .nav-item{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:10px 14px;margin:2px 8px;border-radius:12px;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all .18s;border:none;background:none;width:calc(100% - 16px);text-align:left;}
 .nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88);}
 .nav-item.active{background:linear-gradient(90deg,rgba(99,102,241,.26),rgba(0,200,150,.14));color:#fff;box-shadow:inset 3px 0 0 var(--jade),inset 0 0 0 1px rgba(255,255,255,.05);}
@@ -130,15 +136,15 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 /* Count of bills still to pay this month — the one number worth carrying into
    the nav, so an unpaid bill is visible without opening the page. */
 .nav-badge{margin-left:auto;min-width:18px;padding:1px 6px;border-radius:99px;background:var(--amber);color:#1a1a1a;font-size:10px;font-weight:800;text-align:center;line-height:16px;}
-.nav-badge.overdue{background:var(--coral);color:#fff;}
+.nav-badge.overdue{background:#D42020;color:#fff;}
 /* ── BILLS ── */
 .bill-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;background:var(--card);transition:border-color .15s;}
 .bill-row:hover{border-color:var(--sky);}
-.bill-row.is-paid{opacity:.72;}
-.bill-row.is-paused>:not(.bill-actions){opacity:.5;}
+.bill-row.is-paid{opacity:1;}   /* the Paid chip says so; dimming made the row unreadable */
+.bill-row.is-paused .bill-name{color:var(--ink2);}   /* "Paused" says so; no dimming */
 .bill-tick{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid var(--border);color:transparent;}
 .bill-tick.on{background:var(--jade);border-color:var(--jade);color:#fff;}
-.bill-tick.late{border-color:var(--coral);color:var(--coral);}
+.bill-tick.late{border-color:var(--coral);color:var(--coral-t);}
 .bill-main{flex:1;min-width:0;}
 .bill-name{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .bill-sub{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;}
@@ -165,17 +171,19 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .panel-actions{display:flex;gap:8px;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:transform .15s ease,box-shadow .15s ease,background .15s ease,color .15s ease,border-color .15s ease;}
 .btn:active{transform:scale(.97);}
-.btn-primary{background:var(--grad-brand);color:white;box-shadow:0 6px 20px -8px rgba(99,102,241,.6);}
+/* Button fills keep white text at 4.5:1 or more (the brand gradient's jade end
+   read at 2.2:1, so buttons use its indigo-to-violet stretch). */
+.btn-primary{background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);color:white;box-shadow:0 6px 20px -8px rgba(99,102,241,.6);}
 .btn-primary:hover{box-shadow:0 10px 26px -8px rgba(99,102,241,.7);transform:translateY(-1px);}
-.btn-purple{background:#8B5CF6;color:white;}
-.btn-jade{background:linear-gradient(135deg,#00E0AA 0%,#00A37A 100%);color:white;box-shadow:0 6px 18px -8px rgba(0,200,150,.55);}
+.btn-purple{background:#7C3AED;color:white;}
+.btn-jade{background:linear-gradient(135deg,#00875F 0%,#047857 100%);color:white;box-shadow:0 6px 18px -8px rgba(0,200,150,.55);}
 .btn-jade:hover{box-shadow:0 10px 24px -8px rgba(0,200,150,.65);transform:translateY(-1px);}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
 .btn-ghost:hover{background:var(--white);color:var(--ink);border-color:var(--indigo);}
-.btn-ghost.active{background:var(--jade-s);color:var(--jade-d);border-color:var(--jade);}
-.btn-coral{background:var(--coral);color:white;}
-.btn-coral:hover{background:#e04a4a;}
-.btn-amber{background:var(--amber);color:white;}
+.btn-ghost.active{background:var(--jade-s);color:var(--jade-t);border-color:var(--jade);}
+.btn-coral{background:#D42020;color:white;}
+.btn-coral:hover{background:#B91C1C;}
+.btn-amber{background:var(--amber);color:#1F1300;}
 .btn-amber:hover{background:#d97706;}
 .btn-sky{background:var(--sky);color:white;}
 .btn-sm{padding:5px 10px;font-size:11px;border-radius:8px;}
@@ -191,7 +199,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .kpi{position:relative;background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);border:1px solid var(--glass-border);border-radius:18px;padding:18px 20px;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease;box-shadow:0 1px 2px rgba(15,23,42,.03),0 16px 32px -22px rgba(15,23,42,.3);}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad-brand);opacity:.85;}
 .kpi:hover{transform:translateY(-2px);box-shadow:0 1px 2px rgba(15,23,42,.04),0 20px 40px -18px rgba(99,102,241,.3);}
-.msum-x{color:var(--sky);font-family:var(--fm);}
+.msum-x{color:var(--sky-t);font-family:var(--fm);}
 .msum-foot{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
 .budget-clickable{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease;}
 .budget-clickable:hover{transform:translateY(-2px);box-shadow:0 10px 26px -12px rgba(99,102,241,.4);border-color:var(--indigo);}
@@ -205,8 +213,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .hero-cur-net{font-family:var(--fd);font-size:clamp(22px,3.2vw,34px);font-weight:800;line-height:1.15;
   overflow-wrap:break-word;}
 .hero-cur-flow{font-family:var(--fm);font-size:12px;font-weight:700;margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;}
-.hero-flow-in{color:#5EEAC1;}
-.hero-flow-out{color:#FF95AA;}
+.hero-flow-in{color:#8BF0CF;}
+.hero-flow-out{color:#FFB4BE;}
 .hero-flow-sep{color:rgba(255,255,255,.32);}
 .kpi-multi{font-family:var(--fm);font-size:12px;font-weight:700;line-height:1.6;}
 @media(max-width:900px){
@@ -219,8 +227,12 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .kpi-sub{position:relative;z-index:1;font-size:11px;color:var(--muted);}
 
 /* ── BALANCE HERO ── */
-.balance-hero{background:var(--grad-brand);border-radius:24px;padding:28px 32px;color:white;margin-bottom:24px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 26px 60px -26px rgba(79,70,229,.6);}
-.balance-hero::before{content:'';position:absolute;right:-50px;top:-50px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.24) 0%,transparent 70%);}
+/* The brand's indigo → violet → jade, taken deep enough that the figures on it
+   read: on the bright gradient even white fell to 2:1 at the jade end and a
+   negative balance in coral to 1.2:1. White reads at 7.8:1 or more here, the
+   mint and pink of money in and out at 4.7:1 or more. */
+.balance-hero{background:linear-gradient(135deg,#312E81 0%,#4C1D95 55%,#064E3B 100%);border-radius:24px;padding:28px 32px;color:white;margin-bottom:24px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 26px 60px -26px rgba(79,70,229,.6);}
+.balance-hero::before{content:'';position:absolute;right:-50px;top:-50px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14) 0%,transparent 70%);}
 .balance-hero::after{content:'';position:absolute;left:-70px;bottom:-90px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,150,.35) 0%,transparent 70%);}
 .balance-grid{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;position:relative;z-index:1;}
 .balance-grid>*{min-width:0;}
@@ -253,16 +265,16 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
    visible on narrow screens. overflow-wrap stops a long word forcing width. */
 .txn-meta{font-size:11px;color:var(--muted);margin-top:1px;overflow-wrap:break-word;}
 .txn-amt{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0;margin-left:auto;}
-.txn-amt.pos{color:var(--jade-d);}
-.txn-amt.neg{color:var(--coral);}
+.txn-amt.pos{color:var(--jade-t);}
+.txn-amt.neg{color:var(--coral-t);}
 .txn-actions{display:flex;gap:4px;opacity:.35;transition:opacity .15s;}
 .txn-row:hover .txn-actions{opacity:1;}
 .icon-btn{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-size:13px;transition:all .15s;}
-.icon-btn.edit{background:var(--sky-s);color:var(--sky);}
+.icon-btn.edit{background:var(--sky-s);color:var(--sky-t);}
 .icon-btn.edit:hover{background:#dbeafe;}
-.icon-btn.del{background:var(--coral-s);color:var(--coral);}
+.icon-btn.del{background:var(--coral-s);color:var(--coral-t);}
 .icon-btn.del:hover{background:#fee2e2;}
-.icon-btn.again{background:var(--jade-s);color:var(--jade-d);font-weight:800;}
+.icon-btn.again{background:var(--jade-s);color:var(--jade-t);font-weight:800;}
 .icon-btn.again:hover{background:#ccf7ea;}
 
 /* ── CHART BARS ── */
@@ -272,8 +284,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .trend-range-btn.active{background:var(--grad-brand);color:#fff;}
 .trend-metric-tabs{display:flex;gap:6px;margin:10px 0 4px;}
 .trend-metric-btn{font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;}
-.trend-metric-btn.active[data-metric="expense"]{background:var(--coral-s);border-color:var(--coral);color:var(--coral);}
-.trend-metric-btn.active[data-metric="income"]{background:var(--jade-s);border-color:var(--jade);color:var(--jade-d);}
+.trend-metric-btn.active[data-metric="expense"]{background:var(--coral-s);border-color:var(--coral);color:var(--coral-t);}
+.trend-metric-btn.active[data-metric="income"]{background:var(--jade-s);border-color:var(--jade);color:var(--jade-t);}
 .trend-detail{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px;min-height:18px;}
 .review-month-nav{display:flex;align-items:center;gap:8px;}
 .review-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:18px;}
@@ -298,7 +310,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .review-centre b{font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;}
 .review-centre small{font-size:11px;color:var(--muted);line-height:1.3;}
 .review-centre .ci{font-size:20px;line-height:1;}
-.review-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--indigo);background:var(--indigo-s);padding:2px 8px;border-radius:7px;}
+.review-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--indigo-t);background:var(--indigo-s);padding:2px 8px;border-radius:7px;}
 .review-table{flex:1;min-width:0;}
 .review-row{display:grid;grid-template-columns:26px minmax(0,1fr) 116px 64px 40px 104px;align-items:center;gap:10px;padding:5px 8px;border-radius:9px;font-size:13px;}
 .review-row.hd{font-family:var(--ff);font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding-top:0;padding-bottom:6px;}
@@ -322,8 +334,8 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .review-amt{font-family:var(--fm);font-size:12.5px;font-weight:700;white-space:nowrap;}
 .review-row.zero .review-nm,.review-row.zero .review-amt{color:var(--muted);}
 .review-cat-delta{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;white-space:nowrap;}
-.review-cat-delta.up{background:var(--coral-s);color:var(--coral);}
-.review-cat-delta.down{background:var(--jade-s);color:var(--jade-d);}
+.review-cat-delta.up{background:var(--coral-s);color:var(--coral-t);}
+.review-cat-delta.down{background:var(--jade-s);color:var(--jade-t);}
 /* Thresholds are the section's own width: the change column needs the table
    beside the donut to be ~530px wide, and below ~600px the donut moves on top. */
 @container (max-width:740px){
@@ -487,7 +499,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 select.form-input optgroup{font-weight:700;font-style:normal;}
 html[data-theme="dark"] select.form-input option,
 html[data-theme="dark"] select.form-input optgroup{background:var(--card);color:var(--ink);}
-html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
+html[data-theme="dark"] select.form-input optgroup{color:var(--indigo-t);}
 /* Monthly In & Out: one block per currency, a headline of the range's totals
    over a table whose In / Out bars show each month's money in and out at a
    glance. Cells carry plain figures; the currency is named once, in the block's
@@ -497,7 +509,7 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .msum-legend span{display:inline-flex;align-items:center;gap:6px;}
 .msum-legend i{display:inline-block;width:14px;height:6px;border-radius:99px;}
 .msum-help{flex-basis:100%;}
-.msum-help summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--indigo);list-style:none;}
+.msum-help summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--indigo-t);list-style:none;}
 .msum-help summary::-webkit-details-marker{display:none;}
 .msum-help summary::after{content:'▸';font-size:10px;transition:transform .15s;}
 .msum-help[open] summary::after{transform:rotate(90deg);}
@@ -506,15 +518,15 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .msum-help dt{font-weight:700;color:var(--ink);}
 .msum-block+.msum-block{margin-top:24px;padding-top:22px;border-top:1px solid var(--border);}
 .msum-head{display:flex;align-items:center;flex-wrap:wrap;gap:12px 30px;margin-bottom:14px;}
-.msum-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--indigo);background:var(--indigo-s);padding:3px 9px;border-radius:7px;}
+.msum-code{font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--indigo-t);background:var(--indigo-s);padding:3px 9px;border-radius:7px;}
 .msum-kpi{display:flex;flex-direction:column;gap:2px;}
 .msum-kpi span{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}
 .msum-kpi b{font-family:var(--fd);font-size:18px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;}
 .msum-kpi .msum-pill{font-size:14px;padding:2px 10px;}
 .msum-months{margin-left:auto;font-size:11px;color:var(--muted);}
 .msum-pill{display:inline-block;padding:3px 9px;border-radius:99px;font-weight:700;white-space:nowrap;}
-.msum-pill.pos{background:var(--jade-s);color:var(--jade-d);}
-.msum-pill.neg{background:var(--coral-s);color:var(--coral);}
+.msum-pill.pos{background:var(--jade-s);color:var(--jade-t);}
+.msum-pill.neg{background:var(--coral-s);color:var(--coral-t);}
 .msum-zero{color:var(--muted);opacity:.55;}
 .msum-bars{display:flex;flex-direction:column;gap:3px;}
 .msum-bars>div{display:flex;gap:2px;height:6px;}
@@ -567,8 +579,8 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
   .msum-legend{display:none;}
 }
 }
-.msum-in{color:var(--jade-d);}
-.msum-out{color:var(--coral);}
+.msum-in{color:var(--jade-t);}
+.msum-out{color:var(--coral-t);}
 .msum-wrap{overflow-x:auto;}
 .msum-row{cursor:pointer;}
 .msum-row:hover td{background:var(--surface);}
@@ -591,13 +603,13 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 
 /* ── BUDGET BARS ── */
 .budget-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 14px;margin-bottom:8px;transition:transform .15s ease,box-shadow .15s ease;}
-.type-tab.payback.active{background:var(--amber-s);border-color:var(--amber);color:var(--amber);}
+.type-tab.payback.active{background:var(--amber-s);border-color:var(--amber);color:var(--amber-t);}
 .bcur-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
 .bcur-tab{font-family:var(--fm);font-size:12px;font-weight:700;letter-spacing:.4px;padding:6px 14px;border-radius:99px;
   border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;}
-.bcur-tab:hover{border-color:var(--indigo);color:var(--indigo);}
+.bcur-tab:hover{border-color:var(--indigo);color:var(--indigo-t);}
 .bcur-tab.active{background:var(--grad-brand);border-color:transparent;color:#fff;}
-.bcur-tab .bcur-n{opacity:.7;font-weight:600;margin-left:5px;}
+.bcur-tab .bcur-n{font-weight:600;margin-left:5px;}
 .budget-item:hover{transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(99,102,241,.4);}
 .budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px;}
 .budget-name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;}
@@ -606,9 +618,9 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .budget-fill{height:100%;border-radius:99px;transition:width .4s;}
 .budget-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
 .budget-pct{font-weight:700;}
-.budget-rollover-badge{margin-top:6px;font-size:10px;font-weight:700;color:var(--jade-d);background:var(--jade-s);display:inline-block;padding:2px 8px;border-radius:7px;}
+.budget-rollover-badge{margin-top:6px;font-size:10px;font-weight:700;color:var(--jade-t);background:var(--jade-s);display:inline-block;padding:2px 8px;border-radius:7px;}
 /* Amber, not jade: this one is telling you something is switched off. */
-.budget-badpct-badge{margin-top:6px;margin-left:6px;font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-s);display:inline-block;padding:2px 8px;border-radius:7px;cursor:help;}
+.budget-badpct-badge{margin-top:6px;margin-left:6px;font-size:10px;font-weight:700;color:var(--amber-t);background:var(--amber-s);display:inline-block;padding:2px 8px;border-radius:7px;cursor:help;}
 .rollover-toggle{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted);cursor:pointer;}
 .rollover-toggle input{width:14px;height:14px;cursor:pointer;accent-color:var(--jade);flex-shrink:0;}
 
@@ -618,7 +630,7 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .goal-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px 12px;margin-bottom:14px;}
 .goal-title{font-size:15px;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;flex:1 1 170px;min-width:0;overflow-wrap:anywhere;}
 .goal-right{text-align:right;margin-left:auto;}
-.goal-current{font-family:var(--fd);font-size:18px;font-weight:700;color:var(--indigo);}
+.goal-current{font-family:var(--fd);font-size:18px;font-weight:700;color:var(--indigo-t);}
 .goal-target{font-size:11px;color:var(--muted);margin-top:2px;}
 .goal-track{background:var(--border);border-radius:99px;height:10px;overflow:hidden;margin-bottom:8px;}
 .goal-fill{height:100%;border-radius:99px;transition:width .4s;}
@@ -635,16 +647,16 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .modal-title{font-family:var(--fd);font-size:20px;font-weight:700;}
 .modal-close{width:32px;height:32px;border-radius:10px;background:var(--surface);border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
 .modal-close:hover{background:var(--border);transform:rotate(90deg);}
-.modal-edit-badge{display:inline-flex;align-items:center;gap:5px;background:var(--amber-s);border:1px solid #fde68a;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;color:#78350F;margin-bottom:16px;}
+.modal-edit-badge{display:inline-flex;align-items:center;gap:5px;background:var(--amber-s);border:1px solid #fde68a;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--amber-t);margin-bottom:16px;}
 
 /* type tabs */
 .type-tabs{display:flex;background:var(--surface);border-radius:12px;padding:4px;gap:4px;margin-bottom:20px;}
 .type-tab{flex:1;padding:8px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;transition:all .15s;background:none;color:var(--muted);}
 .type-tab.active{color:white;box-shadow:0 4px 14px rgba(0,0,0,.16);}
-.type-tab.expense.active{background:var(--coral);}
-.type-tab.income.active{background:var(--jade);}
-.type-tab.transfer.active{background:var(--sky);}
-.type-tab.asset.active{background:#8B5CF6;}
+.type-tab.expense.active{background:#D42020;}   /* white text at 4.5:1 or more on each */
+.type-tab.income.active{background:#047857;}
+.type-tab.transfer.active{background:#2563EB;}
+.type-tab.asset.active{background:#7C3AED;}
 .type-tab{white-space:nowrap;min-width:0;padding:8px 4px;}
 .type-tab:disabled{opacity:.35;cursor:not-allowed;}
 /* Data check: broken transfer or asset pairs, never hidden, always fixable. */
@@ -658,8 +670,8 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .nw-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;}
 .nw-total{font-family:var(--fd);font-size:24px;font-weight:700;letter-spacing:-.5px;}
 .nw-chg{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;}
-.nw-chg.up{background:var(--jade-s);color:var(--jade-d);}
-.nw-chg.down{background:var(--coral-s);color:var(--coral);}
+.nw-chg.up{background:var(--jade-s);color:var(--jade-t);}
+.nw-chg.down{background:var(--coral-s);color:var(--coral-t);}
 .nw-chg.flat{background:var(--surface);color:var(--muted);}
 .nw-chart{position:relative;height:190px;outline:none;}
 .nw-chart:focus-visible{box-shadow:0 0 0 2px var(--indigo);border-radius:8px;}
@@ -676,7 +688,7 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .nw-tip .row{display:flex;justify-content:space-between;gap:14px;color:var(--ink2);}
 .nw-tip .row span:last-child{font-family:var(--fm);}
 .nw-table{margin-top:8px;font-size:12px;}
-.nw-table summary{cursor:pointer;color:var(--indigo);font-weight:600;font-size:12px;}
+.nw-table summary{cursor:pointer;color:var(--indigo-t);font-weight:600;font-size:12px;}
 .nw-table table{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
 .nw-table th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:4px 6px;border-bottom:1px solid var(--border);}
 .nw-table th:first-child,.nw-table td:first-child{text-align:left;}
@@ -696,9 +708,9 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .imp-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top;}
 .imp-table th.n{text-align:right;}
 .imp-table td.n{text-align:right;font-family:var(--fm);white-space:nowrap;}
-.imp-table td.n.in{color:var(--jade-d);}
+.imp-table td.n.in{color:var(--jade-t);}
 .imp-table .d{white-space:nowrap;color:var(--ink2);}
-.imp-table tr.off td{opacity:.5;}
+.imp-table tr.off td{color:var(--muted);}
 .imp-table .imp-cat{padding:4px 28px 4px 10px;background-position:right 9px center;font-size:12px;width:auto;}
 .imp-all{display:none;}
 .imp-acc{max-width:360px;}
@@ -726,20 +738,20 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
   .imp-table tbody td.n:empty{display:none;}
   .imp-table tbody td[colspan]{grid-column:1/-1;}
 }
-.imp-dup{font-size:11px;color:var(--amber);margin-top:2px;}
+.imp-dup{font-size:11px;color:var(--amber-t);margin-top:2px;}
 .imp-why{font-size:10.5px;color:var(--muted);margin-top:2px;}
 .imp-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
-.sync-badge{background:var(--amber-s);color:var(--amber);border:1px solid var(--amber);font-weight:700;}
-.sync-badge.bad{background:var(--coral-s);color:var(--coral);border-color:var(--coral);}
+.sync-badge{background:var(--amber-s);color:var(--amber-t);border:1px solid var(--amber);font-weight:700;}
+.sync-badge.bad{background:var(--coral-s);color:var(--coral-t);border-color:var(--coral);}
 /* .btn sets display, which beats the hidden attribute: without this the
    badge showed as an empty pill even with nothing waiting. */
 .sync-badge[hidden]{display:none!important;}
-.pending-chip{background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;}
-.pair-warn{border:none;cursor:pointer;background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;}
+.pending-chip{background:var(--amber-s);color:var(--amber-t);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;}
+.pair-warn{border:none;cursor:pointer;background:var(--amber-s);color:var(--amber-t);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;}
 .data-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:12px;background:var(--amber-s);color:var(--ink);font-size:12.5px;}
-.data-banner b{color:var(--amber);}
+.data-banner b{color:var(--amber-t);}
 .dc-item{border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
-.dc-why{font-size:12.5px;font-weight:700;color:var(--amber);margin-bottom:8px;overflow-wrap:anywhere;}
+.dc-why{font-size:12.5px;font-weight:700;color:var(--amber-t);margin-bottom:8px;overflow-wrap:anywhere;}
 .dc-leg{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;color:var(--ink2);}
 .dc-leg span:first-child{min-width:0;overflow-wrap:anywhere;}
 .dc-leg span:last-child:not(:first-child){font-family:var(--fm);white-space:nowrap;}
@@ -750,6 +762,12 @@ html[data-theme="dark"] select.form-input optgroup{color:var(--indigo);}
 .form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
 .form-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:var(--ff);font-size:14px;color:var(--ink);background:var(--card);transition:border-color .15s,box-shadow .15s;outline:none;}
 .form-input:focus{border-color:var(--indigo);box-shadow:0 0 0 4px var(--indigo-s);}
+/* Keyboard focus always shows: custom controls (switches, chart bars, chips)
+   had no ring at all. :where() keeps this from outranking a control's own. */
+:where(button, a[href], summary, [role="button"], [role="switch"], [role="tab"], [tabindex="0"]):focus-visible{outline:2px solid var(--indigo-t);outline-offset:2px;}
+.toggle:focus-visible{outline:2px solid var(--indigo-t);outline-offset:3px;}
+.rollover-toggle:has(input:focus-visible){outline:2px solid var(--indigo-t);outline-offset:2px;border-radius:8px;}
+.modal:focus{outline:none;}
 /* iOS Safari styles date inputs natively: centred text and an intrinsic width
    that overflows the field. Normalise them to match every other input. */
 input[type="date"].form-input{-webkit-appearance:none;appearance:none;text-align:left;min-width:0;max-width:100%;}
@@ -777,7 +795,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
 /* contribution quick-add */
 .contrib-row{display:flex;gap:8px;margin-top:8px;}
-.contrib-btn{flex:1;padding:7px 4px;background:var(--jade-s);border:1px solid #b3f0de;border-radius:9px;font-size:11px;font-weight:700;color:var(--jade-d);cursor:pointer;transition:all .15s;text-align:center;}
+.contrib-btn{flex:1;font-family:inherit;padding:7px 4px;background:var(--jade-s);border:1px solid #b3f0de;border-radius:9px;font-size:11px;font-weight:700;color:var(--jade-t);cursor:pointer;transition:all .15s;text-align:center;}
 .contrib-btn:hover{background:#ccf7ea;transform:translateY(-1px);}
 
 /* ── AI PANEL ── */
@@ -809,13 +827,13 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .acc-sum-row:last-child{border-bottom:0;padding-bottom:2px;}
 .acc-sum-hd{padding-top:0;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);}
 .acc-sum-hd span,.acc-sum-cell{text-align:right;min-width:0;}
-.acc-sum-cur{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--sky);}
+.acc-sum-cur{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--sky-t);}
 .acc-sum-v{font-family:var(--fm);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.acc-sum-v.in{color:var(--jade-d);}
-.acc-sum-v.out{color:var(--coral);}
+.acc-sum-v.in{color:var(--jade-t);}
+.acc-sum-v.out{color:var(--coral-t);}
 .acc-sum-v.zero{color:var(--muted);font-weight:500;}
 .acc-sum-v.net{color:var(--ink);}
-.acc-sum-v.net.neg{color:var(--coral);}
+.acc-sum-v.net.neg{color:var(--coral-t);}
 .acc-sum-one{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;}
 .acc-sum-one>div{display:flex;flex-direction:column;gap:4px;min-width:0;}
 .acc-sum-one .acc-sum-v{font-family:var(--fd);font-size:20px;}
@@ -840,18 +858,18 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 }
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
 .acc-arrange-hint{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;}
-.acc-arrange-local{display:block;margin-top:4px;color:var(--amber);}
+.acc-arrange-local{display:block;margin-top:4px;color:var(--amber-t);}
 .acc-move-btns{display:flex;gap:6px;flex-shrink:0;margin-left:8px;}
-.acc-move{width:36px;height:32px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);color:var(--indigo);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.acc-move{width:36px;height:32px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);color:var(--indigo-t);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .acc-move:hover:not([disabled]){background:var(--indigo-s);border-color:var(--indigo);}
 .acc-move[disabled]{color:var(--muted);background:var(--surface);border-color:var(--border);border-style:dashed;cursor:default;}
 /* The one-currency total: an estimate at exchange rates, set apart from the
    per-currency figures above it, which are exact. */
 .acc-sum-row.acc-sum-total{border-top:1.5px dashed var(--border);border-bottom:0;margin-top:2px;padding-top:12px;}
-.acc-sum-total .acc-sum-cur{color:var(--violet);}
+.acc-sum-total .acc-sum-cur{color:var(--violet-t);}
 .acc-fx-note{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:8px;font-size:11.5px;color:var(--muted);}
-.acc-fx-note .fx-warn{color:var(--amber);font-weight:700;}
-.link-btn{background:none;border:none;padding:6px 2px;color:var(--indigo);font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px;min-height:24px;}
+.acc-fx-note .fx-warn{color:var(--amber-t);font-weight:700;}
+.link-btn{background:none;border:none;padding:6px 2px;color:var(--indigo-t);font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px;min-height:24px;}
 .fx-intro{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 14px;}
 .fx-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin-bottom:12px;}
 .fx-row label{font-size:13px;font-weight:700;white-space:nowrap;}
@@ -863,9 +881,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .bal-input{font-family:var(--fm);font-size:16px;font-weight:700;}
 .bal-diff{font-size:12.5px;line-height:1.5;min-height:1.5em;color:var(--muted);}
 .bal-diff b{font-family:var(--fm);}
-.bal-diff .up{color:var(--jade-d);}
-.bal-diff .down{color:var(--coral);}
-.bal-diff .tip{display:block;margin-top:6px;color:var(--amber);}
+.bal-diff .up{color:var(--jade-t);}
+.bal-diff .down{color:var(--coral-t);}
+.bal-diff .tip{display:block;margin-top:6px;color:var(--amber-t);}
 
 /* ── ANALYTICS ── */
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
@@ -875,7 +893,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .stat-card-label{position:relative;z-index:1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
 .stat-card-val{position:relative;z-index:1;font-family:var(--fd);font-size:32px;font-weight:700;margin-bottom:4px;}
 .stat-card-sub{position:relative;z-index:1;font-size:12px;color:var(--muted);}
-.sn-field{font-family:var(--fm);font-size:10px;background:var(--sky-s);color:var(--sky);border:1px solid #bfdbfe;border-radius:6px;padding:1px 6px;margin-top:6px;display:inline-block;}
+.sn-field{font-family:var(--fm);font-size:10px;background:var(--sky-s);color:var(--sky-t);border:1px solid #bfdbfe;border-radius:6px;padding:1px 6px;margin-top:6px;display:inline-block;}
 
 /* ── SETTINGS ── */
 .settings-section{margin-bottom:28px;}
@@ -890,7 +908,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
 .toggle.on::after{left:20px;}
 .sn-mapping-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface);border-radius:12px;margin-bottom:8px;font-size:12px;}
-.sn-field-name{font-family:var(--fm);color:var(--indigo);}
+.sn-field-name{font-family:var(--fm);color:var(--indigo-t);}
 
 /* ── BACKUP REMINDER ── */
 .backup-note{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--amber);
@@ -987,9 +1005,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 /* ── MONTH NAV ── */
 .month-nav{display:flex;align-items:center;gap:8px;padding:10px 32px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;}
 .month-nav-btn{width:28px;height:28px;border-radius:9px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
-.month-nav-btn:hover{background:var(--surface);border-color:var(--indigo);color:var(--indigo);}
+.month-nav-btn:hover{background:var(--surface);border-color:var(--indigo);color:var(--indigo-t);}
 .month-nav-label{font-family:var(--fd);font-size:14px;font-weight:700;min-width:140px;text-align:center;}
-.month-today-btn{padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--jade-s);color:var(--jade-d);font-size:11px;font-weight:700;cursor:pointer;}
+.month-today-btn{padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--jade-s);color:var(--jade-t);font-size:11px;font-weight:700;cursor:pointer;}
 /* Touch screens: targets a finger can hit. */
 @media(max-width:900px){
   .sync-badge .sb-words{display:none;}
@@ -1011,7 +1029,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
   .bnav-ico{font-size:22px;line-height:1;filter:grayscale(1);opacity:.5;transition:.15s;}
   .bnav-lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);transition:.15s;}
   .bnav-item.active .bnav-ico{filter:none;opacity:1;}
-  .bnav-item.active .bnav-lbl{color:var(--jade);font-weight:700;}
+  .bnav-item.active .bnav-lbl{color:#2FE0AE;font-weight:700;}   /* the bar is dark in both themes */
   .bnav-fab{width:58px;height:58px;border-radius:50%;border:none;background:var(--grad-brand);color:#fff;font-size:28px;font-weight:600;cursor:pointer;margin:-32px 4px 4px;box-shadow:0 10px 28px rgba(99,102,241,.55),0 0 0 5px rgba(13,17,23,.85);flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;transition:transform .15s;}
   .bnav-fab:active{transform:scale(.92);}
   .content{padding-bottom:132px!important;}
@@ -1051,7 +1069,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .sidebar-overlay.open{display:block;}
 
 /* ── SN SYNC BADGE ── */
-.sn-syn{display:inline-block;font-family:var(--fm);font-size:10px;background:var(--jade-s);color:var(--jade-d);border:1px solid #b3f0de;border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle;}
+.sn-syn{display:inline-block;font-family:var(--fm);font-size:10px;background:var(--jade-s);color:var(--jade-t);border:1px solid #b3f0de;border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle;}
 .sn-local{display:inline-block;font-family:var(--fm);font-size:10px;background:var(--amber-s);color:#92400E;border:1px solid #fde68a;border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle;}
 
 @media(max-width:900px){
@@ -1119,7 +1137,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 @keyframes iconGlow{0%,100%{box-shadow:0 8px 32px rgba(99,102,241,.4);}50%{box-shadow:0 8px 52px rgba(99,102,241,.65),0 0 0 8px rgba(99,102,241,.1);}}
 
 .l-appname{font-family:var(--fd);font-size:28px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:4px;}
-.l-tagline{font-size:12px;color:rgba(255,255,255,.35);letter-spacing:.3px;margin-bottom:16px;}
+.l-tagline{font-size:12px;color:rgba(255,255,255,.62);letter-spacing:.3px;margin-bottom:16px;}
 
 /* divider line */
 .l-divider{width:40px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);border-radius:99px;margin-bottom:16px;}
@@ -1147,7 +1165,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .login-link:hover{color:rgba(255,255,255,.5);}
 
 /* version tag */
-.l-version{font-size:10px;color:rgba(255,255,255,.12);margin-top:8px;letter-spacing:.5px;font-family:var(--fm);}
+.l-version{font-size:10px;color:rgba(255,255,255,.5);margin-top:8px;letter-spacing:.5px;font-family:var(--fm);}
 
 /* ── SN LOGIN FORM ── */
 .sn-login-panel{width:100%;display:none;flex-direction:column;gap:0;}
@@ -1170,7 +1188,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .sn-login-btn.secondary{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);}
 .sn-login-btn.secondary:hover{background:rgba(255,255,255,.12);}
 .sn-login-err{font-size:12px;color:#FF95AA;text-align:center;min-height:18px;margin-bottom:8px;font-weight:500;}
-.sn-login-toggle{font-size:12px;color:rgba(255,255,255,.4);text-align:center;cursor:pointer;border:none;background:none;font-family:var(--ff);padding:6px;}
+.sn-login-toggle{font-size:12px;color:rgba(255,255,255,.7);text-align:center;cursor:pointer;border:none;background:none;font-family:var(--ff);padding:6px;}
 .sn-login-toggle span{color:#A5B4FC;font-weight:600;}
 .sn-login-toggle:hover span{text-decoration:underline;}
 
@@ -1199,9 +1217,9 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 .profile-field:last-child{border-bottom:none;padding-bottom:0;}
 .profile-field-lbl{font-size:13px;font-weight:500;color:var(--muted);}
 .profile-field-val{font-size:13px;font-weight:600;color:var(--ink);}
-.profile-edit-btn{font-size:11px;color:var(--indigo);font-weight:600;border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:7px;}
+.profile-edit-btn{font-size:11px;color:var(--indigo-t);font-weight:600;border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:7px;}
 .profile-edit-btn:hover{background:var(--indigo-s);}
-.profile-signout{width:100%;padding:13px;background:var(--coral-s);color:var(--coral);border:1px solid rgba(255,91,91,.25);border-radius:13px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;}
+.profile-signout{width:100%;padding:13px;background:var(--coral-s);color:var(--coral-t);border:1px solid rgba(255,91,91,.25);border-radius:13px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;}
 .profile-signout:hover{background:var(--coral);color:white;}
 
 @media(max-width:380px){
@@ -1243,8 +1261,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
     <!-- ── Panel A: Login ── -->
     <div class="sn-login-panel active" id="panel-login">
-      <input class="sn-login-input" id="sn-li-username" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNLogin()"/>
-      <input class="sn-login-input" id="sn-li-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSNLogin()"/>
+      <input class="sn-login-input" id="sn-li-username" aria-label="Email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" onkeydown="if(event.key==='Enter')doSNLogin()"/>
+      <input class="sn-login-input" id="sn-li-password" aria-label="Password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSNLogin()"/>
       <div class="sn-login-err" id="sn-li-err"></div>
       <button class="sn-login-btn" id="sn-li-btn" onclick="doSNLogin()">Sign In</button>
       <button class="sn-login-toggle" onclick="showAuthPanel('register')">No account? <span>Create one</span></button>
@@ -1252,10 +1270,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 
     <!-- ── Panel B: Register ── -->
     <div class="sn-login-panel" id="panel-register">
-      <input class="sn-login-input" id="sn-reg-displayname" type="text" placeholder="Display Name" autocomplete="name" onkeydown="if(event.key==='Enter')doSNRegister()"/>
-      <input class="sn-login-input" id="sn-reg-email" type="email" placeholder="Email" autocomplete="email" onkeydown="if(event.key==='Enter')doSNRegister()"/>
-      <input class="sn-login-input" id="sn-reg-password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
-      <input class="sn-login-input" id="sn-reg-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-displayname" aria-label="Display name" type="text" placeholder="Display Name" autocomplete="name" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-email" aria-label="Email" type="email" placeholder="Email" autocomplete="email" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-password" aria-label="Password" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
+      <input class="sn-login-input" id="sn-reg-confirm" aria-label="Confirm password" type="password" placeholder="Confirm Password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSNRegister()"/>
       <div class="sn-login-err" id="sn-reg-err"></div>
       <button class="sn-login-btn" id="sn-reg-btn" onclick="doSNRegister()">Create Account</button>
       <button class="sn-login-toggle" onclick="showAuthPanel('login')">Already have an account? <span>Sign in</span></button>
@@ -1264,15 +1282,15 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <!-- ── Panel C: App Lock (PIN) ── -->
     <div class="sn-login-panel" id="panel-pinlock">
       <div style="text-align:center;color:rgba(255,255,255,.7);font-size:13px;margin-bottom:14px;">🔒 Enter your PIN to continue</div>
-      <input class="sn-login-input" id="pin-lock-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter')submitPinUnlock()"/>
+      <input class="sn-login-input" id="pin-lock-input" aria-label="PIN" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter')submitPinUnlock()"/>
       <div class="sn-login-err" id="pin-lock-err"></div>
       <button class="sn-login-btn" onclick="submitPinUnlock()">Unlock</button>
       <button class="sn-login-toggle" onclick="showPinRecovery()">Forgot PIN?</button>
 
       <div id="pin-recovery-block" style="display:none;margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);">
         <div style="text-align:center;color:rgba(255,255,255,.5);font-size:11px;margin-bottom:10px;">Sign in with your account password to reset the PIN</div>
-        <input class="sn-login-input" id="pin-recovery-username" type="email" placeholder="Email" autocomplete="email" autocapitalize="off"/>
-        <input class="sn-login-input" id="pin-recovery-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPinRecovery()"/>
+        <input class="sn-login-input" id="pin-recovery-username" aria-label="Email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off"/>
+        <input class="sn-login-input" id="pin-recovery-password" aria-label="Password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPinRecovery()"/>
         <div class="sn-login-err" id="pin-recovery-err"></div>
         <button class="sn-login-btn" onclick="submitPinRecovery()">Verify &amp; Reset PIN</button>
       </div>
@@ -1310,15 +1328,15 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 <main class="main">
   <div class="topbar">
     <div class="topbar-left">
-      <button class="hamburger-btn" onclick="toggleSidebar()">☰</button>
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
       <div class="topbar-title" id="topbar-title">Dashboard</div>
     </div>
     <div class="topbar-actions">
       <button class="btn btn-sm sync-badge" id="sync-badge" onclick="onSyncBadge()" hidden></button>
       <button class="btn btn-ghost btn-sm" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch theme" style="min-width:34px;">🌙</button>
-      <button class="btn btn-ghost btn-sm topbar-csv" onclick="exportCSV()" title="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
+      <button class="btn btn-ghost btn-sm topbar-csv" onclick="exportCSV()" title="Export transactions as CSV" aria-label="Export transactions as CSV"><span class="desktop-only">⬇ CSV</span><span class="mobile-only">⬇</span></button>
       <button class="btn btn-ghost desktop-only" onclick="openAI()">✨ AI Insights</button>
-      <button class="btn btn-jade" onclick="openTxnModal()"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
+      <button class="btn btn-jade" onclick="openTxnModal()" aria-label="Add transaction"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
     </div>
   </div>
   <div class="month-nav" id="month-nav-bar">
@@ -1351,11 +1369,11 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="kpi"><div class="kpi-label" data-lkey="kpi_transactions">Transactions</div><div class="kpi-val" id="kpi-txn-count">0</div><div class="kpi-sub" data-lkey="kpi_this_month">This month</div></div>
         <div class="kpi"><div class="kpi-label" data-lkey="kpi_avg_daily">Avg Daily Spend</div><div class="kpi-val" id="kpi-avg-daily">$0</div><div class="kpi-sub" data-lkey="kpi_based_expenses">Based on expenses</div></div>
         <div class="kpi"><div class="kpi-label" data-lkey="kpi_savings_rate">Savings Rate</div><div class="kpi-val" id="kpi-savings-rate">0%</div><div class="kpi-sub" data-lkey="kpi_of_income">of income saved</div></div>
-        <div class="kpi"><div class="kpi-label" data-lkey="kpi_budgets_over">Budgets Over</div><div class="kpi-val" id="kpi-budgets-over" style="color:var(--coral)">0</div><div class="kpi-sub" data-lkey="kpi_exceeded">categories exceeded</div></div>
+        <div class="kpi"><div class="kpi-label" data-lkey="kpi_budgets_over">Budgets Over</div><div class="kpi-val" id="kpi-budgets-over" style="color:var(--coral-t)">0</div><div class="kpi-sub" data-lkey="kpi_exceeded">categories exceeded</div></div>
       </div>
       <div class="row-3">
         <div class="panel">
-          <div class="panel-header"><div class="panel-title" id="dash-recent-title">Recent Transactions</div><span id="dash-view-all" role="link" tabindex="0" style="font-size:12px;font-weight:600;color:var(--sky);cursor:pointer;padding:8px 0 8px 12px;" onclick="showView('transactions',document.querySelectorAll('.nav-item')[1])">View all →</span></div>
+          <div class="panel-header"><div class="panel-title" id="dash-recent-title">Recent Transactions</div><span id="dash-view-all" role="link" tabindex="0" style="font-size:12px;font-weight:600;color:var(--sky-t);cursor:pointer;padding:8px 0 8px 12px;" onclick="showView('transactions',document.querySelectorAll('.nav-item')[1])">View all →</span></div>
           <div id="recent-txns"><div class="empty"><div class="icon">📭</div><p>No transactions yet.</p></div></div>
         </div>
         <div class="panel">
@@ -1386,14 +1404,14 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <span><span id="bulk-count">0</span> <span data-lkey="bulk_selected_suffix">selected</span></span>
           <button class="btn btn-ghost btn-sm" onclick="bulkSelectAllVisible()" data-lkey="bulk_select_all">Select all</button>
           <button class="btn btn-ghost btn-sm" onclick="bulkClearSelection()" data-lkey="bulk_clear">Clear</button>
-          <select class="form-input" id="bulk-cat-select" style="width:auto;flex:1;min-width:190px;"></select>
+          <select class="form-input" id="bulk-cat-select" aria-label="Category to apply" style="width:auto;flex:1;min-width:190px;"></select>
           <button class="btn btn-ghost btn-sm" id="bulk-apply-cat-btn" onclick="bulkApplyCategory()" disabled data-lkey="bulk_apply_category">Apply category</button>
-          <button class="btn btn-sm" id="bulk-delete-btn" onclick="bulkDeleteSelected()" disabled style="background:var(--coral);color:#fff;" data-lkey="bulk_delete_selected">Delete selected</button>
+          <button class="btn btn-sm" id="bulk-delete-btn" onclick="bulkDeleteSelected()" disabled style="background:#D42020;color:#fff;" data-lkey="bulk_delete_selected">Delete selected</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleBulkMode()" data-lkey="bulk_cancel">Cancel</button>
         </div>
         <div class="filter-bar">
-          <input class="form-input search-input" type="text" id="search-input" placeholder="🔍 Search anything — grab, dbs, 27.90, >100…" oninput="renderTransactions()">
-          <select class="form-input" id="filter-type" onchange="renderTransactions()">
+          <input class="form-input search-input" type="text" id="search-input" aria-label="Search transactions" placeholder="🔍 Search anything — grab, dbs, 27.90, >100…" oninput="renderTransactions()">
+          <select class="form-input" id="filter-type" aria-label="Filter by type" onchange="renderTransactions()">
             <option value="" data-lkey="filter_all_types">Any Type</option>
             <option value="expense" data-lkey="filter_expenses">Expenses</option>
             <option value="income" data-lkey="filter_income">Income</option>
@@ -1401,20 +1419,20 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <option value="payback" data-lkey="filter_paybacks">Paybacks</option>
             <option value="transfer" data-lkey="filter_transfers">Transfers</option>
           </select>
-          <select class="form-input" id="filter-period" onchange="renderTransactions()">
+          <select class="form-input" id="filter-period" aria-label="Filter by period" onchange="renderTransactions()">
             <option value="" data-lkey="filter_this_month">This Month</option>
             <option value="all" data-lkey="filter_all_time">All Time</option>
           </select>
-          <select class="form-input" id="filter-cur" onchange="renderTransactions()" style="display:none;">
+          <select class="form-input" id="filter-cur" aria-label="Filter by currency" onchange="renderTransactions()" style="display:none;">
             <option value="" data-lkey="filter_all_currencies">Any Currency</option>
           </select>
-          <select class="form-input" id="filter-cat" onchange="renderTransactions()">
+          <select class="form-input" id="filter-cat" aria-label="Filter by category" onchange="renderTransactions()">
             <option value="" data-lkey="filter_all_cats">Any Category</option>
           </select>
-          <select class="form-input" id="filter-acc" onchange="renderTransactions()">
+          <select class="form-input" id="filter-acc" aria-label="Filter by account" onchange="renderTransactions()">
             <option value="" data-lkey="filter_all_accounts">Any Account</option>
           </select>
-          <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral);border-color:var(--coral);">✕ Clear</button>
+          <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral-t);border-color:var(--coral);">✕ Clear</button>
         </div>
         <div id="data-banner"></div>
         <div id="all-txns"><div class="empty"><div class="icon">📭</div><p>No transactions found.</p></div></div>
@@ -1424,7 +1442,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
     <!-- ════ BUDGETS ════ -->
     <div class="view" id="view-budgets">
       <div class="panel" style="margin-bottom:16px;" id="salary-planner-panel">
-        <div class="panel-header" style="cursor:pointer;" onclick="toggleSalaryPlanner()">
+        <div class="panel-header" style="cursor:pointer;" role="button" tabindex="0" aria-controls="salary-planner-body" onclick="toggleSalaryPlanner()">
           <div class="panel-title">💼 Plan from Salary <span id="salary-planner-summary" style="font-weight:400;color:var(--muted);font-size:12px;"></span></div>
           <span id="salary-planner-chevron" style="font-size:14px;color:var(--muted);">▾</span>
         </div>
@@ -1441,8 +1459,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
               <div class="amount-input-wrap"><span class="amount-prefix">$</span><input class="form-input" type="number" id="sp-salary" oninput="renderSalaryPlanner()"></div>
             </div>
           </div>
-          <div id="sp-auto-note" style="font-size:11px;color:var(--sky);margin:-4px 0 6px;"></div>
-          <div id="sp-prefill-note" style="display:none;font-size:11px;color:var(--amber);margin:0 0 14px;"></div>
+          <div id="sp-auto-note" style="font-size:11px;color:var(--sky-t);margin:-4px 0 6px;"></div>
+          <div id="sp-prefill-note" style="display:none;font-size:11px;color:var(--amber-t);margin:0 0 14px;"></div>
 
           <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
             <div style="position:relative;width:130px;height:130px;flex-shrink:0;margin:0 auto;">
@@ -1700,8 +1718,8 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <div class="profile-stat"><div class="profile-stat-val" id="prof-stat-goals">—</div><div class="profile-stat-lbl">Active Goals</div></div>
           </div>
           <!-- Editable preferences -->
-          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:104px;padding:6px 30px 6px 12px;font-size:13px;" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();syncPreferencesToSN();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>USDT</option></select></div>
-          <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 30px 6px 12px;font-size:13px;" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Currency</div></div><select class="form-input" style="width:104px;padding:6px 30px 6px 12px;font-size:13px;" aria-label="Currency" id="currency-select" onchange="state.currency=this.value;saveState();renderAll();syncPreferencesToSN();"><option>SGD</option><option>USD</option><option>AUD</option><option>MYR</option><option>USDT</option></select></div>
+          <div class="setting-row"><div><div class="setting-label">Language / 语言</div></div><select class="form-input" style="width:120px;padding:6px 30px 6px 12px;font-size:13px;" aria-label="Language" id="language-select" onchange="changeLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div>
           <div class="setting-row"><div><div class="setting-label">Budget Alerts</div><div class="setting-sub">Notify when budget &gt; threshold</div></div><div class="toggle on" id="toggle-budget-alerts" onclick="toggleSetting('budgetAlerts',this)"></div></div>
           <div class="setting-row"><div><div class="setting-label">Now Assist</div><div class="setting-sub">AI-powered spend analysis</div></div><div class="toggle on" id="toggle-now-assist" onclick="toggleSetting('nowAssist',this)"></div></div>
           <!-- Read-only fields -->
@@ -1788,7 +1806,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
             Sends a message when a budget crosses its alert threshold, and a reminder
             before a bill is due — so you hear about it without opening the app.
-            <a href="https://github.com/yapseng98/Personal-Money-Tracker/blob/main/TELEGRAM_SETUP.md" target="_blank" style="color:var(--sky);font-weight:600;">One-time setup ↗</a>
+            <a href="https://github.com/yapseng98/Personal-Money-Tracker/blob/main/TELEGRAM_SETUP.md" target="_blank" style="color:var(--sky-t);font-weight:600;">One-time setup ↗</a>
           </div>
           <div class="form-group">
             <label class="form-label">Telegram Chat ID</label>
@@ -1811,7 +1829,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           </div>
           <div class="setting-row">
             <div><div class="setting-label">Remind me this many days ahead</div><div class="setting-sub">Counting the due day itself</div></div>
-            <input class="form-input" type="number" id="tg-lead-days" min="0" max="14" style="width:70px;padding:6px 10px;font-size:13px;" onchange="saveNotifySettings()">
+            <input class="form-input" type="number" id="tg-lead-days" aria-label="Days before a bill is due" min="0" max="14" style="width:70px;padding:6px 10px;font-size:13px;" onchange="saveNotifySettings()">
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
             <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="sendTestNotification()">Send test message</button>
@@ -1829,13 +1847,13 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
         <div class="settings-section">
           <h3 data-lkey="settings_ai_config">AI Configuration</h3>
           <div class="form-group">
-            <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
+            <label class="form-label">Groq API Key <span style="background:var(--jade-s);color:var(--jade-t);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;">FREE</span></label>
             <div style="display:flex;gap:8px;">
               <input class="form-input" type="password" id="gemini-key-input" placeholder="gsk_…">
               <button class="btn btn-primary btn-sm" onclick="saveAIKey()" style="white-space:nowrap;">Save</button>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky);">console.groq.com ↗</a></div>
-            <div style="font-size:11px;color:var(--muted);margin-top:6px;">Saving stores the key on your account, so your other devices pick it up. If this device is stuck on an old key, <a href="#" onclick="pullAccountAIKey();return false;" style="color:var(--sky);font-weight:600;">use the key from my account ↻</a></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Free: 14,400 requests/day, no credit card needed. Get your key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--sky-t);">console.groq.com ↗</a></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">Saving stores the key on your account, so your other devices pick it up. If this device is stuck on an old key, <a href="#" onclick="pullAccountAIKey();return false;" style="color:var(--sky-t);font-weight:600;">use the key from my account ↻</a></div>
           </div>
           <div id="ai-key-status" style="font-size:12px;padding:6px 10px;border-radius:7px;display:none;margin-top:-6px;"></div>
         </div>
@@ -1997,7 +2015,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
           <span class="amount-prefix">$</span>
           <input class="form-input" type="number" id="txn-amount-recv" placeholder="0.00" step="0.01" min="0">
         </div>
-        <div style="font-size:11px;color:var(--sky);margin-top:4px;">Different currencies — enter the amount that actually arrived. No exchange rate is guessed.</div>
+        <div style="font-size:11px;color:var(--sky-t);margin-top:4px;">Different currencies — enter the amount that actually arrived. No exchange rate is guessed.</div>
       </div>
     </div>
     <!-- Asset-only: where the money came from. Optional, because you may be
@@ -2109,7 +2127,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Current Spent<span style="font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);opacity:.7;margin-left:4px;">— optional override</span></label>
+      <label class="form-label">Current Spent<span style="font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:4px;">— optional override</span></label>
       <div class="amount-input-wrap">
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-spent" placeholder="0.00" step="0.01" value="0">
@@ -2264,7 +2282,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <select class="form-input" id="goal-account" onchange="onGoalAccountChange()">
         <option value="">— None —</option>
       </select>
-      <div id="goal-account-hint" style="font-size:11px;color:var(--sky);margin-top:4px;display:none;">🔗 Saved amount now follows this account's balance — add a transaction on it to update the goal.</div>
+      <div id="goal-account-hint" style="font-size:11px;color:var(--sky-t);margin-top:4px;display:none;">🔗 Saved amount now follows this account's balance — add a transaction on it to update the goal.</div>
     </div>
     <div class="form-group">
       <label class="form-label">Remarks</label>
@@ -2275,10 +2293,10 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
       <hr class="form-divider">
       <div class="form-label" style="margin-bottom:8px;">Quick Add Contribution</div>
       <div class="contrib-row">
-        <div class="contrib-btn" onclick="quickContrib(50)">+$50</div>
-        <div class="contrib-btn" onclick="quickContrib(100)">+$100</div>
-        <div class="contrib-btn" onclick="quickContrib(200)">+$200</div>
-        <div class="contrib-btn" onclick="quickContrib(500)">+$500</div>
+        <button type="button" class="contrib-btn" onclick="quickContrib(50)">+$50</button>
+        <button type="button" class="contrib-btn" onclick="quickContrib(100)">+$100</button>
+        <button type="button" class="contrib-btn" onclick="quickContrib(200)">+$200</button>
+        <button type="button" class="contrib-btn" onclick="quickContrib(500)">+$500</button>
       </div>
     </div>
     <input type="hidden" id="goal-edit-id" value="">
@@ -2363,7 +2381,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 <!-- CONFIRM DIALOG                               -->
 <!-- ════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="confirm-modal">
-  <div class="confirm-box">
+  <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-msg" tabindex="-1">
     <h4 id="confirm-title">Are you sure?</h4>
     <p id="confirm-msg">This action cannot be undone.</p>
     <div class="confirm-actions">
@@ -3361,7 +3379,7 @@ function updateAssetUI() {
   note.textContent = from
     ? `${from} will go down by this amount, and ${dest} up — the money moves, it isn't created.`
     : 'Leave blank if you already owned this. The holding goes up with nothing deducted, so only do that for value you didn\'t just pay for.';
-  note.style.color = from ? 'var(--sky)' : 'var(--muted)';
+  note.style.color = from ? 'var(--sky-t)' : 'var(--muted)';
 }
 
 // A transaction whose currency differs from its account's currency is invisible
@@ -3749,7 +3767,11 @@ function enqueueWrite(table, kind, rowId, payload, notBefore) {
   if (kind === 'delete' && !notBefore) {
     state.outbox = outbox().filter(o => !(o.table === table && o.rowId === id && !o.sending && o.kind !== 'delete'));
   } else if (kind !== 'delete') {
-    const prev = outbox().find(o => o.table === table && o.rowId === id && o.kind !== 'delete' && !o.sending);
+    // Fold into the row's LATEST write, and only if that one isn't on its way.
+    // Folding into the earliest let an older change go out last when a failed
+    // send left two writes for one row queued (a goal's figure, found by fuzz.js).
+    const mine = outbox().filter(o => o.table === table && o.rowId === id && o.kind !== 'delete');
+    const prev = mine.length && !mine[mine.length - 1].sending ? mine[mine.length - 1] : null;
     if (prev) {
       prev.payload = Object.assign({}, prev.payload, payload);
       if (kind === 'upsert') prev.kind = 'upsert';
@@ -3883,7 +3905,7 @@ function openSyncProblems() {
     return `<div class="dc-item"><div class="dc-why">⚠ ${esc(o.lastError || 'Refused by the server')}</div>
       <div class="dc-leg"><span>${o.kind === 'delete' ? 'Delete' : o.kind === 'update' ? 'Change to' : 'New'} ${o.table.replace(/s$/, '')}: ${what}</span></div>
       <div class="dc-actions"><button class="btn btn-ghost btn-sm" onclick="retryRejected('${o.opId}')">Try again</button>
-      <button class="btn btn-sm" style="background:var(--coral);color:#fff" onclick="discardRejected('${o.opId}')">Discard my change</button></div></div>`;
+      <button class="btn btn-sm btn-coral" onclick="discardRejected('${o.opId}')">Discard my change</button></div></div>`;
   }).join('') : '<div class="empty"><div class="icon">✅</div><p>Nothing is waiting.</p></div>';
   document.getElementById('syncprob-modal').classList.add('open');
 }
@@ -4857,7 +4879,7 @@ function renderImport() {
       <td><input type="checkbox" ${it.include ? 'checked' : ''} onchange="impPick(${it.line},'include',this.checked)" aria-label="Import this row"></td>
       <td class="d">${fmtDate(it.date)}</td>
       <td>${esc(it.description)}${it.dup ? `<div class="imp-dup">Already in your book: ${esc(it.dup.description || '')} · ${fmtDate(it.dup.date)}</div>` : ''}</td>
-      <td><select class="form-input imp-cat" onchange="impPick(${it.line},'category',this.value)">${catOpts(it)}</select>${it.why ? `<div class="imp-why">${esc(it.why)}</div>` : ''}</td>
+      <td><select class="form-input imp-cat" aria-label="Category for ${esc(it.description)}" onchange="impPick(${it.line},'category',this.value)">${catOpts(it)}</select>${it.why ? `<div class="imp-why">${esc(it.why)}</div>` : ''}</td>
       <td class="n in">${it.type === 'income' ? '+' + fmtWithCur(it.amount, cur) : ''}</td>
       <td class="n">${it.type === 'expense' ? fmtWithCur(it.amount, cur) : ''}</td></tr>`).join('');
   const noAmount = c.amount === -1 && c.out === -1 && c.in === -1;
@@ -4958,7 +4980,7 @@ function renderDataCheck() {
     const edit = p.kind === 'same' || p.kind === 'types'
       ? `<button class="btn btn-ghost btn-sm" onclick="closeDataCheck();dataCheckEdit('${g}')">Edit</button>` : '';
     return `<div class="dc-item"><div class="dc-why">⚠ ${esc(p.why)}</div>${rows}
-      <div class="dc-actions"><button class="btn btn-sm" style="background:var(--coral);color:#fff" onclick="dataCheckDelete('${g}')">Delete</button>${split}${edit}</div></div>`;
+      <div class="dc-actions"><button class="btn btn-sm btn-coral" onclick="dataCheckDelete('${g}')">Delete</button>${split}${edit}</div></div>`;
   }).join('');
 }
 
@@ -6068,9 +6090,12 @@ function savingsRateDisplay(st) {
   return { text:'—', note:'', tone:'muted' };
 }
 
-const toneColor = t => t === 'good' ? 'var(--jade-d)'
-                     : t === 'warn' ? 'var(--amber)'
-                     : t === 'bad'  ? 'var(--coral)' : 'var(--muted)';
+const toneColor = t => t === 'good' ? 'var(--jade-t)'
+                     : t === 'warn' ? 'var(--amber-t)'
+                     : t === 'bad'  ? 'var(--coral-t)' : 'var(--muted)';
+// The text shade of an accent fill, for a figure drawn in the same colour as
+// its bar: var(--coral) → var(--coral-t), readable on a light card.
+const textTone = c => String(c).replace(/var\(--(coral|jade-d|jade|sky|amber|indigo|violet)\)/, (m, k) => `var(--${k === 'jade-d' ? 'jade' : k}-t)`);
 
 function calcStats() {
   const txns = getMonthTxns();
@@ -6135,6 +6160,7 @@ function isBudgetOver(b, month) {
 }
 
 function applyLanguage() {
+  document.documentElement.lang = state.language === 'zh' ? 'zh-Hans' : 'en';
   // Bottom nav (mobile)
   document.querySelectorAll('.bnav-lbl[data-bkey]').forEach(l => { l.textContent = t(l.dataset.bkey); });
   // Sidebar nav
@@ -6328,7 +6354,7 @@ function renderDashboard() {
       const st = s.byCur[c];
       return `<div class="hero-cur-card">
         <div class="hero-cur-code">${c}</div>
-        <div class="hero-cur-net" style="color:${st.net>=0?'#fff':'var(--coral)'};">${fmtSigned(st.net,c)}</div>
+        <div class="hero-cur-net" style="color:${st.net>=0?'#fff':'#FFB4BE'};">${fmtSigned(st.net,c)}</div>
         <div class="hero-cur-flow">
           <span class="hero-flow-in">${st.inc?'+'+fmtWithCur(st.inc,c):'—'}</span>
           <span class="hero-flow-sep">·</span>
@@ -6387,7 +6413,7 @@ function renderDashboard() {
           <div class="chart-bar-val">${fmtWithCur(amt,cur)}</div>
         </div>`).join('');
       return `${isMulti ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'16px':0} 0 8px;">
-        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.8px;">${cur}</span>
         <div style="flex:1;height:1px;background:var(--border);"></div>
       </div>` : ''}${bars}`;
     }).join('');
@@ -6426,7 +6452,7 @@ function dayTotalHTML(rows) {
   });
   const parts = Object.entries(byCur).map(([cur, raw]) => {
     const v = Math.round(raw * 100) / 100;
-    const color = v < 0 ? 'var(--coral)' : v > 0 ? 'var(--jade-d)' : 'var(--muted)';
+    const color = v < 0 ? 'var(--coral-t)' : v > 0 ? 'var(--jade-t)' : 'var(--muted)';
     return `<span style="color:${color};">${fmtSigned(v, cur)}</span>`;
   });
   // Exchange is neither a gain nor a loss, so it never borrows the spend
@@ -6434,7 +6460,7 @@ function dayTotalHTML(rows) {
   // note and the TRANSFER row badge already use elsewhere.
   Object.entries(xByCur).forEach(([cur, raw]) => {
     const v = Math.round(raw * 100) / 100;
-    if (v) parts.push(`<span style="color:var(--sky);">🔄 ${fmtSigned(v, cur)}</span>`);
+    if (v) parts.push(`<span style="color:var(--sky-t);">🔄 ${fmtSigned(v, cur)}</span>`);
   });
   return parts.length ? `<span class="txn-date-total">${parts.join('')}</span>` : '';
 }
@@ -6563,7 +6589,7 @@ function collapseTransfers(arr) {
 
 // 🔁 MONTHLY on the row that holds the schedule; 🔁 AUTO on the rows it added.
 function recurBadgeHTML(txn) {
-  const st = 'background:var(--sky-s);color:var(--sky);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;';
+  const st = 'background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;';
   if (txn.recurringSource) return `<span style="${st}" title="Added automatically by a recurring transaction">🔁 AUTO</span>`;
   if (txn.isRecurring && RECUR_FREQS[txn.recurringFrequency])
     return `<span style="${st}" title="Repeats ${txn.recurringFrequency}${txn.nextRunDate ? ' — next ' + fmtDate(txn.nextRunDate) : ''}">🔁 ${RECUR_FREQS[txn.recurringFrequency].toUpperCase()}</span>`;
@@ -6576,7 +6602,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
   const isPayback = txn.type === 'payback';
   const showBadge = forceBadge || (txn.currency && txn.currency !== state.currency);
   const checkHTML = selectMode
-    ? `<input type="checkbox" class="bulk-check" data-id="${txn.id}" ${bulkSelected.has(String(txn.id))?'checked':''} onclick="event.stopPropagation();toggleBulkRow('${txn.id}',this.checked)">`
+    ? `<input type="checkbox" class="bulk-check" data-id="${txn.id}" aria-label="Select ${esc(txn.description || txn.category || 'transaction')}" ${bulkSelected.has(String(txn.id))?'checked':''} onclick="event.stopPropagation();toggleBulkRow('${txn.id}',this.checked)">`
     : '';
 
   if (txn.transferGroup) {
@@ -6590,7 +6616,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     const isAssetPair = isAssetGroup(txn) || (peer && peer.type === 'asset');
     const problem = (_brokenPairs || brokenPairMap()).get(txn.transferGroup);
     const tint  = isAssetPair ? 'var(--violet-s)' : 'var(--sky-s)';
-    const inkC  = isAssetPair ? 'var(--violet)'   : 'var(--sky)';
+    const inkC  = isAssetPair ? 'var(--violet-t)' : 'var(--sky-t)';
     const icon  = isAssetPair ? '📈' : '🔄';
     const badge = isAssetPair ? 'ASSET' : 'TRANSFER';
     // Direction follows the leg being shown. When only the receiving leg is in
@@ -6624,9 +6650,9 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     <div class="txn-ico" style="background:${isPayback?'var(--amber-s)':catBg(txn.category)}">${isPayback?'↩️':catIcon(txn.category)}</div>
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
-      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : '', _pendingTxnIds.has(String(txn.id)) ? '<span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''].filter(Boolean).join(' · ')}</div>
+      <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : '', _pendingTxnIds.has(String(txn.id)) ? '<span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''].filter(Boolean).join(' · ')}</div>
     </div>
-    <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
+    <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber-t);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
       <button class="icon-btn again" onclick="repeatToday('${txn.id}')" title="${t('again_today')}" aria-label="${t('again_today')}">↻</button>
       <button class="icon-btn edit" onclick="openTxnModal('${txn.id}')" title="Edit">✏️</button>
@@ -7100,7 +7126,7 @@ function buildSalaryPlannerLegend(cur, salaryForPct) {
     return `<div class="sp-legend-row">
       <span class="sp-legend-swatch" style="background:${CAT_COLORS[cat] || '#6B7280'}"></span>
       <span class="sp-legend-label">${catIcon(cat)} ${esc(cat)}</span>
-      <input type="number" min="0" max="100" class="sp-legend-pct-input" data-cat="${esc(cat)}" value="${pct}" placeholder="0" oninput="renderSalaryPlanner()">
+      <input type="number" min="0" max="100" class="sp-legend-pct-input" data-cat="${esc(cat)}" aria-label="${esc(cat)}, percent of salary" value="${pct}" placeholder="0" oninput="renderSalaryPlanner()">
       <span class="sp-legend-pct-sign">%</span>
       <span class="sp-legend-amt" data-cat-amt="${esc(cat)}">—</span>
     </div>`;
@@ -7150,11 +7176,11 @@ function renderSalaryPlanner() {
 
   const pctEl = document.getElementById('sp-donut-pct');
   pctEl.textContent = `${totalPct}%`;
-  pctEl.style.color = overAllocated ? 'var(--coral)' : 'var(--ink)';
+  pctEl.style.color = overAllocated ? 'var(--coral-t)' : 'var(--ink)';
 
   const statusEl = document.getElementById('sp-status-line');
   if (overAllocated) {
-    statusEl.style.color = 'var(--coral)';
+    statusEl.style.color = 'var(--coral-t)';
     statusEl.textContent = `Over by ${(totalPct - 100).toFixed(1)}% (${fmtWithCur(salary * (totalPct - 100) / 100, cur)}) — you can still apply this if it's intentional`;
   } else if (totalPct < 100 && salary > 0) {
     statusEl.style.color = 'var(--muted)';
@@ -7274,9 +7300,9 @@ function renderBudgets() {
       <div class="budget-header">
         <div class="budget-name">
           ${catIcon(b.category)} ${esc(b.category)}
-          ${over ? `<span style="background:var(--coral-s);color:var(--coral);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
-          ${near ? `<span style="background:var(--amber-s);color:var(--amber);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
-          ${!isMultiCurBudget ? `<span style="background:var(--sky-s);color:var(--sky);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>` : ''}
+          ${over ? `<span style="background:var(--coral-s);color:var(--coral-t);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_over')}</span>` : ''}
+          ${near ? `<span style="background:var(--amber-s);color:var(--amber-t);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;">${t('badge_near')}</span>` : ''}
+          ${!isMultiCurBudget ? `<span style="background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${b.currency || state.currency}</span>` : ''}
           ${'' /* with tabs on, the active tab already states the currency */}
         </div>
         <div class="budget-actions">
@@ -7287,7 +7313,7 @@ function renderBudgets() {
       <div class="budget-track"><div class="budget-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div>
       <div class="budget-stats">
         <span>${fmtSigned(spent, b.currency)} ${t('budget_spent_of')} ${fmtWithCur(effAmt, b.currency)}</span>
-        <span class="budget-pct" style="color:${color}">${pctShown.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-effAmt, b.currency)+' over)' : ' ('+fmtWithCur(left, b.currency)+' '+t('budget_left')+')'}</span>
+        <span class="budget-pct" style="color:${textTone(color)}">${pctShown.toFixed(0)}%${over ? ' (−'+fmtWithCur(spent-effAmt, b.currency)+' over)' : ' ('+fmtWithCur(left, b.currency)+' '+t('budget_left')+')'}</span>
       </div>
       ${rollover > 0 ? `<div class="budget-rollover-badge">${t('rollover_badge').replace('{amt}', fmtWithCur(rollover, b.currency))}</div>` : ''}
       ${backNote > 0 ? `<div class="budget-rollover-badge">↩ ${fmtWithCur(backNote, b.currency)} ${t('budget_paid_back')}</div>` : ''}
@@ -7338,7 +7364,7 @@ function renderBudgets() {
     const oc  = pct > 100 ? 'var(--coral)' : pct > 75 ? 'var(--amber)' : 'var(--jade)';
     return `<div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.5px;">${cur}</span>
         <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${fmtSigned(d.spent, cur)} / ${fmtWithCur(d.total, cur)}</span>
       </div>
       <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;">
@@ -7352,12 +7378,12 @@ function renderBudgets() {
     <div style="margin-bottom:14px;">${budgetTotalHTML}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_remaining')}</div>
-        <div style="font-size:12px;color:var(--jade-d);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.min(d.total, Math.max(0, d.total-d.spent)),c)).join('<br>')}</div>
+        <div style="font-size:10px;color:var(--jade-t);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_remaining')}</div>
+        <div style="font-size:12px;color:var(--jade-t);font-weight:700;">${budgetCurEntries.map(([c,d])=>fmtWithCur(Math.min(d.total, Math.max(0, d.total-d.spent)),c)).join('<br>')}</div>
       </div>
       <div style="background:var(--coral-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--coral);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_over_lbl')}</div>
-        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral)">${overBudgetCount} ${t('budget_cats')}</div>
+        <div style="font-size:10px;color:var(--coral-t);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('budget_over_lbl')}</div>
+        <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--coral-t)">${overBudgetCount} ${t('budget_cats')}</div>
       </div>
     </div>`;
 }
@@ -7371,11 +7397,11 @@ function billMatches(month) {
 }
 
 const BILL_CHIP = {
-  paid    : { key:'bills_status_paid',     bg:'var(--jade-s)',  fg:'var(--jade-d)' },
-  due     : { key:'bills_status_due',      bg:'var(--sky-s)',   fg:'var(--sky)'    },
-  overdue : { key:'bills_status_overdue',  bg:'var(--coral-s)', fg:'var(--coral)'  },
+  paid    : { key:'bills_status_paid',     bg:'var(--jade-s)',  fg:'var(--jade-t)' },
+  due     : { key:'bills_status_due',      bg:'var(--sky-s)',   fg:'var(--sky-t)'  },
+  overdue : { key:'bills_status_overdue',  bg:'var(--coral-s)', fg:'var(--coral-t)'},
   upcoming: { key:'bills_status_upcoming', bg:'var(--surface)', fg:'var(--muted)'  },
-  missed  : { key:'bills_status_missed',   bg:'var(--coral-s)', fg:'var(--coral)'  }
+  missed  : { key:'bills_status_missed',   bg:'var(--coral-s)', fg:'var(--coral-t)'}
 };
 
 function renderBills() {
@@ -7467,7 +7493,7 @@ function renderBills() {
     const pct = tot > 0 ? (d.paid / tot) * 100 : 0;
     return `<div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.5px;">${cur}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.5px;">${cur}</span>
         <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${fmtWithCur(d.paid, cur)} / ${fmtWithCur(tot, cur)}</span>
       </div>
       <div style="background:var(--surface);border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;">
@@ -7478,12 +7504,12 @@ function renderBills() {
   }).join('') + `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('bills_paid')}</div>
-        <div style="font-size:12px;color:var(--jade-d);font-weight:700;">${curs.map(c=>fmtWithCur(byCur[c].paid,c)).join('<br>')}</div>
+        <div style="font-size:10px;color:var(--jade-t);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('bills_paid')}</div>
+        <div style="font-size:12px;color:var(--jade-t);font-weight:700;">${curs.map(c=>fmtWithCur(byCur[c].paid,c)).join('<br>')}</div>
       </div>
       <div style="background:var(--amber-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('bills_outstanding')}</div>
-        <div style="font-size:12px;color:var(--amber);font-weight:700;">${curs.map(c=>fmtWithCur(byCur[c].due,c)).join('<br>')}</div>
+        <div style="font-size:10px;color:var(--amber-t);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">${t('bills_outstanding')}</div>
+        <div style="font-size:12px;color:var(--amber-t);font-weight:700;">${curs.map(c=>fmtWithCur(byCur[c].due,c)).join('<br>')}</div>
       </div>
     </div>` : `<div class="empty" style="padding:14px 0;"><p style="font-size:12px;">${t('bills_inactive')}</p></div>`;
 }
@@ -7675,11 +7701,11 @@ function renderGoals() {
       <div class="goal-header">
         <div class="goal-title">
           ${g.icon} ${esc(g.name)}
-          ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-d);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
-          ${g.linkedAccount ? `<span title="Synced from ${esc(g.linkedAccount)}" style="background:var(--sky-s);color:var(--sky);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">🔗 ${esc(g.linkedAccount)}</span>` : ''}
+          ${achieved ? `<span style="background:var(--jade-s);color:var(--jade-t);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">${t('goal_achieved_badge')}</span>` : ''}
+          ${g.linkedAccount ? `<span title="Synced from ${esc(g.linkedAccount)}" style="background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">🔗 ${esc(g.linkedAccount)}</span>` : ''}
         </div>
         <div class="goal-right">
-          ${!isMultiCurGoals ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:2px;"><span style="background:var(--sky-s);color:var(--sky);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${g.currency || state.currency}</span></div>` : ''}
+          ${!isMultiCurGoals ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:2px;"><span style="background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px;">${g.currency || state.currency}</span></div>` : ''}
           <div class="goal-current">${fmtWithCur(g.current, g.currency)}</div>
           <div class="goal-target">${t('goal_of')} ${fmtWithCur(g.target, g.currency)}</div>
         </div>
@@ -7688,7 +7714,7 @@ function renderGoals() {
       <div class="goal-footer">
         <span>${pct.toFixed(0)}% · ${achieved ? t('goal_done') : fmtWithCur(remaining, g.currency)+' '+t('goal_to_go')}</span>
         <div style="display:flex;align-items:center;gap:8px;">
-          ${monthsLeftLabel ? `<span style="font-size:11px;color:${overdue?'var(--coral)':'var(--sky)'};font-weight:${overdue?'700':'400'};">${monthsLeftLabel}</span>` : ''}
+          ${monthsLeftLabel ? `<span style="font-size:11px;color:${overdue?'var(--coral-t)':'var(--sky-t)'};font-weight:${overdue?'700':'400'};">${monthsLeftLabel}</span>` : ''}
           <div class="goal-actions">
             <button class="icon-btn edit" onclick="openGoalModal('${g.id}')" title="Edit / Add contribution">✏️</button>
             <button class="icon-btn del"  onclick="deleteGoal('${g.id}')"    title="Delete goal">🗑️</button>
@@ -7700,7 +7726,7 @@ function renderGoals() {
 
   document.getElementById('goals-list').innerHTML = Object.entries(goalsByCur).map(([cur, goals], i) => `
     ${isMultiCurGoals ? `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'24px':0} 0 12px;">
-      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+      <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.8px;">${cur}</span>
       <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>` : ''}
     ${goals.map(goalCardHTML).join('')}
@@ -7716,29 +7742,29 @@ function renderGoals() {
   });
   const curEntries = Object.entries(byCur);
   const savingsHTML = curEntries.length === 1
-    ? `<div style="font-family:var(--fd);font-size:28px;font-weight:700;color:var(--jade-d)">${fmtWithCur(curEntries[0][1].current, curEntries[0][0])}</div>
+    ? `<div style="font-family:var(--fd);font-size:28px;font-weight:700;color:var(--jade-t)">${fmtWithCur(curEntries[0][1].current, curEntries[0][0])}</div>
        <div style="font-size:12px;color:var(--muted);margin-top:4px;">${t('goal_of')} ${fmtWithCur(curEntries[0][1].target, curEntries[0][0])} ${t('goals_across')} ${state.goals.length} ${t('goals_lbl')}</div>`
     : curEntries.map(([cur, d]) => `
        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,200,150,.12);">
-         <span style="font-size:11px;font-weight:700;color:var(--jade-d);letter-spacing:.5px;">${cur}</span>
+         <span style="font-size:11px;font-weight:700;color:var(--jade-t);letter-spacing:.5px;">${cur}</span>
          <div style="text-align:right;">
-           <span style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--jade-d);">${fmtWithCur(d.current, cur)}</span>
+           <span style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--jade-t);">${fmtWithCur(d.current, cur)}</span>
            <span style="font-size:11px;color:var(--muted);margin-left:4px;">/ ${fmtWithCur(d.target, cur)}</span>
          </div>
        </div>`).join('');
   document.getElementById('goals-summary').innerHTML = `
     <div style="background:var(--jade-s);border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--jade-d);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">${t('goals_total_saved')}</div>
+      <div style="font-size:11px;color:var(--jade-t);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">${t('goals_total_saved')}</div>
       ${savingsHTML}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="background:var(--sky-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--sky);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_active')}</div>
-        <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--sky)">${state.goals.length - achieved}</div>
+        <div style="font-size:10px;color:var(--sky-t);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_active')}</div>
+        <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--sky-t)">${state.goals.length - achieved}</div>
       </div>
       <div style="background:var(--jade-s);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--jade-d);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_achieved')}</div>
-        <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--jade-d)">${achieved}</div>
+        <div style="font-size:10px;color:var(--jade-t);font-weight:700;text-transform:uppercase;margin-bottom:4px;">${t('goals_achieved')}</div>
+        <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--jade-t)">${achieved}</div>
       </div>
     </div>`;
 }
@@ -7780,9 +7806,9 @@ function renderAnalytics() {
   }).join('');
 
   document.getElementById('an-income').innerHTML  =
-    curStatRows((st, cur) => st.inc ? '+' + fmtWithCur(st.inc, cur) : '—', 'var(--jade-d)');
+    curStatRows((st, cur) => st.inc ? '+' + fmtWithCur(st.inc, cur) : '—', 'var(--jade-t)');
   document.getElementById('an-expense').innerHTML =
-    curStatRows((st, cur) => st.exp ? '−' + fmtWithCur(st.exp, cur) : '—', 'var(--coral)');
+    curStatRows((st, cur) => st.exp ? '−' + fmtWithCur(st.exp, cur) : '—', 'var(--coral-t)');
 
   // Savings rate per currency — now guaranteed to be derived from the two
   // figures shown above it.
@@ -7890,9 +7916,9 @@ function renderMonthlyReview() {
   if (statsEl) {
     statsEl.innerHTML = currencies.map(cur => {
       const st = curStats(cur, reviewTxns, mk);
-      return `<div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_income')}</div><div class="review-stat-val" style="color:var(--jade-d)">${fmtWithCur(st.inc, cur)}</div></div>
-        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_expenses')}</div><div class="review-stat-val" style="color:var(--coral)">${fmtWithCur(st.exp, cur)}</div></div>
-        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} Net</div><div class="review-stat-val" style="color:${st.net>=0?'var(--jade-d)':'var(--coral)'}">${fmtSigned(st.net, cur)}</div></div>`;
+      return `<div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_income')}</div><div class="review-stat-val" style="color:var(--jade-t)">${fmtWithCur(st.inc, cur)}</div></div>
+        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_expenses')}</div><div class="review-stat-val" style="color:var(--coral-t)">${fmtWithCur(st.exp, cur)}</div></div>
+        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} Net</div><div class="review-stat-val" style="color:${st.net>=0?'var(--jade-t)':'var(--coral-t)'}">${fmtSigned(st.net, cur)}</div></div>`;
     }).join('') + `<div class="review-stat"><div class="review-stat-lbl">Transactions</div><div class="review-stat-val">${countEvents(reviewTxns)}</div></div>`;
   }
 
@@ -7964,7 +7990,7 @@ function renderMonthlyReview() {
         const tip   = over ? `${fmtWithCur(amt - limit, cur)} ${t('review_over')} ${fmtWithCur(limit, cur)}`
                            : `${fmtWithCur(limit - amt, cur)} ${t('budget_left')} ${t('review_of')} ${fmtWithCur(limit, cur)}`;
         budHTML = `<span class="review-bud" title="${tip}"><span class="review-mini"><i class="${level}" style="width:${Math.min(used, 100).toFixed(1)}%"></i></span>`
-          + `<b style="color:${{ over:'var(--coral)', near:'var(--amber)', ok:'var(--jade-d)' }[level]}">${limit > 0 ? Math.round(used) + '%' : '—'}</b></span>`;
+          + `<b style="color:${{ over:'var(--coral-t)', near:'var(--amber-t)', ok:'var(--jade-t)' }[level]}">${limit > 0 ? Math.round(used) + '%' : '—'}</b></span>`;
       } else {
         budHTML = `<span class="review-bud"><em>${t('review_no_budget')}</em></span>`;
       }
@@ -8319,7 +8345,7 @@ function renderMonthlySummary() {
       const open = msumOpen.has(key);
       const tip  = [`Income ${money(inc)}`, back ? `Refunds & claims ${money(back)}` : '', xIn ? `Exchanged in ${money(xIn)}` : '',
                     `Spending ${money(exp)}`, xOut ? `Exchanged out ${money(xOut)}` : ''].filter(Boolean).join(' · ');
-      return `<tr class="msum-row${open ? ' open' : ''}" onclick="toggleMonthDetail('${key}')" title="Show where this month's ${cur} came from and went">
+      return `<tr class="msum-row${open ? ' open' : ''}" role="button" tabindex="0" aria-expanded="${open}" onclick="toggleMonthDetail('${key}')" title="Show where this month's ${cur} came from and went">
         <td><span class="msum-caret">${open ? '▾' : '▸'}</span> ${label(mk)}</td>
         <td class="msum-flow"><div class="msum-bars" title="${esc(tip)}"><div>${seg(inc, 'inc')}${seg(back, 'back')}${seg(xIn, 'xch')}</div><div>${seg(exp, 'exp')}${seg(xOut, 'xch')}</div></div></td>
         ${amt(inc, 'msum-in')}
@@ -9068,13 +9094,13 @@ function renderSpendingTrend() {
       const h = Math.max(0, v / max * 100).toFixed(1);
       const [y, m] = mk.split('-');
       const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
-      return `<div class="trend-bar-col" onclick="showTrendDetail('${mk}','${cur}',${v},this)">
+      return `<div class="trend-bar-col" role="button" tabindex="0" aria-label="${label}: ${esc(fmtWithCur(v, cur))}" onclick="showTrendDetail('${mk}','${cur}',${v},this)">
         <div class="trend-bar" style="height:${h}%;"></div>
         <div class="trend-bar-label">${label}</div>
       </div>`;
     }).join('');
     return `${isMultiCurTrend ? `<div style="display:flex;align-items:center;gap:10px;margin:12px 0 10px;">
-      <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+      <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.8px;">${cur}</span>
       <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>` : ''}<div class="trend-bars">${bars}</div>`;
   }).join('');
@@ -9263,7 +9289,7 @@ function renderAccounts() {
           <div class="account-type">${esc(a.institution)} · ${esc(a.type)}</div>
         </div>
         <div class="account-side">
-        <div class="account-bal" style="color:${isNeg?'var(--coral)':'var(--ink)'}">${maskAmt((isNeg?'-':'')+fmtWithCur(Math.abs(bal),cur))}</div>
+        <div class="account-bal" style="color:${isNeg?'var(--coral-t)':'var(--ink)'}">${maskAmt((isNeg?'-':'')+fmtWithCur(Math.abs(bal),cur))}</div>
         ${_arrangingAccounts ? arrangeButtonsHTML(a) : `<div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px;">
           <button onclick="openBalanceModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="${t('bal_action')}" aria-label="${t('bal_action')}">⚖️</button>
           <button onclick="openAccountModal('${a.id}')" style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--muted);font-size:14px;" title="Edit">✏️</button>
@@ -9284,9 +9310,9 @@ function renderAccounts() {
     ? Object.entries(accountsByCur).sort(([a], [b]) => byHomeCurrency(a, b)).map(([cur, accs], i) => {
         const net = accs.reduce((s,a)=>s+effectiveBal(a),0);
         return `<div style="display:flex;align-items:center;gap:10px;margin:${i>0?'18px':'4px'} 0 8px;">
-          <span style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.8px;">${cur}</span>
+          <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.8px;">${cur}</span>
           <div style="flex:1;height:1px;background:var(--border);"></div>
-          <span style="font-family:var(--fm);font-size:11px;font-weight:700;color:${net<0?'var(--coral)':'var(--muted)'};">${maskAmt(fmtSigned(net,cur))}</span>
+          <span style="font-family:var(--fm);font-size:11px;font-weight:700;color:${net<0?'var(--coral-t)':'var(--muted)'};">${maskAmt(fmtSigned(net,cur))}</span>
         </div>${accs.map(accountRowHTML).join('')}`;
       }).join('')
     : state.accounts.map(accountRowHTML).join('');
@@ -9328,7 +9354,7 @@ function renderAccounts() {
   let allocationRows = '';
   for (const [cur, byType] of Object.entries(byTypePerCur)) {
     const curTotal = Object.values(byType).reduce((s,v)=>s+v,0);
-    if (isMultiCur) allocationRows += `<div style="font-size:10px;font-weight:700;color:var(--sky);letter-spacing:.5px;margin:10px 0 6px;padding-top:6px;border-top:1px solid var(--border);">${cur}</div>`;
+    if (isMultiCur) allocationRows += `<div style="font-size:10px;font-weight:700;color:var(--sky-t);letter-spacing:.5px;margin:10px 0 6px;padding-top:6px;border-top:1px solid var(--border);">${cur}</div>`;
     allocationRows += Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([type, bal]) => {
       // An account type in net debt gives a negative share; floor it so the
       // bar reads empty rather than being dropped and rendering full.
@@ -9352,14 +9378,14 @@ function renderAccounts() {
         const col = dr > 30 ? 'var(--coral)' : dr > 10 ? 'var(--amber)' : 'var(--jade)';
         return `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
           <span style="color:var(--muted);font-weight:600;">${cur}</span>
-          <span style="color:${col};font-weight:700;">${dr.toFixed(1)}%</span>
+          <span style="color:${textTone(col)};font-weight:700;">${dr.toFixed(1)}%</span>
         </div>`;
       }).join('')
     : (() => {
         const [cur, d] = curEntries[0];
         const dr = d.assets > 0 ? (d.debt/d.assets*100) : 0;
         const col = dr > 30 ? 'var(--coral)' : dr > 10 ? 'var(--amber)' : 'var(--jade)';
-        return `<div style="font-family:var(--fd);font-size:18px;font-weight:700;color:${col}">${dr.toFixed(1)}%</div>
+        return `<div style="font-family:var(--fd);font-size:18px;font-weight:700;color:${textTone(col)}">${dr.toFixed(1)}%</div>
         <div style="font-size:10px;color:var(--muted);margin-top:2px;">${dr>30?t('acc_risk_high'):dr>10?t('acc_risk_moderate'):t('acc_risk_low')} ${t('acc_risk_suffix')}</div>`;
       })();
 
@@ -9535,7 +9561,7 @@ async function callAI(prompt, targetId, requires) {
         return;
       }
       if (/model/i.test(msg) && /(exist|decommission|deprecat|not found)/i.test(msg)) {
-        el.innerHTML = `<span style="color:#F59E0B;">Groq has retired the model this app was using, and no replacement was available on your account. This usually fixes itself on the next try — if it keeps happening, check <a href="https://console.groq.com/docs/models" target="_blank" style="color:var(--sky);">the model list ↗</a>.</span>`;
+        el.innerHTML = `<span style="color:#F59E0B;">Groq has retired the model this app was using, and no replacement was available on your account. This usually fixes itself on the next try — if it keeps happening, check <a href="https://console.groq.com/docs/models" target="_blank" style="color:var(--sky-t);">the model list ↗</a>.</span>`;
         return;
       }
       throw new Error(msg);
@@ -9897,7 +9923,7 @@ function updateLastSync() {
     ? new Date(state.lastSync).toLocaleString('en-SG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
     : 'never';
   if (state.syncFailed) {
-    el.innerHTML = `<span style="color:var(--amber);font-weight:600;">⚠️ Couldn't sync — showing your copy from ${when}</span> <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" onclick="syncNow()">Retry</button>`;
+    el.innerHTML = `<span style="color:var(--amber-t);font-weight:600;">⚠️ Couldn't sync — showing your copy from ${when}</span> <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" onclick="syncNow()">Retry</button>`;
   } else if (state.lastSync) {
     el.textContent = 'Last sync: ' + new Date(state.lastSync).toLocaleTimeString('en-SG', { hour:'2-digit', minute:'2-digit' });
   }
@@ -9962,9 +9988,9 @@ const NOTIFY_FN_URL = SUPABASE_URL + '/functions/v1/pfmt-notify';
 function _notifyStatus(msg, kind) {
   const el = document.getElementById('notify-status');
   if (!el) return;
-  const c = kind === 'error' ? ['var(--coral-s)', 'var(--coral)']
-          : kind === 'warn'  ? ['var(--amber-s)', 'var(--amber)']
-          :                    ['var(--jade-s)',  'var(--jade-d)'];
+  const c = kind === 'error' ? ['var(--coral-s)', 'var(--coral-t)']
+          : kind === 'warn'  ? ['var(--amber-s)', 'var(--amber-t)']
+          :                    ['var(--jade-s)',  'var(--jade-t)'];
   el.style.display = 'block';
   el.style.background = c[0];
   el.style.color = c[1];
@@ -10099,7 +10125,7 @@ function saveAIKey() {
   state.geminiKey = val;
   saveState();
   const el = document.getElementById('ai-key-status');
-  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-d)'; el.textContent = t('toast_groq_saved'); }
+  if (el) { el.style.display='block'; el.style.background='var(--jade-s)'; el.style.color='var(--jade-t)'; el.textContent = t('toast_groq_saved'); }
 
   // Store it against the account too, so the key follows the user to their phone
   // instead of having to be re-entered on every device.
@@ -10257,6 +10283,109 @@ document.addEventListener('keydown', e => {
 document.querySelectorAll('.modal-backdrop').forEach(m => {
   m.addEventListener('click', e => { if (e.target===m) { closeTxnModal(); closeBudgetModal(); closeGoalModal(); m.classList.remove('open'); } });
 });
+
+// ═══════════════════════════════════════════════
+// ACCESSIBILITY
+// ═══════════════════════════════════════════════
+// Rules applied to the whole page rather than to each form and button, so new
+// ones get them too (a11yPass runs again whenever the page changes):
+//   • a <label> labels the field in its .form-group, or the field after it;
+//   • a button drawn as a symbol (✏️ ✕ ‹ ☰) speaks its title ("Edit"), not
+//     "pencil" or "single left-pointing angle quotation mark";
+//   • a settings switch is a switch: named, reached by Tab, flipped by Space
+//     or Enter, and says whether it is on;
+//   • Enter and Space press anything marked role="button";
+//   • an open window is a dialog that holds the focus, and closing it puts
+//     the focus back where it was.
+const A11Y_FIELD = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
+let _a11yIds = 0;
+function a11yPass(root = document) {
+  root.querySelectorAll('label:not([for])').forEach(label => {
+    if (label.querySelector('input, select, textarea')) return;   // wraps its field already
+    const group = label.closest('.form-group');
+    let field = group && group.querySelector(A11Y_FIELD);
+    for (let n = label.nextElementSibling; n && !field; n = n.nextElementSibling) field = n.matches(A11Y_FIELD) ? n : n.querySelector(A11Y_FIELD);
+    if (!field || (field.labels && field.labels.length) || field.hasAttribute('aria-label')) return;
+    if (!field.id) field.id = 'a11y-f' + (++_a11yIds);
+    label.htmlFor = field.id;
+  });
+  root.querySelectorAll('button:not([aria-label]), [role="button"]:not([aria-label])').forEach(b => {
+    if (/[\p{L}\p{N}]/u.test(b.textContent || '')) return;
+    const name = b.title || (b.classList.contains('modal-close') ? 'Close' : '');
+    if (name) b.setAttribute('aria-label', name);
+  });
+  root.querySelectorAll('.toggle').forEach(sw => {
+    if (!sw.hasAttribute('role')) {
+      sw.setAttribute('role', 'switch');
+      sw.tabIndex = 0;
+      const label = sw.parentElement && sw.parentElement.querySelector('.setting-label');
+      if (label) { if (!label.id) label.id = 'a11y-l' + (++_a11yIds); sw.setAttribute('aria-labelledby', label.id); }
+    }
+    sw.setAttribute('aria-checked', String(sw.classList.contains('on')));
+  });
+}
+let _a11yQueued = false;
+new MutationObserver(() => {
+  if (_a11yQueued) return;
+  _a11yQueued = true;
+  requestAnimationFrame(() => { _a11yQueued = false; a11yPass(); });
+}).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target;
+  if (!el || !el.matches || !el.matches('[role="button"], [role="switch"]') || el.hasAttribute('onkeydown')
+      || /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/.test(el.tagName)) return;
+  e.preventDefault();
+  el.click();
+});
+
+// Windows: announced as dialogs, the focus goes in, stays in, and comes back.
+const _dialogOpener = new Map();
+const dialogFocusables = bd => [...bd.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+  .filter(el => !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  const box = bd.querySelector('.modal') || bd;
+  if (!box.hasAttribute('role')) box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  if (!box.hasAttribute('tabindex')) box.tabIndex = -1;
+  const title = box.querySelector('.modal-title, h2, h3');
+  if (title && !box.hasAttribute('aria-labelledby') && !box.hasAttribute('aria-label')) {
+    if (!title.id) title.id = (bd.id || 'dialog' + (++_a11yIds)) + '-title';
+    box.setAttribute('aria-labelledby', title.id);
+  }
+  new MutationObserver(() => {
+    const open = bd.classList.contains('open');
+    if (open) {
+      // (Closed and reopened in one go, the observer sees only "open": keep
+      // the first opener, and still make sure the focus is inside.)
+      if (!_dialogOpener.has(bd)) _dialogOpener.set(bd, document.activeElement);
+      // Most windows focus their first field themselves; if nothing inside has
+      // the focus a moment later, the window takes it.
+      setTimeout(() => {
+        if (!bd.classList.contains('open') || bd.contains(document.activeElement)) return;
+        const first = dialogFocusables(bd).find(el => el.matches(A11Y_FIELD)) || dialogFocusables(bd).find(el => !el.classList.contains('modal-close'));
+        (first || box).focus({ preventScroll: true });
+      }, 150);
+    } else if (!open && _dialogOpener.has(bd)) {
+      const back = _dialogOpener.get(bd);
+      _dialogOpener.delete(bd);
+      if (back && back.isConnected && back.focus && !document.querySelector('.modal-backdrop.open')) back.focus({ preventScroll: true });
+    }
+  }).observe(bd, { attributes: true, attributeFilter: ['class'] });
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const bd = [...document.querySelectorAll('.modal-backdrop.open')].pop();
+  if (!bd) return;
+  const items = dialogFocusables(bd);
+  if (!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  if (!bd.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+a11yPass();
 
 
 // ═══════════════════════════════════════════════
@@ -10904,7 +11033,7 @@ function _populateSettingsUI() {
   if (aiStatus && state.geminiKey) {
     aiStatus.style.display = 'block';
     aiStatus.style.background = 'var(--jade-s)';
-    aiStatus.style.color = 'var(--jade-d)';
+    aiStatus.style.color = 'var(--jade-t)';
     aiStatus.textContent = t('toast_groq_saved');
   }
   const curSel = document.getElementById('currency-select');

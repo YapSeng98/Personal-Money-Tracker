@@ -335,6 +335,20 @@ added to a home screen; `sw.js` caches the page and its pinned libraries
 (network-first for the page, never for Supabase), so it opens with no
 connection and queues changes in the outbox.
 
+**Accessible by default.** A few page-wide rules (`a11yPass`, re-run whenever
+the page changes) keep every new form and button accessible: a `<label>` labels
+the field in its `.form-group` or the field after it; a button drawn as a symbol
+(✏️ ✕ ‹ ☰) speaks its title instead of "pencil"; settings switches are real
+switches (named, reached by Tab, flipped by Space or Enter, announcing on or
+off); Enter and Space press anything with `role="button"`; every window is a
+named, modal dialog that takes the focus, keeps Tab inside, and hands the focus
+back when it closes. The page's `lang` follows the language shown. Accent
+colours have text shades (`--coral-t`, `--jade-t`, `--sky-t`, `--amber-t`,
+`--indigo-t`, `--violet-t`) that keep text at 4.5:1 or more on light cards;
+the bright accents stay for fills, bars and icons. Buttons keep white text at
+4.5:1, and the dashboard's balance card uses a deep version of the brand
+gradient so its figures read.
+
 **Only the page on screen is drawn.** `renderAll()` draws the active page and
 marks the others stale; `showView()` draws a page when it is opened.
 
@@ -453,7 +467,7 @@ wrong — not that a test is stale.
 | `bills-and-alerts.test.js` | 72 | the two copies of the shared rules are identical; one transaction never ticks two bills; a match is a real match; due dates survive short months; an alert never contradicts the budget card |
 | `pfmt-notify.test.mjs` | 48 | the Edge Function itself, under a stubbed Deno and a stubbed network — auth gates, claim-before-send, one message not many, HTML escaping, failed sends releasing their claims; the cron run is pinned to a date |
 | `data-integrity.test.js` | 17 | every broken transfer-pair shape is named, and no list ever hides a row it should show (3,000 randomised lists) |
-| `outbox.test.js` | 35 | writes queue, fold per row and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed; inserts go up in batches and a refused batch falls back to one row at a time |
+| `outbox.test.js` | 37 | writes queue, fold per row (into the row's latest write, so a change made after a failed send still lands last) and go out in order once; a dropped connection keeps them; a refusal moves aside; a reload keeps what hasn't landed; inserts go up in batches and a refused batch falls back to one row at a time |
 | `import.test.js` | 37 | bank CSVs with header lines, quoted fields, either date order and no header row; signed, split or DR/CR amounts; credit cards where spending is positive; duplicates matched one-to-one; categories learned from the book |
 | `app-lock.test.js` | 8 | the PIN is stored salted; an old PIN unlocks once and is re-stored |
 | `descriptions.test.js` | 68,324 | what the Description box offers. One entry per description however it was capitalised or spaced. Only the kind of row being added, each pair offered once. Starts-with first, then word starts in any order, Chinese from anywhere, then one typo exactly (against a full edit-distance calculation). Recent use outranks old. The usual category fills in, and both accounts of a transfer or purchase. Descriptions show as text, never markup. Covers 300 random books (`SEED=n` tries another 300). `PFMT_BACKUP=~/PFMT_Backups/<date>` also replays a real book in date order and reports how often what you wrote would have been offered after 0–3 letters |
@@ -502,6 +516,18 @@ run uses a database without migration 007. Every run includes six runs of 200 ac
 --steps=M` runs more, and `--backup … --user …` runs them on a copy of a real
 book. `--health --backup … --user …` loads a real book the way the app does
 and checks all of it, and that loading it twice changes nothing.
+
+The **accessibility audit** (`fit.js`, `--a11y`) opens every page, window and
+menu at 390px and 360px in Chinese, in light and dark, and checks what a
+screen-reader or keyboard user meets: every control has a name that isn't only a
+symbol, every field a label (a placeholder doesn't count), text contrast is
+WCAG AA against what is actually behind it, focus is visible, anything clickable
+is reachable by keyboard, an open window is a named modal dialog holding the
+focus, and the page's language matches what it shows. The **typed-markup pass**
+(`--xss`) puts markup in every field a person types (descriptions, notes,
+account, goal and bill names, a category, the display name, a server error) and
+fails if any screen turns it into elements or runs it. Every run includes both
+at 390px.
 
 The **phone-fit audit** (`fit.js`) opens every page, window and menu — 43
 screens, with long names, seven-figure amounts and USDT in the data — and
@@ -590,6 +616,10 @@ cross-currency transfer takes both amounts from you rather than applying a
 rate. The single exception is the ≈ total on Accounts, an estimate at the day's
 ECB rates (or yours); nothing else reads those rates. Rates you set stay on
 the device that set them.
+
+**The offline copy lives in localStorage**, which browsers cap at about 5 MB:
+roughly 15,000 transactions. Past that, saving the offline copy fails quietly
+(the server still has everything); moving it to IndexedDB would lift the cap.
 
 **Transactions load in pages of 1,000 until none are left**, so there is no
 ceiling on how many a user can have. Nothing renders until every page is in; if

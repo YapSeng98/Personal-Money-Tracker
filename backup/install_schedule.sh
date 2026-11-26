@@ -3,8 +3,8 @@
 # Install (or reinstall) the PFMT backup as a launchd job.
 # Safe to re-run — it unloads any previous copy first.
 #
-#   ./install_schedule.sh                       weekly, Sunday 09:00
-#   ./install_schedule.sh --monthly             monthly, 1st at 09:00
+#   ./install_schedule.sh                       weekly (checked daily at 09:00)
+#   ./install_schedule.sh --monthly             monthly (checked daily at 09:00)
 #   ./install_schedule.sh --to ~/Dropbox/PFMT_Backups
 #   ./install_schedule.sh --remove              uninstall
 #
@@ -52,10 +52,12 @@ case "$BACKUP_DIR" in
 esac
 [ "${BACKUP_DIR#/}" != "$BACKUP_DIR" ] || BACKUP_DIR="$PWD/$BACKUP_DIR"
 
+# The job runs every day at 09:00 and backs up only when the newest backup is
+# this many days old, so a failed run is retried the next morning.
 if [ "$PERIOD" = "monthly" ]; then
-  PERIOD_KEY="Day";     PERIOD_VAL="1";  WHEN="the 1st of each month at 09:00"
+  DUE_DAYS="28"; WHEN="every 4 weeks (checked daily at 09:00; a missed run catches up the next day)"
 else
-  PERIOD_KEY="Weekday"; PERIOD_VAL="0";  WHEN="every Sunday 09:00"
+  DUE_DAYS="7";  WHEN="every week (checked daily at 09:00; a missed run catches up the next day)"
 fi
 
 PLIST_SRC="$HERE/com.pfmt.weeklybackup.plist"
@@ -98,7 +100,7 @@ mkdir -p "$LOG_DIR" "$HOME/Library/LaunchAgents"
 # without your shell environment, so this is the only way it learns the folder.
 sed -e "s|__SCRIPT_PATH__|$SCRIPT|g" -e "s|__LOG_DIR__|$LOG_DIR|g" \
     -e "s|__ENV_KEY__|$ENV_KEY|g" -e "s|__BACKUP_DIR__|$BACKUP_DIR|g" \
-    -e "s|__PERIOD_KEY__|$PERIOD_KEY|g" -e "s|__PERIOD_VAL__|$PERIOD_VAL|g" \
+    -e "s|__DUE_DAYS__|$DUE_DAYS|g" \
     -e "s|com.pfmt.weeklybackup|$LABEL|g" \
     "$PLIST_SRC" > "$PLIST_DEST" || { echo "ERROR: could not write $PLIST_DEST"; exit 1; }
 
@@ -117,7 +119,7 @@ echo "  logs   : $LOG_DIR"
 echo
 
 # Fire it once now through launchd itself, so a broken setup surfaces in
-# seconds rather than next Sunday. Deliberately not RunAtLoad, which would
+# seconds rather than days later (it backs up only if one is due). Deliberately not RunAtLoad, which would
 # repeat this on every login rather than only at install.
 echo "Running it once now to check the setup..."
 if launchctl kickstart -k "gui/$(id -u)/$LABEL" 2>/dev/null; then
