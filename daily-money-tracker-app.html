@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="PFMT">
 <title>PFMT — Daily Money Tracker</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Chakra+Petch:wght@500;600;700&display=swap');
 
 :root {
   /* --brand is the fixed deep navy used for the sidebar and toasts. It stays
@@ -78,6 +78,27 @@ html[data-theme="dark"] {
   --glass:rgba(19,25,43,.6); --glass-border:rgba(255,255,255,.07);
   --aurora-1:rgba(99,102,241,.18); --aurora-2:rgba(139,92,246,.18); --aurora-3:rgba(0,200,150,.14);
   --grid-line:rgba(140,170,220,.045);
+}
+/* Command Center: the dark palette re-cut as an operations room. Deep navy
+   panels on near-black, electric-blue edges and a cyan data grid; set as
+   data-theme="dark" plus data-skin="command", so every dark-mode rule still
+   applies and only these tokens and the few rules below differ. Text tokens
+   keep 4.5:1 or more on the panels. */
+html[data-skin="command"] {
+  --ink:#DCE9FF; --ink2:#AFC6EA; --ink3:#8FAAD3;
+  --muted:#8EA8D1; --border:#18396B;
+  --bg:#020916; --surface:#0B1E40; --card:#06142E; --white:#06142E;
+  --topbar:rgba(3,10,24,.9); --shadow:rgba(0,0,0,.6); --brand:#020814;
+  --indigo:#3D8BFF; --sky:#3BA4FF; --violet:#7C9CFF; --coral:#FF5B6E; --amber:#FFB020;
+  --indigo-s:rgba(61,139,255,.16); --sky-s:rgba(59,164,255,.14); --jade-s:rgba(34,227,166,.12);
+  --coral-s:rgba(255,91,110,.14); --amber-s:rgba(255,176,32,.14); --violet-s:rgba(124,156,255,.16);
+  --jade-d:#3EF0B5;
+  --coral-t:#FF8493; --jade-t:#3EF0B5; --sky-t:#6CBEFF; --amber-t:#FFC24D; --indigo-t:#82B4FF; --violet-t:#AEBFFF;
+  --grad-brand:linear-gradient(135deg,#1D4ED8 0%,#2F7BFF 50%,#06B6D4 100%);
+  --glass:rgba(6,20,46,.82); --glass-border:rgba(80,160,255,.22);
+  --aurora-1:rgba(30,107,255,.20); --aurora-2:rgba(6,182,212,.13); --aurora-3:rgba(30,64,175,.18);
+  --grid-line:rgba(80,160,255,.075);
+  --fd:'Chakra Petch','Space Grotesk',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
@@ -858,6 +879,35 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 }
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
 .acc-arrange-hint{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;}
+/* ── Command Center skin: the surfaces ── */
+html[data-skin="command"] body::after{
+  background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px),
+                   repeating-linear-gradient(0deg,rgba(120,190,255,.022) 0 1px,transparent 1px 3px);
+  background-size:48px 48px,48px 48px,auto;
+}
+html[data-skin="command"] .panel,html[data-skin="command"] .kpi,html[data-skin="command"] .stat-card{
+  border-color:var(--glass-border);border-radius:10px;
+  box-shadow:0 0 0 1px rgba(56,189,248,.05),0 18px 40px -26px rgba(0,40,120,.9),inset 0 1px 0 rgba(140,200,255,.07);}
+html[data-skin="command"] .panel-title{font-family:var(--fm);font-size:12.5px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--sky-t);}
+html[data-skin="command"] .kpi-label{color:var(--sky-t);letter-spacing:.14em;}
+html[data-skin="command"] .modal{border:1px solid var(--glass-border);border-radius:14px;box-shadow:0 0 0 1px rgba(56,189,248,.06),0 30px 80px -20px rgba(0,20,70,.9);}
+html[data-skin="command"] .topbar{border-bottom-color:rgba(80,160,255,.22);}
+html[data-skin="command"] .sidebar{border-right:1px solid rgba(80,160,255,.18);}
+html[data-skin="command"] .nav-item.active{background:linear-gradient(90deg,rgba(37,99,235,.30),rgba(6,182,212,.10));box-shadow:inset 3px 0 0 #38BDF8,inset 0 0 0 1px rgba(80,160,255,.18);}
+/* Emoji icons in one cool tint, so the menus read as one instrument panel. */
+html[data-skin="command"] .nav-item .icon,html[data-skin="command"] .bnav-ico{filter:grayscale(1) sepia(1) saturate(4) hue-rotate(165deg) brightness(1.25);}
+html[data-skin="command"] .sidebar::before{background:radial-gradient(circle,rgba(37,99,235,.38),transparent 70%);}
+html[data-skin="command"] .sidebar::after{background:radial-gradient(circle,rgba(6,182,212,.22),transparent 70%);}
+/* Positive actions in the teal-blue of the room (white text at 5.4:1 or more), not green. */
+html[data-skin="command"] .btn-jade{background:linear-gradient(135deg,#0E7490 0%,#0369A1 100%);box-shadow:0 6px 18px -8px rgba(6,182,212,.55);}
+html[data-skin="command"] .balance-hero{
+  background:radial-gradient(rgba(120,190,255,.11) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(135deg,#0A1F4D 0%,#0B2F73 55%,#064257 100%);
+  border-color:rgba(80,160,255,.35);box-shadow:0 0 0 1px rgba(56,189,248,.08),0 26px 60px -26px rgba(0,60,160,.75);}
+html[data-skin="command"] .balance-hero::after{background:radial-gradient(circle,rgba(6,182,212,.30) 0%,transparent 70%);}
+html[data-skin="command"] .btn-primary{background:linear-gradient(135deg,#1D4ED8 0%,#2563EB 100%);box-shadow:0 6px 20px -8px rgba(37,99,235,.7);}
+html[data-skin="command"] .theme-opt.active{background:linear-gradient(135deg,#1D4ED8,#2563EB);}
+html[data-skin="command"] .form-input{border-color:#1D3E70;}
+html[data-skin="command"] .form-input:focus{border-color:#3BA4FF;box-shadow:0 0 0 4px rgba(59,164,255,.18);}
 .acc-arrange-local{display:block;margin-top:4px;color:var(--amber-t);}
 .acc-move-btns{display:flex;gap:6px;flex-shrink:0;margin-left:8px;}
 .acc-move{width:36px;height:32px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);color:var(--indigo-t);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -1775,6 +1825,7 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
             <button class="theme-opt" data-theme="auto"  onclick="setTheme('auto')">🌗 Auto</button>
             <button class="theme-opt" data-theme="light" onclick="setTheme('light')">☀️ Light</button>
             <button class="theme-opt" data-theme="dark"  onclick="setTheme('dark')">🌙 Dark</button>
+            <button class="theme-opt" data-theme="command" onclick="setTheme('command')">🖥️ Command Center</button>
           </div>
         </div>
 
@@ -9158,12 +9209,14 @@ const maskAmt = text => state.balancesMasked ? '••••••' : text;
 /* ── THEME ── */
 // 'auto' follows the OS setting and keeps following it — an explicit choice
 // pins the theme regardless of what the OS does.
+// Command Center is the dark theme with its own skin on top.
 function resolvedTheme() {
+  if (state.theme === 'command') return 'dark';
   if (state.theme === 'light' || state.theme === 'dark') return state.theme;
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-let _lastAppliedTheme = null;
+let _lastAppliedTheme = null, _lastAppliedSkin = null;
 function applyTheme() {
   const t = resolvedTheme();
   // Only an actual switch needs the re-render below; the first call at boot is
@@ -9171,21 +9224,27 @@ function applyTheme() {
   const changed = _lastAppliedTheme !== null && _lastAppliedTheme !== t;
   _lastAppliedTheme = t;
   document.documentElement.setAttribute('data-theme', t);
+  if (state.theme === 'command') document.documentElement.setAttribute('data-skin', 'command');
+  else document.documentElement.removeAttribute('data-skin');
   // Colours the browser UI (address bar / status bar) to match, so a dark app
   // doesn't sit under a white bar on mobile.
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
-  meta.content = t === 'dark' ? '#080C16' : '#F7F9FC';
+  meta.content = state.theme === 'command' ? '#020916' : t === 'dark' ? '#080C16' : '#F7F9FC';
+  // The top-bar button shows where a tap goes next: light → dark → Command Center → light.
   const icon = document.getElementById('theme-toggle-btn');
   if (icon) {
-    icon.textContent = t === 'dark' ? '☀️' : '🌙';
-    icon.title = t === 'dark' ? 'Switch to light' : 'Switch to dark';
+    const next = nextTheme();
+    icon.textContent = next === 'light' ? '☀️' : next === 'dark' ? '🌙' : '🖥️';
+    icon.title = next === 'light' ? 'Switch to light' : next === 'dark' ? 'Switch to dark' : 'Switch to Command Center';
+    icon.setAttribute('aria-label', icon.title);
   }
   document.querySelectorAll('.theme-opt').forEach(b =>
     b.classList.toggle('active', b.dataset.theme === (state.theme || 'auto')));
   // Category chips are inline styles, so a switch needs a re-render to pick up
   // the theme-appropriate tint.
-  if (changed && typeof renderAll === 'function') renderAll();
+  if ((changed || _lastAppliedSkin !== (state.theme === 'command')) && _lastAppliedSkin !== null && typeof renderAll === 'function') renderAll();
+  _lastAppliedSkin = state.theme === 'command';
 }
 
 function setTheme(mode) {
@@ -9197,8 +9256,11 @@ function setTheme(mode) {
 // Quick toggle flips to the opposite of what's currently showing, which also
 // converts an 'auto' user into an explicit choice — that's intended: tapping
 // the button means "I want this one now".
+function nextTheme() {
+  return state.theme === 'command' ? 'light' : resolvedTheme() === 'dark' ? 'command' : 'dark';
+}
 function toggleTheme() {
-  setTheme(resolvedTheme() === 'dark' ? 'light' : 'dark');
+  setTheme(nextTheme());
 }
 
 // Keep 'auto' live if the OS flips (e.g. sunset) while the app is open.

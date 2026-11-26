@@ -306,13 +306,14 @@ async function runOffline(dt) {
 // tablet, and once in Chinese. Returns each problem with the sizes it shows at.
 // The everyday run covers the extremes: the smallest phone, a common one in
 // Chinese, and a phone on its side. --fit covers them all.
-const FIT_QUICK = ['320', '360 zh', '390', '844×390'];
+const FIT_QUICK = ['320', '360 zh', '390', '390 command', '844×390'];
 const FIT_SIZES = [
   { name: '320', query: '', size: { width: 320, height: 568, mobile: true } },
   { name: '360', query: '', size: { width: 360, height: 740, mobile: true } },
   { name: '360 zh', query: '&lang=zh', size: { width: 360, height: 740, mobile: true } },
   { name: '375', query: '', size: { width: 375, height: 667, mobile: true } },
   { name: '390', query: '', size: { width: 390, height: 844, mobile: true } },
+  { name: '390 command', query: '', theme: 'command', size: { width: 390, height: 844, mobile: true } },
   { name: '430', query: '', size: { width: 430, height: 932, mobile: true } },
   { name: '844×390', query: '', size: { width: 844, height: 390, mobile: true } },
   { name: '768', query: '', size: { width: 768, height: 1024, mobile: true } },
@@ -321,7 +322,7 @@ async function runFit(dt, url, quick, mode = '', sizes = null) {
   const merged = new Map(), errors = [];
   const pick = sizes || (quick ? FIT_QUICK : (process.argv.find(a => a.startsWith('--sizes=')) || '').slice(8).split(',').filter(Boolean));
   for (const fit of FIT_SIZES.filter(f => !pick.length || pick.includes(f.name))) {
-    for (const theme of mode === 'a11y' ? ['light', 'dark'] : ['dark']) {
+    for (const theme of mode === 'a11y' ? ['light', 'dark', 'command'] : [fit.theme || 'dark']) {
     const out = await checked(url + `?view=fit&theme=${theme}` + fit.query + (mode === 'a11y' ? '&a11y=1' : mode === 'xss' ? '&poison=1' : ''), fit.size);
     if (out.retried) console.log(`  (fit ${fit.name}: the browser froze; ran again in a fresh one)`);
     errors.push(...(out.errors || []).map(e => `${fit.name}: ${e}`));
@@ -387,6 +388,7 @@ async function main() {
     { name: 'desktop (1440px, dark)', query: '?theme=dark', size: { width: 1440, height: 1200, mobile: false } },
     { name: 'laptop (1280px, light)', query: '?theme=light', size: { width: 1280, height: 900, mobile: false } },
     { name: 'phone (390px, dark)', query: '?theme=dark', size: { width: 390, height: 844, mobile: true } },
+    { name: 'desktop (1440px, Command Center)', query: '?theme=command', size: { width: 1440, height: 1200, mobile: false } },
   ];
   let failed = 0;
   if (process.argv.includes('--pdf')) {
@@ -490,7 +492,7 @@ async function main() {
     if (!process.argv.includes('--no-a11y')) {
       // Accessibility (every screen at 390px, light and dark) and typed text
       // never running as markup (every screen, with markup in every field).
-      for (const [mode, label] of [['a11y', 'accessibility (390px light and dark; names, labels, contrast, focus, dialogs, language)'],
+      for (const [mode, label] of [['a11y', 'accessibility (390px light, dark and Command Center; names, labels, contrast, focus, dialogs, language)'],
                                    ['xss', 'typed text never runs as code (markup in every field, every screen)']]) {
         const { findings, errors } = await runFit(browser.dt, url, false, mode, ['390']);
         failed += findings.length + errors.length;

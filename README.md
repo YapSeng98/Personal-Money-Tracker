@@ -335,6 +335,14 @@ added to a home screen; `sw.js` caches the page and its pinned libraries
 (network-first for the page, never for Supabase), so it opens with no
 connection and queues changes in the outbox.
 
+**Three themes.** Light, Dark and Command Center (Settings → Appearance, or
+the top-bar button, which steps light → dark → Command Center). Command Center
+is the dark theme with a skin on top (`data-theme="dark"` plus
+`data-skin="command"`), so every dark-mode rule still applies: deep navy
+panels with electric-blue edges, a cyan data grid behind the page, Chakra Petch
+for headings and figures, section titles in spaced monospace capitals, and the
+menu icons tinted one cool blue. Its text tokens keep 4.5:1 like the others.
+
 **Accessible by default.** A few page-wide rules (`a11yPass`, re-run whenever
 the page changes) keep every new form and button accessible: a `<label>` labels
 the field in its `.form-group` or the field after it; a button drawn as a symbol
@@ -477,8 +485,8 @@ wrong — not that a test is stale.
 The **browser suite** (`test/e2e/`) builds a copy of the page with supabase-js
 swapped for a recording fake (`fake-supabase.js`, which can also drop or refuse
 writes, or apply them under the real schema's rules), loads dated-relative-to-today test data (`seed.js`, which also answers exchange-rate requests from a fixed table, so nothing goes to the network), and clicks through
-the app (`checks.js`): about 335 checks at desktop, laptop and true 390px phone
-sizes, covering the statement and its downloads, Monthly In & Out, the Data
+the app (`checks.js`): about 370 checks at desktop, laptop and true 390px phone
+sizes (and the desktop again in Command Center), covering the statement and its downloads, Monthly In & Out, the Data
 check (and its Edit repairing every shape it offers to), a search count matching
 the lines shown, offline saves surviving a reload, deletes not coming back, USDT, the net
 worth chart, importing a CSV (and importing it twice), description suggestions
@@ -518,7 +526,7 @@ book. `--health --backup … --user …` loads a real book the way the app does
 and checks all of it, and that loading it twice changes nothing.
 
 The **accessibility audit** (`fit.js`, `--a11y`) opens every page, window and
-menu at 390px and 360px in Chinese, in light and dark, and checks what a
+menu at 390px and 360px in Chinese, in light, dark and Command Center, and checks what a
 screen-reader or keyboard user meets: every control has a name that isn't only a
 symbol, every field a label (a placeholder doesn't count), text contrast is
 WCAG AA against what is actually behind it, focus is visible, anything clickable

@@ -868,6 +868,30 @@
       openStatement(mk); ok(!/undefined|NaN/.test($('#stmt-paper').textContent), 'zh: the statement renders'); closeStatement();
       state.language = 'en'; applyLanguage(); renderAll(); nav('analytics');
 
+      // ── Themes, Command Center included ─────────────────────────────────
+      {
+        const keepTheme = state.theme;
+        const html = document.documentElement, meta = () => (document.querySelector('meta[name="theme-color"]') || {}).content;
+        nav('settings');
+        const opt = $('.theme-opt[data-theme="command"]');
+        ok(opt && /Command Center/.test(opt.textContent), 'theme: Settings offers Command Center beside Auto, Light and Dark');
+        opt.click(); await wait(10);
+        ok(state.theme === 'command' && html.getAttribute('data-theme') === 'dark' && html.getAttribute('data-skin') === 'command' && opt.classList.contains('active'),
+           'theme: choosing it sets the dark theme with the Command Center skin, and marks the option', `${state.theme} / ${html.getAttribute('data-theme')} / ${html.getAttribute('data-skin')}`);
+        ok(getComputedStyle(html).getPropertyValue('--bg').trim().toUpperCase() === '#020916' && meta() === '#020916', 'theme: its own colours and browser bar colour apply', getComputedStyle(html).getPropertyValue('--bg') + ' ' + meta());
+        ok(JSON.parse(localStorage.getItem(LS_KEY) || '{}').theme === 'command', 'theme: the choice is saved');
+        setTheme('light'); await wait(10);
+        const btn = $('#theme-toggle-btn');
+        ok(html.getAttribute('data-theme') === 'light' && !html.hasAttribute('data-skin') && btn.getAttribute('aria-label') === 'Switch to dark', 'theme: light has no skin, and the top-bar button says where it goes next');
+        toggleTheme(); await wait(10);
+        ok(state.theme === 'dark' && !html.hasAttribute('data-skin') && btn.getAttribute('aria-label') === 'Switch to Command Center', 'theme: the top-bar button goes light → dark');
+        toggleTheme(); await wait(10);
+        ok(state.theme === 'command' && html.getAttribute('data-skin') === 'command' && btn.getAttribute('aria-label') === 'Switch to light', 'theme: dark → Command Center');
+        toggleTheme(); await wait(10);
+        ok(state.theme === 'light' && !html.hasAttribute('data-skin'), 'theme: Command Center → light');
+        setTheme(keepTheme); await wait(10);
+      }
+
       // ── Arrange accounts ────────────────────────────────────────────────
       {
         const U1 = '11111111-1111-4111-8111-111111111111', U2 = '22222222-2222-4222-8222-222222222222';
