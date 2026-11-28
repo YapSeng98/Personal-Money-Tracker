@@ -8,7 +8,13 @@
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'accounts') { state.balancesMasked = false; showView('accounts'); return; }
-    if (VIEW === 'page') { state.balancesMasked = false; showView(P.get('page') || 'dashboard'); return; }
+    if (VIEW === 'page') {
+      state.balancesMasked = false; showView(P.get('page') || 'dashboard');
+      // &open=wall|year|budget: a window on top of the page, for screenshots
+      const open = P.get('open');
+      if (open === 'wall') openWall(); else if (open === 'year') openYearReview(); else if (open === 'budget') { openBudgetModal(); setSelectVal('budget-cat', 'Food & Drink'); renderBudgetSuggestions(); }
+      return;
+    }
     if (VIEW === 'import') {
       const mo = new Date(+M1.slice(0, 4), +M1.slice(5, 7) - 1, 1).toLocaleDateString('en-GB', { month: 'short' }), y = M1.slice(0, 4);
       showView('transactions'); openImport();
@@ -894,14 +900,17 @@
         // line icons in Command Center only, and a language switch keeps them.
         const shown = el => !!el && getComputedStyle(el).display !== 'none';
         const navIco = () => document.querySelector('.nav-item .icon'), bnIco = () => document.querySelector('.bnav-ico');
-        ok(document.querySelectorAll('.nav-item .icon .line-ico').length === 8 && document.querySelectorAll('.bnav-ico .line-ico').length === 4
+        const navN = document.querySelectorAll('.nav-item').length;
+        ok(navN >= 10 && document.querySelectorAll('.nav-item .icon .line-ico').length === navN && document.querySelectorAll('.bnav-ico .line-ico').length === 4
            && shown(navIco().querySelector('.emo')) && !shown(navIco().querySelector('.line-ico')), 'design: menus carry line icons, hidden outside Command Center');
         setTheme('command'); await wait(10);
         ok(!shown(navIco().querySelector('.emo')) && shown(navIco().querySelector('.line-ico')) && !shown(bnIco().querySelector('.emo'))
            && shown(document.querySelector('.logo-mark .line-ico')) && shown($('#theme-toggle-btn .line-ico')), 'design: Command Center shows line icons in the menus, logo and theme button');
         state.language = 'zh'; applyLanguage(); await wait(10);
         const navTxt = document.querySelector('.nav-item').textContent;
-        ok(document.querySelectorAll('.nav-item .icon .line-ico').length === 8 && navTxt.includes('仪表盘') && shown(navIco().querySelector('.line-ico')),
+        const navAll = [...document.querySelectorAll('.nav-item')].map(b => b.textContent.trim());
+        ok(document.querySelectorAll('.nav-item .icon .line-ico').length === navN && navTxt.includes('仪表盘') && shown(navIco().querySelector('.line-ico'))
+           && navAll.some(x => x.includes('备注')) && navAll.some(x => x.includes('账户')) && navAll.some(x => x.includes('分析')),
            'design: a language switch keeps the line icons', navTxt);
         state.language = 'en'; applyLanguage(); await wait(10);
         // The live strip: on wide screens in Command Center only; its words follow the sync state.
@@ -1206,9 +1215,41 @@
         add(ago(3), 7, 50, 'Trips'); add(M1, 7, 500, 'Trips');
         state.reviewMonth = M1; nav('analytics'); await wait(10);
         const tr = $('#review-trends').textContent;
-        ok(/Running high/.test(tr) && /Hobbies/.test(tr) && /▲ 80%/.test(tr) && /S\$180\.00 against a usual S\$100\.00/.test(tr),
+        ok(/Running high/.test(tr) && /Hobbies/.test(tr) && /▲ 80% above usual/.test(tr) && /S\$180\.00 · usual S\$100\.00/.test(tr) && /\+S\$80\.00/.test(tr),
            'insights: a category well above its usual is flagged in Monthly Review, with both figures', tr);
         ok(!/Trips/.test(tr) && !/Snacks/.test(tr), 'insights: no usual (one month only), or a small rise in money, is not flagged', tr);
+        // The Spending Trend keeps its own size: Running high once shared its class name and squeezed the chart into 44px.
+        const tb = $('#trend-chart .trend-bars');
+        ok(tb && tb.getBoundingClientRect().height >= 100 && tb.getBoundingClientRect().width > 200 && !$('#review-trends .trend-bars'),
+           'insights: the Spending Trend chart is not squeezed by Running high', tb && JSON.stringify(tb.getBoundingClientRect()));
+        const rowBtn = [...document.querySelectorAll('#review-trends .rh-row')].find(b => b.dataset.cat === 'Hobbies');
+        ok(rowBtn && rowBtn.tagName === 'BUTTON' && rowBtn.querySelectorAll('.rh-mo span').length === 4, 'insights: a running-high row is a button with its four months named');
+        rowBtn.click(); await wait(10);
+        ok(activeViewName() === 'transactions' && $('#filter-cat').value === 'Hobbies' && $$('#all-txns .txn-row').length >= 1, 'insights: a running-high row opens its transactions');
+        nav('analytics'); await wait(10);
+        // Monthly Review figures: a table, a row per currency, every column
+        // filled, and each row's net is what its own figures add up to.
+        {
+          const heads = $$('#review-summary .rv-table thead th').map(th => th.textContent);
+          const rows = $$('#review-summary .rv-table tbody tr');
+          const num = s => s.trim() === '–' ? 0 : parseNum(s);
+          ok(rows.length >= 1 && rows.every(tr => tr.querySelectorAll('td').length === heads.length - 1),
+             'clarity: Monthly Review is one table, a row per currency, every column filled', heads.join(' | '));
+          const sums = rows.map(tr => {
+            const cells = [...tr.querySelectorAll('td')].map(td => num(td.textContent));
+            const col = name => heads.indexOf(name) - 1;
+            const inc = cells[col('Income')], spent = cells[col('Spent')], net = cells[col('Net')];
+            const x = heads.includes('Exchanged') ? cells[col('Exchanged')] : 0, b = heads.includes('Refunds & claims') ? cells[col('Refunds & claims')] : 0;
+            return Math.abs(inc + x + b - spent - net) < 0.011;
+          });
+          ok(sums.length && sums.every(Boolean), 'clarity: each currency\'s net is its income, exchange and refunds less what was spent', sums.join(','));
+          const lx = $$('#an-largest .lx-row');
+          ok(lx.length === 0 || lx.every(r => r.querySelector('.lx-cur') && r.querySelector('.lx-desc').textContent.trim()),
+             'clarity: Largest expense shows each currency with its own description beside it');
+          ok(savingsRateDisplay({ inc: 100, exp: 826, savingsRate: -726 }).text === 'N/A' && /spent 8× income/.test(savingsRateDisplay({ inc: 100, exp: 826, savingsRate: -726 }).note)
+             && savingsRateDisplay({ inc: 100, exp: 150, savingsRate: -50 }).text === '-50.0%',
+             'clarity: a savings rate past twice the income says how many times income was spent, instead of −726%');
+        }
         // Budgets from history (the sums themselves are proven in insights.test.js):
         // the chips show what budgetSuggestions() works out for the picked category.
         openBudgetModal();
@@ -1241,6 +1282,57 @@
         state.transactions = keepT; state.reviewMonth = keepReview; renderAll();
       }
 
+      // ── Notes on transactions ──
+      {
+        const keepT = state.transactions.slice(), keepUser = state.userId;
+        state.userId = 'test-user';
+        const u = crypto.randomUUID(), g1 = crypto.randomUUID(), g2 = crypto.randomUUID();
+        state.transactions.push({ id: u, type: 'expense', amount: 42.5, description: 'Note test dinner', category: 'Food & Drink', account: 'DBS Checking', date: M0 + '-03', currency: 'SGD', notes: '', created: M0 + '-03 09:00:00' },
+          { id: g1, type: 'expense', amount: 300, description: 'Note test move', category: 'Transfer', account: 'DBS Checking', date: M0 + '-04', currency: 'SGD', notes: '', transferGroup: 'tg_note', transferPeer: 'OCBC Savings', created: M0 + '-04 09:00:00' },
+          { id: g2, type: 'income', amount: 300, description: 'Note test move', category: 'Transfer', account: 'OCBC Savings', date: M0 + '-04', currency: 'SGD', notes: '', transferGroup: 'tg_note', transferPeer: 'DBS Checking', created: M0 + '-04 09:00:00' });
+        renderAll(); nav('notes'); await wait(10);
+        ok($('#view-notes').classList.contains('active') && $('#topbar-title').textContent === 'Notes', 'notes: the Notes page opens from the menu');
+        const addBtn = [...document.querySelectorAll('#notes-recent .notes-add')].find(b => (b.getAttribute('onclick') || '').includes(u));
+        ok(!!addBtn, 'notes: a recent transaction without a note offers Add note');
+        addBtn.click(); await wait(150);
+        ok($('#note-modal').classList.contains('open') && $('#note-title').textContent === 'Add a note' && $('#note-ctx').textContent.includes('Note test dinner') && document.activeElement === $('#note-text'),
+           'notes: the window names the transaction and puts the cursor in the note');
+        window.__sb.calls.length = 0;
+        $('#note-text').value = 'Mei owes S$20'; addNoteTag('#split');
+        ok(/Mei owes S\$20 #split/.test($('#note-text').value), 'notes: a tag is added with one tap', $('#note-text').value);
+        saveNote(); await flushOutbox(); await wait(10);
+        const row = state.transactions.find(x => x.id === u);
+        const ups = window.__sb.calls.filter(c => c.op === 'update' && c.patch && 'notes' in c.patch);
+        ok(row.notes === 'Mei owes S$20 #split' && row.amount === 42.5 && row.category === 'Food & Drink' && !$('#note-modal').classList.contains('open'), 'notes: saving keeps the note and changes nothing else');
+        ok(ups.length === 1 && Object.keys(ups[0].patch).length === 1 && ups[0].patch.notes === 'Mei owes S$20 #split', 'notes: only the note is sent to the server', JSON.stringify(ups.map(c => c.patch)));
+        const item = [...document.querySelectorAll('#notes-list .note-item')].find(el => el.textContent.includes('Note test dinner'));
+        ok(item && item.querySelector('.nt-tag') && item.querySelector('.nt-tag').textContent === '#split', 'notes: the Notes page lists it, with its tag set apart');
+        ok(!![...document.querySelectorAll('#notes-tags button')].find(b => b.textContent.startsWith('#split')), 'notes: its tag is offered as a filter');
+        // a transfer is one item: both rows get the note, and it is listed once
+        openNoteModal(g2); await wait(20); $('#note-text').value = 'Rent float'; window.__sb.calls.length = 0; saveNote(); await flushOutbox(); await wait(10);
+        ok(state.transactions.filter(x => x.transferGroup === 'tg_note').every(x => x.notes === 'Rent float') && window.__sb.calls.filter(c => c.op === 'update' && c.patch && c.patch.notes === 'Rent float').length === 2,
+           'notes: a transfer\'s two rows keep the same note');
+        ok([...document.querySelectorAll('#notes-list .note-item')].filter(el => el.textContent.includes('Note test move')).length === 1, 'notes: a transfer is listed once');
+        setNotesTag('#split'); await wait(10);
+        ok($$('#notes-list .note-item').length >= 1 && [...document.querySelectorAll('#notes-list .note-item')].every(el => el.querySelector('.nt-tag')) && !$('#notes-list').textContent.includes('Rent float'),
+           'notes: picking a tag shows only the notes with it');
+        setNotesTag('#split'); $('#notes-search').value = 'rent float'; renderNotes();
+        ok($$('#notes-list .note-item').length === 1 && $('#notes-count').textContent.startsWith('1 of'), 'notes: search finds a note by its words', $('#notes-count').textContent);
+        $('#notes-search').value = ''; renderNotes();
+        // on the transaction list the note shows under the row and opens its window
+        state.filterMonth = M0; nav('transactions'); clearFilters(); await wait(10);
+        const btn = [...document.querySelectorAll('#all-txns button.txn-note')].find(b => b.textContent.includes('Mei owes'));
+        ok(!!btn, 'notes: the note shows on its transaction row');
+        if (btn) btn.click(); await wait(20);
+        ok($('#note-modal').classList.contains('open') && $('#note-text').value === 'Mei owes S$20 #split' && !$('#note-remove').hidden, 'notes: tapping it opens the note to change');
+        removeNote(); await wait(10);
+        ok(state.transactions.find(x => x.id === u).notes === '' && ![...document.querySelectorAll('#all-txns .txn-note')].some(b => b.textContent.includes('Mei owes')), 'notes: Remove note clears it');
+        // typed markup stays text
+        openNoteModal(u); $('#note-text').value = '<img src=x onerror="window.__noteXss=1"> #<b>x</b>'; saveNote(); nav('notes'); await wait(20);
+        ok(!window.__noteXss && !document.querySelector('#notes-list img') && !document.querySelector('#notes-list .note-item-text b'), 'notes: a note is shown as text, never as markup');
+        state.transactions = keepT; state.userId = keepUser; renderAll(); nav('dashboard');
+      }
+
       // ── New version bar and home-screen shortcuts ──
       {
         const bar = $('#update-bar');
@@ -1260,6 +1352,92 @@
            'shortcuts: ?add=transfer opens the transfer form, and the address forgets it', location.search);
         closeTxnModal();
         history.replaceState(null, '', keepUrl);
+      }
+
+      // ── Investment returns, repeat suggestions, better search, wall ──
+      {
+        const keepT = state.transactions.slice(), keepMask = state.balancesMasked;
+        const today = localDateStr(), m0 = today.slice(0, 7);
+        // Returns: a gain recorded this month on a market account shows on the Accounts page.
+        const keepA = state.accounts.slice();
+        let market = state.accounts.find(isMarketAccount);
+        if (!market) { market = { id: 'ret-acc', name: 'Test Broker', type: 'Investment', currency: 'SGD', balance: 1000, icon: '📈' }; state.accounts.push(market); }
+        state.balancesMasked = false;
+        state.transactions.push({ id: 'ret-gain', type: 'income', amount: 42, description: 'Market gain', category: GAIN_LOSS_CATEGORY, account: market.name,
+          date: today, currency: market.currency || state.currency, notes: '', created: today + 'T09:00:00Z' });
+        nav('accounts'); await wait(10);
+        const rows = investmentReturns(today), mine = rows.find(r => r.acc === market);
+        const tr = [...document.querySelectorAll('#returns-body tbody tr')].find(el => el.textContent.includes(market.name));
+        ok(!$('#returns-panel').hidden && $$('#returns-body tbody tr').length === state.accounts.filter(isMarketAccount).length,
+           'returns: the panel lists every investment and crypto account');
+        ok(mine && mine.month !== null && tr && tr.textContent.includes((mine.month > 0 ? '+' : '−') + Math.abs(mine.month * 100).toFixed(1) + '%') && tr.textContent.includes(fmtSigned(mine.value, mine.cur)),
+           'returns: this month\'s return and the value show on the account\'s row', tr && tr.textContent);
+        state.balancesMasked = true; renderAccounts();
+        ok(!document.querySelector('#returns-body').textContent.includes(fmtSigned(mine.value, mine.cur)) && /••••/.test($('#returns-body').textContent), 'returns: hidden balances stay hidden here too');
+        state.balancesMasked = false;
+        // Repeat suggestions: three months of the same gym fee, typed by hand.
+        const ago = n => { let m = m0; for (let i = 0; i < n; i++) m = prevMonthKey(m); return m; };
+        const rep = (id, mk, desc, amount) => state.transactions.push({ id, type: 'expense', amount, description: desc, category: 'Sport', account: 'DBS Checking',
+          date: `${mk}-02`, currency: 'SGD', notes: '', created: `${mk}-02T08:00:00Z` });
+        [2, 1, 0].forEach(n => { rep('rep-gym-' + n, ago(n), 'Gym membership', 88); rep('rep-ph-' + n, ago(n), 'Phone plan', 30); });
+        nav('transactions'); await wait(10);
+        const card = $('#repeat-suggest');
+        ok(/You enter these every month/.test(card.textContent) && /Gym membership/.test(card.textContent) && /Repeat on the 2nd/.test(card.textContent),
+           'repeat: three months of the same entry is offered to repeat', card.textContent.slice(0, 200));
+        const items = $$('#repeat-suggest .rs-item'), gymIdx = items.findIndex(el => el.textContent.includes('Gym membership'));
+        items[gymIdx].querySelector('.btn-jade').click(); await wait(20);
+        const gym = state.transactions.find(t => t.id === 'rep-gym-0');
+        ok(gym.isRecurring && gym.recurringFrequency === 'monthly' && gym.nextRunDate === recurNextAfter(gym.date, 'monthly', today),
+           'repeat: accepting makes the latest one repeat monthly, from the next one after today', JSON.stringify({ r: gym.isRecurring, f: gym.recurringFrequency, n: gym.nextRunDate }));
+        ok(!/Gym membership/.test($('#repeat-suggest').textContent), 'repeat: once repeating, it is no longer offered');
+        const ph = $$('#repeat-suggest .rs-item').find(el => el.textContent.includes('Phone plan'));
+        ph.querySelector('.btn-ghost').click(); await wait(10);
+        ok(!/Phone plan/.test($('#repeat-suggest').textContent) && (state.repeatDismissed || []).some(k => k.includes('phone plan'))
+           && JSON.parse(localStorage.getItem(LS_KEY) || '{}').repeatDismissed.some(k => k.includes('phone plan')), 'repeat: Not now hides it, and is remembered on this device');
+        state.repeatDismissed = [];
+        // Better search: a year, the last 3 months, a date range, amounts.
+        clearFilters();
+        const countShown = () => { const s = $('#all-txns .search-summary'); return s ? parseInt(s.textContent, 10) : -1; };
+        const byDayCount = list => { const by = {}; list.forEach(t => (by[t.date] = by[t.date] || []).push(t)); return Object.values(by).reduce((n, d) => n + collapseTransfers(d).length, 0); };
+        $('#filter-period').value = 'year'; renderTransactions();
+        ok($('#month-nav-bar').classList.contains('inactive') && !$('#month-nav-off').hidden && /pick This Month/.test($('#month-nav-off').textContent),
+           'search: with another period, the month bar says it is off rather than looking live');
+        ok(countShown() === byDayCount(state.transactions.filter(t => t.date.startsWith(today.slice(0, 4)))) && $('#all-txns .search-summary').textContent.includes('in ' + today.slice(0, 4)),
+           'search: This Year shows every entry this year, and says so', $('#all-txns .search-summary') && $('#all-txns .search-summary').textContent);
+        $('#filter-period').value = '3m'; renderTransactions();
+        const since = prevMonthKey(prevMonthKey(m0)) + '-01';
+        ok(countShown() === byDayCount(state.transactions.filter(t => t.date >= since && t.date <= today)), 'search: Last 3 Months is this month and the two before');
+        $('#filter-period').value = 'range'; renderTransactions();
+        ok(!$('#filter-range').hidden, 'search: Date Range shows the two dates');
+        const someDay = state.transactions.find(t => !t.transferGroup).date;
+        $('#filter-from').value = someDay; $('#filter-to').value = someDay; renderTransactions();
+        ok(countShown() === byDayCount(state.transactions.filter(t => t.date === someDay)), 'search: a date range of one day shows that day only');
+        $('#filter-period').value = 'all'; $('#filter-min').value = '100'; $('#filter-max').value = '500'; renderTransactions();
+        ok(countShown() === byDayCount(state.transactions.filter(t => t.amount >= 100 && t.amount <= 500)), 'search: Min and Max amount narrow it to amounts in between');
+        // Saved searches
+        ok(getComputedStyle($('#save-search-btn')).display !== 'none', 'search: Save this search appears once a filter is set');
+        startSaveSearch(); $('#save-search-name').value = 'Mid-size spends'; saveSearch();
+        ok($$('#saved-searches .ss-chip').length === 1 && /Mid-size spends/.test($('#saved-searches').textContent), 'search: a search can be saved with a name');
+        clearFilters();
+        ok($('#filter-min').value === '' && $('#filter-period').value === '', 'search: Clear empties the new filters too');
+        $('#saved-searches .ss-chip button').click();
+        ok($('#filter-min').value === '100' && $('#filter-max').value === '500' && $('#filter-period').value === 'all', 'search: tapping a saved search puts every filter back');
+        $('#saved-searches .ss-del').click();
+        ok(!$$('#saved-searches .ss-chip').length && !(state.savedSearches || []).length, 'search: ✕ deletes a saved search');
+        clearFilters();
+        // Wall display
+        openWall(); await wait(20);
+        const worth = {}; state.accounts.forEach(a => { const c = a.currency || state.currency; worth[c] = r2((worth[c] || 0) + balanceOn(a, today)); });
+        ok($('#wall-modal').classList.contains('open') && $$('#wall-grid .wt').length === 8 && /^\d\d:\d\d:\d\d$/.test($('#wall-clock').textContent),
+           'wall: opens full screen with its eight tiles and a running clock', $$('#wall-grid .wt').length);
+        ok($('#wall-grid .wt').textContent.includes(fmtSigned(worth[state.currency], state.currency)), 'wall: net worth in the home currency is every account added up');
+        toggleWallMask();
+        ok(/••••/.test($('#wall-grid').textContent) && !$('#wall-grid .wt').textContent.includes(fmtSigned(worth[state.currency], state.currency)) && $('#wall-mask').getAttribute('aria-pressed') === 'true',
+           'wall: Hide amounts hides every figure');
+        toggleWallMask();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(10);
+        ok(!$('#wall-modal').classList.contains('open') && _wallTick === null, 'wall: Escape closes it and stops its clock');
+        state.transactions = keepT; state.accounts = keepA; state.balancesMasked = keepMask; renderAll();
       }
 
       // ── Empty states ────────────────────────────────────────────────────

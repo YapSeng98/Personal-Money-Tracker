@@ -282,7 +282,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .txn-row+.txn-row{border-top:1px solid var(--border);}
 .txn-ico{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(15,23,42,.05);}
 .txn-body{flex:1;min-width:0;}
-.txn-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txn-name{font-size:13px;font-weight:600;overflow-wrap:anywhere;line-height:1.35;}
 /* Wraps rather than truncates: the currency badge sits last and must stay
    visible on narrow screens. overflow-wrap stops a long word forcing width. */
 .txn-meta{font-size:11px;color:var(--muted);margin-top:1px;overflow-wrap:break-word;}
@@ -310,7 +310,29 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .trend-metric-btn.active[data-metric="income"]{background:var(--jade-s);border-color:var(--jade);color:var(--jade-t);}
 .trend-detail{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px;min-height:18px;}
 .review-month-nav{display:flex;align-items:center;gap:8px;}
-.review-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:18px;}
+.review-summary{margin-bottom:18px;}
+.lx-row{padding:4px 0;border-bottom:1px dashed var(--border);}
+.lx-row:last-child{border-bottom:0;}
+.lx-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.lx-cur{font-size:10px;color:var(--muted);font-weight:700;}
+.lx-desc{font-size:11.5px;color:var(--muted);overflow-wrap:anywhere;line-height:1.35;}
+.rv-wrap{overflow-x:auto;}
+.rv-table{width:100%;border-collapse:collapse;font-size:13px;}
+.rv-table thead th{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:right;padding:0 12px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.rv-table thead th:first-child{text-align:left;padding-left:0;}
+.rv-table tbody th{font-family:var(--fm);font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--sky-t);text-align:left;padding:10px 12px 10px 0;border-bottom:1px solid var(--border);}
+.rv-table td{padding:10px 12px;text-align:right;font-family:var(--fd);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--border);white-space:nowrap;}
+.rv-table td.pos{color:var(--jade-t);} .rv-table td.neg{color:var(--coral-t);} .rv-table td.mid{color:var(--ink2);font-weight:600;}
+.rv-table td.net{font-size:16px;}
+.rv-count{font-size:12px;color:var(--muted);margin-top:8px;}
+@media(max-width:600px){
+  .rv-table thead{display:none;}
+  .rv-table,.rv-table tbody{display:block;}
+  .rv-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .rv-table tbody th{grid-column:1/-1;border:0;padding:0;}
+  .rv-table td{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;padding:0;text-align:left;font-size:15px;white-space:normal;overflow-wrap:anywhere;}
+  .rv-table td::before{content:attr(data-l);font-family:var(--ff);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+}
 .review-stat{background:var(--surface);border-radius:12px;padding:10px 12px;}
 .review-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px;}
 .review-stat-val{font-family:var(--fd);font-size:16px;font-weight:700;}
@@ -503,6 +525,17 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .trend-bar{width:100%;max-width:28px;background:linear-gradient(180deg,var(--coral),var(--coral-s));border-radius:6px 6px 0 0;min-height:2px;transition:height .3s;}
 .trend-bar-col.trend-bar-selected .trend-bar{background:linear-gradient(180deg,var(--indigo),#A5B4FC);}
 .trend-bar-label{font-size:10px;color:var(--muted);margin-top:6px;white-space:nowrap;}
+.trend-bar-val{font-family:var(--fm);font-size:10px;color:var(--ink2);margin-bottom:3px;white-space:nowrap;line-height:1;}
+.trend-bars.inc .trend-bar{background:linear-gradient(180deg,var(--jade),var(--jade-s));}
+.trend-bar-col.partial .trend-bar{opacity:.6;}
+.trend-bar-col.partial .trend-bar-label::after{content:'*';}
+.trend-cur{display:flex;align-items:center;gap:10px;margin:14px 0 10px;}
+.trend-cur:first-child{margin-top:2px;}
+.trend-cur b{font-family:var(--fm);font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.8px;}
+.trend-cur span{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.trend-cur i{flex:1;height:1px;background:var(--border);}
+.trend-foot{font-size:11.5px;color:var(--muted);margin-top:10px;}
+@media(max-width:600px){ .trend-bars.m9 .trend-bar-val,.trend-bars.m12 .trend-bar-val{display:none;} }
 .sp-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
 .sp-legend-swatch{width:10px;height:10px;border-radius:4px;flex-shrink:0;}
 .sp-legend-label{flex:1;font-size:12px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1044,9 +1077,91 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 .bal-diff .down{color:var(--coral-t);}
 .bal-diff .tip{display:block;margin-top:6px;color:var(--amber-t);}
 
+/* ── Investment returns ── */
+.ret-wrap{overflow-x:auto;}
+.ret-table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px;}
+.ret-table th{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:right;padding:0 10px 8px;border-bottom:1px solid var(--border);}
+.ret-table th:first-child,.ret-table td:first-child{text-align:left;padding-left:0;}
+.ret-table td{padding:10px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--fm);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ret-table tr:last-child td{border-bottom:0;}
+.ret-table td:first-child{font-family:var(--ff);font-weight:600;}
+.ret-table td small{display:block;font-family:var(--ff);font-weight:400;font-size:11.5px;color:var(--muted);}
+.ret-up{color:var(--jade-t);} .ret-down{color:var(--coral-t);} .ret-none{color:var(--muted);}
+.ret-spark{display:inline-block;vertical-align:middle;}
+.ret-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;}
+@media(max-width:600px){
+  .ret-wrap{overflow:visible;}
+  .ret-table{min-width:0;}
+  .ret-table thead{display:none;}
+  .ret-table,.ret-table tbody{display:block;}
+  .ret-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .ret-table tr:last-child{border-bottom:0;}
+  .ret-table td,.ret-table td:first-child{display:block;padding:0;border:0;text-align:left;white-space:normal;}
+  .ret-table td:first-child{grid-column:1/-1;}
+  .ret-table td[data-label]::before{content:attr(data-label);display:block;margin-bottom:2px;font-family:var(--ff);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+}
+/* ── Repeat suggestions ── */
+.rs-card{border:1px solid var(--border);border-left:3px solid var(--indigo);border-radius:12px;padding:12px 14px;margin-bottom:14px;background:var(--surface);}
+.rs-h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--indigo-t);margin-bottom:2px;}
+.rs-sub{font-size:12px;color:var(--muted);margin-bottom:6px;}
+.rs-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--border);}
+.rs-item:first-of-type{border-top:0;}
+.rs-name{font-weight:600;font-size:14px;overflow-wrap:anywhere;}
+.rs-meta{display:block;font-size:12px;color:var(--muted);}
+.rs-amt{font-family:var(--fm);font-weight:700;font-size:14px;text-align:right;white-space:nowrap;}
+.rs-months{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+.rs-months span{font-family:var(--fm);font-size:11px;padding:1px 7px;border-radius:5px;background:var(--jade-s);color:var(--jade-t);}
+.rs-acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;}
+/* ── Better search ── */
+.filter-extra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-6px 0 12px;}
+.filter-extra .form-input{width:auto;padding:7px 10px;font-size:13px;}
+.filter-extra .fx-amt{width:128px;}
+.fx-range{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--muted);font-size:13px;}
+.fx-range[hidden],.save-search-form[hidden]{display:none!important;}
+.save-search-form{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.save-search-form .form-input{width:210px;max-width:100%;}
+.saved-searches:empty{display:none;}
+.saved-searches{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;font-size:12.5px;color:var(--muted);}
+.ss-chip{display:inline-flex;align-items:stretch;border:1px solid var(--border);border-radius:9px;background:var(--card);overflow:hidden;}
+.ss-chip button{font:inherit;font-size:12.5px;background:none;border:0;color:var(--ink);cursor:pointer;padding:6px 10px;min-height:32px;}
+.ss-chip button.ss-del{color:var(--muted);border-left:1px solid var(--border);padding:6px 9px;}
+.ss-chip button:hover{background:var(--indigo-s);}
+#save-search-btn:disabled{display:none;}
+@media(max-width:600px){ .filter-extra .fx-amt{flex:1 1 0;min-width:0;width:auto;} .fx-range{flex:1 1 100%;} .fx-range .form-input{flex:1 1 0;min-width:0;} }
+/* ── Wall display ── */
+.wall-backdrop{padding:0!important;}
+.wall-backdrop .modal.wall{width:100vw;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0;padding:18px max(22px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(22px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px;background:var(--bg);animation:none;}
+.wall-top{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;font-family:var(--fm);font-size:13px;color:var(--ink2);}
+.wall-brand{font-family:var(--fd);font-weight:700;font-size:18px;letter-spacing:.14em;color:var(--ink);}
+.wall-live{display:inline-flex;align-items:center;gap:7px;font-weight:700;color:var(--jade-t);}
+.wall-live .cc-dot{display:inline-block;}
+.wall-live.down{color:var(--coral-t);} .wall-live.down .cc-dot{background:var(--coral);animation:none;}
+.wall-clock{font-size:22px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.wall-actions{margin-left:auto;display:flex;gap:8px;}
+.wall-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(min-content,auto);gap:14px;overflow:auto;align-content:start;}
+.wt{background:var(--glass);border:1px solid var(--glass-border);border-radius:14px;padding:14px 16px;min-width:0;}
+.wt-w2{grid-column:span 2;} .wt-w4{grid-column:1/-1;}
+.wt-l{font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sky-t);margin-bottom:8px;}
+.wt-v{display:block;font-family:var(--fd);font-weight:700;font-size:clamp(22px,2.6vw,36px);line-height:1.3;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.wt-v+.wt-v{margin-top:4px;}
+.wt-v.sm{font-size:clamp(18px,1.8vw,24px);}
+.wt-s{display:block;font-size:12.5px;color:var(--muted);margin-top:4px;}
+.wt-list{display:grid;gap:7px;font-size:13px;}
+.wt-list div{display:flex;justify-content:space-between;gap:10px;min-width:0;}
+.wt-list span:first-child{overflow-wrap:anywhere;min-width:0;}
+.wt-list .num{font-family:var(--fm);white-space:nowrap;}
+.wt-chart svg{display:block;width:100%;height:auto;}
+.wt .neg{color:var(--coral-t);} .wt .pos{color:var(--jade-t);}
+.wt-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px;}
+.wt-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px;}
+@media(max-width:1100px){ .wall-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media(max-width:600px){ .wall-grid{grid-template-columns:minmax(0,1fr);} .wt-w2{grid-column:auto;} .wall-clock{font-size:18px;} }
 /* ── New version bar ── */
 .update-bar{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;padding:10px 32px;background:var(--indigo-s);border-bottom:1px solid var(--indigo);color:var(--ink);font-size:13.5px;flex-shrink:0;}
 .update-bar[hidden]{display:none!important;}
+.month-nav.inactive .month-nav-btn,.month-nav.inactive .month-nav-label,.month-nav.inactive .month-today-btn{display:none!important;}
+.month-nav-off{font-size:12.5px;color:var(--muted);}
+.month-nav-off[hidden]{display:none;}
 .update-bar .ub-ico{color:var(--indigo-t);display:flex;}
 .update-bar .ub-text{flex:1;min-width:200px;display:flex;flex-direction:column;}
 .update-bar .ub-text b{font-size:14px;}
@@ -1068,14 +1183,64 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 .trends-h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--coral-t);margin-bottom:4px;}
 .trends.calm .trends-h{color:var(--jade-t);}
 .trends-sub{font-size:12px;color:var(--muted);margin-bottom:6px;}
-.trend-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 0;border-top:1px solid var(--border);}
-.trend-row:first-of-type{border-top:0;}
-.trend-cat{font-weight:600;font-size:13.5px;}
-.trend-fig{display:block;font-family:var(--fm);font-size:12px;color:var(--muted);}
-.trend-pct{font-family:var(--fm);font-weight:700;color:var(--coral-t);font-size:13px;white-space:nowrap;}
-.trend-bars{display:flex;align-items:flex-end;gap:3px;height:28px;width:44px;}
-.trend-bars i{flex:1;border-radius:2px 2px 0 0;background:var(--border);min-height:2px;}
-.trend-bars i.now{background:var(--coral);}
+/* Its own class names: .trend-bars is the Spending Trend chart's, and sharing it
+   squeezed that whole chart into this 44px box (2026-11-28). */
+.rh-cur{display:flex;align-items:center;gap:10px;margin:12px 0 2px;font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--sky-t);}
+.rh-cur::after{content:'';flex:1;height:1px;background:var(--border);}
+.rh-cur small{font-family:var(--ff);font-size:11px;font-weight:600;letter-spacing:0;color:var(--muted);}
+.rh-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 14px;align-items:center;width:100%;padding:9px 6px;border:0;border-top:1px solid var(--border);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:0;}
+.rh-cur + .rh-row,.trends-sub + .rh-row{border-top:0;}
+.rh-row:hover{background:var(--indigo-s);}
+.rh-row:focus-visible{outline:2px solid var(--indigo);outline-offset:-2px;border-radius:6px;}
+.rh-cat{font-weight:600;font-size:13.5px;color:var(--ink);}
+.rh-fig{display:block;font-family:var(--fm);font-size:12px;color:var(--muted);overflow-wrap:break-word;}
+.rh-end{text-align:right;white-space:nowrap;}
+.rh-more{display:block;font-family:var(--fm);font-weight:700;font-size:13.5px;color:var(--coral-t);}
+.rh-pct{display:block;font-family:var(--fm);font-size:11.5px;color:var(--muted);}
+.rh-spark{display:flex;flex-direction:column;}
+.rh-bars{display:grid;grid-template-columns:repeat(4,10px);grid-template-rows:28px;gap:3px;align-items:end;height:28px;}
+.rh-bars i{display:block;border-radius:2px 2px 0 0;background:var(--border);min-height:2px;}
+.rh-bars i.now{background:var(--coral);}
+.rh-mo{display:grid;grid-template-columns:repeat(4,10px);gap:3px;margin-top:3px;font-family:var(--fm);font-size:10px;line-height:1;color:var(--muted);text-align:center;}
+.rh-mo span:last-child{color:var(--coral-t);font-weight:700;}
+/* ── Notes ── */
+.txn-note{display:flex;align-items:baseline;gap:6px;max-width:100%;min-height:26px;margin-top:4px;padding:3px 9px;border:1px solid transparent;border-radius:7px;background:var(--amber-s);color:var(--ink2);font:inherit;font-size:12.5px;line-height:1.45;text-align:left;white-space:pre-wrap;overflow-wrap:break-word;}
+button.txn-note{cursor:pointer;}
+button.txn-note:hover{border-color:var(--amber);}
+button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px;}
+.txn-note .nt-ico{flex:none;}
+.nt-tag{display:inline-block;padding:0 6px;border-radius:5px;background:var(--indigo-s);color:var(--indigo-t);font-weight:600;white-space:nowrap;}
+.note-ctx{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:10px 12px;margin-bottom:14px;border-radius:10px;background:var(--surface);}
+.note-ctx b{font-weight:600;overflow-wrap:break-word;}
+.note-ctx small{display:block;font-size:12px;color:var(--muted);}
+.note-ctx .amt{font-family:var(--fm);font-weight:700;white-space:nowrap;}
+@media(max-width:480px){ .note-ctx{grid-template-columns:auto minmax(0,1fr);} .note-ctx .amt{grid-column:2;} }
+.note-area{min-height:110px;resize:vertical;line-height:1.5;}
+.note-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.note-tags button{min-height:30px;padding:4px 10px;border:1px solid var(--border);border-radius:99px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;cursor:pointer;}
+.note-tags button:hover{border-color:var(--indigo);background:var(--indigo-s);}
+.note-hint{font-size:12px;color:var(--muted);margin-top:6px;}
+.notes-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;}
+.notes-tools .form-input{flex:1 1 240px;max-width:420px;}
+.notes-sum{font-size:12.5px;color:var(--muted);}
+.notes-tagbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.notes-tagbar button{min-height:32px;padding:4px 11px;border:1px solid var(--border);border-radius:99px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;cursor:pointer;}
+.notes-tagbar button b{font-family:var(--fm);margin-left:4px;color:var(--muted);font-weight:600;}
+.notes-tagbar button[aria-pressed="true"]{border-color:var(--indigo);background:var(--indigo-s);color:var(--indigo-t);}
+.notes-month{display:flex;align-items:center;gap:10px;margin:16px 0 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sky-t);}
+.notes-month::after{content:'';flex:1;height:1px;background:var(--border);}
+.notes-month:first-child{margin-top:0;}
+.note-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:start;padding:12px 0;border-top:1px solid var(--border);}
+.notes-month + .note-item{border-top:0;}
+.note-item .txn-ico{margin-top:2px;}
+.note-item-h{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;}
+.note-item-h b{font-weight:600;overflow-wrap:break-word;}
+.note-item-meta{font-size:12px;color:var(--muted);}
+.note-item-text{margin-top:6px;padding:8px 11px;border-radius:9px;background:var(--amber-s);color:var(--ink);font-size:13.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:break-word;}
+.note-item-amt{font-family:var(--fm);font-weight:700;white-space:nowrap;text-align:right;}
+.note-item-acts{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.notes-recent .txn-row{padding:10px 0;}
+.notes-add{white-space:nowrap;}
 /* ── Year in review ── */
 .yr-banner{display:flex;align-items:center;gap:14px;width:100%;margin-bottom:20px;padding:14px 18px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .yr-banner:hover{border-color:var(--indigo);}
@@ -1541,6 +1706,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
   <div class="nav-section">Main</div>
   <button class="nav-item active" onclick="showView('dashboard',this)"><span class="icon">🏠</span> Dashboard</button>
   <button class="nav-item" onclick="showView('transactions',this)"><span class="icon">💳</span> Transactions</button>
+  <button class="nav-item" onclick="showView('notes',this)"><span class="icon">📝</span> Notes</button>
   <button class="nav-item" onclick="showView('budgets',this)"><span class="icon">📊</span> Budgets</button>
   <button class="nav-item" onclick="showView('bills',this)"><span class="icon">🧾</span> Bills<span class="nav-badge" id="nav-bills-badge" style="display:none;"></span></button>
   <button class="nav-item" onclick="showView('goals',this)"><span class="icon">🎯</span> Goals</button>
@@ -1548,6 +1714,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
   <div class="nav-section">Manage</div>
   <button class="nav-item" onclick="showView('accounts',this)"><span class="icon">🏦</span> Accounts</button>
   <button class="nav-item" onclick="showView('settings',this)"><span class="icon">⚙️</span> Settings</button>
+  <button class="nav-item" onclick="openWall()" data-ico="wall"><span class="icon">🖥️</span> Wall display</button>
 </aside>
 
 <!-- ── MAIN ── -->
@@ -1578,6 +1745,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
     <span class="month-nav-label" id="month-label">—</span>
     <button class="month-nav-btn" onclick="changeMonth(1)" title="Next month">›</button>
     <button class="month-today-btn" id="month-today-btn" onclick="resetMonth()" style="display:none;">Today</button>
+    <span class="month-nav-off" id="month-nav-off" hidden></span>
     <span style="flex:1;"></span>
     <span id="last-sync-label" style="font-size:11px;color:var(--muted);"></span>
   </div>
@@ -1643,6 +1811,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
           <button class="btn btn-sm" id="bulk-delete-btn" onclick="bulkDeleteSelected()" disabled style="background:#D42020;color:#fff;" data-lkey="bulk_delete_selected">Delete selected</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleBulkMode()" data-lkey="bulk_cancel">Cancel</button>
         </div>
+        <div id="repeat-suggest"></div>
         <div class="filter-bar">
           <input class="form-input search-input" type="text" id="search-input" aria-label="Search transactions" placeholder="🔍 Search anything — grab, dbs, 27.90, >100…" oninput="renderTransactions()">
           <select class="form-input" id="filter-type" aria-label="Filter by type" onchange="renderTransactions()">
@@ -1656,6 +1825,9 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
           <select class="form-input" id="filter-period" aria-label="Filter by period" onchange="renderTransactions()">
             <option value="" data-lkey="filter_this_month">This Month</option>
             <option value="all" data-lkey="filter_all_time">All Time</option>
+            <option value="year">This Year</option>
+            <option value="3m">Last 3 Months</option>
+            <option value="range">Date Range…</option>
           </select>
           <select class="form-input" id="filter-cur" aria-label="Filter by currency" onchange="renderTransactions()" style="display:none;">
             <option value="" data-lkey="filter_all_currencies">Any Currency</option>
@@ -1668,8 +1840,44 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
           </select>
           <button id="clear-filters-btn" class="btn btn-ghost btn-sm" onclick="clearFilters()" style="display:none;white-space:nowrap;color:var(--coral-t);border-color:var(--coral);">✕ Clear</button>
         </div>
+        <div class="filter-extra">
+          <span class="fx-range" id="filter-range" hidden>
+            <input class="form-input" type="date" id="filter-from" aria-label="From date" onchange="renderTransactions()">
+            <span aria-hidden="true">to</span>
+            <input class="form-input" type="date" id="filter-to" aria-label="To date" onchange="renderTransactions()">
+          </span>
+          <input class="form-input fx-amt" type="number" id="filter-min" min="0" step="0.01" placeholder="Min amount" aria-label="Minimum amount" oninput="renderTransactions()">
+          <input class="form-input fx-amt" type="number" id="filter-max" min="0" step="0.01" placeholder="Max amount" aria-label="Maximum amount" oninput="renderTransactions()">
+          <button class="btn btn-ghost btn-sm" id="save-search-btn" onclick="startSaveSearch()" disabled>☆ Save this search</button>
+          <span class="save-search-form" id="save-search-form" hidden>
+            <input class="form-input" id="save-search-name" maxlength="40" placeholder="Name it, e.g. Grab this year" aria-label="Name for this search" onkeydown="if(event.key==='Enter')saveSearch()">
+            <button class="btn btn-primary btn-sm" onclick="saveSearch()">Save</button>
+          </span>
+        </div>
+        <div class="saved-searches" id="saved-searches"></div>
         <div id="data-banner"></div>
         <div id="all-txns"><div class="empty"><div class="icon">📭</div><p>No transactions found.</p></div></div>
+      </div>
+    </div>
+
+    <!-- ════ NOTES ════ -->
+    <!-- Every transaction with a note, in one place (owner, 2026-11-28: "add one new feature for me to keep some note on the transaction related"). -->
+    <div class="view" id="view-notes">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" id="notes-title">Notes</div>
+        </div>
+        <p class="notes-sum" id="notes-intro" style="margin:-6px 0 14px;">What you wrote on your transactions: why you spent it, who owes you, a warranty, a claim to make. Tap a note to change it.</p>
+        <div class="notes-tools">
+          <input class="form-input" type="search" id="notes-search" aria-label="Search notes" placeholder="🔍 Search notes, descriptions, amounts…" oninput="renderNotes()">
+          <span class="notes-sum" id="notes-count" aria-live="polite"></span>
+        </div>
+        <div class="notes-tagbar" id="notes-tags"></div>
+        <div id="notes-list"></div>
+      </div>
+      <div class="panel notes-recent" style="margin-top:16px;">
+        <div class="panel-header"><div class="panel-title">Add a note to a recent transaction</div></div>
+        <div id="notes-recent"></div>
       </div>
     </div>
 
@@ -1881,6 +2089,10 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 
     <!-- ════ ACCOUNTS ════ -->
     <div class="view" id="view-accounts">
+      <div class="panel" style="margin-bottom:20px;" id="returns-panel" hidden>
+        <div class="panel-header"><div class="panel-title">Investment returns</div><span class="nw-sub">From your Update balance entries · money you put in or take out is not profit</span></div>
+        <div id="returns-body"></div>
+      </div>
       <div class="panel" style="margin-bottom:20px;" id="networth-panel">
         <div class="panel-header"><div class="panel-title">Net worth</div><span class="nw-sub">Every account's balance at each month end · last 12 months</span></div>
         <div id="networth-body"></div>
@@ -2321,7 +2533,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
     </div>
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
-      <input class="form-input" type="text" id="txn-notes" placeholder="Any additional notes…">
+      <textarea class="form-input" id="txn-notes" rows="2" maxlength="1000" style="resize:vertical;line-height:1.5;" placeholder="Why, who with, a claim or warranty to remember… (#tags work)"></textarea>
     </div>
     <div class="form-group" id="txn-repeat-group">
       <label class="form-label">Repeat</label>
@@ -2344,6 +2556,23 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 <!-- ════════════════════════════════════════════ -->
 <!-- BUDGET MODAL (Add + Edit)                    -->
 <!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop wall-backdrop" id="wall-modal">
+  <div class="modal wall" aria-label="Wall display">
+    <div class="wall-top">
+      <span class="wall-brand">PFMT</span>
+      <span class="wall-live" id="wall-live"><span class="cc-dot"></span><span id="wall-state">LIVE</span></span>
+      <span class="wall-clock" id="wall-clock">--:--:--</span>
+      <span class="wall-date" id="wall-date"></span>
+      <span class="wall-sync" id="wall-sync"></span>
+      <span class="wall-actions">
+        <button class="btn btn-ghost btn-sm" id="wall-mask" onclick="toggleWallMask()" aria-pressed="false">Hide amounts</button>
+        <button class="btn btn-ghost btn-sm" id="wall-exit" onclick="closeWall()">Exit</button>
+      </span>
+    </div>
+    <div class="wall-grid" id="wall-grid"></div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="year-modal">
   <div class="modal modal-wide">
     <div class="modal-header">
@@ -2592,6 +2821,28 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 <!-- ════════════════════════════════════════════ -->
 <!-- UPDATE BALANCE                               -->
 <!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="note-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="note-title">Note</div>
+      <button class="modal-close" onclick="closeNoteModal()">✕</button>
+    </div>
+    <div class="note-ctx" id="note-ctx"></div>
+    <div class="form-group">
+      <label class="form-label" for="note-text">Your note</label>
+      <textarea class="form-input note-area" id="note-text" maxlength="1000" placeholder="e.g. Dinner with Mei, she owes S$20 · warranty until Dec 2027 · claim from work" onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();saveNote();}"></textarea>
+      <div class="note-tags" id="note-tags" aria-label="Add a tag"></div>
+      <div class="note-hint">A word starting with # is a tag: the Notes page lets you pick it to see every note that has it.</div>
+    </div>
+    <input type="hidden" id="note-txn-id" value="">
+    <div class="form-actions">
+      <button class="btn btn-ghost" id="note-remove" onclick="removeNote()">Remove note</button>
+      <button class="btn btn-ghost" onclick="closeNoteModal()">Cancel</button>
+      <button class="btn btn-jade" onclick="saveNote()">Save note</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="balance-modal">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -2660,7 +2911,7 @@ const TRANSLATIONS = {
     bnav_home:'Home', bnav_txns:'Txns', bnav_goals:'Goals', bnav_review:'Stats',
     nav_main:'Main', nav_manage:'Manage', nav_dashboard:'Dashboard', nav_transactions:'Transactions',
     nav_budgets:'Budgets', nav_bills:'Bills', nav_goals:'Goals', nav_analytics:'Analytics', nav_accounts:'Accounts',
-    nav_settings:'Settings',
+    nav_settings:'Settings', nav_notes:'Notes', topbar_notes:'Notes',
     topbar_dashboard:'Dashboard', topbar_transactions:'All Transactions', topbar_budgets:'Budgets',
     topbar_bills:'Monthly Bills',
     topbar_goals:'Savings Goals', topbar_analytics:'Analytics', topbar_accounts:'Accounts', topbar_settings:'Settings',
@@ -2806,7 +3057,7 @@ const TRANSLATIONS = {
     bnav_home:'主页', bnav_txns:'交易', bnav_goals:'目标', bnav_review:'分析',
     nav_main:'主要', nav_manage:'管理', nav_dashboard:'仪表盘', nav_transactions:'交易记录',
     nav_budgets:'预算', nav_bills:'账单', nav_goals:'目标', nav_analytics:'分析', nav_accounts:'账户',
-    nav_settings:'设置',
+    nav_settings:'设置', nav_notes:'备注', topbar_notes:'备注',
     topbar_dashboard:'仪表盘', topbar_transactions:'全部交易', topbar_budgets:'预算',
     topbar_bills:'每月账单',
     topbar_goals:'储蓄目标', topbar_analytics:'分析', topbar_accounts:'账户', topbar_settings:'设置',
@@ -3053,6 +3304,7 @@ function saveState() {
       avatarColor: state.avatarColor,
       monthlyIncomeTarget: state.monthlyIncomeTarget,
       prefsPending: state.prefsPending || {}, prefsUser: state.prefsUser || null,
+      savedSearches: state.savedSearches || [], repeatDismissed: state.repeatDismissed || [],
       lastBackupAt: state.lastBackupAt,
       lastBackupInfo: state.lastBackupInfo,
       backupSnoozeUntil: state.backupSnoozeUntil,
@@ -3418,12 +3670,14 @@ function showView(name, el) {
     dashboard:'topbar_dashboard', transactions:'topbar_transactions', budgets:'topbar_budgets',
     bills:'topbar_bills',
     goals:'topbar_goals', analytics:'topbar_analytics', accounts:'topbar_accounts',
-    settings:'topbar_settings'
+    settings:'topbar_settings', notes:'topbar_notes'
   };
   document.getElementById('topbar-title').textContent = titleKeys[name] ? t(titleKeys[name]) : name;
   // show month nav only on views where it's relevant
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) monthBar.style.display = ['dashboard','budgets','bills','transactions'].includes(name) ? 'flex' : 'none';
+  // Another period picked on Transactions turns the month bar off there only.
+  if (monthBar && name !== 'transactions') { monthBar.classList.remove('inactive'); const off = document.getElementById('month-nav-off'); if (off) off.hidden = true; }
   if (name === 'transactions') { populateCategoryFilter(); populateCurrencyFilter(); populateAccountFilter(); }
   if (name === 'settings') {
     _updateSNConnCard();
@@ -5850,6 +6104,75 @@ function balanceUpdateRow(acc, actual, date) {
     account: acc.name, currency: cur, date, notes: `Balance updated to ${fmtSigned(actual, cur)}` };
 }
 
+// ── Investment returns ───────────────────────────────────────
+// A market account's return over a month: the gain or loss recorded for it
+// (Update balance writes those as Gain/Loss rows) against the money that was
+// in it, which is the balance the month started with plus half of what was put
+// in or taken out during it (the Modified Dietz method, with money moved taken
+// as mid-month). Money moved in or out is never profit. `ret` is null when the
+// balance wasn't updated that month, or there was nothing in it to earn on.
+const monthEndDate = mk => `${mk}-${String(pfmtDaysInMonth(mk)).padStart(2, '0')}`;
+function monthReturn(acc, month) {
+  const cur = acc.currency || state.currency;
+  const start = balanceOn(acc, monthEndDate(pfmtPrevMonth(month)));
+  let gain = 0, flows = 0, updated = false;
+  state.transactions.forEach(t => {
+    if (t.account !== acc.name || (t.currency || state.currency) !== cur || t.date.slice(0, 7) !== month) return;
+    const e = txnBalanceEffect(t);
+    if (t.category === GAIN_LOSS_CATEGORY && !t.transferGroup) { gain += e; updated = true; }
+    else flows += e;
+  });
+  gain = Math.round(gain * 100) / 100; flows = Math.round(flows * 100) / 100;
+  const base = start + flows / 2;
+  return { start, gain, flows, updated, ret: updated && base > 0 ? gain / base : null };
+}
+// Months chained together. A month with no update adds nothing (its change is
+// recorded in the month the balance is next updated); null when no month in
+// the period had an update, or one did with nothing in the account.
+function periodReturn(acc, months) {
+  let growth = 1, any = false;
+  for (const mk of months) {
+    const r = monthReturn(acc, mk);
+    if (!r.updated) continue;
+    if (r.ret === null) return null;
+    any = true;
+    growth *= 1 + r.ret;
+  }
+  return any ? growth - 1 : null;
+}
+function investmentReturns(today) {
+  const m0 = today.slice(0, 7);
+  const back = n => { let m = m0; for (let i = 0; i < n; i++) m = pfmtPrevMonth(m); return m; };
+  return orderAccounts(state.accounts.filter(isMarketAccount)).map(a => ({
+    acc: a, cur: a.currency || state.currency, value: balanceOn(a, today),
+    month: monthReturn(a, m0).ret,
+    m3: periodReturn(a, [back(2), back(1), m0]),
+    m12: periodReturn(a, Array.from({ length: 12 }, (_, i) => back(11 - i))),
+    series: [5, 4, 3, 2, 1].map(n => balanceOn(a, monthEndDate(back(n)))).concat(balanceOn(a, today))
+  }));
+}
+function renderReturns() {
+  const panel = document.getElementById('returns-panel');
+  if (!panel) return;
+  const rows = investmentReturns(localDateStr());
+  panel.hidden = !rows.length;
+  if (!rows.length) return;
+  const pct = v => v === null ? '<span class="ret-none">—</span>'
+    : `<span class="${v > 0.00005 ? 'ret-up' : v < -0.00005 ? 'ret-down' : ''}">${v > 0.00005 ? '+' : v < -0.00005 ? '−' : ''}${Math.abs(v * 100).toFixed(1)}%</span>`;
+  const spark = (s, good) => {
+    const lo = Math.min(...s), hi = Math.max(...s), span = hi - lo || 1;
+    const pts = s.map((v, i) => `${(i / (s.length - 1) * 76 + 2).toFixed(1)},${(22 - (v - lo) / span * 18).toFixed(1)}`).join(' ');
+    return `<svg class="ret-spark" width="80" height="24" viewBox="0 0 80 24" aria-hidden="true"><polyline fill="none" stroke="${good === null ? 'var(--muted)' : good ? 'var(--jade)' : 'var(--coral)'}" stroke-width="1.8" stroke-linejoin="round" points="${pts}"/></svg>`;
+  };
+  const anyUpdate = rows.some(r => r.m12 !== null);
+  document.getElementById('returns-body').innerHTML = `<div class="ret-wrap"><table class="ret-table"><thead><tr><th>Account</th><th>Value</th><th>This month</th><th>3 months</th><th>12 months</th><th>6 months</th></tr></thead><tbody>`
+    + rows.map(r => `<tr><td>${esc(r.acc.name)}<small>${esc(r.acc.type)} · ${r.cur}</small></td>`
+      + `<td data-label="Value">${state.balancesMasked ? '••••' : fmtSigned(r.value, r.cur)}</td><td data-label="This month">${pct(r.month)}</td><td data-label="3 months">${pct(r.m3)}</td><td data-label="12 months">${pct(r.m12)}</td>`
+      + `<td data-label="6 months">${spark(r.series, r.m3 === null ? null : r.m3 >= 0)}</td></tr>`).join('')
+    + `</tbody></table></div><p class="ret-note">${anyUpdate ? 'Return is the gain or loss you recorded, against what was in the account. A month you didn\'t update counts as no change until you next do.'
+      : 'Returns appear once you update a balance: use ⚖ Update balance on the account each month.'}</p>`;
+}
+
 function openBalanceModal(id) {
   const acc = state.accounts.find(a => String(a.id) === String(id));
   if (!acc) return;
@@ -6400,7 +6723,7 @@ function curStats(cur, txns, month) {
 // rather than as the arithmetic it is. Past this multiple, state the multiple
 // itself — "spent 475× income" is the fact behind the number and the one a
 // reader can act on.
-const SAVINGS_RATE_MAX_MULTIPLE = 10;
+const SAVINGS_RATE_MAX_MULTIPLE = 2;
 
 // Both the dashboard and Analytics render through this, so the same month can
 // never read −47392.5% on one page and N/A on the other. Previously only
@@ -6497,16 +6820,16 @@ function applyLanguage() {
   if (navSections[0]) navSections[0].textContent = t('nav_main');
   if (navSections[1]) navSections[1].textContent = t('nav_manage');
   const navItems = document.querySelectorAll('.nav-item');
-  const navKeys = ['nav_dashboard','nav_transactions','nav_budgets','nav_bills','nav_goals','nav_analytics','nav_accounts','nav_settings'];
-  navItems.forEach((btn, i) => {
-    if (i >= navKeys.length) return;
+  navItems.forEach(btn => {
+    const view = ((btn.getAttribute('onclick') || '').match(/showView\('(\w+)'/) || [])[1];
+    if (!view || !TRANSLATIONS.en['nav_' + view]) return;
     const icon  = btn.querySelector('.icon');
     // The count badge is a child of the button, so wiping textContent would
     // delete it on every language pass — it goes back in after the label.
     const badge = btn.querySelector('.nav-badge');
     btn.textContent = '';
     if (icon) btn.appendChild(icon);
-    btn.appendChild(document.createTextNode(' ' + t(navKeys[i])));
+    btn.appendChild(document.createTextNode(' ' + t('nav_' + view)));
     if (badge) btn.appendChild(badge);
   });
   // Topbar buttons
@@ -6607,6 +6930,7 @@ const VIEW_RENDERERS = {
   bills: () => renderBills(),
   goals: () => renderGoals(),
   analytics: () => renderAnalytics(),
+  notes: () => renderNotes(),
   accounts: () => renderAccounts(),
   settings: () => { renderExportSummary(); _renderProfileView(); _updateSNConnCard(); },
 };
@@ -6964,6 +7288,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
         <div class="txn-meta">${route} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span>${problem
           ? ` · <button type="button" class="pair-warn" onclick="openDataCheck()" title="${esc(problem)}">⚠ Needs attention</button>` : ''}${_pendingTxnIds.has(String(txn.id))
           ? ' · <span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''}</div>
+        ${txnNoteHTML(txn, showActions)}
       </div>
       <div class="txn-amt" style="color:${inkC};">${incoming ? '+' : ''}${fmtWithCur(txn.amount, txn.currency)}${(showsPair && diffCur) ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
@@ -6980,6 +7305,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
       <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : '', _pendingTxnIds.has(String(txn.id)) ? '<span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''].filter(Boolean).join(' · ')}</div>
+      ${txnNoteHTML(txn, showActions)}
     </div>
     <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber-t);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -6988,6 +7314,178 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
       <button class="icon-btn del"  onclick="deleteTransaction('${txn.id}')" title="Delete">🗑️</button>
     </div>` : ''}
   </div>`;
+}
+
+// ── Notes ─────────────────────────────────────────────────────
+// Owner, 2026-11-28: "add one new feature for me to keep some note on the
+// transaction related". Every transaction always had a notes column, but the
+// note showed only inside the edit form. Now it shows on the row, opens in its
+// own small window (only the note is saved), and the Notes page lists every
+// one, searchable and by #tag. A transfer or a funded purchase is one item
+// shown once, so its two rows keep the same note.
+const NOTE_TAG_RE = /(^|\s)(#[\p{L}\p{N}_-]{1,30})/gu;
+const NOTE_TAG_DEFAULTS = ['#claim', '#split', '#warranty', '#refund', '#tax', '#gift'];
+function noteText(t) { return t && t.notes ? String(t.notes).trim() : ''; }
+function noteTags(text) {
+  const out = [];
+  String(text || '').replace(NOTE_TAG_RE, (m, sp, tag) => { const k = tag.toLowerCase(); if (!out.includes(k)) out.push(k); return m; });
+  return out;
+}
+// Escaped text with each #tag set apart. Nothing typed is ever markup.
+function noteHTML(text) {
+  const str = String(text || ''), parts = [];
+  let last = 0;
+  str.replace(NOTE_TAG_RE, (m, sp, tag, at) => {
+    const start = at + sp.length;
+    parts.push(esc(str.slice(last, start)), `<span class="nt-tag">${esc(tag)}</span>`);
+    last = start + tag.length;
+    return m;
+  });
+  parts.push(esc(str.slice(last)));
+  return parts.join('');
+}
+function txnNoteHTML(txn, editable) {
+  const text = noteText(txn);
+  if (!text) return '';
+  const inner = `<span class="nt-ico" aria-hidden="true">📝</span><span>${noteHTML(text)}</span>`;
+  return editable
+    ? `<button type="button" class="txn-note" onclick="openNoteModal('${txn.id}')" title="Change this note">${inner}</button>`
+    : `<div class="txn-note">${inner}</div>`;
+}
+function noteSign(t) {
+  if (t.transferGroup) return t.type === 'income' ? '+' : '';
+  return t.type === 'expense' ? '−' : '+';
+}
+function noteIcon(t) {
+  if (t.transferGroup) return { bg: isAssetGroup(t) ? 'var(--violet-s)' : 'var(--sky-s)', ico: isAssetGroup(t) ? '📈' : '🔄' };
+  if (t.type === 'payback') return { bg: 'var(--amber-s)', ico: '↩️' };
+  return { bg: catBg(t.category), ico: catIcon(t.category) };
+}
+// The tags this person uses most, then a few common ones, for one tap.
+function noteTagSuggestions() {
+  const count = {};
+  state.transactions.forEach(t => noteTags(noteText(t)).forEach(k => { count[k] = (count[k] || 0) + 1; }));
+  const mine = Object.keys(count).sort((a, b) => count[b] - count[a] || (a < b ? -1 : 1));
+  return [...new Set([...mine, ...NOTE_TAG_DEFAULTS])].slice(0, 8);
+}
+function renderNoteTagChips() {
+  const box = document.getElementById('note-tags');
+  if (!box) return;
+  const have = noteTags(document.getElementById('note-text').value);
+  box.innerHTML = noteTagSuggestions().filter(k => !have.includes(k))
+    .map(k => `<button type="button" onclick="addNoteTag('${esc(k).replace(/&#39;/g, '')}')">${esc(k)}</button>`).join('');
+}
+function addNoteTag(tag) {
+  const ta = document.getElementById('note-text');
+  const v = ta.value.replace(/\s+$/, '');
+  if (!noteTags(v).includes(tag.toLowerCase())) ta.value = (v ? v + ' ' : '') + tag + ' ';
+  renderNoteTagChips();
+  ta.focus();
+}
+function openNoteModal(id) {
+  const txn = state.transactions.find(x => String(x.id) === String(id));
+  if (!txn) return;
+  const has = !!noteText(txn), ic = noteIcon(txn);
+  document.getElementById('note-txn-id').value = txn.id;
+  document.getElementById('note-title').textContent = has ? 'Edit note' : 'Add a note';
+  const where = txn.transferGroup ? `${esc(txn.account)} → ${esc(txn.transferPeer || '?')}` : `${esc(txn.category)} · ${esc(txn.account)}`;
+  document.getElementById('note-ctx').innerHTML = `<span class="txn-ico" style="background:${ic.bg}" aria-hidden="true">${ic.ico}</span>`
+    + `<span><b>${esc(txn.description || txn.category)}</b><small>${where} · ${fmtDate(txn.date)}</small></span>`
+    + `<span class="amt">${noteSign(txn)}${fmtWithCur(txn.amount, txn.currency)}</span>`;
+  const ta = document.getElementById('note-text');
+  ta.value = txn.notes || '';
+  ta.oninput = renderNoteTagChips;
+  document.getElementById('note-remove').hidden = !has;
+  renderNoteTagChips();
+  document.getElementById('note-modal').classList.add('open');
+  setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 100);
+}
+function closeNoteModal() { document.getElementById('note-modal').classList.remove('open'); }
+function saveNote(override) {
+  const id = document.getElementById('note-txn-id').value;
+  const txn = state.transactions.find(x => String(x.id) === String(id));
+  if (!txn) { closeNoteModal(); return; }
+  const raw = override !== undefined ? override : document.getElementById('note-text').value;
+  const text = String(raw).replace(/\s+$/, '').replace(/^\s+/, '').slice(0, 1000);
+  const rows = txn.transferGroup ? state.transactions.filter(x => x.transferGroup === txn.transferGroup) : [txn];
+  if (rows.every(r => (r.notes || '') === text)) { closeNoteModal(); return; }
+  rows.forEach(r => {
+    const idx = state.transactions.indexOf(r);
+    state.transactions[idx] = { ...r, notes: text };
+    const rid = _snId(r);
+    if (state.userId && rid) dbUpdate('transactions', rid, { notes: text }).catch(e => showToast('Sync: ' + e.message, 'warning'));
+  });
+  saveState();
+  closeNoteModal();
+  renderAll();
+  showToast(text ? 'Note saved' : 'Note removed', 'success');
+}
+function removeNote() { saveNote(''); }
+
+let _notesTag = '';
+function setNotesTag(tag) { _notesTag = _notesTag === tag ? '' : tag; renderNotes(); }
+// One entry per item: of a transfer's two rows, the one money leaves from.
+function noteItems(txns) {
+  const seen = new Set();
+  return sortTxnsDesc(txns).filter(t => {
+    if (!t.transferGroup) return true;
+    if (seen.has(t.transferGroup)) return false;
+    const legs = txns.filter(x => x.transferGroup === t.transferGroup);
+    const out = legs.find(x => x.type !== 'income' && x.type !== 'asset') || legs[0];
+    if (out !== t) return false;
+    seen.add(t.transferGroup);
+    return true;
+  });
+}
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  if (!list) return;
+  const all = noteItems(state.transactions.filter(t => noteText(t)));
+  const q = (document.getElementById('notes-search')?.value || '').trim().toLowerCase();
+  const counts = {};
+  all.forEach(t => noteTags(noteText(t)).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
+  if (_notesTag && !counts[_notesTag]) _notesTag = '';
+  const tags = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || (a < b ? -1 : 1));
+  document.getElementById('notes-tags').innerHTML = tags.length
+    ? `<button type="button" aria-pressed="${!_notesTag}" onclick="setNotesTag('')">All<b>${all.length}</b></button>`
+      + tags.map(k => `<button type="button" aria-pressed="${_notesTag === k}" onclick="setNotesTag('${esc(k).replace(/&#39;/g, '')}')">${esc(k)}<b>${counts[k]}</b></button>`).join('')
+    : '';
+  const match = t => {
+    if (_notesTag && !noteTags(noteText(t)).includes(_notesTag)) return false;
+    if (!q) return true;
+    const hay = [noteText(t), t.description, t.category, t.account, t.transferPeer, t.currency, fmtDate(t.date), String(t.amount), fmtWithCur(t.amount, t.currency)].join(' ').toLowerCase();
+    return q.split(/\s+/).every(w => hay.includes(w));
+  };
+  const shown = all.filter(match);
+  const thisMonth = all.filter(t => t.date.slice(0, 7) === localYM()).length;
+  document.getElementById('notes-count').textContent = !all.length ? ''
+    : shown.length === all.length ? `${all.length} note${all.length === 1 ? '' : 's'} · ${thisMonth} this month`
+    : `${shown.length} of ${all.length} notes`;
+  if (!all.length) {
+    list.innerHTML = `<div class="empty"><div class="icon">📝</div><p>No notes yet. Add one to a transaction below, or in the Notes box when you add or edit one.</p></div>`;
+  } else if (!shown.length) {
+    list.innerHTML = `<div class="empty"><div class="icon">🔍</div><p>No note matches${q ? ` “${esc(q)}”` : ''}${_notesTag ? ` with ${esc(_notesTag)}` : ''}.</p></div>`;
+  } else {
+    let month = '';
+    list.innerHTML = shown.map(t => {
+      const mk = t.date.slice(0, 7), ic = noteIcon(t), head = mk !== month ? `<div class="notes-month">${esc(getMonthLabel(mk))}</div>` : '';
+      month = mk;
+      const where = t.transferGroup ? `${esc(t.account)} → ${esc(t.transferPeer || '?')}` : `${esc(t.category)} · ${esc(t.account)}`;
+      const sign = noteSign(t), col = sign === '−' ? 'var(--coral-t)' : sign === '+' ? 'var(--jade-t)' : 'var(--sky-t)';
+      return head + `<div class="note-item"><span class="txn-ico" style="background:${ic.bg}" aria-hidden="true">${ic.ico}</span>`
+        + `<div><div class="note-item-h"><b>${esc(t.description || t.category)}</b><span class="note-item-meta">${where} · ${fmtDate(t.date)}</span></div>`
+        + `<button type="button" class="note-item-text txn-note" style="display:block;width:100%;" onclick="openNoteModal('${t.id}')" title="Change this note">${noteHTML(noteText(t))}</button></div>`
+        + `<div class="note-item-amt" style="color:${col}">${sign}${fmtWithCur(t.amount, t.currency)}</div>`
+        + `<div class="note-item-acts"><button type="button" class="btn btn-ghost btn-sm" onclick="openTxnModal('${t.id}')">Open transaction</button></div></div>`;
+    }).join('');
+  }
+  // the latest few without a note, one tap to add one
+  const bare = noteItems(state.transactions.filter(t => !noteText(t) && t.date <= localDateStr())).slice(0, 8);
+  document.getElementById('notes-recent').innerHTML = bare.length
+    ? bare.map(t => `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;">`
+        + `<div style="flex:1 1 260px;min-width:0;">${txnRowHTML(t, false)}</div>`
+        + `<button type="button" class="btn btn-ghost btn-sm notes-add" onclick="openNoteModal('${t.id}')">📝 Add note</button></div>`).join('')
+    : `<div class="empty" style="padding:14px 0;"><p>Every recent transaction has a note.</p></div>`;
 }
 
 // Clicking a budget answers "what made up this figure?" by opening the real
@@ -7131,6 +7629,8 @@ function clearFilters() {
   if (fu) fu.value = '';
   if (fa) fa.value = '';
   if (fp) fp.value = '';
+  ['filter-from', 'filter-to', 'filter-min', 'filter-max'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const form = document.getElementById('save-search-form'); if (form) form.hidden = true;
   renderTransactions();
 }
 
@@ -7167,6 +7667,142 @@ function txnMatchesSearch(t, terms) {
 
 // What a search found, in figures: how many rows, and per currency what went
 // out and came in — so "grab" answers "how much have I spent on Grab".
+// ── Repeat suggestions ───────────────────────────────────────
+// Something typed in by hand every month: the same description, type,
+// category, account and currency in each of the last three months in a row
+// (the latest this month or last), once a month, on about the same day
+// (within 6 days) and amount (within 10% of the latest). Not offered when a
+// repeating row already covers it, or when it was set aside with Not now.
+function repeatSuggestions(txns, today, fallbackCur, dismissed) {
+  const m0 = today.slice(0, 7), m1 = pfmtPrevMonth(m0);
+  const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const keyOf = t => [t.type, norm(t.description), t.category, t.account, t.currency || fallbackCur].join('|');
+  const templates = txns.filter(t => t.isRecurring && !t.transferGroup);
+  const groups = new Map();
+  txns.forEach(t => {
+    if (!['expense', 'income', 'payback'].includes(t.type) || t.transferGroup || t.recurringSource || t.isRecurring || !norm(t.description)) return;
+    const k = keyOf(t);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  });
+  const out = [];
+  groups.forEach((list, key) => {
+    if ((dismissed || []).includes(key)) return;
+    const byMonth = new Map();
+    list.forEach(t => { const mk = t.date.slice(0, 7); if (!byMonth.has(mk)) byMonth.set(mk, []); byMonth.get(mk).push(t); });
+    const months = [...byMonth.keys()].filter(mk => mk <= m0).sort().reverse();
+    if (months.length < 3 || (months[0] !== m0 && months[0] !== m1)) return;
+    const recent = months.slice(0, 3);
+    if (recent[1] !== pfmtPrevMonth(recent[0]) || recent[2] !== pfmtPrevMonth(recent[1])) return;
+    if (recent.some(mk => byMonth.get(mk).length > 1)) return;
+    const rows = recent.map(mk => byMonth.get(mk)[0]);
+    const latest = rows[0];
+    const days = rows.map(t => Math.min(Number(t.date.slice(8, 10)), 28));
+    if (Math.max(...days) - Math.min(...days) > 6) return;
+    if (rows.some(t => Math.abs(t.amount - latest.amount) > latest.amount * 0.1)) return;
+    const cur = latest.currency || fallbackCur;
+    if (templates.some(p => p.type === latest.type && p.category === latest.category && p.account === latest.account && (p.currency || fallbackCur) === cur
+        && (norm(p.description) === norm(latest.description) || Math.abs(p.amount - latest.amount) <= latest.amount * 0.25))) return;
+    out.push({ key, latest, months: recent.slice().reverse(), day: Number(latest.date.slice(8, 10)), amount: latest.amount, currency: cur });
+  });
+  return out.sort((a, b) => b.latest.date.localeCompare(a.latest.date) || a.key.localeCompare(b.key));
+}
+const ordinal = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+function renderRepeatSuggestions() {
+  const el = document.getElementById('repeat-suggest');
+  if (!el) return;
+  const list = bulkMode ? [] : repeatSuggestions(state.transactions, localDateStr(), state.currency, state.repeatDismissed).slice(0, 3);
+  if (!list.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="rs-card"><div class="rs-h">You enter these every month</div><div class="rs-sub">Let PFMT add them for you on the day. You can stop it any time by editing the row.</div>`
+    + list.map((s, i) => `<div class="rs-item"><span><span class="rs-name">${esc(s.latest.description)}</span><span class="rs-meta">${esc(s.latest.category)} · ${esc(s.latest.account)}</span>`
+      + `<span class="rs-months">${s.months.map(mk => `<span>${esc(getMonthLabel(mk).split(' ')[0].slice(0, 3))} ${Number(s.latest.date.slice(8, 10)) && byMonthDay(s, mk)}</span>`).join('')}</span></span>`
+      + `<span class="rs-amt">${s.latest.type === 'expense' ? '−' : '+'}${fmtWithCur(s.amount, s.currency)}</span>`
+      + `<span class="rs-acts"><button class="btn btn-jade btn-sm" onclick="acceptRepeat(${i})">Repeat on the ${ordinal(s.day)}</button><button class="btn btn-ghost btn-sm" onclick="dismissRepeat(${i})">Not now</button></span></div>`).join('')
+    + `</div>`;
+  el._list = list;
+}
+// The day it fell on in a month, for the chips under each suggestion.
+function byMonthDay(s, mk) {
+  const t = state.transactions.find(x => x.date.slice(0, 7) === mk && [x.type, String(x.description || '').trim().toLowerCase().replace(/\s+/g, ' '), x.category, x.account, x.currency || state.currency].join('|') === s.key);
+  return t ? Number(t.date.slice(8, 10)) : '';
+}
+async function acceptRepeat(i) {
+  const s = (document.getElementById('repeat-suggest')._list || [])[i];
+  if (!s) return;
+  const t = state.transactions.find(x => x.id === s.latest.id);
+  if (!t) return;
+  // From the next one after today: months already past are left as they are.
+  const next = recurNextAfter(t.date, 'monthly', localDateStr());
+  Object.assign(t, { isRecurring: true, recurringFrequency: 'monthly', nextRunDate: next });
+  saveState();
+  const rid = _snId(t);
+  if (state.userId && rid) dbUpdate('transactions', rid, { is_recurring: true, recurring_frequency: 'monthly', next_run_date: next }).catch(e => showToast('Sync: ' + e.message, 'warning'));
+  renderAll();
+  showToast(`${t.description} will be added on the ${ordinal(Number(t.date.slice(8, 10)))} of each month, from ${fmtDate(next)}`, 'success');
+}
+function dismissRepeat(i) {
+  const s = (document.getElementById('repeat-suggest')._list || [])[i];
+  if (!s) return;
+  state.repeatDismissed = [...(state.repeatDismissed || []), s.key];
+  saveState();
+  renderRepeatSuggestions();
+}
+
+// ── Better search: date ranges, amounts, saved searches ─────
+function searchFilterValues() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  return { search: v('search-input'), type: v('filter-type'), period: v('filter-period'), from: v('filter-from'), to: v('filter-to'),
+           cur: v('filter-cur'), cat: v('filter-cat'), acc: v('filter-acc'), min: v('filter-min'), max: v('filter-max') };
+}
+function periodLabel(f) {
+  if (f.period === 'all') return 'across all months';
+  if (f.period === 'year') return 'in ' + localDateStr().slice(0, 4);
+  if (f.period === '3m') return 'in the last 3 months';
+  if (f.period === 'range') return f.from && f.to ? `from ${fmtDate(f.from)} to ${fmtDate(f.to)}` : f.from ? `from ${fmtDate(f.from)}` : f.to ? `up to ${fmtDate(f.to)}` : 'across all months';
+  return 'in ' + getMonthLabel(state.filterMonth);
+}
+function startSaveSearch() {
+  document.getElementById('save-search-form').hidden = false;
+  const name = document.getElementById('save-search-name');
+  name.value = (searchFilterValues().search || '').slice(0, 40);
+  name.focus();
+}
+function saveSearch() {
+  const name = document.getElementById('save-search-name').value.trim();
+  if (!name) { showToast('Give the search a name', 'warning'); return; }
+  const f = searchFilterValues();
+  state.savedSearches = (state.savedSearches || []).filter(s => s.name.toLowerCase() !== name.toLowerCase()).concat({ id: newId(), name, f });
+  saveState();
+  if (typeof saveSearchesToServer === 'function') saveSearchesToServer();
+  document.getElementById('save-search-form').hidden = true;
+  renderSavedSearches();
+  showToast(`Saved “${name}”`, 'success');
+}
+function applySavedSearch(id) {
+  const s = (state.savedSearches || []).find(x => x.id === id);
+  if (!s) return;
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+  set('search-input', s.f.search); set('filter-type', s.f.type); set('filter-period', s.f.period); set('filter-from', s.f.from); set('filter-to', s.f.to);
+  set('filter-min', s.f.min); set('filter-max', s.f.max);
+  if (s.f.cur) setSelectVal('filter-cur', s.f.cur); else set('filter-cur', '');
+  if (s.f.cat) setSelectVal('filter-cat', s.f.cat); else set('filter-cat', '');
+  if (s.f.acc) setSelectVal('filter-acc', s.f.acc); else set('filter-acc', '');
+  _searchWidened = false;
+  renderTransactions();
+}
+function deleteSavedSearch(id) {
+  state.savedSearches = (state.savedSearches || []).filter(x => x.id !== id);
+  saveState();
+  if (typeof saveSearchesToServer === 'function') saveSearchesToServer();
+  renderSavedSearches();
+}
+function renderSavedSearches() {
+  const el = document.getElementById('saved-searches');
+  if (!el) return;
+  const list = state.savedSearches || [];
+  el.innerHTML = list.length ? '<span>Saved:</span>' + list.map(s => `<span class="ss-chip"><button onclick="applySavedSearch('${s.id}')">★ ${esc(s.name)}</button><button class="ss-del" onclick="deleteSavedSearch('${s.id}')" aria-label="Delete saved search ${esc(s.name)}" title="Delete">✕</button></span>`).join('') : '';
+}
+
 function searchSummaryHTML(txns, allMonths) {
   const by = {};
   txns.forEach(t => {
@@ -7185,7 +7821,8 @@ function searchSummaryHTML(txns, allMonths) {
   const byDay = {};
   txns.forEach(t => (byDay[t.date] = byDay[t.date] || []).push(t));
   const n = Object.values(byDay).reduce((sum, day) => sum + collapseTransfers(day).length, 0);
-  return `<div class="search-summary"><strong>${n} result${n === 1 ? '' : 's'}</strong> ${allMonths ? 'across all months' : 'in ' + getMonthLabel(state.filterMonth)}${money ? ' · ' + money : ''}</div>`;
+  const where = typeof allMonths === 'string' ? allMonths : allMonths ? 'across all months' : 'in ' + getMonthLabel(state.filterMonth);
+  return `<div class="search-summary"><strong>${n} result${n === 1 ? '' : 's'}</strong> ${esc(where)}${money ? ' · ' + money : ''}</div>`;
 }
 
 // Set while a search has switched the period to All Time on its own, so
@@ -7222,8 +7859,21 @@ function renderTransactions() {
   const periodF = document.getElementById('filter-period')?.value || '';
   const searchF = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
   const terms   = searchF ? parseTxnSearch(searchF) : [];
+  const fromF   = periodF === 'range' ? (document.getElementById('filter-from')?.value || '') : '';
+  const toF     = periodF === 'range' ? (document.getElementById('filter-to')?.value || '') : '';
+  const minRaw  = (document.getElementById('filter-min')?.value || '').trim(), maxRaw = (document.getElementById('filter-max')?.value || '').trim();
+  const minF    = minRaw === '' ? null : Number(minRaw), maxF = maxRaw === '' ? null : Number(maxRaw);
+  const todayStr = localDateStr();
+  const since3m = pfmtPrevMonth(pfmtPrevMonth(todayStr.slice(0, 7))) + '-01';
+  const rangeBox = document.getElementById('filter-range');
+  if (rangeBox) rangeBox.hidden = periodF !== 'range';
+  const anyFilter = !!(typeF || catF || curF || accF || periodF || searchF || minF !== null || maxF !== null);
+  const saveBtn = document.getElementById('save-search-btn');
+  if (saveBtn) saveBtn.disabled = !anyFilter;
+  renderRepeatSuggestions();
+  renderSavedSearches();
   const clearBtn = document.getElementById('clear-filters-btn');
-  if (clearBtn) clearBtn.style.display = (typeF || catF || curF || accF || periodF || searchF) ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = anyFilter ? 'inline-flex' : 'none';
 
   let txns = state.transactions.filter(t => {
     // The page was hard-scoped to the month bar, so anything in another month
@@ -7252,17 +7902,27 @@ function renderTransactions() {
     if (curF    && (t.currency || state.currency) !== curF)  return false;
     if (accF    && t.account !== accF)                        return false;
     if (terms.length && !txnMatchesSearch(t, terms)) return false;
+    if (periodF === 'year' && t.date.slice(0, 4) !== todayStr.slice(0, 4)) return false;
+    if (periodF === '3m' && (t.date < since3m || t.date > todayStr)) return false;
+    if (fromF && t.date < fromF) return false;
+    if (toF && t.date > toF) return false;
+    if (minF !== null && t.amount < minF) return false;
+    if (maxF !== null && t.amount > maxF) return false;
     return true;
   });
+  const showSummary = !!(searchF || minF !== null || maxF !== null || ['year', '3m', 'range'].includes(periodF));
+  const label = periodLabel({ period: periodF, from: fromF, to: toF });
 
-  if (!txns.length) { document.getElementById('all-txns').innerHTML = (searchF ? searchSummaryHTML([], !!periodF) : '') + `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
+  if (!txns.length) { document.getElementById('all-txns').innerHTML = (showSummary ? searchSummaryHTML([], label) : '') + `<div class="empty"><div class="icon">📭</div><p>${t('empty_no_txns_filter')}</p></div>`; return; }
 
   // The month bar does not drive this page in All Time; dim it rather than
   // leaving a control that looks live but changes nothing.
   const monthBar = document.getElementById('month-nav-bar');
   if (monthBar) {
-    monthBar.style.opacity = periodF ? '.45' : '';
-    monthBar.title = periodF ? t('month_bar_inactive') : '';
+    monthBar.classList.toggle('inactive', !!periodF);
+    const off = document.getElementById('month-nav-off');
+    if (off) { off.hidden = !periodF; off.textContent = periodF ? `Showing ${periodLabel({ period: periodF, from: fromF, to: toF }).replace(/^in /, '')} · pick This Month to page by month` : ''; }
+    monthBar.title = '';
   }
 
   const currencies = [...new Set(txns.map(t => t.currency || state.currency))];
@@ -7275,7 +7935,7 @@ function renderTransactions() {
   // currency rather than adding them, so nothing is ambiguous. Use the currency
   // filter to isolate one.
   document.getElementById('all-txns').innerHTML =
-    (searchF ? searchSummaryHTML(txns, !!periodF) : '') + txnListByDate(txns, isMultiCurTxn, true, bulkMode);
+    (showSummary ? searchSummaryHTML(txns, label) : '') + txnListByDate(txns, isMultiCurTxn, true, bulkMode);
   updateBulkBar();
 }
 
@@ -8179,15 +8839,13 @@ function renderAnalytics() {
     document.getElementById('an-largest').textContent      = fmtWithCur(max.amount, max.currency);
     document.getElementById('an-largest-desc').textContent = max.description;
   } else {
-    document.getElementById('an-largest').innerHTML = largestCurs.map(cur => {
+    const order = largestCurs.slice().sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b));
+    document.getElementById('an-largest').innerHTML = order.map(cur => {
       const m = largestByCur[cur];
-      return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
-        <span style="font-size:10px;color:var(--muted);font-weight:700;">${cur}</span>
-        <span style="${statRowStyle}">${fmtWithCur(m.amount,cur)}</span>
-      </div>`;
+      return `<div class="lx-row"><div class="lx-top"><span class="lx-cur">${cur}</span><span style="${statRowStyle}">${fmtWithCur(m.amount, cur)}</span></div>`
+        + `<div class="lx-desc">${esc(m.description)} · ${fmtDate(m.date)}</div></div>`;
     }).join('');
-    document.getElementById('an-largest-desc').innerHTML = largestCurs.map(cur =>
-      `<div>${esc(largestByCur[cur].description)}</div>`).join('');
+    document.getElementById('an-largest-desc').textContent = 'Biggest single expense in each currency';
   }
   renderMonthlyReview();
 }
@@ -8235,19 +8893,38 @@ function renderReviewTrends(mk) {
   const all = pfmtSpendTrends(state.transactions, mk, lastDay, state.currency);
   if (!all.length) { el.innerHTML = ''; return; }
   const high = all.filter(x => x.high);
-  const sofar = lastDay < pfmtDaysInMonth(mk) ? ` (1–${lastDay} ${getMonthLabel(mk).split(' ')[0]}, against the same days before)` : '';
+  // Clearer (owner, 2026-11-28: "make it clearly"): grouped by currency, since
+  // the same category in two currencies read as a duplicate; the extra money
+  // first; the four months named under their bars; a row opens its transactions.
+  const inProgress = lastDay < pfmtDaysInMonth(mk);
+  const short = m => getMonthLabel(m).split(' ')[0].slice(0, 3);
+  const months = [3, 2, 1].map(n => { let m = mk; for (let i = 0; i < n; i++) m = pfmtPrevMonth(m); return m; }).concat([mk]);
+  const before = `${short(months[0])}, ${short(months[1])} and ${short(months[2])}`;
+  const sub = inProgress
+    ? `This month so far (1–${lastDay} ${short(mk)}) against the average of the same days in ${before}.`
+    : `${getMonthLabel(mk).split(' ')[0]} against the average of ${before}.`;
   if (!high.length) {
-    el.innerHTML = `<div class="trends calm"><div class="trends-h">Nothing running high</div><div class="trends-sub" style="margin:0">Every category is within ${PFMT_TREND_MIN_PCT}% of its usual${esc(sofar)}.</div></div>`;
+    el.innerHTML = `<div class="trends calm"><div class="trends-h">Nothing running high</div><div class="trends-sub" style="margin:0">Every category is within ${PFMT_TREND_MIN_PCT}% of its usual. ${esc(sub)}</div></div>`;
     return;
   }
-  const rows = high.map(x => {
-    const max = Math.max(x.now, ...x.past) || 1;
-    const bar = (v, cls) => `<i class="${cls}" style="height:${Math.max(4, Math.round(v / max * 100))}%"></i>`;
-    return `<div class="trend-row"><span class="trend-bars" aria-hidden="true">${bar(x.past[2], '')}${bar(x.past[1], '')}${bar(x.past[0], '')}${bar(x.now, 'now')}</span>`
-      + `<span><span class="trend-cat">${esc(x.category)}</span><span class="trend-fig">${fmtWithCur(x.now, x.currency)} against a usual ${fmtWithCur(x.usual, x.currency)}</span></span>`
-      + `<span class="trend-pct">▲ ${x.pct}%</span></div>`;
+  const curs = [...new Set(high.map(x => x.currency))].sort((a, b) => (a === state.currency ? -1 : b === state.currency ? 1 : a < b ? -1 : 1));
+  const multi = curs.length > 1;
+  const row = x => {
+    const vals = [x.past[2], x.past[1], x.past[0], x.now], max = Math.max(...vals) || 1;
+    const more = Math.round((x.now - x.usual) * 100) / 100;
+    const tip = months.map((m, i) => `${short(m)} ${fmtWithCur(vals[i], x.currency)}`).join(' · ') + (inProgress ? ' (so far)' : '') + ' · show these transactions';
+    return `<button type="button" class="rh-row" data-cat="${esc(x.category)}" data-cur="${esc(x.currency)}" onclick="showReviewCategoryTransactions(this)" title="${esc(tip)}">`
+      + `<span class="rh-spark" aria-hidden="true"><span class="rh-bars">${vals.map((v, i) => `<i class="${i === 3 ? 'now' : ''}" style="height:${Math.max(7, Math.round(v / max * 100))}%"></i>`).join('')}</span>`
+      + `<span class="rh-mo">${months.map(m => `<span>${short(m).charAt(0)}</span>`).join('')}</span></span>`
+      + `<span><span class="rh-cat">${esc(x.category)}</span><span class="rh-fig">${fmtWithCur(x.now, x.currency)}${inProgress ? ' so far' : ''} · usual ${fmtWithCur(x.usual, x.currency)}</span></span>`
+      + `<span class="rh-end"><span class="rh-more">+${fmtWithCur(more, x.currency)}</span><span class="rh-pct">▲ ${x.pct}% above usual</span></span></button>`;
+  };
+  const rows = curs.map(cur => {
+    const list = high.filter(x => x.currency === cur);
+    const extra = Math.round(list.reduce((sum, x) => sum + x.now - x.usual, 0) * 100) / 100;
+    return (multi ? `<div class="rh-cur">${esc(cur)} <small>${list.length} running high · ${fmtWithCur(extra, cur)} above usual</small></div>` : '') + list.map(row).join('');
   }).join('');
-  el.innerHTML = `<div class="trends"><div class="trends-h">Running high</div><div class="trends-sub">Against your average for the 3 months before${esc(sofar)}.</div>${rows}</div>`;
+  el.innerHTML = `<div class="trends"><div class="trends-h">Running high</div><div class="trends-sub">${esc(sub)} Tap a row to see its transactions.</div>${rows}</div>`;
 }
 
 // ── Year in review ─────────────────────────────────────────────
@@ -8363,12 +9040,18 @@ function renderMonthlyReview() {
   // Same per-currency stats function the dashboard uses, so this panel can
   // never disagree with it on what counts as income vs. a transfer.
   if (statsEl) {
-    statsEl.innerHTML = currencies.map(cur => {
-      const st = curStats(cur, reviewTxns, mk);
-      return `<div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_income')}</div><div class="review-stat-val" style="color:var(--jade-t)">${fmtWithCur(st.inc, cur)}</div></div>
-        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} ${t('lbl_expenses')}</div><div class="review-stat-val" style="color:var(--coral-t)">${fmtWithCur(st.exp, cur)}</div></div>
-        <div class="review-stat"><div class="review-stat-lbl">${esc(cur)} Net</div><div class="review-stat-val" style="color:${st.net>=0?'var(--jade-t)':'var(--coral-t)'}">${fmtSigned(st.net, cur)}</div></div>`;
-    }).join('') + `<div class="review-stat"><div class="review-stat-lbl">Transactions</div><div class="review-stat-val">${countEvents(reviewTxns)}</div></div>`;
+    // One row per currency. Exchanged and refunds get columns only when some
+    // currency has them, so net is always the sum of what the row shows.
+    const stats = currencies.map(cur => [cur, curStats(cur, reviewTxns, mk)])
+      .sort((a, b) => (b[0] === state.currency) - (a[0] === state.currency) || a[0].localeCompare(b[0]));
+    const hasX = stats.some(([, s]) => s.xIn || s.xOut), hasB = stats.some(([, s]) => s.back);
+    const signed = (v, cur) => v ? (v > 0 ? '+' : '') + fmtSigned(v, cur) : '–';
+    statsEl.innerHTML = `<div class="rv-wrap"><table class="rv-table"><thead><tr><th>${getMonthLabel(mk)}</th><th>${t('lbl_income')}</th>${hasX ? '<th>Exchanged</th>' : ''}${hasB ? '<th>Refunds &amp; claims</th>' : ''}<th>Spent</th><th>Net</th></tr></thead><tbody>`
+      + stats.map(([cur, s]) => `<tr><th scope="row">${esc(cur)}</th><td class="pos" data-l="${t('lbl_income')}">${s.inc ? fmtWithCur(s.inc, cur) : '–'}</td>`
+        + (hasX ? `<td class="mid" data-l="Exchanged">${signed(Math.round((s.xIn - s.xOut) * 100) / 100, cur)}</td>` : '')
+        + (hasB ? `<td class="mid" data-l="Refunds &amp; claims">${s.back ? '+' + fmtWithCur(s.back, cur) : '–'}</td>` : '')
+        + `<td class="neg" data-l="Spent">${s.exp ? fmtWithCur(s.exp, cur) : '–'}</td><td class="net ${s.net >= 0 ? 'pos' : 'neg'}" data-l="Net">${fmtSigned(Math.round(s.net * 100) / 100, cur)}</td></tr>`).join('')
+      + `</tbody></table></div><div class="rv-count">${countEvents(reviewTxns)} transactions this month${hasX ? ' · Exchanged is money moved between your currencies, which counts in net but is neither income nor spending.' : ''}</div>`;
   }
 
   // Every category with spending this month gets a row, a payback that brought
@@ -9446,10 +10129,18 @@ function downloadInOut(format) {
   showToast(`Money in and out for ${getMonthLabel(from)} – ${getMonthLabel(to)} downloaded`, 'success');
 }
 
-function showTrendDetail(mk, cur, amt, el) {
+function showTrendDetail(mk, cur, amt, el, prev, partial) {
   const [y, m] = mk.split('-');
   const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
-  document.getElementById('trend-detail').textContent = `${label}: ${fmtWithCur(amt, cur)}`;
+  // The change from the month before, for whole months only: a month in
+  // progress against a whole one would always look like a fall.
+  let change = '';
+  if (!partial && prev > 0) {
+    const d = Math.round((amt / prev - 1) * 100);
+    const prevName = new Date(+y, +m - 2, 1).toLocaleDateString('en-SG', { month: 'long' });
+    change = d === 0 ? ` · same as ${prevName}` : ` · ${d > 0 ? '▲' : '▼'} ${Math.abs(d)}% vs ${prevName}`;
+  }
+  document.getElementById('trend-detail').textContent = `${label}${partial ? ' (so far)' : ''}: ${fmtWithCur(amt, cur)}${change}`;
   document.querySelectorAll('.trend-bar-col').forEach(c => c.classList.remove('trend-bar-selected'));
   if (el) el.classList.add('trend-bar-selected');
 }
@@ -9531,36 +10222,42 @@ function renderSpendingTrend() {
     document.getElementById('trend-detail').innerHTML = '&nbsp;';
     return;
   }
-  const isMultiCurTrend = currencies.length > 1;
-
+  // Each currency on its own row with its monthly average; each bar carries its
+  // amount; the month in progress is lighter and starred, and left out of the
+  // average (owner, 2026-11-28: "make it clearly").
+  const lastMk = months[months.length - 1];
+  const compact = v => v >= 10000 ? Math.round(v / 1000) + 'k' : v >= 1000 ? (Math.round(v / 100) / 10) + 'k' : String(Math.round(v));
   el.innerHTML = currencies.map(cur => {
     const vals = months.map(mk => byMonthCur[cur]?.[mk] || 0);
     const max  = Math.max(...vals, 0.01);
+    const full = vals.slice(0, -1).filter(v => v > 0);
+    const avg  = full.length ? Math.round(full.reduce((a, b) => a + b, 0) / full.length * 100) / 100 : 0;
     const bars = months.map((mk, i) => {
-      const v = vals[i];
+      const v = vals[i], partial = mk === lastMk;
       // A month whose spending was more than repaid nets below zero; draw it
-      // flat rather than as a bar growing downwards out of the chart.
-      const h = Math.max(0, v / max * 100).toFixed(1);
+      // flat rather than as a bar growing downwards out of the chart. The
+      // tallest bar leaves room for its amount above and its month below.
+      const h = Math.max(0, v / max * 74).toFixed(1);
       const [y, m] = mk.split('-');
       const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
-      return `<div class="trend-bar-col" role="button" tabindex="0" aria-label="${label}: ${esc(fmtWithCur(v, cur))}" onclick="showTrendDetail('${mk}','${cur}',${v},this)">
+      return `<div class="trend-bar-col${partial ? ' partial' : ''}" role="button" tabindex="0" aria-label="${label}${partial ? ' so far' : ''}: ${esc(fmtWithCur(v, cur))}" onclick="showTrendDetail('${mk}','${cur}',${v},this,${i ? vals[i - 1] : 'null'},${partial})">
+        ${v > 0 ? `<div class="trend-bar-val">${compact(v)}</div>` : ''}
         <div class="trend-bar" style="height:${h}%;"></div>
         <div class="trend-bar-label">${label}</div>
       </div>`;
     }).join('');
-    return `${isMultiCurTrend ? `<div style="display:flex;align-items:center;gap:10px;margin:12px 0 10px;">
-      <span style="font-size:11px;font-weight:700;color:var(--sky-t);letter-spacing:.8px;">${cur}</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>` : ''}<div class="trend-bars">${bars}</div>`;
-  }).join('');
+    return `<div class="trend-cur"><b>${cur}</b>${avg > 0 ? `<span>avg ${esc(fmtWithCur(avg, cur))} / month</span>` : ''}<i></i></div>`
+      + `<div class="trend-bars m${n}${metric === 'income' ? ' inc' : ''}">${bars}</div>`;
+  }).join('') + `<div class="trend-foot">* ${esc(getMonthLabel(lastMk).split(' ')[0])} so far, left out of the average. Tap a bar for its figure and the change from the month before.</div>`;
 
   // Default to the most recent month with data, first currency, so the detail
   // line isn't empty on first render.
   const firstCur = currencies[0];
   const lastMonthWithData = [...months].reverse().find(mk => byMonthCur[firstCur]?.[mk] > 0) || months[months.length - 1];
   const defaultAmt = byMonthCur[firstCur]?.[lastMonthWithData] || 0;
-  const defaultCol = document.querySelector(`.trend-bars .trend-bar-col:nth-child(${months.indexOf(lastMonthWithData) + 1})`);
-  showTrendDetail(lastMonthWithData, firstCur, defaultAmt, defaultCol);
+  const di = months.indexOf(lastMonthWithData);
+  const defaultCol = document.querySelector(`.trend-bars .trend-bar-col:nth-child(${di + 1})`);
+  showTrendDetail(lastMonthWithData, firstCur, defaultAmt, defaultCol, di > 0 ? (byMonthCur[firstCur]?.[months[di - 1]] || 0) : null, lastMonthWithData === months[months.length - 1]);
 }
 
 /* ── ACCOUNTS ── */
@@ -9731,6 +10428,7 @@ function setMaskBtnIcon() {
 }
 
 function renderAccounts() {
+  renderReturns();
   setMaskBtnIcon();
   renderNetWorth();
   refreshFxRates();
@@ -10783,7 +11481,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
-    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems(); closeImport();
+    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems(); closeImport(); closeYearReview(); closeWall();
     ['account-modal','confirm-modal'].forEach(id=>document.getElementById(id).classList.remove('open'));
   }
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openTxnModal(); }
@@ -10845,7 +11543,9 @@ function lineIcon(name, size = 19) {
   settings: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
   light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   dark: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
-  command: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4M7 12l2.5-3 2.5 2 3.5-4"/>'
+  command: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4M7 12l2.5-3 2.5 2 3.5-4"/>',
+  wall: '<rect x="2" y="3" width="20" height="14" rx="1"/><path d="M8 21h8M12 17v4M6 13h3l1.5-4 2 6 1.5-2H18"/>',
+  notes: '<path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4M8 11h8M8 15h8M8 19h5"/>'
   };
   return paths[name] ? `<svg class="line-ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths[name]}</svg>` : '';
 }
@@ -10862,7 +11562,7 @@ function installLineIcons() {
   };
   document.querySelectorAll('.nav-item').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/showView\('(\w+)'/);
-    if (m) put(btn.querySelector('.icon'), m[1]);
+    if (m || btn.dataset.ico) put(btn.querySelector('.icon'), m ? m[1] : btn.dataset.ico);
   });
   document.querySelectorAll('.bnav-item[data-bview]').forEach(btn => put(btn.querySelector('.bnav-ico'), btn.dataset.bview));
 }
@@ -11649,6 +12349,106 @@ async function startApp() {
     _setLoginLoading(false);
     _showSNLogin();
   }
+}
+
+// ── Wall display ─────────────────────────────────────────────────
+// A full-screen board for a monitor or a tablet on the desk: net worth,
+// today, this month against last, budgets, bills due, the month's spending
+// curve, what's running high and the latest entries. Redrawn every minute,
+// the clock every second, the book reloaded every five minutes; the screen
+// is kept awake while it's open (where the browser allows).
+let _wallTimer = null, _wallTick = null, _wallLoad = null, _wallMasked = false, _wallLock = null;
+const wallOpen = () => document.getElementById('wall-modal').classList.contains('open');
+function openWall() {
+  closeSidebar();
+  document.getElementById('wall-modal').classList.add('open');
+  renderWall(); tickWall();
+  clearInterval(_wallTimer); clearInterval(_wallTick); clearInterval(_wallLoad);
+  _wallTick = setInterval(() => { if (!wallOpen()) return stopWall(); tickWall(); }, 1000);
+  _wallTimer = setInterval(() => { if (!wallOpen()) return stopWall(); renderWall(); }, 60 * 1000);
+  _wallLoad = setInterval(async () => {
+    if (!wallOpen()) return stopWall();
+    if (state.userId && navigator.onLine !== false && await snLoadAll({ quiet: true })) { renderAll(); renderWall(); }
+  }, 5 * 60 * 1000);
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => { _wallLock = l; }).catch(() => {}); } catch (e) {}
+}
+function stopWall() {
+  clearInterval(_wallTimer); clearInterval(_wallTick); clearInterval(_wallLoad);
+  _wallTimer = _wallTick = _wallLoad = null;
+  if (_wallLock) { _wallLock.release().catch(() => {}); _wallLock = null; }
+}
+function closeWall() { document.getElementById('wall-modal').classList.remove('open'); stopWall(); }
+function toggleWallMask() {
+  _wallMasked = !_wallMasked;
+  const b = document.getElementById('wall-mask');
+  b.textContent = _wallMasked ? 'Show amounts' : 'Hide amounts';
+  b.setAttribute('aria-pressed', String(_wallMasked));
+  renderWall();
+}
+function tickWall() {
+  const now = new Date(), pad = n => String(n).padStart(2, '0');
+  const set = (id, v) => { const el = document.getElementById(id); if (!el) return; if (el.firstChild) { if (el.firstChild.nodeValue !== v) el.firstChild.nodeValue = v; } else el.textContent = v; };
+  set('wall-clock', `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
+  set('wall-date', now.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase());
+  const pending = state.userId ? outbox().filter(o => o.userId === state.userId).length : 0;
+  const down = navigator.onLine === false || state.syncFailed;
+  set('wall-state', !state.userId ? 'LOCAL' : down ? 'OFFLINE' : pending ? `${pending} QUEUED` : 'LIVE');
+  document.getElementById('wall-live').classList.toggle('down', !!(state.userId && down));
+  set('wall-sync', state.lastSync ? 'SYNC ' + new Date(state.lastSync).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
+}
+// Cumulative spending through a month, day by day, counted the way budgets
+// count it (pfmtCategorySpentTo for every category, so paybacks net per category).
+function cumulativeSpend(month, cur, uptoDay) {
+  const cats = [...new Set(state.transactions.filter(t => t.type === 'expense' && isFlow(t) && t.date.slice(0, 7) === month && (t.currency || state.currency) === cur).map(t => t.category))];
+  const out = [];
+  for (let d = 1; d <= uptoDay; d++) out.push(Math.round(cats.reduce((s, c) => s + pfmtCategorySpentTo(state.transactions, c, cur, month, d, state.currency), 0) * 100) / 100);
+  return out;
+}
+function renderWall() {
+  const grid = document.getElementById('wall-grid');
+  if (!grid) return;
+  const home = state.currency, today = localDateStr(), m0 = today.slice(0, 7), m1 = pfmtPrevMonth(m0), day = Number(today.slice(8, 10));
+  const money = (v, c, signed) => _wallMasked ? '••••' : (signed && v > 0 ? '+' : '') + (signed ? fmtSigned(v, c) : fmtWithCur(v, c));
+  const curs = arr => [...new Set(arr)].sort((a, b) => (b === home) - (a === home) || a.localeCompare(b));
+  // Net worth, per currency
+  const worth = {};
+  state.accounts.forEach(a => { const c = a.currency || home; worth[c] = Math.round(((worth[c] || 0) + balanceOn(a, today)) * 100) / 100; });
+  const worthCurs = curs(Object.keys(worth));
+  const tileWorth = `<div class="wt wt-w2"><div class="wt-l">Net worth</div>${worthCurs.length ? worthCurs.slice(0, 3).map((c, i) => `<span class="wt-v${i ? ' sm' : ''}">${money(worth[c], c, true)}</span>`).join('') : '<span class="wt-s">No accounts yet</span>'}</div>`;
+  // Today
+  const todayOut = {};
+  state.transactions.forEach(t => { if (t.date === today && t.type === 'expense' && isFlow(t)) { const c = t.currency || home; todayOut[c] = (todayOut[c] || 0) + t.amount; } });
+  const todayCurs = curs(Object.keys(todayOut));
+  const tileToday = `<div class="wt"><div class="wt-l">Spent today</div>${todayCurs.length ? todayCurs.map((c, i) => `<span class="wt-v${i ? ' sm' : ''}">${money(todayOut[c], c)}</span>`).join('') : `<span class="wt-v">${money(0, home)}</span>`}<span class="wt-s">${state.transactions.filter(t => t.date === today).length} entries today</span></div>`;
+  // This month against the same days last month
+  const nowCum = cumulativeSpend(m0, home, day), lastCum = cumulativeSpend(m1, home, pfmtDaysInMonth(m1));
+  const nowSpent = nowCum.length ? nowCum[nowCum.length - 1] : 0, lastSame = lastCum[Math.min(day, lastCum.length) - 1] || 0;
+  const diff = lastSame > 0 ? Math.round((nowSpent / lastSame - 1) * 100) : null;
+  const tileMonth = `<div class="wt"><div class="wt-l">Spent this month · ${home}</div><span class="wt-v">${money(nowSpent, home)}</span><span class="wt-s">${diff === null ? 'nothing by this day last month' : `${diff > 0 ? '▲' : diff < 0 ? '▼' : ''} ${Math.abs(diff)}% vs the same days last month`}</span></div>`;
+  // Budgets
+  const alerts = pfmtBudgetAlerts(state.budgets, state.transactions, m0, home);
+  const over = alerts.filter(a => a.level === 'over'), near = alerts.filter(a => a.level === 'near');
+  const tileBudgets = `<div class="wt"><div class="wt-l">Budgets</div><span class="wt-v ${over.length ? 'neg' : ''}">${over.length} over</span><span class="wt-s">${near.length} near the line · ${state.budgets.length} set</span>`
+    + (over.length ? `<div class="wt-list" style="margin-top:8px">${over.slice(0, 3).map(a => `<div><span>${esc(a.budget.category)}</span><span class="num">${Math.round(a.pct)}%</span></div>`).join('')}</div>` : '') + `</div>`;
+  // Bills due within a week (or late)
+  const bills = pfmtBillsToRemind(state.bills || [], state.transactions, m0, today, 7, home);
+  const tileBills = `<div class="wt"><div class="wt-l">Bills this week</div><span class="wt-v">${bills.length ? bills.length + ' due' : 'All clear'}</span>`
+    + (bills.length ? `<div class="wt-list" style="margin-top:8px">${bills.slice(0, 4).map(b => `<div><span>${esc(b.bill.name)}</span><span class="num">${b.days < 0 ? 'late' : b.days === 0 ? 'today' : fmtDate(b.due)}</span></div>`).join('')}</div>` : '<span class="wt-s">Nothing due in the next 7 days</span>') + `</div>`;
+  // The month's curve against last month's
+  const dim = pfmtDaysInMonth(m0), max = Math.max(nowSpent, lastCum[lastCum.length - 1] || 0, 1);
+  const pts = arr => arr.map((v, i) => `${(i / (dim - 1) * 600).toFixed(1)},${(150 - v / max * 138).toFixed(1)}`).join(' ');
+  const tileChart = `<div class="wt wt-w2 wt-chart"><div class="wt-l">${home} spending through the month</div>`
+    + `<svg viewBox="-6 -6 612 168" role="img" aria-label="Spending so far this month against last month"><line x1="0" y1="150" x2="600" y2="150" stroke="var(--border)" stroke-width="1"/>`
+    + (lastCum.length ? `<polyline fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 5" points="${pts(lastCum.slice(0, dim))}"/>` : '')
+    + (nowCum.length ? `<polyline fill="none" stroke="var(--sky)" stroke-width="3" stroke-linejoin="round" points="${pts(nowCum)}"/><circle cx="${((nowCum.length - 1) / (dim - 1) * 600).toFixed(1)}" cy="${(150 - nowSpent / max * 138).toFixed(1)}" r="5" fill="var(--sky)"/>` : '')
+    + `</svg><div class="wt-legend"><span><i style="background:var(--sky)"></i>This month, ${money(nowSpent, home)}</span><span><i style="background:var(--muted)"></i>Last month, ${money(lastCum[lastCum.length - 1] || 0, home)}</span></div></div>`;
+  // Running high
+  const high = pfmtSpendTrends(state.transactions, m0, day, home).filter(x => x.high).slice(0, 4);
+  const tileHigh = `<div class="wt"><div class="wt-l">Running high</div>${high.length ? `<div class="wt-list">${high.map(x => `<div><span>${esc(x.category)}</span><span class="num neg">▲ ${x.pct}%</span></div>`).join('')}</div>` : '<span class="wt-v sm">Nothing</span><span class="wt-s">Every category near its usual</span>'}</div>`;
+  // Latest entries
+  const latest = state.transactions.slice().sort((a, b) => b.date.localeCompare(a.date) || String(b.created || '').localeCompare(String(a.created || ''))).filter(t => !t.transferGroup || t.type === 'expense').slice(0, 8);
+  const tileFeed = `<div class="wt"><div class="wt-l">Latest</div><div class="wt-list">${latest.map(t => `<div><span>${catIcon(t.category)} ${esc(t.description || t.category)}</span><span class="num ${t.type === 'expense' && !t.transferGroup ? '' : 'pos'}">${t.transferGroup ? '⇄ ' : t.type === 'expense' ? '−' : '+'}${money(t.amount, t.currency || home)}</span></div>`).join('') || '<span class="wt-s">Nothing yet</span>'}</div></div>`;
+  grid.innerHTML = tileWorth + tileToday + tileMonth + tileChart + tileBudgets + tileBills + tileHigh + tileFeed;
 }
 
 // ── New version bar ─────────────────────────────────────────────

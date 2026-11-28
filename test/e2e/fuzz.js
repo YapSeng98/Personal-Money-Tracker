@@ -405,6 +405,30 @@
               () => `${how}: ${accts().map(a => a.name).join(' | ')}\n      wanted ${want.join(' | ')}`);
         return `laptop rearranges accounts (${how})`;
       }],
+      [3, 'write, change or remove a note', async () => {
+        const t = pick(state.transactions);
+        if (!t) return 'no transaction to note';
+        openNoteModal(t.id);
+        document.getElementById('note-text').value = pick(['', 'Mei owes S$20 #split', 'Claim submitted #claim', '  spaces around  ', 'x'.repeat(1200), 'Paid in cash, receipt in drawer']);
+        saveNote();
+        await settle();
+        const rows = t.transferGroup ? state.transactions.filter(x => x.transferGroup === t.transferGroup) : state.transactions.filter(x => x.id === t.id);
+        check(rows.every(r => (r.notes || '') === (rows[0].notes || '')) && (rows[0].notes || '').length <= 1000 && (rows[0].notes || '') === (rows[0].notes || '').trim(),
+              'a note is kept trimmed, at most 1,000 characters, and the same on both legs of a transfer', () => JSON.stringify(rows.map(r => r.notes)));
+        return `note on ${t.transferGroup ? 'a transfer' : 'a transaction'}`;
+      }],
+      [2, 'make a hand-typed entry repeat monthly', async () => {
+        const t = pick(state.transactions.filter(x => ['expense', 'income', 'payback'].includes(x.type) && !x.transferGroup && !x.recurringSource && !x.isRecurring));
+        if (!t) return 'nothing to repeat';
+        const box = document.getElementById('repeat-suggest');
+        box._list = [{ latest: t, key: 'fuzz', day: Number(t.date.slice(8, 10)) }];
+        await acceptRepeat(0);
+        await settle();
+        const now = state.transactions.find(x => x.id === t.id);
+        check(now && now.isRecurring && now.recurringFrequency === 'monthly' && now.nextRunDate > today,
+              'a row made to repeat repeats monthly, from a date after today', () => JSON.stringify(now && { r: now.isRecurring, f: now.recurringFrequency, n: now.nextRunDate }));
+        return 'make an entry repeat';
+      }],
       [3, 'change a setting', async () => {
         const which = pick(['theme', 'alerts', 'assist', 'range', 'metric']);
         if (which === 'theme') setTheme(pick(['light', 'dark', 'command', 'auto']));

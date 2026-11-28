@@ -463,9 +463,10 @@ async function main() {
       // --sizes=1100x800,390x844 (a width under 900 is shot as a phone); --lang=zh
       const sizes = (process.argv.find(a => a.startsWith('--sizes=')) || '--sizes=1440x900,390x844').slice(8).split(',').map(x => x.split('x').map(Number));
       const lang = (process.argv.find(a => a.startsWith('--lang=')) || '').slice(7);
+      const open = (process.argv.find(a => a.startsWith('--open=')) || '').slice(7);
       for (const theme of themes) for (const page of pages) for (const [width, height] of sizes) {
-        await screenshot(browser.dt, url + `?view=page&page=${page}&theme=${theme}` + (lang ? `&lang=${lang}` : ''), { width, height, mobile: width < 900 },
-                         path.join(out, `${theme}-${page}-${width}${lang ? '-' + lang : ''}.png`));
+        await screenshot(browser.dt, url + `?view=page&page=${page}&theme=${theme}` + (lang ? `&lang=${lang}` : '') + (open ? `&open=${open}` : ''), { width, height, mobile: width < 900 },
+                         path.join(out, `${theme}-${page}${open ? '-' + open : ''}-${width}${lang ? '-' + lang : ''}.png`));
       }
       console.log(`screenshots saved to ${out}`);
     } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }

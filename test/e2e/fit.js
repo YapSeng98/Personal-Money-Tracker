@@ -75,6 +75,16 @@
     const txnType = type => { openTxnModal(); setType(type, $('#tab-' + type)); };
     const SCREENS = {
       'dashboard': () => showView('dashboard'),
+      // Notes first, so the transaction list and every later screen also carry long notes.
+      'notes': () => {
+        const notes = ['Dinner with the team, split four ways; Mei and Arjun still owe their share #split',
+          'Warranty until 31 Dec 2027, receipt in the drawer #warranty #claim', 'Paid for by work, send the receipt to finance by Friday #claim'];
+        state.transactions.filter(t => t.type === 'expense' && !t.transferGroup && !t.notes && t.date.slice(0, 7) === M0).slice(0, 3).forEach((t, i) => { t.notes = notes[i]; });
+        if (!long.notes) long.notes = 'A note long enough to wrap over several lines on a small phone, with two tags at the end #reimbursement-pending #2027';
+        showView('notes');
+      },
+      'notes-tag': () => { showView('notes'); setNotesTag('#claim'); },
+      'note-edit': () => { showView('notes'); openNoteModal(long.id); },
       'transactions': () => showView('transactions'),
       'transactions-select': () => { showView('transactions'); toggleBulkMode(); bulkSelectAllVisible(); },
       'budgets': () => showView('budgets'),
@@ -99,6 +109,22 @@
       'budget-new': () => openBudgetModal(),
       'budget-suggest': () => { openBudgetModal(); setSelectVal('budget-cat', 'Food & Drink'); renderBudgetSuggestions(); },
       'year-review': () => { showView('analytics'); openYearReview(); },
+      'wall': () => openWall(),
+      'transactions-filters': () => {
+        showView('transactions');
+        state.savedSearches = [{ id: 'fs1', name: POISON ? BAD('saved') : 'Grab rides this year', f: { period: 'year', search: 'grab' } },
+                               { id: 'fs2', name: 'Spends over S$200', f: { min: '200' } }];
+        $('#filter-period').value = 'range'; $('#filter-min').value = '10'; renderTransactions(); startSaveSearch();
+      },
+      'repeat-suggest': () => {
+        let m = localYM();
+        for (let n = 0; n < 3; n++) {
+          state.transactions.push({ id: 'fit-rep-' + n, type: 'expense', amount: 88, description: POISON ? BAD('repeat') : 'Gym membership with a long name', category: 'Sport',
+            account: 'DBS Checking', date: m + '-02', currency: 'SGD', notes: '', created: m + '-02T08:00:00Z' });
+          m = prevMonthKey(m);
+        }
+        showView('transactions');
+      },
       'update-bar': () => { showView('dashboard'); _updateReady = true; _updateDismissed = false; $('#update-bar').hidden = false; },
       'budget-edit': () => openBudgetModal(1),
       'bill-new': () => openBillModal(),
@@ -130,6 +156,10 @@
       $('#login-overlay').style.display = 'none';
       const toast = $('#toast'); if (toast) toast.classList.remove('show');
       $('#update-bar').hidden = true;
+      if (state.transactions.some(t => String(t.id).startsWith('fit-rep-'))) state.transactions = state.transactions.filter(t => !String(t.id).startsWith('fit-rep-'));
+      state.savedSearches = []; state.repeatDismissed = [];
+      if ($('#filter-period').value || $('#filter-min').value) clearFilters();
+      stopWall();
       $$('.main, .modal-backdrop, .modal').forEach(el => { el.scrollTop = 0; el.scrollLeft = 0; });
     };
 

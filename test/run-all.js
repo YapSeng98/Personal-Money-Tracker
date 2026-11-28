@@ -22,6 +22,7 @@ const SUITES = [
   'descriptions.test.js',        // what the Description box offers, in what order, and what a pick fills in
   'balance-and-fx.test.js',      // Update balance lands on the figure typed; the one-currency total converts once
   'insights.test.js',            // running high, budgets from history, year in review
+  'returns-and-repeats.test.js', // investment returns (Modified Dietz), monthly repeat suggestions
   'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
 ];
 
