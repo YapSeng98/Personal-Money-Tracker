@@ -325,6 +325,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .rv-table td.pos{color:var(--jade-t);} .rv-table td.neg{color:var(--coral-t);} .rv-table td.mid{color:var(--ink2);font-weight:600;}
 .rv-table td.net{font-size:16px;}
 .rv-count{font-size:12px;color:var(--muted);margin-top:8px;}
+@media(max-width:1000px){ .rv-table td{padding:9px 8px;font-size:14px;} .rv-table thead th{padding:0 8px 8px;letter-spacing:.03em;} .rv-table td.net{font-size:14.5px;} }
 @media(max-width:600px){
   .rv-table thead{display:none;}
   .rv-table,.rv-table tbody{display:block;}
@@ -1156,6 +1157,66 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 .wt-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px;}
 @media(max-width:1100px){ .wall-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media(max-width:600px){ .wall-grid{grid-template-columns:minmax(0,1fr);} .wt-w2{grid-column:auto;} .wall-clock{font-size:18px;} }
+/* ── My notes (things to pay, collect or record later) ── */
+.notes-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.notes-tab{font:inherit;font-size:13.5px;font-weight:600;padding:8px 16px;min-height:38px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--ink2);cursor:pointer;}
+.notes-tab.active{background:var(--indigo-s);border-color:var(--indigo);color:var(--ink);}
+.notes-tab:focus-visible{outline:2px solid var(--indigo);outline-offset:2px;}
+[role="tabpanel"][hidden],.btn[hidden]{display:none!important;}
+.plan-compose{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);margin-bottom:16px;}
+.plan-compose textarea{resize:vertical;min-height:58px;line-height:1.5;}
+.plan-fields{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.plan-fields .form-input{width:auto;flex:1 1 130px;min-width:0;padding:8px 10px;font-size:13.5px;}
+.plan-fields #plan-amount{flex:1 1 100px;} .plan-fields #plan-currency{flex:0 1 104px;}
+.plan-fields select.form-input{padding-right:32px;}
+.plan-fields .btn{flex:0 0 auto;}
+.plan-hint:empty{display:none;}
+.plan-hint{font-size:12px;color:var(--muted);margin-top:8px;}
+.plan-group{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:16px 0 4px;display:flex;align-items:center;gap:10px;}
+.plan-group::after{content:'';flex:1;height:1px;background:var(--border);}
+.plan-group.late{color:var(--coral-t);} .plan-group.today{color:var(--amber-t);}
+.plan-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center;padding:11px 0;border-top:1px solid var(--border);}
+.plan-group+.plan-item{border-top:0;}
+.plan-text{font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+.plan-item.done .plan-text{color:var(--muted);text-decoration:line-through;}
+.plan-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;font-size:12px;color:var(--muted);align-items:center;}
+.plan-chip{font-size:11px;font-weight:700;padding:1px 7px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--ink2);}
+.plan-chip.amt{font-family:var(--fm);}
+.plan-chip.when.late{color:var(--coral-t);border-color:var(--coral);} .plan-chip.when.today{color:var(--amber-t);border-color:var(--amber);}
+.plan-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.plan-more{margin-top:10px;}
+@media(max-width:600px){ .plan-item{grid-template-columns:minmax(0,1fr);} .plan-acts{justify-content:flex-start;} }
+/* ── Money owed to you ── */
+.owed-check{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;min-height:32px;}
+.owed-check input{width:18px;height:18px;accent-color:var(--indigo);}
+#txn-owed-by{margin-top:8px;}
+.owed-hint:empty{display:none;}
+.owed-hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.45;}
+.settle-note{font-size:12.5px;padding:8px 12px;border-radius:10px;background:var(--amber-s);color:var(--ink);margin:-4px 0 14px;}
+.settle-note[hidden]{display:none;}
+.ow-panel{margin-bottom:20px;}
+.ow-tot{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin-bottom:6px;}
+.ow-tot b{font-family:var(--fm);color:var(--ink);}
+.ow-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--border);}
+.ow-item:first-of-type{border-top:0;}
+.ow-who{font-weight:600;font-size:14px;overflow-wrap:anywhere;}
+.ow-desc{font-weight:400;color:var(--ink2);}
+.ow-meta{display:block;font-size:12px;color:var(--muted);}
+.ow-item.late .ow-meta b{color:var(--coral-t);}
+.ow-amt{font-family:var(--fm);font-weight:700;font-size:14px;text-align:right;white-space:nowrap;}
+.ow-acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;}
+.owed-chip{background:var(--indigo-s);color:var(--indigo-t);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;}
+/* ── Receipt photos ── */
+.receipt-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.receipt-pick{position:relative;cursor:pointer;}
+.receipt-pick input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+.receipt-pick:focus-within{outline:2px solid var(--indigo);outline-offset:2px;}
+.receipt-preview{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);}
+.receipt-preview img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);}
+.rc-chip{font:inherit;font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--ink2);cursor:pointer;min-height:24px;}
+.rc-chip:hover{border-color:var(--indigo);}
+.receipt-view{display:flex;justify-content:center;}
+.receipt-view img{max-width:100%;max-height:70vh;border-radius:10px;border:1px solid var(--border);}
 /* ── New version bar ── */
 .update-bar{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;padding:10px 32px;background:var(--indigo-s);border-bottom:1px solid var(--indigo);color:var(--ink);font-size:13.5px;flex-shrink:0;}
 .update-bar[hidden]{display:none!important;}
@@ -1773,6 +1834,8 @@ button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px
         <div class="kpi"><div class="kpi-label" data-lkey="kpi_savings_rate">Savings Rate</div><div class="kpi-val" id="kpi-savings-rate">0%</div><div class="kpi-sub" data-lkey="kpi_of_income">of income saved</div></div>
         <div class="kpi"><div class="kpi-label" data-lkey="kpi_budgets_over">Budgets Over</div><div class="kpi-val" id="kpi-budgets-over" style="color:var(--coral-t)">0</div><div class="kpi-sub" data-lkey="kpi_exceeded">categories exceeded</div></div>
       </div>
+      <div id="plan-due"></div>
+      <div id="owed-panel"></div>
       <div class="row-3">
         <div class="panel">
           <div class="panel-header"><div class="panel-title" id="dash-recent-title">Recent Transactions</div><span id="dash-view-all" role="link" tabindex="0" style="font-size:12px;font-weight:600;color:var(--sky-t);cursor:pointer;padding:8px 0 8px 12px;" onclick="showView('transactions',document.querySelectorAll('.nav-item')[1])">View all →</span></div>
@@ -1863,9 +1926,38 @@ button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px
     <!-- ════ NOTES ════ -->
     <!-- Every transaction with a note, in one place (owner, 2026-11-28: "add one new feature for me to keep some note on the transaction related"). -->
     <div class="view" id="view-notes">
+      <div class="notes-tabs" role="tablist" aria-label="Notes">
+        <button type="button" role="tab" class="notes-tab active" id="notes-tab-plan" aria-selected="true" aria-controls="notes-plan-pane" onclick="setNotesTab('plan')">My notes</button>
+        <button type="button" role="tab" class="notes-tab" id="notes-tab-txn" aria-selected="false" aria-controls="notes-txn-pane" onclick="setNotesTab('txn')">On transactions</button>
+      </div>
+      <div id="notes-plan-pane" role="tabpanel" aria-labelledby="notes-tab-plan">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">My notes</div><span class="notes-sum" id="plan-count"></span></div>
+          <p class="notes-sum" style="margin:-6px 0 14px;">Things to pay, collect or record later. Give a note an amount and a date if you like; <b>Record it</b> turns it into the transaction when it happens.</p>
+          <div class="plan-compose">
+            <textarea class="form-input" id="plan-text" rows="2" maxlength="500" aria-label="Note" placeholder="e.g. Pay rental 500 and 600 for Oct · Collect S$46 from Alex · Renew car insurance in Dec"></textarea>
+            <div class="plan-fields">
+              <select class="form-input" id="plan-kind" aria-label="What it is">
+                <option value="">Just a note</option>
+                <option value="expense">To pay</option>
+                <option value="income">To receive</option>
+                <option value="transfer">To move between accounts</option>
+              </select>
+              <input class="form-input" type="number" id="plan-amount" min="0" step="0.01" placeholder="Amount" aria-label="Amount (optional)">
+              <select class="form-input" id="plan-currency" aria-label="Currency"></select>
+              <input class="form-input" type="date" id="plan-date" aria-label="When (optional)">
+              <button type="button" class="btn btn-jade" id="plan-save" onclick="savePlanNote()">Add note</button>
+              <button type="button" class="btn btn-ghost" id="plan-cancel" onclick="cancelPlanEdit()" hidden>Cancel</button>
+            </div>
+            <div class="plan-hint" id="plan-sync-hint"></div>
+          </div>
+          <div id="plan-list"></div>
+        </div>
+      </div>
+      <div id="notes-txn-pane" role="tabpanel" aria-labelledby="notes-tab-txn" hidden>
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title" id="notes-title">Notes</div>
+          <div class="panel-title" id="notes-title">Notes on transactions</div>
         </div>
         <p class="notes-sum" id="notes-intro" style="margin:-6px 0 14px;">What you wrote on your transactions: why you spent it, who owes you, a warranty, a claim to make. Tap a note to change it.</p>
         <div class="notes-tools">
@@ -1878,6 +1970,7 @@ button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px
       <div class="panel notes-recent" style="margin-top:16px;">
         <div class="panel-header"><div class="panel-title">Add a note to a recent transaction</div></div>
         <div id="notes-recent"></div>
+      </div>
       </div>
     </div>
 
@@ -2535,6 +2628,22 @@ button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px
       <label class="form-label">Notes (optional)</label>
       <textarea class="form-input" id="txn-notes" rows="2" maxlength="1000" style="resize:vertical;line-height:1.5;" placeholder="Why, who with, a claim or warranty to remember… (#tags work)"></textarea>
     </div>
+    <div class="form-group" id="txn-owed-group" style="display:none;">
+      <label class="owed-check"><input type="checkbox" id="txn-owed" onchange="renderOwedField()"> Someone will pay me back</label>
+      <input class="form-input" id="txn-owed-by" maxlength="60" list="owed-names" placeholder="Who? e.g. Mei, or Company claim" aria-label="Who will pay you back" hidden>
+      <datalist id="owed-names"></datalist>
+      <div class="owed-hint" id="txn-owed-hint"></div>
+    </div>
+    <input type="hidden" id="txn-settles" value="">
+    <div class="settle-note" id="txn-settle-note" hidden></div>
+    <div class="form-group" id="txn-receipt-group" style="display:none;">
+      <label class="form-label" for="txn-receipt-file">Receipt photo</label>
+      <div class="receipt-row">
+        <label class="btn btn-ghost btn-sm receipt-pick"><input type="file" id="txn-receipt-file" accept="image/*" capture="environment" onchange="chooseReceipt(this)">📷 Take or choose a photo</label>
+        <div id="txn-receipt-preview" class="receipt-preview"></div>
+      </div>
+      <div class="owed-hint" id="txn-receipt-hint"></div>
+    </div>
     <div class="form-group" id="txn-repeat-group">
       <label class="form-label">Repeat</label>
       <select class="form-input" id="txn-repeat" onchange="updateRepeatHint()">
@@ -2570,6 +2679,26 @@ button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px
       </span>
     </div>
     <div class="wall-grid" id="wall-grid"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="owed-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Owed to you</div>
+      <button class="modal-close" onclick="closeOwedModal()">✕</button>
+    </div>
+    <div id="owed-modal-body"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="receipt-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="receipt-title">Receipt</div>
+      <button class="modal-close" onclick="closeReceipt()">✕</button>
+    </div>
+    <div class="receipt-view"><img id="receipt-view-img" alt="Receipt photo"></div>
   </div>
 </div>
 
@@ -3305,6 +3434,7 @@ function saveState() {
       monthlyIncomeTarget: state.monthlyIncomeTarget,
       prefsPending: state.prefsPending || {}, prefsUser: state.prefsUser || null,
       savedSearches: state.savedSearches || [], repeatDismissed: state.repeatDismissed || [],
+      notes: state.notes || [], notesSynced: !!state.notesSynced,
       lastBackupAt: state.lastBackupAt,
       lastBackupInfo: state.lastBackupInfo,
       backupSnoozeUntil: state.backupSnoozeUntil,
@@ -3709,6 +3839,7 @@ function lockTypeTabs(allowed) {
 
 function openTxnModal(id = null) {
   const editing = id !== null;
+  _recordingNote = null;
   _txnCopyOf = null;
   lockTypeTabs(null);
   hideDescSuggestions();
@@ -3720,6 +3851,7 @@ function openTxnModal(id = null) {
   document.getElementById('txn-amount').value             = '';
   document.getElementById('txn-desc').value                = '';
   document.getElementById('txn-notes').value               = '';
+  resetTxnExtras();
   document.getElementById('txn-currency').value             = state.currency;
   document.getElementById('txn-amount-recv').value          = '';
   document.getElementById('txn-repeat').value               = '';
@@ -3794,6 +3926,7 @@ function openTxnModal(id = null) {
     document.getElementById('txn-desc').value    = txn.description;
     document.getElementById('txn-date').value    = txn.date;
     document.getElementById('txn-notes').value   = txn.notes || '';
+    fillTxnExtras(txn);
     setSelectVal('txn-cat',      txn.category, goneCategoryLabel(txn.category));
     setSelectVal('txn-account',  txn.account, goneAccountLabel(txn.account));
     document.getElementById('txn-currency').value = txn.currency || state.currency;
@@ -3898,6 +4031,7 @@ function setType(type, el) {
     if (isAsset) populateFundAccounts(); else document.getElementById('txn-fund-account').value = '';
     updateAssetUI();
   }
+  showTxnExtras(type);
 }
 
 // Source accounts for funding an asset purchase — same currency only, and never
@@ -4755,6 +4889,7 @@ async function saveTransaction() {
     } else {
       await saveTransferPair({ amt, recvAmt, desc, cat, from: acct, to: toAcct,
                                fromCur: currency, toCur, date, notes });
+      if (_recordingNote) completeRecordedNote('');
     }
     return;
   }
@@ -4809,8 +4944,10 @@ async function saveTransaction() {
             : recurNextAfter(date, freq, date);
   }
   const recurFields = { isRecurring: !!freq, recurringFrequency: freq, nextRunDate: nextRun || '' };
+  const extraFields = txnExtrasFromForm(state.currentType);
   const dbPayload = { type: state.currentType, amount: amt, description: desc,
     category: cat, account: acct, date, notes, currency,
+    ...(state.txnExtrasSynced ? { owed_by: extraFields.owedBy || null, settles: extraFields.settles || null } : {}),
     // Only a row that repeats, or is being switched off, touches these columns,
     // so an ordinary save writes exactly what it always has.
     ...((freq || (editingRow && editingRow.isRecurring)) && !(editingRow && editingRow.recurringSource)
@@ -4819,12 +4956,13 @@ async function saveTransaction() {
   // The alert below reads the database, so it waits for this write to land —
   // otherwise it can see the row as it was before the save or edit.
   let written = Promise.resolve();
+  let savedId = editId !== '' ? editId : null;
   if (editId !== '') {
     const idx = state.transactions.findIndex(tx => tx.id == editId);
     if (idx >= 0) {
       const old = state.transactions[idx];
       state.transactions[idx] = { ...old, type: state.currentType, amount: amt,
-        description: desc, category: cat, account: acct, date, notes, currency,
+        description: desc, category: cat, account: acct, date, notes, currency, ...extraFields,
         ...(old.recurringSource ? {} : recurFields) };
       const rid = _snId(old);
       if (state.userId && rid) {
@@ -4836,8 +4974,10 @@ async function saveTransaction() {
   } else {
     const txn = { id: newId(), type: state.currentType, amount: amt,
       description: desc, category: cat, account: acct, date, notes, currency, created: nowStamp(),
-      ...recurFields };
+      ...extraFields, ...recurFields };
     state.transactions.unshift(txn);
+    savedId = txn.id;
+    if (_recordingNote) completeRecordedNote(txn.id);
     if (state.userId) {
       written = dbInsert('transactions', { id: txn.id, user_id: state.userId, ...dbPayload })
         .catch(e => showToast('Sync failed: ' + e.message, 'error'));
@@ -4848,6 +4988,7 @@ async function saveTransaction() {
   }
 
   saveState();
+  if (_receiptBlob || _receiptRemove) attachReceipt(savedId, written);
   closeTxnModal();
   renderAll();
   // Every expense in a category at or past its alert amount is worth hearing
@@ -4901,6 +5042,7 @@ function removeTransactionsWithUndo(legs, msg) {
     },
     () => {
       // Settled: anything else still queued for these rows is now moot.
+      snapshot.forEach(l => removeReceiptFile(l.receiptPath));
       ops.forEach(op => {
         op.notBefore = 0;
         state.outbox = outbox().filter(o => o === op || !(o.table === op.table && o.rowId === op.rowId && o.kind !== 'delete' && !o.sending));
@@ -6924,13 +7066,13 @@ function applyLanguage() {
 // just opened). Only the pieces shown on every page — the nav
 // badges, the backup reminder, the sync badge — update every time.
 const VIEW_RENDERERS = {
-  dashboard: () => renderDashboard(),
+  dashboard: () => { renderDashboard(); renderPlanDue(); renderOwed(); },
   transactions: () => renderTransactions(),
   budgets: () => renderBudgets(),
   bills: () => renderBills(),
   goals: () => renderGoals(),
   analytics: () => renderAnalytics(),
-  notes: () => renderNotes(),
+  notes: () => { renderPlanNotes(); renderNotes(); },
   accounts: () => renderAccounts(),
   settings: () => { renderExportSummary(); _renderProfileView(); _updateSNConnCard(); },
 };
@@ -7288,7 +7430,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
         <div class="txn-meta">${route} · ${fmtDate(txn.date)} · <span style="background:${tint};color:${inkC};font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">${badge}</span>${problem
           ? ` · <button type="button" class="pair-warn" onclick="openDataCheck()" title="${esc(problem)}">⚠ Needs attention</button>` : ''}${_pendingTxnIds.has(String(txn.id))
           ? ' · <span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''}</div>
-        ${txnNoteHTML(txn, showActions)}
+        ${txnNoteHTML(txn, showActions)}${txnExtrasHTML(txn)}
       </div>
       <div class="txn-amt" style="color:${inkC};">${incoming ? '+' : ''}${fmtWithCur(txn.amount, txn.currency)}${(showsPair && diffCur) ? ` → ${recv}` : ''}</div>
       ${showActions ? `<div class="txn-actions">
@@ -7305,7 +7447,7 @@ function txnRowHTML(txn, showActions = true, forceBadge = false, selectMode = fa
     <div class="txn-body">
       <div class="txn-name">${esc(txn.description)}</div>
       <div class="txn-meta">${[esc(txn.category), esc(txn.account), fmtDate(txn.date), isAsset ? `<span style="background:var(--violet-s);color:var(--violet-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">ASSET</span>` : '', isPayback ? `<span style="background:var(--amber-s);color:var(--amber-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;" title="${t('payback_hint')}">${t('badge_payback')}</span>` : '', recurBadgeHTML(txn), showBadge ? `<span style="background:var(--sky-s);color:var(--sky-t);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;">${txn.currency||state.currency}</span>` : '', _pendingTxnIds.has(String(txn.id)) ? '<span class="pending-chip" title="Saved on this device, not sent yet">⟳ Not synced</span>' : ''].filter(Boolean).join(' · ')}</div>
-      ${txnNoteHTML(txn, showActions)}
+      ${txnNoteHTML(txn, showActions)}${txnExtrasHTML(txn)}
     </div>
     <div class="txn-amt ${isPos||isAsset||isPayback?'pos':'neg'}" ${isAsset?'style="color:#8B5CF6;"':isPayback?'style="color:var(--amber-t);"':''}>${isPos||isAsset||isPayback?'+':'-'}${fmtWithCur(txn.amount, txn.currency)}</div>
     ${showActions ? `<div class="txn-actions">
@@ -7667,6 +7809,409 @@ function txnMatchesSearch(t, terms) {
 
 // What a search found, in figures: how many rows, and per currency what went
 // out and came in — so "grab" answers "how much have I spent on Grab".
+// ── My notes: things to pay, collect or record later ────────
+// Kept in state.notes and, once migration 008 has made the notes table, on the
+// server through the outbox like everything else (offline first). A note can
+// carry what it is (to pay, receive or move), an amount and a date; Record it
+// opens the add form filled in from it and, once saved, marks it done.
+let _planEditing = null, _recordingNote = null, _notesTabNow = 'plan', _planShowAllDone = false;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const noteFromRow = r => ({ id: r.id, text: r.body || '', amount: r.amount == null ? null : +r.amount, currency: r.currency || '',
+  dueDate: r.due_date || '', kind: r.kind || '', account: r.account || '', pinned: !!r.pinned, doneAt: r.done_at || '', txnId: r.txn_id || '',
+  created: r.created_at || '' });
+const noteToRow = n => ({ id: n.id, user_id: state.userId, body: n.text || '', amount: n.amount == null || n.amount === '' ? null : Number(n.amount),
+  currency: n.currency || null, due_date: n.dueDate || null, kind: n.kind || null, account: n.account || null, pinned: !!n.pinned,
+  done_at: n.doneAt || null, txn_id: n.txnId && UUID_RE.test(String(n.txnId)) ? n.txnId : null });
+function applyLoadedNotes(res, local) {
+  const was = !!state.notesSynced;
+  if (!res || res.error) {
+    if (res && res.error) console.warn('notes kept on this device (database update 008 not run yet):', res.error.message);
+    state.notesSynced = false;
+    state.notes = local || [];
+    return;
+  }
+  state.notesSynced = true;
+  const merged = mergeWithOutbox('notes', (res.data || []).map(noteFromRow), local);
+  // Notes written before the notes table existed are shared now, once.
+  if (!was) {
+    const have = new Set(merged.map(n => String(n.id)));
+    (local || []).filter(n => !have.has(String(n.id))).forEach(n => { merged.push(n); enqueueWrite('notes', 'upsert', n.id, noteToRow(n)); });
+  }
+  state.notes = merged;
+}
+function writeNote(n, kind) {
+  saveState();
+  if (!state.userId || !state.notesSynced) return;
+  if (kind === 'delete') enqueueWrite('notes', 'delete', n.id);
+  else enqueueWrite('notes', 'upsert', n.id, noteToRow(n));
+  flushOutbox();
+}
+function setNotesTab(tab) {
+  _notesTabNow = tab;
+  document.getElementById('notes-plan-pane').hidden = tab !== 'plan';
+  document.getElementById('notes-txn-pane').hidden = tab !== 'txn';
+  ['plan', 'txn'].forEach(t => {
+    const b = document.getElementById('notes-tab-' + t);
+    b.classList.toggle('active', t === tab); b.setAttribute('aria-selected', String(t === tab));
+  });
+}
+const planKindLabel = k => k === 'expense' ? 'To pay' : k === 'income' ? 'To receive' : k === 'transfer' ? 'To move' : '';
+function planWhen(n, today) {
+  if (!n.dueDate) return null;
+  const d = Math.round((Date.parse(n.dueDate + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);
+  return { d, cls: d < 0 ? 'late' : d === 0 ? 'today' : '',
+    text: d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : d === -1 ? 'Yesterday' : d < 0 ? `${-d} days ago` : d <= 6 ? `In ${d} days` : fmtDate(n.dueDate) };
+}
+// Groups for the list: overdue, today, coming up, any time, done.
+function planGroups(notes, today) {
+  const open = notes.filter(n => !n.doneAt);
+  const byDate = (a, b) => a.dueDate.localeCompare(b.dueDate) || String(a.created).localeCompare(String(b.created));
+  return {
+    late: open.filter(n => n.dueDate && n.dueDate < today).sort(byDate),
+    today: open.filter(n => n.dueDate === today),
+    soon: open.filter(n => n.dueDate && n.dueDate > today).sort(byDate),
+    any: open.filter(n => !n.dueDate).sort((a, b) => String(b.created).localeCompare(String(a.created))),
+    done: notes.filter(n => n.doneAt).sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)))
+  };
+}
+function planItemHTML(n, today) {
+  const w = planWhen(n, today), id = esc(String(n.id));
+  const chips = [planKindLabel(n.kind) && `<span class="plan-chip">${planKindLabel(n.kind)}</span>`,
+    n.amount != null && n.amount !== '' && `<span class="plan-chip amt">${fmtWithCur(n.amount, n.currency || state.currency)}</span>`,
+    w && !n.doneAt && `<span class="plan-chip when ${w.cls}">${w.text}</span>`,
+    n.doneAt && `<span>Done ${fmtDate(String(n.doneAt).slice(0, 10))}${n.txnId && state.transactions.some(t => String(t.id) === String(n.txnId)) ? ' · recorded' : ''}</span>`].filter(Boolean).join('');
+  const acts = n.doneAt
+    ? `<button class="btn btn-ghost btn-sm" onclick="togglePlanDone('${id}')">Not done</button><button class="btn btn-ghost btn-sm" onclick="deletePlanNote('${id}')">Delete</button>`
+    : `${n.kind || n.amount != null ? `<button class="btn btn-jade btn-sm" onclick="recordPlanNote('${id}')">Record it</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="togglePlanDone('${id}')">Done</button>`
+      + `<button class="btn btn-ghost btn-sm" onclick="editPlanNote('${id}')">Edit</button><button class="btn btn-ghost btn-sm" onclick="deletePlanNote('${id}')">Delete</button>`;
+  return `<div class="plan-item${n.doneAt ? ' done' : ''}"><div><div class="plan-text">${esc(n.text)}</div>${chips ? `<div class="plan-meta">${chips}</div>` : ''}</div><div class="plan-acts">${acts}</div></div>`;
+}
+function renderPlanNotes() {
+  const list = document.getElementById('plan-list');
+  if (!list) return;
+  setNotesTab(_notesTabNow);
+  const curSel = document.getElementById('plan-currency');
+  const curs = [...new Set([state.currency, ...state.accounts.map(a => a.currency || state.currency)])];
+  if (curSel.options.length !== curs.length) { const keep = curSel.value; curSel.innerHTML = curs.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join(''); curSel.value = keep && curs.includes(keep) ? keep : state.currency; }
+  document.getElementById('plan-sync-hint').textContent = state.userId && !state.notesSynced
+    ? 'Notes are kept on this device until database update 008 is run; then they go to every device.' : '';
+  const today = localDateStr(), g = planGroups(state.notes || [], today);
+  const open = g.late.length + g.today.length + g.soon.length + g.any.length;
+  document.getElementById('plan-count').textContent = open ? `${open} to do${g.late.length ? ` · ${g.late.length} overdue` : ''}` : '';
+  const section = (title, items, cls = '') => items.length ? `<div class="plan-group ${cls}">${title}</div>` + items.map(n => planItemHTML(n, today)).join('') : '';
+  const done = _planShowAllDone ? g.done : g.done.slice(0, 5);
+  list.innerHTML = (open || g.done.length)
+    ? section('Overdue', g.late, 'late') + section('Today', g.today, 'today') + section('Coming up', g.soon) + section('Any time', g.any) + section('Done', done)
+      + (g.done.length > done.length ? `<button class="btn btn-ghost btn-sm plan-more" onclick="_planShowAllDone=true;renderPlanNotes()">Show all ${g.done.length} done</button>` : '')
+    : '<div class="empty"><div class="icon">🗒️</div><p>No notes yet. Write down what you need to pay, collect or record, and when.</p></div>';
+}
+function savePlanNote() {
+  const text = document.getElementById('plan-text').value.trim().slice(0, 500);
+  if (!text) { showToast('Write the note first', 'warning'); document.getElementById('plan-text').focus(); return; }
+  const rawAmt = document.getElementById('plan-amount').value.trim();
+  const amount = rawAmt === '' ? null : Math.round(Math.abs(Number(rawAmt)) * 100) / 100;
+  if (rawAmt !== '' && !Number.isFinite(amount)) { showToast('The amount is not a number', 'warning'); return; }
+  const fields = { text, kind: document.getElementById('plan-kind').value, amount, currency: document.getElementById('plan-currency').value || state.currency,
+    dueDate: document.getElementById('plan-date').value || '' };
+  state.notes = state.notes || [];
+  let n;
+  if (_planEditing) {
+    n = state.notes.find(x => String(x.id) === String(_planEditing));
+    if (n) Object.assign(n, fields);
+  }
+  if (!n) { n = { id: newId(), created: new Date().toISOString(), doneAt: '', txnId: '', pinned: false, account: '', ...fields }; state.notes.push(n); }
+  writeNote(n);
+  showToast(_planEditing ? 'Note updated' : 'Note added', 'success');
+  cancelPlanEdit();
+  renderPlanNotes(); renderPlanDue();
+}
+function editPlanNote(id) {
+  const n = (state.notes || []).find(x => String(x.id) === String(id));
+  if (!n) return;
+  _planEditing = n.id;
+  setNotesTab('plan');
+  document.getElementById('plan-text').value = n.text;
+  document.getElementById('plan-kind').value = n.kind || '';
+  document.getElementById('plan-amount').value = n.amount == null ? '' : n.amount;
+  document.getElementById('plan-currency').value = n.currency || state.currency;
+  document.getElementById('plan-date').value = n.dueDate || '';
+  document.getElementById('plan-save').textContent = 'Save changes';
+  document.getElementById('plan-cancel').hidden = false;
+  document.getElementById('plan-text').focus();
+}
+function cancelPlanEdit() {
+  _planEditing = null;
+  ['plan-text', 'plan-amount', 'plan-date'].forEach(i => { document.getElementById(i).value = ''; });
+  document.getElementById('plan-kind').value = '';
+  document.getElementById('plan-save').textContent = 'Add note';
+  document.getElementById('plan-cancel').hidden = true;
+}
+function togglePlanDone(id) {
+  const n = (state.notes || []).find(x => String(x.id) === String(id));
+  if (!n) return;
+  n.doneAt = n.doneAt ? '' : new Date().toISOString();
+  if (!n.doneAt) n.txnId = '';
+  writeNote(n);
+  renderPlanNotes(); renderPlanDue();
+}
+async function deletePlanNote(id) {
+  const n = (state.notes || []).find(x => String(x.id) === String(id));
+  if (!n) return;
+  if (!(await showConfirm('Delete this note?', esc(n.text.slice(0, 120))))) return;
+  state.notes = state.notes.filter(x => x !== n);
+  writeNote(n, 'delete');
+  renderPlanNotes(); renderPlanDue();
+}
+// Record it: the add form, filled in from the note. Saving marks the note done.
+function recordPlanNote(id) {
+  const n = (state.notes || []).find(x => String(x.id) === String(id));
+  if (!n) return;
+  openTxnModal();
+  const type = n.kind || 'expense';
+  setType(type, document.getElementById('tab-' + type));
+  if (n.amount != null && n.amount !== '') document.getElementById('txn-amount').value = n.amount;
+  document.getElementById('txn-desc').value = n.text.split('\n')[0].slice(0, 100);
+  const acc = state.accounts.find(a => (a.currency || state.currency) === (n.currency || state.currency));
+  if (acc) { setSelectVal('txn-account', acc.name); document.getElementById('txn-account').dispatchEvent(new Event('change')); }
+  _recordingNote = n.id;
+}
+function completeRecordedNote(txnId) {
+  const n = (state.notes || []).find(x => String(x.id) === String(_recordingNote));
+  _recordingNote = null;
+  if (!n) return;
+  n.doneAt = new Date().toISOString();
+  n.txnId = txnId || '';
+  writeNote(n);
+}
+// The dashboard: notes due within three days, and any overdue.
+function renderPlanDue() {
+  const el = document.getElementById('plan-due');
+  if (!el) return;
+  const today = localDateStr(), soon = addDaysStr(today, 3);
+  const due = (state.notes || []).filter(n => !n.doneAt && n.dueDate && n.dueDate <= soon).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  if (!due.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="panel ow-panel"><div class="panel-header"><div class="panel-title">Notes coming up</div>`
+    + `<button class="btn btn-ghost btn-sm" onclick="showView('notes', document.querySelector('.nav-item[onclick*=&quot;notes&quot;]'))">All notes</button></div>`
+    + due.slice(0, 4).map(n => planItemHTML(n, today)).join('') + `</div>`;
+}
+
+// ── Money owed to you ───────────────────────────────────────
+// An expense someone will pay back (owed_by set, or any Claims expense), less
+// the paybacks that settle it (settles = its id). Claims paybacks recorded
+// before settling existed have no link, so in each currency they pay off the
+// oldest claims first. Oldest first; only what still has money left on it.
+function owedItems(txns, today, fallbackCur) {
+  const linked = {};
+  const exists = new Set(txns.filter(t => t.type === 'expense').map(t => String(t.id)));
+  txns.forEach(t => { if (t.type === 'payback' && t.settles && exists.has(String(t.settles))) linked[t.settles] = (linked[t.settles] || 0) + t.amount; });
+  const loose = {};
+  txns.forEach(t => {
+    if (t.type === 'payback' && t.category === PFMT_CLAIMS_CATEGORY && !(t.settles && exists.has(String(t.settles)))) {
+      const c = t.currency || fallbackCur; loose[c] = (loose[c] || 0) + t.amount;
+    }
+  });
+  const days = d => Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(d + 'T00:00:00Z')) / 86400000);
+  return txns.filter(t => t.type === 'expense' && !t.transferGroup && (t.owedBy || t.category === PFMT_CLAIMS_CATEGORY))
+    .slice().sort((a, b) => a.date.localeCompare(b.date) || String(a.id).localeCompare(String(b.id)))
+    .map(t => {
+      const cur = t.currency || fallbackCur;
+      let back = Math.min(t.amount, linked[t.id] || 0);
+      if (t.category === PFMT_CLAIMS_CATEGORY && back < t.amount && (loose[cur] || 0) > 0) {
+        const use = Math.min(t.amount - back, loose[cur]);
+        back += use; loose[cur] -= use;
+      }
+      back = Math.round(back * 100) / 100;
+      return { txn: t, who: t.owedBy || 'Claim', back, left: Math.round((t.amount - back) * 100) / 100, currency: cur, days: days(t.date) };
+    })
+    .filter(x => x.left > 0.004);
+}
+const OWED_LATE_DAYS = 30;
+function owedItemHTML(x) {
+  const late = x.days > OWED_LATE_DAYS;
+  return `<div class="ow-item${late ? ' late' : ''}"><span><span class="ow-who">${esc(x.who)} <span class="ow-desc">· ${esc(x.txn.description || x.txn.category)}</span></span>`
+    + `<span class="ow-meta">${fmtDate(x.txn.date)} · ${late ? `<b>${x.days} days, overdue</b>` : x.days <= 0 ? 'today' : `${x.days} day${x.days === 1 ? '' : 's'}`}${x.back ? ` · ${fmtWithCur(x.back, x.currency)} of ${fmtWithCur(x.txn.amount, x.currency)} paid back` : ''}</span></span>`
+    + `<span class="ow-amt">${fmtWithCur(x.left, x.currency)}</span>`
+    + `<span class="ow-acts"><button class="btn btn-jade btn-sm" onclick="markOwedPaid('${esc(String(x.txn.id))}')">Mark paid</button>`
+    + `${x.who === 'Claim' ? '' : `<button class="btn btn-ghost btn-sm" onclick="remindOwed('${esc(String(x.txn.id))}')">Copy a reminder</button>`}</span></div>`;
+}
+function owedTotalsHTML(list) {
+  const by = {};
+  list.forEach(x => { by[x.currency] = Math.round(((by[x.currency] || 0) + x.left) * 100) / 100; });
+  return Object.keys(by).sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b)).map(c => `<span>Waiting: <b>${fmtWithCur(by[c], c)}</b></span>`).join('');
+}
+function renderOwed() {
+  const el = document.getElementById('owed-panel');
+  if (!el) return;
+  const list = owedItems(state.transactions, localDateStr(), state.currency);
+  if (!list.length) { el.innerHTML = ''; return; }
+  const late = list.filter(x => x.days > OWED_LATE_DAYS).length;
+  el.innerHTML = `<div class="panel ow-panel"><div class="panel-header"><div class="panel-title">Owed to you</div>`
+    + `${list.length > 3 ? `<button class="btn btn-ghost btn-sm" onclick="openOwedModal()">See all ${list.length}</button>` : ''}</div>`
+    + `<div class="ow-tot">${owedTotalsHTML(list)}${late ? `<span style="color:var(--coral-t)">${late} overdue</span>` : ''}</div>`
+    + list.slice().sort((a, b) => b.days - a.days).slice(0, 3).map(owedItemHTML).join('') + `</div>`;
+}
+function openOwedModal() {
+  const list = owedItems(state.transactions, localDateStr(), state.currency);
+  document.getElementById('owed-modal-body').innerHTML = list.length
+    ? `<div class="ow-tot">${owedTotalsHTML(list)}</div>` + list.slice().sort((a, b) => b.days - a.days).map(owedItemHTML).join('')
+    : '<div class="empty"><div class="icon">✅</div><p>Nobody owes you anything.</p></div>';
+  document.getElementById('owed-modal').classList.add('open');
+}
+function closeOwedModal() { document.getElementById('owed-modal').classList.remove('open'); }
+// Mark paid: the payback form, filled in with what's left, the same category
+// and account, and linked to the expense so it shows as settled.
+function markOwedPaid(id) {
+  const x = owedItems(state.transactions, localDateStr(), state.currency).find(i => String(i.txn.id) === String(id));
+  if (!x) return;
+  closeOwedModal();
+  openTxnModal();
+  setType('payback', document.getElementById('tab-payback'));
+  document.getElementById('txn-amount').value = x.left;
+  document.getElementById('txn-desc').value = (x.who === 'Claim' ? `Claim paid: ${x.txn.description}` : `${x.who} paid back: ${x.txn.description}`).slice(0, 100);
+  setSelectVal('txn-cat', x.txn.category);
+  setSelectVal('txn-account', x.txn.account);
+  const curSel = document.getElementById('txn-currency'); if (curSel) curSel.value = x.currency;
+  document.getElementById('txn-settles').value = x.txn.id;
+  const note = document.getElementById('txn-settle-note');
+  note.hidden = false;
+  note.textContent = `Pays back “${x.txn.description}” (${fmtWithCur(x.left, x.currency)} left). Change the account if it came in somewhere else.`;
+}
+async function remindOwed(id) {
+  const x = owedItems(state.transactions, localDateStr(), state.currency).find(i => String(i.txn.id) === String(id));
+  if (!x) return;
+  const msg = `Hi ${x.who}, just a reminder about ${fmtWithCur(x.left, x.currency)} for ${x.txn.description} on ${fmtDate(x.txn.date)}. Thanks!`;
+  try { await navigator.clipboard.writeText(msg); showToast('Reminder copied. Paste it into your chat.', 'success'); }
+  catch (e) { showToast(msg, 'info'); }
+}
+
+// ── The form's owed, settles and receipt fields ─────────────
+let _receiptBlob = null, _receiptRemove = false;
+function resetTxnExtras() {
+  document.getElementById('txn-owed').checked = false;
+  document.getElementById('txn-owed-by').value = '';
+  document.getElementById('txn-settles').value = '';
+  document.getElementById('txn-settle-note').hidden = true;
+  _receiptBlob = null; _receiptRemove = false;
+  showReceiptPreview(null);
+  renderOwedField();
+}
+function fillTxnExtras(txn) {
+  document.getElementById('txn-owed').checked = !!txn.owedBy;
+  document.getElementById('txn-owed-by').value = txn.owedBy || '';
+  document.getElementById('txn-settles').value = txn.settles || '';
+  const settled = txn.settles && state.transactions.find(t => String(t.id) === String(txn.settles));
+  const note = document.getElementById('txn-settle-note');
+  note.hidden = !settled;
+  if (settled) note.textContent = `Pays back “${settled.description}” (${fmtDate(settled.date)}).`;
+  showReceiptPreview(txn.receiptPath ? { id: txn.id } : null);
+  renderOwedField();
+}
+function showTxnExtras(type) {
+  document.getElementById('txn-owed-group').style.display = type === 'expense' ? '' : 'none';
+  if (type !== 'payback') { document.getElementById('txn-settles').value = ''; document.getElementById('txn-settle-note').hidden = true; }
+  const canReceipt = ['expense', 'income', 'payback'].includes(type);
+  document.getElementById('txn-receipt-group').style.display = canReceipt && state.userId ? '' : 'none';
+  const ready = !!state.txnExtrasSynced;
+  document.querySelector('#txn-receipt-group .receipt-pick').style.display = ready ? '' : 'none';
+  document.getElementById('txn-receipt-hint').textContent = ready ? '' : 'Receipt photos turn on once database update 008 has been run (see supabase/migrations).';
+  renderOwedField();
+}
+function renderOwedField() {
+  const on = document.getElementById('txn-owed').checked;
+  const who = document.getElementById('txn-owed-by');
+  who.hidden = !on;
+  const names = [...new Set(state.transactions.map(t => t.owedBy).filter(Boolean))].slice(0, 30);
+  document.getElementById('owed-names').innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join('');
+  const cat = document.getElementById('txn-cat') ? document.getElementById('txn-cat').value : '';
+  const hint = cat === PFMT_CLAIMS_CATEGORY ? 'Claims always count as owed to you until they are paid back.'
+    : on ? 'It shows under Owed to you until you mark it paid.' : '';
+  document.getElementById('txn-owed-hint').textContent = hint + (on && !state.txnExtrasSynced && state.userId ? ' Kept on this device until database update 008 is run.' : '');
+}
+function txnExtrasFromForm(type) {
+  const on = type === 'expense' && document.getElementById('txn-owed').checked;
+  return {
+    owedBy: on ? (document.getElementById('txn-owed-by').value.trim().slice(0, 60) || 'Someone') : '',
+    settles: type === 'payback' ? (document.getElementById('txn-settles').value || '') : ''
+  };
+}
+function txnExtrasHTML(txn) {
+  const bits = [];
+  if (txn.owedBy && txn.type === 'expense') bits.push(`<span class="owed-chip">Owed by ${esc(txn.owedBy)}</span>`);
+  if (txn.receiptPath) bits.push(`<button type="button" class="rc-chip" onclick="event.stopPropagation();viewReceipt('${esc(String(txn.id))}')" aria-label="View the receipt photo">📎 Receipt</button>`);
+  return bits.length ? `<div class="txn-meta" style="margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;">${bits.join('')}</div>` : '';
+}
+
+// ── Receipt photos ─────────────────────────────────────────────
+// Kept in the private "receipts" bucket at <user id>/<transaction id>.jpg,
+// shrunk on the phone first (longest side 1600px, JPEG) so a photo is a few
+// hundred KB. Opened through a link that expires after an hour.
+async function shrinkImage(file, max, quality) {
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(bmp.width * s)); c.height = Math.max(1, Math.round(bmp.height * s));
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('could not read the photo')), 'image/jpeg', quality));
+}
+async function chooseReceipt(input) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  try { _receiptBlob = await shrinkImage(f, 1600, 0.82); }
+  catch (e) { showToast('That file is not a photo PFMT can read.', 'warning'); return; }
+  _receiptRemove = false;
+  showReceiptPreview({ url: URL.createObjectURL(_receiptBlob) });
+}
+function showReceiptPreview(r) {
+  const box = document.getElementById('txn-receipt-preview');
+  if (!box) return;
+  box.innerHTML = !r ? '' : r.url
+    ? `<img src="${r.url}" alt="The new receipt photo"><span>Attached when you save</span><button type="button" class="btn btn-ghost btn-sm" onclick="dropReceipt()">Remove</button>`
+    : `<span>📎 Receipt attached</span><button type="button" class="btn btn-ghost btn-sm" onclick="viewReceipt('${esc(String(r.id))}')">View</button><button type="button" class="btn btn-ghost btn-sm" onclick="dropReceipt()">Remove</button>`;
+}
+function dropReceipt() { _receiptBlob = null; _receiptRemove = true; showReceiptPreview(null); }
+async function attachReceipt(id, written) {
+  const blob = _receiptBlob, remove = _receiptRemove;
+  _receiptBlob = null; _receiptRemove = false;
+  const txn = state.transactions.find(t => String(t.id) === String(id));
+  if (!txn || !state.userId || !state.txnExtrasSynced) return;
+  try {
+    await written;
+    if (blob) {
+      const path = `${state.userId}/${txn.id}.jpg`;
+      const { error } = await sb.storage.from('receipts').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+      if (error) throw error;
+      txn.receiptPath = path; saveState();
+      await dbUpdate('transactions', _snId(txn), { receipt_path: path });
+      showToast('Receipt attached', 'success');
+    } else if (remove && txn.receiptPath) {
+      const path = txn.receiptPath;
+      txn.receiptPath = ''; saveState();
+      await dbUpdate('transactions', _snId(txn), { receipt_path: null });
+      removeReceiptFile(path);
+    }
+    renderAll();
+  } catch (e) {
+    showToast(`The transaction is saved, but the receipt isn't (${e.message || e}). Attach it again when you're online.`, 'warning');
+  }
+}
+async function viewReceipt(id) {
+  const txn = state.transactions.find(t => String(t.id) === String(id));
+  if (!txn || !txn.receiptPath) return;
+  try {
+    const { data, error } = await sb.storage.from('receipts').createSignedUrl(txn.receiptPath, 3600);
+    if (error || !data) throw error || new Error('no link');
+    document.getElementById('receipt-view-img').src = data.signedUrl;
+    document.getElementById('receipt-title').textContent = `Receipt · ${txn.description || txn.category}`;
+    document.getElementById('receipt-modal').classList.add('open');
+  } catch (e) { showToast(`Can't open the receipt right now (${(e && e.message) || 'offline'}).`, 'warning'); }
+}
+function closeReceipt() { document.getElementById('receipt-modal').classList.remove('open'); }
+function removeReceiptFile(path) {
+  if (!path || !state.userId) return;
+  try { sb.storage.from('receipts').remove([path]).catch(() => {}); } catch (e) {}
+}
+
 // ── Repeat suggestions ───────────────────────────────────────
 // Something typed in by hand every month: the same description, type,
 // category, account and currency in each of the last three months in a row
@@ -10355,7 +10900,10 @@ function setTheme(mode) {
 // this, only this device kept them, and every load (each sign-in, and each
 // return to the app after a minute) put the server's old value back: the
 // theme had to be chosen again and again.
-const PREF_COLUMNS = { theme: 'theme', budgetAlerts: 'budget_alerts', nowAssist: 'now_assist', trendMonths: 'trend_months', trendMetric: 'trend_metric' };
+const PREF_COLUMNS = { theme: 'theme', budgetAlerts: 'budget_alerts', nowAssist: 'now_assist', trendMonths: 'trend_months', trendMetric: 'trend_metric', savedSearches: 'saved_searches' };
+// Columns a migration adds (008): left out of every write until the server has them.
+const prefColumnReady = col => col !== 'saved_searches' || !!state.prefExtrasSynced;
+function saveSearchesToServer() { return savePrefs(['savedSearches']); }
 // Pending settings belong to whoever made them (null: made signed out, so
 // they go to whoever signs in next); another account never receives them.
 function prefsForThisUser() {
@@ -10365,7 +10913,7 @@ function prefsForThisUser() {
 }
 function savePrefs(keys) {
   const pending = prefsForThisUser();
-  keys.forEach(k => { if (PREF_COLUMNS[k]) pending[PREF_COLUMNS[k]] = state[k]; });
+  keys.forEach(k => { if (PREF_COLUMNS[k] && prefColumnReady(PREF_COLUMNS[k])) pending[PREF_COLUMNS[k]] = state[k]; });
   saveState();
   return flushPrefs();
 }
@@ -10387,7 +10935,7 @@ async function flushPrefs() {
 // This device's settings, as preferences columns: what a new row starts with.
 function prefsRow() {
   const row = {};
-  Object.entries(PREF_COLUMNS).forEach(([k, col]) => { if (state[k] !== undefined) row[col] = state[k]; });
+  Object.entries(PREF_COLUMNS).forEach(([k, col]) => { if (state[k] !== undefined && prefColumnReady(col)) row[col] = state[k]; });
   return row;
 }
 // After a load: this device's unsent choices win over the server's copy.
@@ -11481,7 +12029,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') {
-    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems(); closeImport(); closeYearReview(); closeWall();
+    closeTxnModal(); closeBudgetModal(); closeGoalModal(); closeStatement(); closeDataCheck(); closeSyncProblems(); closeImport(); closeYearReview(); closeWall(); closeOwedModal(); closeReceipt();
     ['account-modal','confirm-modal'].forEach(id=>document.getElementById(id).classList.remove('open'));
   }
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openTxnModal(); }
@@ -11973,6 +12521,7 @@ async function snLogout() {
   state.budgets      = [];
   state.goals        = [];
   state.accounts     = [];
+  state.notes        = []; state.notesSynced = false;
   // The account's backup log fills these back in on the next sign-in, so
   // clearing them keeps one person's backup date from covering the next.
   state.lastBackupAt = ''; state.lastBackupInfo = null; state.backupSnoozeUntil = '';
@@ -12009,7 +12558,7 @@ function _hideSNLogin() {
 async function snLoadAll({ quiet = false } = {}) {
   try {
     const uid = state.userId;
-    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes, backupsRes] = await Promise.all([
+    const [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes, billsRes, backupsRes, notesRes] = await Promise.all([
       // Nothing renders until every page is in, so the screen never shows a
       // book that is still half-loaded. The count tells a big book it is moving.
       fetchAllTxns(uid, n => _setLoginLoading(true, `Loading your data… ${n.toLocaleString()} transactions`)),
@@ -12019,7 +12568,9 @@ async function snLoadAll({ quiet = false } = {}) {
       sb.from('preferences').select('*').eq('user_id', uid).maybeSingle(),
       sb.from('bills').select('*').eq('user_id', uid),
       sb.from('backups').select('taken_at, device, counts').eq('user_id', uid)
-        .order('taken_at', { ascending: false }).limit(1)
+        .order('taken_at', { ascending: false }).limit(1),
+      // Migration 008: until it has run, the notes stay on this device.
+      sb.from('notes').select('*').eq('user_id', uid)
     ]);
     for (const r of [txnsRes, budgetsRes, goalsRes, accountsRes, prefRes]) {
       if (r.error) throw r.error;
@@ -12038,7 +12589,7 @@ async function snLoadAll({ quiet = false } = {}) {
     const pref     = prefRes.data;
     // What this device holds now, for any row with a change still queued.
     const localCopy = { transactions: state.transactions, budgets: state.budgets, goals: state.goals,
-                        accounts: state.accounts, bills: state.bills };
+                        accounts: state.accounts, bills: state.bills, notes: state.notes || [] };
 
 
     state.transactions = txns.map(t => ({
@@ -12060,8 +12611,14 @@ async function snLoadAll({ quiet = false } = {}) {
       isRecurring: !!t.is_recurring,
       recurringFrequency: t.recurring_frequency || '',
       nextRunDate: t.next_run_date || '',
-      recurringSource: t.recurring_source || ''
+      recurringSource: t.recurring_source || '',
+      owedBy     : t.owed_by || '',
+      settles    : t.settles || '',
+      receiptPath: t.receipt_path || ''
     }));
+    // Migration 008 run? Until it is, owed/settles/receipts stay on the device
+    // and no write names those columns.
+    if (txns.length) state.txnExtrasSynced = Object.prototype.hasOwnProperty.call(txns[0], 'owed_by');
 
     // Rebuild each transfer leg's peer-account label from its partner row.
     const tgroups = {};
@@ -12141,6 +12698,8 @@ async function snLoadAll({ quiet = false } = {}) {
       state.avatarColor         = pref.avatar_color || state.avatarColor;
       state.monthlyIncomeTarget = pref.monthly_income_target || 0;
       applyProfileAIKey(pref);
+      state.prefExtrasSynced = Object.prototype.hasOwnProperty.call(pref, 'saved_searches');
+      if (state.prefExtrasSynced && Array.isArray(pref.saved_searches)) state.savedSearches = pref.saved_searches;
       applyPendingPrefs();
       flushPrefs();
     } else {
@@ -12155,6 +12714,7 @@ async function snLoadAll({ quiet = false } = {}) {
     ['transactions', 'budgets', 'goals', 'accounts', 'bills'].forEach(tbl => {
       state[tbl] = mergeWithOutbox(tbl, state[tbl] || [], localCopy[tbl]);
     });
+    applyLoadedNotes(notesRes, localCopy.notes);
     state.accounts = orderAccounts(state.accounts);
     // The first load after migration 007: if no device has stored an order
     // yet and this one was arranged, it shares that order, so every device

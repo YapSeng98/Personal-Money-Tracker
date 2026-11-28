@@ -1440,6 +1440,171 @@
         state.transactions = keepT; state.accounts = keepA; state.balancesMasked = keepMask; renderAll();
       }
 
+      // ── My notes: things to pay, collect or record later ──
+      {
+        const keepT = state.transactions.slice(), keepN = (state.notes || []).slice(), keepUser = state.userId, keepSync = state.notesSynced;
+        state.notes = []; state.userId = 'test-user'; state.notesSynced = true; state.outbox = []; window.__sb.calls.length = 0;
+        const today = localDateStr();
+        nav('notes'); await wait(10);
+        ok(!$('#notes-plan-pane').hidden && $('#notes-txn-pane').hidden && $('#notes-tab-plan').getAttribute('aria-selected') === 'true', 'my notes: the Notes page opens on My notes');
+        ok(/No notes yet/.test($('#plan-list').textContent), 'my notes: an empty notepad says what it is for');
+        // Write one with an amount and a date, one plain.
+        $('#plan-text').value = 'Pay rental 500 and 600 for Oct'; $('#plan-kind').value = 'expense'; $('#plan-amount').value = '1100'; $('#plan-currency').value = 'SGD'; $('#plan-date').value = addDaysStr(today, 2);
+        savePlanNote(); await wait(20);
+        $('#plan-text').value = 'Ask Mei about the dinner split'; savePlanNote(); await wait(20);
+        $('#plan-text').value = 'Renew road tax'; $('#plan-kind').value = 'expense'; $('#plan-amount').value = '230'; $('#plan-date').value = addDaysStr(today, -1); savePlanNote(); await wait(20);
+        const rent = state.notes.find(n => /rental/.test(n.text));
+        ok(state.notes.length === 3 && rent.amount === 1100 && rent.kind === 'expense' && rent.dueDate === addDaysStr(today, 2) && !rent.doneAt,
+           'my notes: a note keeps its words, what it is, the amount and the date', JSON.stringify(rent));
+        const ups = window.__sb.calls.filter(c => c.table === 'notes' && c.op === 'upsert');
+        ok(ups.length >= 3 && [].concat(...ups.map(c => [].concat(c.row))).some(r => r.body === 'Pay rental 500 and 600 for Oct' && r.amount === 1100 && r.due_date === addDaysStr(today, 2) && r.kind === 'expense'),
+           'my notes: each note is sent to your account', JSON.stringify(ups.map(c => c.row)).slice(0, 300));
+        const groups = $$('#plan-list .plan-group').map(g => g.textContent);
+        ok(groups.join('|') === 'Overdue|Coming up|Any time' && /Renew road tax/.test($('#plan-list').textContent), 'my notes: grouped as overdue, coming up and any time', groups.join('|'));
+        ok(/In 2 days/.test($('#plan-list').textContent) && /Yesterday/.test($('#plan-list').textContent) && $('#plan-list').textContent.includes('S$1,100.00'),
+           'my notes: each shows when, and how much');
+        ok(/1 overdue/.test($('#plan-count').textContent), 'my notes: the count says what is overdue', $('#plan-count').textContent);
+        // The dashboard shows what is due within three days.
+        nav('dashboard'); await wait(10);
+        ok(/Notes coming up/.test($('#plan-due').textContent) && /Renew road tax/.test($('#plan-due').textContent) && /rental/.test($('#plan-due').textContent) && !/Ask Mei/.test($('#plan-due').textContent),
+           'my notes: the dashboard lists notes due within three days, and overdue ones');
+        // Record it: the add form filled in; saving marks the note done.
+        nav('notes'); await wait(10);
+        recordPlanNote(rent.id);
+        ok($('#txn-modal').classList.contains('open') && $('#tab-expense').classList.contains('active') && Number($('#txn-amount').value) === 1100 && $('#txn-desc').value === 'Pay rental 500 and 600 for Oct',
+           'my notes: Record it opens the add form filled in from the note');
+        await saveTransaction(); await wait(30);
+        const made = state.transactions.find(t => t.description === 'Pay rental 500 and 600 for Oct');
+        ok(made && rent.doneAt && rent.txnId === made.id, 'my notes: saving it records the transaction and marks the note done', JSON.stringify({ done: rent.doneAt, txn: rent.txnId }));
+        ok(/Done/.test($('#plan-list').textContent) && $('#plan-list .plan-item.done'), 'my notes: a done note moves to Done');
+        // Cancelling Record it leaves the note open.
+        const tax = state.notes.find(n => /road tax/.test(n.text));
+        recordPlanNote(tax.id); closeTxnModal(); openTxnModal(); closeTxnModal();
+        ok(!tax.doneAt && _recordingNote === null, 'my notes: closing the form without saving leaves the note to do');
+        // Edit, done by hand, delete.
+        editPlanNote(tax.id);
+        ok($('#plan-text').value === 'Renew road tax' && $('#plan-save').textContent === 'Save changes' && !$('#plan-cancel').hidden, 'my notes: Edit puts the note back in the box');
+        $('#plan-amount').value = '245'; savePlanNote(); await wait(10);
+        ok(tax.amount === 245 && state.notes.length === 3 && $('#plan-save').textContent === 'Add note', 'my notes: saving an edit changes that note, not a new one');
+        togglePlanDone(tax.id);
+        ok(!!tax.doneAt, 'my notes: Done marks it done by hand');
+        togglePlanDone(tax.id);
+        ok(!tax.doneAt, 'my notes: Not done reopens it');
+        const keepConfirm = window.showConfirm; window.showConfirm = async () => true;
+        window.__sb.calls.length = 0;
+        await deletePlanNote(tax.id); await wait(20);
+        window.showConfirm = keepConfirm;
+        ok(!state.notes.includes(tax) && window.__sb.calls.some(c => c.table === 'notes' && c.op === 'delete'), 'my notes: Delete removes it here and on your account');
+        // Before migration 008: kept on this device, nothing sent, and shared once the table appears.
+        state.notesSynced = false; window.__sb.calls.length = 0;
+        $('#plan-text').value = 'Written before the update'; savePlanNote(); await wait(10);
+        ok(!window.__sb.calls.some(c => c.table === 'notes') && /kept on this device/.test($('#plan-sync-hint').textContent) && JSON.parse(localStorage.getItem(LS_KEY)).notes.some(n => n.text === 'Written before the update'),
+           'my notes: before update 008 they are kept on this device, and say so');
+        const localOnly = state.notes.slice();
+        window.__sb.calls.length = 0;
+        applyLoadedNotes({ data: [], error: null }, localOnly);
+        await flushOutbox(); await wait(10);
+        ok(state.notesSynced && state.notes.some(n => n.text === 'Written before the update') && window.__sb.calls.some(c => c.table === 'notes' && [].concat(c.row || []).some(r => r.body === 'Written before the update')),
+           'my notes: once the notes table exists, notes written before it are sent, once');
+        applyLoadedNotes({ data: null, error: { message: "Could not find the table 'public.notes'" } }, state.notes);
+        ok(!state.notesSynced && state.notes.length === localOnly.length, 'my notes: a missing notes table keeps the notes on this device rather than failing the load');
+        // The other tab is still there.
+        setNotesTab('txn');
+        ok($('#notes-plan-pane').hidden && !$('#notes-txn-pane').hidden, 'my notes: On transactions shows the notes written on transactions');
+        setNotesTab('plan');
+        state.transactions = keepT; state.notes = keepN; state.userId = keepUser; state.notesSynced = keepSync; state.outbox = [];
+        renderAll();
+      }
+
+      // ── Money owed, receipt photos, saved searches on every device (008) ──
+      {
+        const keepT = state.transactions.slice(), keepUser = state.userId, keepSync = state.txnExtrasSynced, keepPrefSync = state.prefExtrasSynced;
+        state.userId = 'test-user'; state.txnExtrasSynced = true; state.outbox = []; window.__sb.calls.length = 0;
+        const today = localDateStr();
+        // Someone will pay me back
+        nav('dashboard'); openTxnModal(); setType('expense', $('#tab-expense'));
+        ok(getComputedStyle($('#txn-owed-group')).display !== 'none' && $('#txn-owed-by').hidden, 'owed: an expense offers "Someone will pay me back", the name box waits');
+        $('#txn-amount').value = '46'; $('#txn-desc').value = 'Dinner split with Alex'; setSelectVal('txn-account', 'DBS Checking'); $('#txn-account').dispatchEvent(new Event('change'));
+        $('#txn-owed').checked = true; renderOwedField();
+        ok(!$('#txn-owed-by').hidden, 'owed: ticking it asks who');
+        $('#txn-owed-by').value = 'Alex';
+        const toastLog = []; const keepToast = window.showToast; window.showToast = (m, k) => { toastLog.push(k + ':' + m); };
+        await saveTransaction(); await wait(30);
+        window.showToast = keepToast;
+        const dinner = state.transactions.find(t => t.description === 'Dinner split with Alex');
+        const sentRow = (pred) => { for (const c of window.__sb.calls) { if (c.table !== 'transactions' || !['insert', 'upsert'].includes(c.op)) continue; const r = [].concat(c.row || []).find(pred); if (r) return r; } return null; };
+        const ins = { row: sentRow(r => r.description === 'Dinner split with Alex') };
+        ok(dinner && dinner.owedBy === 'Alex' && ins.row && ins.row.owed_by === 'Alex', 'owed: saved with who owes it, and sent to the server', JSON.stringify(ins && ins.row) + ' toasts=' + toastLog.join(' | ') + ' open=' + $('#txn-modal').classList.contains('open') + ' dinner=' + JSON.stringify(dinner));
+        nav('dashboard'); await wait(10);
+        const panel = $('#owed-panel');
+        ok(/Owed to you/.test(panel.textContent) && /Alex/.test(panel.textContent) && panel.textContent.includes('S$46.00'), 'owed: the dashboard lists it under Owed to you', panel.textContent.slice(0, 160));
+        ok(/Owed by Alex/.test($('#recent-txns').textContent), 'owed: its row says who owes it');
+        // Mark paid, partly, then the rest
+        markOwedPaid(dinner.id);
+        ok($('#txn-modal').classList.contains('open') && $('#tab-payback').classList.contains('active') && Number($('#txn-amount').value) === 46 && $('#txn-settles').value === String(dinner.id) && !$('#txn-settle-note').hidden,
+           'owed: Mark paid opens a payback for what is left, linked to the expense');
+        $('#txn-amount').value = '20'; await saveTransaction(); await wait(30);
+        const pb = state.transactions.find(t => t.type === 'payback' && t.settles === dinner.id);
+        ok(pb && pb.amount === 20 && !!sentRow(r => r.settles === dinner.id), 'owed: the payback is saved and sent with what it settles');
+        nav('dashboard'); await wait(10);
+        ok($('#owed-panel').textContent.includes('S$26.00') && /S\$20\.00 of S\$46\.00 paid back/.test($('#owed-panel').textContent), 'owed: part paid shows what is left and what came back');
+        markOwedPaid(dinner.id); await saveTransaction(); await wait(30); nav('dashboard'); await wait(10);
+        ok(!/Alex/.test($('#owed-panel').textContent), 'owed: paid in full, it leaves the list');
+        // Before migration 008: kept on the device, never sent.
+        state.txnExtrasSynced = false; window.__sb.calls.length = 0;
+        openTxnModal(); setType('expense', $('#tab-expense'));
+        $('#txn-amount').value = '12'; $('#txn-desc').value = 'Coffee for Sam'; setSelectVal('txn-account', 'DBS Checking'); $('#txn-account').dispatchEvent(new Event('change'));
+        $('#txn-owed').checked = true; renderOwedField(); $('#txn-owed-by').value = 'Sam';
+        ok(/database update 008/.test($('#txn-owed-hint').textContent), 'owed: before update 008 the form says it stays on this device');
+        await saveTransaction(); await wait(30);
+        const ins2 = { row: sentRow(r => r.description === 'Coffee for Sam') };
+        ok(state.transactions.find(t => t.description === 'Coffee for Sam').owedBy === 'Sam' && ins2.row && !('owed_by' in ins2.row) && !('settles' in ins2.row),
+           'owed: before update 008 nothing sent names the new columns', JSON.stringify(ins2 && ins2.row));
+        state.txnExtrasSynced = true;
+        // Receipt photos
+        const c = document.createElement('canvas'); c.width = 40; c.height = 30;
+        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+        const file = new File([blob], 'receipt.png', { type: 'image/png' });
+        openTxnModal(dinner.id);
+        ok(getComputedStyle($('#txn-receipt-group')).display !== 'none' && getComputedStyle($('#txn-receipt-group .receipt-pick')).display !== 'none', 'receipts: the form offers a photo once signed in and updated');
+        await chooseReceipt({ files: [file], value: '' });
+        ok($('#txn-receipt-preview img') && /Attached when you save/.test($('#txn-receipt-preview').textContent), 'receipts: a chosen photo shows before saving');
+        window.__sb.calls.length = 0;
+        await saveTransaction(); await wait(80);
+        const path = `test-user/${dinner.id}.jpg`;
+        const now = state.transactions.find(t => t.id === dinner.id);
+        ok(window.__sb.files['receipts/' + path] && window.__sb.files['receipts/' + path].type === 'image/jpeg' && now.receiptPath === path
+           && window.__sb.calls.some(c => c.op === 'update' && c.patch && c.patch.receipt_path === path), 'receipts: saving uploads it as a JPEG to your own folder and records where', JSON.stringify(window.__sb.calls.map(c => c.op + ':' + (c.path || ''))));
+        nav('transactions'); await wait(10);
+        const chip = [...document.querySelectorAll('#all-txns .rc-chip')][0];
+        ok(!!chip, 'receipts: the row shows 📎 Receipt');
+        await viewReceipt(dinner.id);
+        ok($('#receipt-modal').classList.contains('open') && /^data:image/.test($('#receipt-view-img').src) && window.__sb.calls.some(c => c.op === 'sign' && c.secs === 3600),
+           'receipts: tapping it opens the photo through a link that lasts an hour');
+        closeReceipt();
+        openTxnModal(dinner.id);
+        ok(/Receipt attached/.test($('#txn-receipt-preview').textContent), 'receipts: editing shows the photo is attached');
+        dropReceipt(); window.__sb.calls.length = 0;
+        await saveTransaction(); await wait(80);
+        ok(!state.transactions.find(t => t.id === dinner.id).receiptPath && window.__sb.calls.some(c => c.op === 'update' && c.patch && c.patch.receipt_path === null)
+           && window.__sb.calls.some(c => c.op === 'remove' && c.paths[0] === path) && !window.__sb.files['receipts/' + path], 'receipts: Remove takes the photo off and deletes the file');
+        // Offline: the transaction saves, the photo waits to be attached again.
+        openTxnModal(dinner.id); await chooseReceipt({ files: [file], value: '' });
+        window.__sb.failWrites = true; await saveTransaction(); await wait(80); window.__sb.failWrites = false;
+        ok(!state.transactions.find(t => t.id === dinner.id).receiptPath, 'receipts: offline, the photo is not recorded as attached');
+        // Saved searches follow you once the server has the column.
+        state.prefExtrasSynced = true; state.prefsPending = {}; window.__sb.calls.length = 0;
+        nav('transactions'); $('#filter-min').value = '50'; renderTransactions(); startSaveSearch(); $('#save-search-name').value = 'Fifty plus'; saveSearch(); await wait(20);
+        const up = window.__sb.calls.find(c => c.table === 'preferences' && c.op === 'upsert');
+        ok(up && Array.isArray(up.row.saved_searches) && up.row.saved_searches.some(s => s.name === 'Fifty plus'), 'saved searches: saved to your account once update 008 is in', JSON.stringify(up && up.row));
+        state.prefExtrasSynced = false; state.prefsPending = {}; window.__sb.calls.length = 0;
+        deleteSavedSearch(state.savedSearches[0].id); setTheme(state.theme); await wait(20);
+        ok(!window.__sb.calls.some(c => c.table === 'preferences' && c.row && 'saved_searches' in c.row), 'saved searches: before update 008 they stay on this device and never block other settings');
+        clearFilters();
+        state.transactions = keepT; state.userId = keepUser; state.txnExtrasSynced = keepSync; state.prefExtrasSynced = keepPrefSync; state.outbox = []; state.savedSearches = [];
+        renderAll();
+      }
+
       // ── Empty states ────────────────────────────────────────────────────
       const savedT = state.transactions, savedA = state.accounts;
       state.transactions = []; renderAll(); nav('analytics'); await wait(10);

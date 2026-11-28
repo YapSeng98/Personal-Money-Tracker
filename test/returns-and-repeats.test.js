@@ -40,7 +40,7 @@ function extract(name) {
   throw new Error(`could not find ${name} in index.html`);
 }
 const NAMES = ['pfmtPrevMonth', 'pfmtDaysInMonth', 'GAIN_LOSS_CATEGORY', 'txnBalanceEffect', 'effectiveBal', 'balanceOn',
-  'monthEndDate', 'monthReturn', 'periodReturn', 'repeatSuggestions'];
+  'monthEndDate', 'monthReturn', 'periodReturn', 'repeatSuggestions', 'PFMT_CLAIMS_CATEGORY', 'owedItems'];
 const state = { currency: 'SGD', transactions: [], accounts: [] };
 const API = new Function('state', NAMES.map(extract).join('\n') + `; return {${NAMES.join(',')}};`)(state);
 
@@ -151,6 +151,52 @@ for (let run = 0; run < 300; run++) {
     ok(rows.every(x => x.length === 1) && months[1] === prevM(months[2]) && months[0] === prevM(months[1]) && ['2026-11', '2026-10'].includes(months[2])
        && Math.max(...days) - Math.min(...days) <= 6 && rows.every(x => Math.abs(x[0].amount - s.amount) <= s.amount * 0.1 + 1e-9),
        'repeat: every suggestion on a random book meets every rule', JSON.stringify(s.months));
+  });
+}
+
+// ── Money owed ──
+group('Money owed to you');
+const E = (id, date, amount, extra = {}) => Object.assign({ id, type: 'expense', amount, description: 'Dinner', category: 'Food & Drink', account: 'DBS', currency: 'SGD', date }, extra);
+const B = (id, date, amount, extra = {}) => Object.assign({ id, type: 'payback', amount, description: 'back', category: 'Food & Drink', account: 'DBS', currency: 'SGD', date }, extra);
+const owe = txns => API.owedItems(txns, '2026-11-28', 'SGD');
+let o = owe([E('a', '2026-11-20', 46, { owedBy: 'Alex' }), E('b', '2026-11-21', 30)]);
+ok(o.length === 1 && o[0].who === 'Alex' && o[0].left === 46 && o[0].back === 0 && o[0].days === 8, 'owed: an expense marked owed is listed with who, what is left and days waiting', JSON.stringify(o));
+o = owe([E('a', '2026-11-20', 46, { owedBy: 'Alex' }), B('p', '2026-11-25', 20, { settles: 'a' })]);
+ok(o.length === 1 && o[0].left === 26 && o[0].back === 20, 'owed: a payback that settles part of it leaves the rest');
+ok(owe([E('a', '2026-11-20', 46, { owedBy: 'Alex' }), B('p', '2026-11-25', 20, { settles: 'a' }), B('q', '2026-11-26', 26, { settles: 'a' })]).length === 0, 'owed: paid back in full, it is gone');
+ok(owe([E('a', '2026-11-20', 46, { owedBy: 'Alex' }), B('p', '2026-11-25', 99, { settles: 'a' })]).length === 0, 'owed: paying back more than owed never goes below nothing');
+ok(owe([E('a', '2026-11-20', 46, { owedBy: 'Alex' }), B('p', '2026-11-25', 46)]).length === 1, 'owed: a payback not linked to it does not settle a named debt');
+ok(owe([E('a', '2026-11-20', 46, { owedBy: 'Alex', transferGroup: 'g' })]).length === 0, 'owed: a transfer leg is never a debt');
+// Claims: counted without a name; old unlinked claim paybacks pay the oldest claims first, per currency.
+const C = (id, date, amount, cur = 'SGD') => E(id, date, amount, { category: 'Claims', description: 'Claim ' + id, currency: cur });
+const CB = (id, date, amount, cur = 'SGD', extra = {}) => B(id, date, amount, Object.assign({ category: 'Claims', currency: cur }, extra));
+o = owe([C('c1', '2026-08-01', 100), C('c2', '2026-09-01', 50), C('c3', '2026-10-01', 80), CB('x', '2026-10-15', 120), C('m1', '2026-09-05', 70, 'MYR')]);
+ok(o.length === 3 && o.find(x => x.txn.id === 'c2').left === 30 && o.find(x => x.txn.id === 'c3').left === 80 && o.find(x => x.txn.id === 'm1').left === 70 && !o.find(x => x.txn.id === 'c1') && o.every(x => x.who === 'Claim'),
+   'owed: claims count without a name; unlinked claim paybacks pay the oldest claims first, in their own currency', JSON.stringify(o.map(x => [x.txn.id, x.left])));
+o = owe([C('c1', '2026-08-01', 100), C('c2', '2026-09-01', 50), CB('x', '2026-10-15', 50, 'SGD', { settles: 'c2' })]);
+ok(o.length === 1 && o[0].txn.id === 'c1', 'owed: a linked claim payback pays its own claim, not the oldest');
+o = owe([E('a', '2026-11-20', 46, { owedBy: 'Alex' }), B('p', '2026-11-25', 20, { settles: 'gone-id' })]);
+ok(o.length === 1 && o[0].left === 46, 'owed: a payback linked to a deleted expense settles nothing else');
+ok(owe([E('a', '2026-09-20', 10, { owedBy: 'Sam' })])[0].days === 69, 'owed: days waiting are counted on the calendar');
+// Random books: what is left is never negative, never more than the expense, and adds up.
+for (let run = 0; run < 300; run++) {
+  const txns = [];
+  let id = 0;
+  for (let k = 0; k < 12; k++) {
+    const claim = rnd() < 0.4, d = `2026-${String(1 + Math.floor(rnd() * 11)).padStart(2, '0')}-${String(1 + Math.floor(rnd() * 28)).padStart(2, '0')}`;
+    const amt = r2(5 + rnd() * 200), eid = 'e' + (++id);
+    txns.push(claim ? C(eid, d, amt, rnd() < 0.8 ? 'SGD' : 'MYR') : E(eid, d, amt, rnd() < 0.7 ? { owedBy: 'P' + (k % 3) } : {}));
+    if (rnd() < 0.5) txns.push(claim ? CB('b' + (++id), d, r2(rnd() * amt * 1.3), txns[txns.length - 1].currency, rnd() < 0.5 ? { settles: eid } : {}) : B('b' + (++id), d, r2(rnd() * amt * 1.3), { settles: eid }));
+  }
+  const items = owe(txns);
+  ok(items.every(x => x.left > 0 && x.left <= x.txn.amount + 1e-9 && Math.abs(x.back + x.left - x.txn.amount) < 0.006),
+     'owed: on random books what is left is above nothing, at most the expense, and back + left = the expense', JSON.stringify(items.map(x => [x.txn.amount, x.back, x.left])));
+  ['SGD', 'MYR'].forEach(cur => {
+    const claims = r2(txns.filter(t => t.type === 'expense' && t.category === 'Claims' && t.currency === cur).reduce((s, t) => s + t.amount, 0));
+    const paid = r2(txns.filter(t => t.type === 'payback' && t.category === 'Claims' && t.currency === cur).reduce((s, t) => s + t.amount, 0));
+    const left = r2(items.filter(x => x.who === 'Claim' && x.currency === cur).reduce((s, x) => s + x.left, 0));
+    // Linked paybacks above their claim are lost to the rest, so what's left is at least claims − paid.
+    ok(left >= Math.max(0, r2(claims - paid)) - 0.006 && left <= claims + 0.006, 'owed: claims left in a currency are between claims less paybacks and all claims', `${cur}: ${left} of ${claims}, ${paid} paid`);
   });
 }
 

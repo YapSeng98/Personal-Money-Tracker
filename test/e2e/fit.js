@@ -110,6 +110,30 @@
       'budget-suggest': () => { openBudgetModal(); setSelectVal('budget-cat', 'Food & Drink'); renderBudgetSuggestions(); },
       'year-review': () => { showView('analytics'); openYearReview(); },
       'wall': () => openWall(),
+      'my-notes': () => {
+        const d = n => addDaysStr(localDateStr(), n);
+        state.notes = [
+          { id: 'fn1', text: POISON ? BAD('plan') : 'Pay rental 500 and 600 for Oct — remind the landlord about the aircon servicing too', kind: 'expense', amount: 1100, currency: 'SGD', dueDate: d(-2), doneAt: '', created: '2026-11-01' },
+          { id: 'fn2', text: 'Collect S$46 from Alex', kind: 'income', amount: 46, currency: 'SGD', dueDate: d(0), doneAt: '', created: '2026-11-02' },
+          { id: 'fn3', text: 'Move RM2,000 to Maybank for the trip', kind: 'transfer', amount: 2000, currency: 'MYR', dueDate: d(9), doneAt: '', created: '2026-11-03' },
+          { id: 'fn4', text: 'Check whether the warranty covers the phone screen', kind: '', amount: null, currency: '', dueDate: '', doneAt: '', created: '2026-11-04' },
+          { id: 'fn5', text: 'Renew road tax', kind: 'expense', amount: 245, currency: 'SGD', dueDate: d(-5), doneAt: new Date().toISOString(), created: '2026-10-01' }];
+        showView('notes'); setNotesTab('plan');
+      },
+      'my-notes-edit': () => { SCREENS['my-notes'](); editPlanNote('fn1'); },
+      'notes-due': () => { SCREENS['my-notes'](); showView('dashboard'); },
+      'owed': () => {
+        const who = POISON ? BAD('owed') : 'Alexandra from the badminton group';
+        state.transactions.push({ id: 'fit-owe-1', type: 'expense', amount: 1234.56, description: 'Concert tickets for the whole group', category: 'Entertainment', account: 'DBS Checking',
+          date: addDaysStr(localDateStr(), -40), currency: 'SGD', notes: '', owedBy: who, created: '2026-01-01 00:00:00' },
+          { id: 'fit-owe-2', type: 'expense', amount: 46, description: 'Dinner', category: 'Food & Drink', account: 'DBS Checking', date: localDateStr(), currency: 'SGD', notes: '', owedBy: 'Mei', created: '2026-01-01 00:00:00' },
+          { id: 'fit-owe-3', type: 'payback', amount: 20, description: 'Mei paid back', category: 'Food & Drink', account: 'DBS Checking', date: localDateStr(), currency: 'SGD', notes: '', settles: 'fit-owe-2', created: '2026-01-01 00:00:00' });
+        showView('dashboard');
+      },
+      'owed-all': () => { SCREENS['owed'](); openOwedModal(); },
+      'txn-owed': () => { txnType('expense'); $('#txn-owed').checked = true; renderOwedField(); $('#txn-owed-by').value = 'Mei'; },
+      'txn-settle': () => { SCREENS['owed'](); markOwedPaid('fit-owe-2'); },
+      'receipt-view': () => { $('#receipt-view-img').src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='; $('#receipt-title').textContent = 'Receipt · ' + (POISON ? BAD('rcpt') : 'Annual family health insurance premium'); $('#receipt-modal').classList.add('open'); },
       'transactions-filters': () => {
         showView('transactions');
         state.savedSearches = [{ id: 'fs1', name: POISON ? BAD('saved') : 'Grab rides this year', f: { period: 'year', search: 'grab' } },
@@ -156,8 +180,9 @@
       $('#login-overlay').style.display = 'none';
       const toast = $('#toast'); if (toast) toast.classList.remove('show');
       $('#update-bar').hidden = true;
-      if (state.transactions.some(t => String(t.id).startsWith('fit-rep-'))) state.transactions = state.transactions.filter(t => !String(t.id).startsWith('fit-rep-'));
-      state.savedSearches = []; state.repeatDismissed = [];
+      if (state.transactions.some(t => /^fit-(rep|owe)-/.test(String(t.id)))) state.transactions = state.transactions.filter(t => !/^fit-(rep|owe)-/.test(String(t.id)));
+      state.savedSearches = []; state.repeatDismissed = []; state.notes = [];
+      if (typeof cancelPlanEdit === 'function' && _planEditing) cancelPlanEdit();
       if ($('#filter-period').value || $('#filter-min').value) clearFilters();
       stopWall();
       $$('.main, .modal-backdrop, .modal').forEach(el => { el.scrollTop = 0; el.scrollLeft = 0; });

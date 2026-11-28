@@ -31,7 +31,7 @@ SUPABASE_URL = os.environ.get('PFMT_SUPABASE_URL', 'https://oqsqfrpblinvsizitmgl
 KC_SERVICE   = 'pfmt-supabase-backup'
 KC_ACCOUNT   = 'service_role'
 TABLES       = ['accounts', 'transactions', 'budgets', 'goals', 'bills',
-                'preferences', 'notifications_sent', 'backups']
+                'preferences', 'notifications_sent', 'backups', 'notes']
 PAGE         = 1000
 # Columns that authenticate as someone. A backup gets copied to places a
 # credential should never follow, so these are blanked like the app export does.

@@ -15,14 +15,15 @@
 //                           required value or a duplicate id is refused with
 //                           Postgres's own error code
 (function () {
-  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {}, apply: false, without: {} };
+  const sb = window.__sb = { calls: [], failWrites: false, failWith: null, tables: {}, apply: false, without: {}, noTables: [] };
   // column: [type, required, default]
   const S = (o) => o;
   const SCHEMA = {
     transactions: S({ id: ['uuid', 1], user_id: ['uuid', 1], type: ['text', 1], amount: ['numeric', 1], description: ['text', 1, ''],
       category: ['text'], account: ['text'], date: ['date', 1], notes: ['text', 1, ''], currency: ['text', 1, 'SGD'],
       transfer_group: ['text'], transfer_peer: ['text'], is_recurring: ['bool', 1, false], recurring_frequency: ['text'],
-      next_run_date: ['date'], created_at: ['ts', 1], recurring_source: ['uuid'] }),
+      next_run_date: ['date'], created_at: ['ts', 1], recurring_source: ['uuid'],
+      owed_by: ['text'], settles: ['uuid'], receipt_path: ['text'] }),   // migration 008
     accounts: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], type: ['text', 1, 'Checking'], institution: ['text', 1, ''],
       currency: ['text', 1, 'SGD'], starting_balance: ['numeric', 1, 0], is_active: ['bool', 1, true], icon: ['text', 1, ''], created_at: ['ts', 1],
       sort_order: ['int'] }),   // migration 007
@@ -36,7 +37,10 @@
     preferences: S({ user_id: ['uuid', 1], currency: ['text', 1, 'SGD'], language: ['text', 1, 'en'], theme: ['text', 1, 'auto'], budget_alerts: ['bool', 1, true],
       now_assist: ['bool', 1, true], balances_masked: ['bool', 1, true], trend_months: ['int', 1, 6], trend_metric: ['text', 1, 'expense'], updated_at: ['ts', 1],
       display_name: ['text'], avatar_color: ['text'], monthly_income_target: ['numeric'], ai_api_key: ['text'], telegram_chat_id: ['text', 1, ''],
-      notify_budget: ['bool', 1, false], notify_bills: ['bool', 1, false], bill_lead_days: ['int', 1, 3] })
+      notify_budget: ['bool', 1, false], notify_bills: ['bool', 1, false], bill_lead_days: ['int', 1, 3],
+      saved_searches: ['json', 1, []] }),   // migration 008
+    notes: S({ id: ['uuid', 1], user_id: ['uuid', 1], body: ['text', 1, ''], amount: ['numeric'], currency: ['text'], due_date: ['date'],
+      kind: ['text'], account: ['text'], pinned: ['bool', 1, false], done_at: ['ts'], txn_id: ['uuid'], created_at: ['ts', 1] })   // migration 008
   };
   // The primary key, where it isn't "id".
   const KEY = { preferences: 'user_id' };
@@ -128,7 +132,10 @@
       then(resolve, reject) {
         sb.calls.push(q);
         let res;
-        if (q.op === 'select') {
+        if (sb.noTables.includes(table)) {
+          // A table a migration hasn't made yet, as PostgREST says it.
+          res = { data: null, error: { code: 'PGRST205', message: `Could not find the table 'public.${table}' in the schema cache` } };
+        } else if (q.op === 'select') {
           // As Postgres returns them: every column the table has, null where unset.
           let rows = (sb.tables[table] || []).map(r => {
             if (!sb.apply) return r;
@@ -168,9 +175,27 @@
     resetPasswordForEmail: async () => ({ data: {}, error: null }),
     updateUser: async () => ({ data: {}, error: null })
   };
+  // Storage: files kept in memory, per bucket. failWrites makes uploads fail too.
+  sb.files = {};
+  const storage = {
+    from: bucket => ({
+      upload: async (path, blob, opts) => {
+        sb.calls.push({ table: 'storage:' + bucket, op: 'upload', path, opts });
+        if (sb.failWrites) return { data: null, error: { message: 'Failed to fetch' } };
+        if (sb.files[bucket + '/' + path] && !(opts && opts.upsert)) return { data: null, error: { message: 'The resource already exists' } };
+        sb.files[bucket + '/' + path] = blob; return { data: { path }, error: null };
+      },
+      createSignedUrl: async (path, secs) => {
+        sb.calls.push({ table: 'storage:' + bucket, op: 'sign', path, secs });
+        return sb.files[bucket + '/' + path] ? { data: { signedUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' }, error: null } : { data: null, error: { message: 'Object not found' } };
+      },
+      remove: async paths => { sb.calls.push({ table: 'storage:' + bucket, op: 'remove', paths }); paths.forEach(x => delete sb.files[bucket + '/' + x]); return { data: [], error: null }; }
+    })
+  };
   window.supabase = {
     createClient: () => ({
       from: query,
+      storage,
       auth,
       functions: { invoke: async () => ({ data: null, error: null }) },
       rpc: async () => ({ data: null, error: null })

@@ -78,6 +78,9 @@
     // Every third run, a database that hasn't had migration 007: the order
     // must still work, stay on the device, and never be sent.
     if ((+(P.get('seed') || 1)) % 3 === 0) S.without = { accounts: ['sort_order'] };
+    // Every fourth run, a database without migration 008: owed, settles and
+    // receipts stay on the device, saved searches too, and nothing sent names them.
+    if ((+(P.get('seed') || 1)) % 4 === 1) { Object.assign(S.without, { transactions: ['owed_by', 'settles', 'receipt_path'], preferences: ['saved_searches'] }); S.noTables = ['notes']; }
     showView('settings');   // a light page to redraw after every step
 
     // Dialogs answer yes; the undo toast hands its two choices to the test;
@@ -429,6 +432,59 @@
               'a row made to repeat repeats monthly, from a date after today', () => JSON.stringify(now && { r: now.isRecurring, f: now.recurringFrequency, n: now.nextRunDate }));
         return 'make an entry repeat';
       }],
+      [3, 'someone owes me for an expense, or pays part of it back', async () => {
+        const open = owedItems(state.transactions, today, state.currency);
+        if (open.length && chance(0.5)) {
+          const x = pick(open);
+          markOwedPaid(x.txn.id);
+          document.getElementById('txn-amount').value = String(chance(0.5) ? x.left : Math.max(0.01, Math.round(x.left * rnd() * 100) / 100));
+          await saveTransaction(); await settle();
+          // The form refuses a payback into an account that's gone or now in
+          // another currency; the debt stays as it was, which is right.
+          if (document.getElementById('txn-modal').classList.contains('open')) { closeTxnModal(); return 'payback refused by the form'; }
+          const after = owedItems(state.transactions, today, state.currency).find(i => i.txn.id === x.txn.id);
+          check(!after || (after.left < x.left && after.left > 0), 'paying back part of a debt lowers what is left; all of it clears it', () => `${x.left} became ${after && after.left}`);
+          return 'pay back a debt';
+        }
+        const a = pick(accts());
+        openTxnModal(); setType('expense', document.getElementById('tab-expense'));
+        document.getElementById('txn-amount').value = String(int(5, 300)); document.getElementById('txn-desc').value = 'Owed ' + int(1, 999);
+        setSelectVal('txn-account', a.name); document.getElementById('txn-account').dispatchEvent(new Event('change'));
+        document.getElementById('txn-owed').checked = true; renderOwedField(); document.getElementById('txn-owed-by').value = pick(['Mei', 'Alex', '', 'Company claim']);
+        await saveTransaction(); await settle();
+        return 'someone owes me';
+      }],
+      [2, 'save, use or delete a search', async () => {
+        if ((state.savedSearches || []).length && chance(0.5)) { const s = pick(state.savedSearches); chance(0.5) ? applySavedSearch(s.id) : deleteSavedSearch(s.id); clearFilters(); await settle(); return 'use or delete a saved search'; }
+        showView('transactions'); document.getElementById('filter-min').value = String(int(1, 200)); renderTransactions();
+        startSaveSearch(); document.getElementById('save-search-name').value = 'S' + int(1, 50); saveSearch(); clearFilters(); showView('settings');
+        await settle();
+        return 'save a search';
+      }],
+      [3, 'write, record, finish or delete a note for later', async () => {
+        const open = (state.notes || []).filter(n => !n.doneAt);
+        const what = !open.length ? 'write' : pick(['write', 'write', 'record', 'done', 'delete', 'edit']);
+        if (what === 'write' || what === 'edit') {
+          if (what === 'edit') editPlanNote(pick(open).id);
+          document.getElementById('plan-text').value = pick(['Pay rental', 'Collect from Alex', 'Move money for the trip', 'Insurance due', 'x'.repeat(600)]);
+          document.getElementById('plan-kind').value = pick(['', 'expense', 'income', 'transfer']);
+          document.getElementById('plan-amount').value = chance(0.7) ? String(int(1, 3000)) : '';
+          document.getElementById('plan-date').value = chance(0.7) ? addDaysStr(today, int(-10, 30)) : '';
+          savePlanNote();
+        } else if (what === 'record') {
+          const n = pick(open.filter(x => x.kind === 'expense' || x.kind === 'income')) || null;
+          if (!n) return 'no note to record';
+          recordPlanNote(n.id);
+          await saveTransaction(); await settle();
+          if (document.getElementById('txn-modal').classList.contains('open')) { closeTxnModal(); return 'record refused by the form'; }
+          check(!!n.doneAt, 'recording a note marks it done', () => JSON.stringify(n));
+        } else if (what === 'done') togglePlanDone(pick(open).id);
+        else { const keep = window.showConfirm; window.showConfirm = async () => true; await deletePlanNote(pick(open).id); window.showConfirm = keep; }
+        await settle();
+        check((state.notes || []).every(n => n.text && n.text.length <= 500 && (n.amount == null || n.amount >= 0)), 'every note has words, at most 500 characters, and no negative amount',
+              () => JSON.stringify(state.notes.slice(0, 3)));
+        return `${what} a note`;
+      }],
       [3, 'change a setting', async () => {
         const which = pick(['theme', 'alerts', 'assist', 'range', 'metric']);
         if (which === 'theme') setTheme(pick(['light', 'dark', 'command', 'auto']));
@@ -555,7 +611,10 @@
         const before = snap(), order = accts().map(a => a.name).join(' | ');
         const prefs = () => JSON.stringify([state.theme, state.budgetAlerts, state.nowAssist, state.trendMonths, state.trendMetric]);
         const prefsBefore = prefs();
+        const notesBefore = JSON.stringify((state.notes || []).map(n => [n.id, n.text, n.amount, n.dueDate, !!n.doneAt]).sort());
         await reload();
+        const notesAfter = JSON.stringify((state.notes || []).map(n => [n.id, n.text, n.amount, n.dueDate, !!n.doneAt]).sort());
+        check(notesAfter === notesBefore, 'a reload keeps every note as it was', () => `${notesBefore.slice(0, 200)}\n      became ${notesAfter.slice(0, 200)}`);
         check(prefs() === prefsBefore, 'a reload keeps the settings you chose (theme, alerts, trend)', () => `${prefsBefore} became ${prefs()}`);
         const after = snap();
         const diff = firstDiff(before, after);
