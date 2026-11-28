@@ -405,6 +405,16 @@
               () => `${how}: ${accts().map(a => a.name).join(' | ')}\n      wanted ${want.join(' | ')}`);
         return `laptop rearranges accounts (${how})`;
       }],
+      [3, 'change a setting', async () => {
+        const which = pick(['theme', 'alerts', 'assist', 'range', 'metric']);
+        if (which === 'theme') setTheme(pick(['light', 'dark', 'command', 'auto']));
+        else if (which === 'alerts') toggleSetting('budgetAlerts', document.getElementById('toggle-budget-alerts'));
+        else if (which === 'assist') toggleSetting('nowAssist', document.getElementById('toggle-now-assist'));
+        else if (which === 'range') setTrendRange(pick([3, 6, 12]));
+        else setTrendMetric(pick(['expense', 'income']));
+        await settle();
+        return `change setting: ${which}`;
+      }],
       [3, 'update an account to its real balance', async () => {
         const a = pick(accts());
         openBalanceModal(a.id);
@@ -519,7 +529,10 @@
       [5, 'reload', async () => {
         await runRecurring(); renderAll(); await settle();
         const before = snap(), order = accts().map(a => a.name).join(' | ');
+        const prefs = () => JSON.stringify([state.theme, state.budgetAlerts, state.nowAssist, state.trendMonths, state.trendMetric]);
+        const prefsBefore = prefs();
         await reload();
+        check(prefs() === prefsBefore, 'a reload keeps the settings you chose (theme, alerts, trend)', () => `${prefsBefore} became ${prefs()}`);
         const after = snap();
         const diff = firstDiff(before, after);
         check(!diff, 'a reload shows exactly what was there before', diff);

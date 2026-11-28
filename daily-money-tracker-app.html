@@ -272,6 +272,7 @@ body{font-family:var(--ff);background:transparent;color:var(--ink);display:flex;
 .panel{background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);border:1px solid var(--glass-border);border-radius:20px;padding:22px 24px;min-width:0;box-shadow:0 1px 2px rgba(15,23,42,.03),0 22px 44px -30px rgba(15,23,42,.3);}
 .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
 .panel-title{font-family:var(--fd);font-size:15px;font-weight:700;}
+.panel-header[aria-expanded="false"]{margin-bottom:0;}
 
 /* ── TRANSACTIONS ── */
 .txn-date-group{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
@@ -879,35 +880,143 @@ select.form-input{-webkit-appearance:none;appearance:none;min-width:0;max-width:
 }
 .account-bal{font-family:var(--fd);font-size:15px;font-weight:700;white-space:nowrap;}
 .acc-arrange-hint{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;}
-/* ── Command Center skin: the surfaces ── */
+/* ── Command Center skin ──────────────────────────────────────────────
+   An operations wall: square instrument panels with corner brackets, line
+   icons, a live status strip, mono read-outs. Only colours and shapes change;
+   the layout is the same as Light and Dark. */
+html[data-skin="command"]{--hud:rgba(56,189,248,.8);--hud-line:rgba(80,160,255,.16);scrollbar-color:#1E4A85 transparent;}
+html[data-skin="command"] ::-webkit-scrollbar{width:10px;height:10px;}
+html[data-skin="command"] ::-webkit-scrollbar-track{background:transparent;}
+html[data-skin="command"] ::-webkit-scrollbar-thumb{background:#163563;border-radius:5px;border:2px solid #020916;}
+html[data-skin="command"] ::-webkit-scrollbar-thumb:hover{background:#1F4C8C;}
+/* The room: a blue wash from the top and a fine grid with scan lines. */
+html[data-skin="command"] body::before{
+  background:radial-gradient(60% 40% at 55% -8%,rgba(37,99,235,.20),transparent 70%),
+             radial-gradient(40% 30% at 100% 100%,rgba(6,182,212,.10),transparent 70%);
+  filter:none;animation:none;}
 html[data-skin="command"] body::after{
   background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px),
                    repeating-linear-gradient(0deg,rgba(120,190,255,.022) 0 1px,transparent 1px 3px);
-  background-size:48px 48px,48px 48px,auto;
+  background-size:48px 48px,48px 48px,auto;}
+/* Panels: square, a bracket at each corner, a faint light along the top. */
+html[data-skin="command"] :is(.panel,.kpi,.stat-card){
+  border-radius:4px;border-color:var(--glass-border);
+  background:
+    linear-gradient(var(--hud),var(--hud)) left top/14px 2px,linear-gradient(var(--hud),var(--hud)) left top/2px 14px,
+    linear-gradient(var(--hud),var(--hud)) right top/14px 2px,linear-gradient(var(--hud),var(--hud)) right top/2px 14px,
+    linear-gradient(var(--hud),var(--hud)) left bottom/14px 2px,linear-gradient(var(--hud),var(--hud)) left bottom/2px 14px,
+    linear-gradient(var(--hud),var(--hud)) right bottom/14px 2px,linear-gradient(var(--hud),var(--hud)) right bottom/2px 14px,
+    linear-gradient(180deg,rgba(20,52,104,.45),transparent 140px),var(--glass);
+  background-repeat:no-repeat;
+  box-shadow:0 0 0 1px rgba(56,189,248,.04),0 18px 40px -26px rgba(0,40,120,.9),inset 0 1px 0 rgba(140,200,255,.06);}
+html[data-skin="command"] :is(.kpi,.stat-card)::before{height:1px;left:16px;right:16px;background:linear-gradient(90deg,transparent,rgba(56,189,248,.75),transparent);opacity:1;}
+html[data-skin="command"] .panel-header{padding-bottom:12px;border-bottom:1px solid var(--hud-line);}
+html[data-skin="command"] .panel-header[aria-expanded="false"]{padding-bottom:0;border-bottom:0;}
+html[data-skin="command"] .panel-title{font-family:var(--fm);font-size:12.5px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--sky-t);display:flex;align-items:center;gap:10px;}
+html[data-skin="command"] .panel-title::before{content:'';width:6px;height:6px;flex-shrink:0;background:#38BDF8;box-shadow:0 0 8px rgba(56,189,248,.9);}
+html[data-skin="command"] .kpi-label{font-family:var(--fm);font-weight:500;color:var(--sky-t);letter-spacing:.14em;}
+/* Read-outs: the instrument face, figures that line up. */
+html[data-skin="command"] :is(.kpi-val,.hero-cur-net,.account-bal,.acc-sum-v){font-variant-numeric:tabular-nums;letter-spacing:.01em;}
+html[data-skin="command"] .kpi-val{font-size:28px;text-shadow:0 0 18px rgba(59,164,255,.35);}
+html[data-skin="command"] .modal{border:1px solid var(--glass-border);border-radius:6px;box-shadow:0 0 0 1px rgba(56,189,248,.06),0 30px 80px -20px rgba(0,20,70,.9),inset 0 1px 0 rgba(56,189,248,.35);}
+/* Top bar: a title like a console header, then the live status strip. */
+html[data-skin="command"] .topbar{border-bottom-color:rgba(80,160,255,.22);box-shadow:0 1px 0 rgba(56,189,248,.06);}
+html[data-skin="command"] .topbar-title{font-family:var(--fd);font-size:15px;letter-spacing:.14em;text-transform:uppercase;}
+/* (A block with an inline bar, so a long title still ends in "…".) */
+html[data-skin="command"] .topbar-title::before{content:'';display:inline-block;width:3px;height:16px;vertical-align:-2px;margin-right:10px;background:#38BDF8;box-shadow:0 0 10px rgba(56,189,248,.8);}
+@media (max-width:600px){
+  html[data-skin="command"] .topbar-title{text-transform:none;letter-spacing:.01em;font-size:16px;}
+  html[data-skin="command"] .topbar-title::before{margin-right:7px;}
 }
-html[data-skin="command"] .panel,html[data-skin="command"] .kpi,html[data-skin="command"] .stat-card{
-  border-color:var(--glass-border);border-radius:10px;
-  box-shadow:0 0 0 1px rgba(56,189,248,.05),0 18px 40px -26px rgba(0,40,120,.9),inset 0 1px 0 rgba(140,200,255,.07);}
-html[data-skin="command"] .panel-title{font-family:var(--fm);font-size:12.5px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--sky-t);}
-html[data-skin="command"] .kpi-label{color:var(--sky-t);letter-spacing:.14em;}
-html[data-skin="command"] .modal{border:1px solid var(--glass-border);border-radius:14px;box-shadow:0 0 0 1px rgba(56,189,248,.06),0 30px 80px -20px rgba(0,20,70,.9);}
-html[data-skin="command"] .topbar{border-bottom-color:rgba(80,160,255,.22);}
+html[data-skin="command"] .month-nav{background:rgba(4,14,33,.7);border-bottom-color:var(--hud-line);}
+html[data-skin="command"] :is(.month-nav-btn,.month-today-btn){border-radius:4px;}
+.cc-status{display:none;}
+@media (min-width:1280px){
+  html[data-skin="command"] .cc-status{display:flex;align-items:center;gap:10px;flex-shrink:0;margin:0 14px;padding:6px 12px;border:1px solid rgba(80,160,255,.24);border-radius:4px;
+    background:rgba(4,14,33,.7);font-family:var(--fm);font-size:11.5px;letter-spacing:.08em;color:#AFC6EA;white-space:nowrap;}
+}
+@media (max-width:1439px){ .cc-status .cc-date{display:none;} }
+.cc-dot{width:7px;height:7px;border-radius:50%;background:#3EF0B5;animation:ccPulse 2s ease-out infinite;}
+.cc-state{font-weight:700;color:#3EF0B5;}
+.cc-sep{width:1px;height:12px;background:rgba(80,160,255,.32);}
+.cc-clock{color:#DCE9FF;font-weight:600;}
+.cc-status[data-mode="wait"] .cc-dot{background:#FFB020;animation:none;}
+.cc-status[data-mode="wait"] .cc-state{color:#FFC24D;}
+.cc-status:is([data-mode="down"],[data-mode="bad"]) .cc-dot{background:#FF5B6E;animation:none;}
+.cc-status:is([data-mode="down"],[data-mode="bad"]) .cc-state{color:#FF8493;}
+.cc-status[data-mode="local"] .cc-dot{background:#8EA8D1;animation:none;}
+.cc-status[data-mode="local"] .cc-state{color:#AFC6EA;}
+@keyframes ccPulse{0%{box-shadow:0 0 0 0 rgba(62,240,181,.55);}70%{box-shadow:0 0 0 7px rgba(62,240,181,0);}100%{box-shadow:0 0 0 0 rgba(62,240,181,0);}}
+@media (prefers-reduced-motion:reduce){ .cc-dot{animation:none;} }
+/* Line icons in place of the emoji (which stay for Light and Dark): the
+   menus, the logo, the theme button. */
+.line-ico{display:none;}
+html[data-skin="command"] .emo{display:none;}
+html[data-skin="command"] .line-ico{display:inline-block;vertical-align:middle;}
+html[data-skin="command"] :is(.nav-item .icon,.bnav-ico) .line-ico{display:block;margin:0 auto;}
+.logo-mark{display:inline-flex;}
+html[data-skin="command"] .logo-mark{width:30px;height:30px;align-items:center;justify-content:center;border:1px solid rgba(56,189,248,.5);border-radius:4px;
+  color:#7DE3FF;background:rgba(37,99,235,.18);box-shadow:0 0 14px -2px rgba(56,189,248,.6);}
+/* Everything square: cards, banners, lists, small buttons. */
+html[data-skin="command"] :is(.budget-item,.goal-card,.dc-item,.ai-panel,.toast,.confirm-box,.profile-hero,.profile-stat,.profile-section,.backup-note,
+  .data-banner,.bill-row,.review-stat,.imp-summary,.imp-table-wrap,.imp-cols,.search-summary,.bulk-action-bar,.sn-status,.sn-mapping-row){border-radius:4px;}
+html[data-skin="command"] :is(.icon-btn,.type-tabs,.type-tab,.modal-close,.desc-list,.desc-opt,.contrib-btn,.ai-btn,.acc-move,.toast-undo-btn,.hamburger-btn,
+  .txn-row,.review-row,.nw-tip){border-radius:4px;}
+html[data-skin="command"] :is(.txn-ico,.account-ico){border-radius:6px;}
+/* The violet surfaces (AI panels, toasts) in the room's deep blue. */
+html[data-skin="command"]{--grad-violet:linear-gradient(135deg,#0B2350 0%,#0B3A7A 55%,#062A3D 100%);}
+html[data-skin="command"] .ai-panel{border:1px solid rgba(80,160,255,.3);box-shadow:inset 0 1px 0 rgba(56,189,248,.3);}
+html[data-skin="command"] .ai-panel::before{background:radial-gradient(circle,rgba(6,182,212,.30),transparent 70%);}
+html[data-skin="command"] .ai-badge{border-radius:3px;background:rgba(56,189,248,.14);border-color:rgba(56,189,248,.45);color:#9FD4FF;font-family:var(--fm);letter-spacing:.12em;}
+html[data-skin="command"] .toast{border:1px solid rgba(80,160,255,.35);box-shadow:0 16px 40px -12px rgba(0,0,0,.6),inset 0 1px 0 rgba(56,189,248,.35);}
+html[data-skin="command"] :is(#sn-conn-status-card,.mini-profile){border-radius:4px!important;border:1px solid rgba(80,160,255,.24);background:linear-gradient(135deg,#04112A 0%,#0B2350 100%)!important;}
 html[data-skin="command"] .sidebar{border-right:1px solid rgba(80,160,255,.18);}
-html[data-skin="command"] .nav-item.active{background:linear-gradient(90deg,rgba(37,99,235,.30),rgba(6,182,212,.10));box-shadow:inset 3px 0 0 #38BDF8,inset 0 0 0 1px rgba(80,160,255,.18);}
-/* Emoji icons in one cool tint, so the menus read as one instrument panel. */
-html[data-skin="command"] .nav-item .icon,html[data-skin="command"] .bnav-ico{filter:grayscale(1) sepia(1) saturate(4) hue-rotate(165deg) brightness(1.25);}
+html[data-skin="command"] .sidebar-logo{letter-spacing:.12em;border-bottom-color:var(--hud-line);}
+html[data-skin="command"] .sidebar-logo .pill{border-radius:3px;background:linear-gradient(135deg,#1D4ED8,#0891B2);}
+html[data-skin="command"] .nav-section{font-family:var(--fm);font-weight:500;letter-spacing:.18em;color:#8EA8D1;display:flex;align-items:center;gap:10px;padding-left:16px;padding-right:16px;}
+html[data-skin="command"] .nav-section::after{content:'';flex:1;height:1px;background:var(--hud-line);}
+html[data-skin="command"] .nav-item{border-radius:4px;color:#AFC6EA;}
+html[data-skin="command"] .nav-item .icon{color:#6CBEFF;}
+html[data-skin="command"] .nav-item:hover{background:rgba(56,189,248,.08);color:#fff;}
+html[data-skin="command"] .nav-item.active{background:linear-gradient(90deg,rgba(37,99,235,.32),rgba(6,182,212,.08));color:#fff;box-shadow:inset 3px 0 0 #38BDF8,inset 0 0 0 1px rgba(80,160,255,.2);}
+html[data-skin="command"] .nav-item.active .icon{color:#7DE3FF;filter:drop-shadow(0 0 6px rgba(56,189,248,.8));}
 html[data-skin="command"] .sidebar::before{background:radial-gradient(circle,rgba(37,99,235,.38),transparent 70%);}
 html[data-skin="command"] .sidebar::after{background:radial-gradient(circle,rgba(6,182,212,.22),transparent 70%);}
+@media(max-width:900px){
+  html[data-skin="command"] .bottom-nav{border-radius:10px;background:rgba(3,10,24,.92);border-color:rgba(80,160,255,.26);box-shadow:0 12px 32px rgba(0,0,0,.55),inset 0 1px 0 rgba(56,189,248,.25);}
+  html[data-skin="command"] .bnav-ico{filter:none;opacity:1;color:#8EA8D1;}
+  html[data-skin="command"] .bnav-lbl{color:#AFC6EA;}
+  html[data-skin="command"] .bnav-item.active .bnav-ico{color:#7DE3FF;filter:drop-shadow(0 0 6px rgba(56,189,248,.8));}
+  html[data-skin="command"] .bnav-item.active .bnav-lbl{color:#7DE3FF;}
+  html[data-skin="command"] .bnav-fab{border-radius:12px;background:linear-gradient(135deg,#1D4ED8,#0891B2);box-shadow:0 8px 24px rgba(8,145,178,.5),0 0 0 4px rgba(3,10,24,.92);}
+}
+/* Controls: square, outlined, lit on hover. */
+html[data-skin="command"] .btn{border-radius:5px;}
+html[data-skin="command"] .btn-ghost{color:#AFC6EA;border-color:rgba(80,160,255,.34);}
+html[data-skin="command"] .btn-ghost:hover{background:rgba(56,189,248,.08);color:#fff;border-color:#38BDF8;box-shadow:0 0 12px -2px rgba(56,189,248,.45);}
+html[data-skin="command"] .btn-primary{background:linear-gradient(135deg,#1D4ED8 0%,#2563EB 100%);box-shadow:0 6px 20px -8px rgba(37,99,235,.7);}
 /* Positive actions in the teal-blue of the room (white text at 5.4:1 or more), not green. */
 html[data-skin="command"] .btn-jade{background:linear-gradient(135deg,#0E7490 0%,#0369A1 100%);box-shadow:0 6px 18px -8px rgba(6,182,212,.55);}
-html[data-skin="command"] .balance-hero{
-  background:radial-gradient(rgba(120,190,255,.11) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(135deg,#0A1F4D 0%,#0B2F73 55%,#064257 100%);
-  border-color:rgba(80,160,255,.35);box-shadow:0 0 0 1px rgba(56,189,248,.08),0 26px 60px -26px rgba(0,60,160,.75);}
-html[data-skin="command"] .balance-hero::after{background:radial-gradient(circle,rgba(6,182,212,.30) 0%,transparent 70%);}
-html[data-skin="command"] .btn-primary{background:linear-gradient(135deg,#1D4ED8 0%,#2563EB 100%);box-shadow:0 6px 20px -8px rgba(37,99,235,.7);}
+html[data-skin="command"] :is(.form-input,.theme-opt){border-radius:5px;}
 html[data-skin="command"] .theme-opt.active{background:linear-gradient(135deg,#1D4ED8,#2563EB);}
-html[data-skin="command"] .form-input{border-color:#1D3E70;}
+html[data-skin="command"] .form-input{border-color:#1D3E70;background:#04112A;}
 html[data-skin="command"] .form-input:focus{border-color:#3BA4FF;box-shadow:0 0 0 4px rgba(59,164,255,.18);}
+/* The balance board: one big lit panel, each currency a read-out on it. */
+html[data-skin="command"] .balance-hero{
+  border-radius:4px;border-color:rgba(80,160,255,.35);
+  background:
+    linear-gradient(var(--hud),var(--hud)) left top/18px 2px,linear-gradient(var(--hud),var(--hud)) left top/2px 18px,
+    linear-gradient(var(--hud),var(--hud)) right top/18px 2px,linear-gradient(var(--hud),var(--hud)) right top/2px 18px,
+    linear-gradient(var(--hud),var(--hud)) left bottom/18px 2px,linear-gradient(var(--hud),var(--hud)) left bottom/2px 18px,
+    linear-gradient(var(--hud),var(--hud)) right bottom/18px 2px,linear-gradient(var(--hud),var(--hud)) right bottom/2px 18px,
+    radial-gradient(rgba(120,190,255,.11) 1px,transparent 1.3px) 0 0/14px 14px,
+    linear-gradient(135deg,#0A1F4D 0%,#0B2F73 55%,#064257 100%);
+  background-repeat:no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,repeat,no-repeat;
+  box-shadow:0 0 0 1px rgba(56,189,248,.08),0 26px 60px -26px rgba(0,60,160,.75);}
+html[data-skin="command"] .balance-hero::after{background:radial-gradient(circle,rgba(6,182,212,.30) 0%,transparent 70%);}
+html[data-skin="command"] .hero-cur-card{border-radius:3px;background:rgba(2,9,22,.42);border-color:rgba(80,160,255,.28);box-shadow:inset 0 1px 0 rgba(56,189,248,.18);}
+html[data-skin="command"] .hero-cur-code{font-family:var(--fm);font-weight:600;letter-spacing:.2em;color:#9FD4FF;}
+html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.35);}
 .acc-arrange-local{display:block;margin-top:4px;color:var(--amber-t);}
 .acc-move-btns{display:flex;gap:6px;flex-shrink:0;margin-left:8px;}
 .acc-move{width:36px;height:32px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);color:var(--indigo-t);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -1361,7 +1470,7 @@ html[data-skin="command"] .form-input:focus{border-color:#3BA4FF;box-shadow:0 0 
 
 <!-- ── SIDEBAR ── -->
 <aside class="sidebar">
-  <div class="sidebar-logo">💰 PFMT <span class="pill">PDI</span></div>
+  <div class="sidebar-logo"><span class="logo-mark"><span class="emo">💰</span><svg class="line-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span> PFMT <span class="pill">PDI</span></div>
   <div class="nav-section">Main</div>
   <button class="nav-item active" onclick="showView('dashboard',this)"><span class="icon">🏠</span> Dashboard</button>
   <button class="nav-item" onclick="showView('transactions',this)"><span class="icon">💳</span> Transactions</button>
@@ -1380,6 +1489,8 @@ html[data-skin="command"] .form-input:focus{border-color:#3BA4FF;box-shadow:0 0 
     <div class="topbar-left">
       <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
       <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <!-- Command Center only: a live read-out (the same facts are in the sync badge and the month bar, so it's hidden from screen readers) -->
+      <div class="cc-status" id="cc-status" aria-hidden="true"><span class="cc-dot"></span><span class="cc-state">ONLINE</span><span class="cc-sep"></span><span class="cc-clock">--:--:--</span><span class="cc-date"></span><span class="cc-sep"></span><span class="cc-sync">SYNC —</span></div>
     </div>
     <div class="topbar-actions">
       <button class="btn btn-sm sync-badge" id="sync-badge" onclick="onSyncBadge()" hidden></button>
@@ -1492,7 +1603,7 @@ html[data-skin="command"] .form-input:focus{border-color:#3BA4FF;box-shadow:0 0 
     <!-- ════ BUDGETS ════ -->
     <div class="view" id="view-budgets">
       <div class="panel" style="margin-bottom:16px;" id="salary-planner-panel">
-        <div class="panel-header" style="cursor:pointer;" role="button" tabindex="0" aria-controls="salary-planner-body" onclick="toggleSalaryPlanner()">
+        <div class="panel-header" style="cursor:pointer;" role="button" tabindex="0" aria-controls="salary-planner-body" aria-expanded="false" onclick="toggleSalaryPlanner()">
           <div class="panel-title">💼 Plan from Salary <span id="salary-planner-summary" style="font-weight:400;color:var(--muted);font-size:12px;"></span></div>
           <span id="salary-planner-chevron" style="font-size:14px;color:var(--muted);">▾</span>
         </div>
@@ -1753,7 +1864,7 @@ html[data-skin="command"] .form-input:focus{border-color:#3BA4FF;box-shadow:0 0 
         <div class="settings-section">
           <h3 data-lkey="settings_account_details">Account Details</h3>
           <!-- Mini profile card -->
-          <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,var(--brand) 0%,#1a2744 100%);border-radius:14px;margin-bottom:18px;">
+          <div class="mini-profile" style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,var(--brand) 0%,#1a2744 100%);border-radius:14px;margin-bottom:18px;">
             <div class="profile-avatar" id="prof-avatar" style="background:#8B5CF6;width:56px;height:56px;font-size:20px;flex-shrink:0;">YC</div>
             <div style="min-width:0;">
               <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="prof-display-name">—</div>
@@ -2846,6 +2957,7 @@ function saveState() {
       displayName: state.displayName,
       avatarColor: state.avatarColor,
       monthlyIncomeTarget: state.monthlyIncomeTarget,
+      prefsPending: state.prefsPending || {}, prefsUser: state.prefsUser || null,
       lastBackupAt: state.lastBackupAt,
       lastBackupInfo: state.lastBackupInfo,
       backupSnoozeUntil: state.backupSnoozeUntil,
@@ -3979,8 +4091,8 @@ async function discardRejected(opId) {
   await syncNow();
 }
 
-window.addEventListener('online', () => flushOutbox());
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { flushOutbox(); refreshOnReturn(); } });
+window.addEventListener('online', () => { flushOutbox(); flushPrefs(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { flushOutbox(); flushPrefs(); refreshOnReturn(); } });
 
 // Coming back to the app after a while picks up what your other devices
 // changed (a new account order, rows added on the laptop) without a reload.
@@ -7126,6 +7238,8 @@ function toggleSalaryPlanner() {
   const opening = body.style.display === 'none';
   body.style.display = opening ? 'block' : 'none';
   chev.textContent = opening ? '▴' : '▾';
+  const head = chev.closest('.panel-header');
+  if (head) head.setAttribute('aria-expanded', String(opening));
   if (opening) initSalaryPlanner();
 }
 
@@ -8111,14 +8225,14 @@ function reviewHighlight(target) {
 
 function setTrendRange(n) {
   state.trendMonths = n;
-  saveState();
+  savePrefs(['trendMonths']);
   renderSpendingTrend();
   renderMonthlySummary();
 }
 
 function setTrendMetric(metric) {
   state.trendMetric = metric;
-  saveState();
+  savePrefs(['trendMetric']);
   renderSpendingTrend();
 }
 
@@ -9235,7 +9349,7 @@ function applyTheme() {
   const icon = document.getElementById('theme-toggle-btn');
   if (icon) {
     const next = nextTheme();
-    icon.textContent = next === 'light' ? '☀️' : next === 'dark' ? '🌙' : '🖥️';
+    icon.innerHTML = `<span class="emo">${next === 'light' ? '☀️' : next === 'dark' ? '🌙' : '🖥️'}</span>${lineIcon(next, 17)}`;
     icon.title = next === 'light' ? 'Switch to light' : next === 'dark' ? 'Switch to dark' : 'Switch to Command Center';
     icon.setAttribute('aria-label', icon.title);
   }
@@ -9245,12 +9359,60 @@ function applyTheme() {
   // the theme-appropriate tint.
   if ((changed || _lastAppliedSkin !== (state.theme === 'command')) && _lastAppliedSkin !== null && typeof renderAll === 'function') renderAll();
   _lastAppliedSkin = state.theme === 'command';
+  try { renderCommandStatus(); } catch (e) { /* at boot, before the outbox is ready: the tick fills it in */ }
 }
 
 function setTheme(mode) {
   state.theme = mode;
-  saveState();
+  savePrefs(['theme']);
   applyTheme();
+}
+
+// Settings kept in the preferences row. Each is saved on this device at once
+// and sent to the server; until the server has it, it waits in
+// state.prefsPending, which a load re-applies over the server's copy. Before
+// this, only this device kept them, and every load (each sign-in, and each
+// return to the app after a minute) put the server's old value back: the
+// theme had to be chosen again and again.
+const PREF_COLUMNS = { theme: 'theme', budgetAlerts: 'budget_alerts', nowAssist: 'now_assist', trendMonths: 'trend_months', trendMetric: 'trend_metric' };
+// Pending settings belong to whoever made them (null: made signed out, so
+// they go to whoever signs in next); another account never receives them.
+function prefsForThisUser() {
+  if (state.prefsUser && state.prefsUser !== state.userId) state.prefsPending = {};
+  if (state.userId) state.prefsUser = state.userId;
+  return state.prefsPending || (state.prefsPending = {});
+}
+function savePrefs(keys) {
+  const pending = prefsForThisUser();
+  keys.forEach(k => { if (PREF_COLUMNS[k]) pending[PREF_COLUMNS[k]] = state[k]; });
+  saveState();
+  return flushPrefs();
+}
+async function flushPrefs() {
+  if (!state.userId) return;
+  const pending = prefsForThisUser();
+  if (!Object.keys(pending).length) return;
+  const sent = { ...pending };
+  try {
+    // Upsert: if the row is somehow missing, it's made rather than nothing
+    // changing (an update of 0 rows reports no error).
+    const { error } = await sb.from('preferences').upsert({ user_id: state.userId, ...sent }, { onConflict: 'user_id' });
+    if (error) throw error;
+  } catch (e) { console.warn('settings not saved to the server yet:', e.message || e); return; }
+  // Anything changed again while this was on its way stays pending.
+  Object.keys(sent).forEach(c => { if (state.prefsPending && state.prefsPending[c] === sent[c]) delete state.prefsPending[c]; });
+  saveState();
+}
+// This device's settings, as preferences columns: what a new row starts with.
+function prefsRow() {
+  const row = {};
+  Object.entries(PREF_COLUMNS).forEach(([k, col]) => { if (state[k] !== undefined) row[col] = state[k]; });
+  return row;
+}
+// After a load: this device's unsent choices win over the server's copy.
+function applyPendingPrefs() {
+  const pending = prefsForThisUser();
+  Object.entries(PREF_COLUMNS).forEach(([k, col]) => { if (col in pending) state[k] = pending[col]; });
 }
 
 // Quick toggle flips to the opposite of what's currently showing, which also
@@ -10033,7 +10195,7 @@ function changeLanguage(lang) {
 function toggleSetting(key, el) {
   state[key] = !state[key];
   el.classList.toggle('on', state[key]);
-  saveState();
+  savePrefs([key]);
 }
 
 // ═══════════════════════════════════════════════
@@ -10386,6 +10548,65 @@ function a11yPass(root = document) {
     sw.setAttribute('aria-checked', String(sw.classList.contains('on')));
   });
 }
+// ── Command Center: line icons and the live status strip ──
+function lineIcon(name, size = 19) {
+  const paths = {
+  dashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  transactions: '<path d="M4 8h15l-4-4M20 16H5l4 4"/>',
+  budgets: '<path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>',
+  bills: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  goals: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
+  analytics: '<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>',
+  accounts: '<path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/>',
+  settings: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  dark: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+  command: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4M7 12l2.5-3 2.5 2 3.5-4"/>'
+  };
+  return paths[name] ? `<svg class="line-ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths[name]}</svg>` : '';
+}
+// Each menu icon holds its emoji and a line icon; the skin picks which shows.
+function installLineIcons() {
+  const put = (holder, name) => {
+    if (!holder || !lineIcon(name) || holder.querySelector('.line-ico')) return;
+    const emo = document.createElement('span');
+    emo.className = 'emo';
+    emo.textContent = holder.textContent;
+    holder.textContent = '';
+    holder.appendChild(emo);
+    holder.insertAdjacentHTML('beforeend', lineIcon(name));
+  };
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    const m = (btn.getAttribute('onclick') || '').match(/showView\('(\w+)'/);
+    if (m) put(btn.querySelector('.icon'), m[1]);
+  });
+  document.querySelectorAll('.bnav-item[data-bview]').forEach(btn => put(btn.querySelector('.bnav-ico'), btn.dataset.bview));
+}
+installLineIcons();
+// The strip: connection state, a clock, the last sync. Text nodes change in
+// place, so the once-a-second tick doesn't wake the accessibility observer.
+function renderCommandStatus() {
+  const box = document.getElementById('cc-status');
+  if (!box || state.theme !== 'command' || !box.getClientRects().length) return;
+  const setText = (sel, v) => { const el = box.querySelector(sel); if (!el) return; if (el.firstChild) { if (el.firstChild.nodeValue !== v) el.firstChild.nodeValue = v; } else el.textContent = v; };
+  const pad = n => String(n).padStart(2, '0');
+  const now = new Date();
+  setText('.cc-clock', `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
+  setText('.cc-date', now.toLocaleDateString('en-SG', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase());
+  const mine = o => o.userId === state.userId;
+  const pending = state.userId ? outbox().filter(mine).length : 0;
+  const refused = state.userId ? rejectedWrites().filter(mine).length : 0;
+  const [mode, label] = !state.userId ? ['local', 'LOCAL']
+    : !navigator.onLine || state.syncFailed ? ['down', pending ? `OFFLINE · ${pending} QUEUED` : 'OFFLINE']
+    : refused ? ['bad', `${refused} NOT SAVED`]
+    : pending ? ['wait', `${pending} QUEUED`]
+    : ['ok', 'ONLINE'];
+  if (box.dataset.mode !== mode) box.dataset.mode = mode;
+  setText('.cc-state', label);
+  setText('.cc-sync', state.lastSync ? 'SYNC ' + new Date(state.lastSync).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'SYNC —');
+}
+setInterval(() => { if (!document.hidden) renderCommandStatus(); }, 1000);
+
 let _a11yQueued = false;
 new MutationObserver(() => {
   if (_a11yQueued) return;
@@ -10716,7 +10937,7 @@ async function doSNRegister() {
     }
     await sb.from('preferences').upsert({
       user_id: data.session.user.id, currency: state.currency, language: state.language,
-      display_name: displayName
+      display_name: displayName, ...prefsRow()
     });
     await _onSNAuthSuccess(data.session);
   } catch(e) {
@@ -10934,9 +11155,14 @@ async function snLoadAll({ quiet = false } = {}) {
       state.avatarColor         = pref.avatar_color || state.avatarColor;
       state.monthlyIncomeTarget = pref.monthly_income_target || 0;
       applyProfileAIKey(pref);
+      applyPendingPrefs();
+      flushPrefs();
     } else {
       // First sign-in on a fresh account: seed a preferences row.
-      await sb.from('preferences').insert({ user_id: uid, currency: state.currency, language: state.language });
+      // It starts with this device's settings, or the next load would swap
+      // them for the server's defaults.
+      const { error: seedErr } = await sb.from('preferences').insert({ user_id: uid, currency: state.currency, language: state.language, ...prefsRow() });
+      if (!seedErr) state.prefsPending = {};
     }
 
     // Retag legacy transfers now that their real category is known.
@@ -10964,6 +11190,7 @@ async function snLoadAll({ quiet = false } = {}) {
     state.syncFailed = false;
     saveState();
     updateLastSync();
+    applyTheme();
     return true;
   } catch(e) {
     // Nothing above has touched state.transactions yet when a fetch fails, so

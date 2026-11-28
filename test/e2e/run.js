@@ -23,6 +23,7 @@
  *       node test/e2e/run.js --shots DIR (also save screenshots of key screens)
  *       node test/e2e/run.js --fit       (only the phone-fit audit, at every size, with a full report)
  *       node test/e2e/run.js --fit-shots DIR [--widths=320,390] [--themes=dark,light]
+ *       node test/e2e/run.js --page-shots DIR [--themes=command,dark] [--pages=dashboard,accounts] [--sizes=1100x800,390x844] [--lang=zh]
  *                                         (screenshots of every screen, scrolled top to bottom)
  *       node test/e2e/run.js --pdf DIR [--backup ~/PFMT_Backups/<date> --user <id prefix>]
  *                                         (the monthly statement saved as PDF, as Print → Save as PDF
@@ -447,6 +448,24 @@ async function main() {
       failed = await runFuzz(url, first, seeds, steps, true);
     } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
     process.exit(failed ? 1 : 0);
+  }
+  if (process.argv.includes('--page-shots')) {
+    // Every main page in the themes asked for, desktop and phone, to look at.
+    try {
+      const out = path.resolve(process.argv[process.argv.indexOf('--page-shots') + 1] || 'page-shots');
+      fs.mkdirSync(out, { recursive: true });
+      const themes = (process.argv.find(a => a.startsWith('--themes=')) || '--themes=command').slice(9).split(',');
+      const pages = (process.argv.find(a => a.startsWith('--pages=')) || '--pages=dashboard,transactions,budgets,bills,goals,analytics,accounts,settings').slice(8).split(',');
+      // --sizes=1100x800,390x844 (a width under 900 is shot as a phone); --lang=zh
+      const sizes = (process.argv.find(a => a.startsWith('--sizes=')) || '--sizes=1440x900,390x844').slice(8).split(',').map(x => x.split('x').map(Number));
+      const lang = (process.argv.find(a => a.startsWith('--lang=')) || '').slice(7);
+      for (const theme of themes) for (const page of pages) for (const [width, height] of sizes) {
+        await screenshot(browser.dt, url + `?view=page&page=${page}&theme=${theme}` + (lang ? `&lang=${lang}` : ''), { width, height, mobile: width < 900 },
+                         path.join(out, `${theme}-${page}-${width}${lang ? '-' + lang : ''}.png`));
+      }
+      console.log(`screenshots saved to ${out}`);
+    } finally { browser.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+    return;
   }
   if (process.argv.includes('--fit') || process.argv.includes('--fit-shots')) {
     try {

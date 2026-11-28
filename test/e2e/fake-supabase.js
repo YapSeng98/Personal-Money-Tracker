@@ -32,8 +32,14 @@
       monthly: ['numeric', 1, 0], target_date: ['date'], remarks: ['text', 1, ''], currency: ['text', 1, 'SGD'], linked_account: ['text'], created_at: ['ts', 1] }),
     bills: S({ id: ['uuid', 1], user_id: ['uuid', 1], name: ['text', 1], amount: ['numeric', 1, 0], currency: ['text', 1, 'SGD'], category: ['text', 1, 'Bills'],
       account: ['text'], due_day: ['int', 1, 1], amount_varies: ['bool', 1, false], is_active: ['bool', 1, true], notes: ['text', 1, ''], created_at: ['ts', 1] }),
-    backups: S({ id: ['uuid', 1], user_id: ['uuid', 1], taken_at: ['ts', 1], file_name: ['text', 1, ''], counts: ['json', 1, {}], device: ['text', 1, ''] })
+    backups: S({ id: ['uuid', 1], user_id: ['uuid', 1], taken_at: ['ts', 1], file_name: ['text', 1, ''], counts: ['json', 1, {}], device: ['text', 1, ''] }),
+    preferences: S({ user_id: ['uuid', 1], currency: ['text', 1, 'SGD'], language: ['text', 1, 'en'], theme: ['text', 1, 'auto'], budget_alerts: ['bool', 1, true],
+      now_assist: ['bool', 1, true], balances_masked: ['bool', 1, true], trend_months: ['int', 1, 6], trend_metric: ['text', 1, 'expense'], updated_at: ['ts', 1],
+      display_name: ['text'], avatar_color: ['text'], monthly_income_target: ['numeric'], ai_api_key: ['text'], telegram_chat_id: ['text', 1, ''],
+      notify_budget: ['bool', 1, false], notify_bills: ['bool', 1, false], bill_lead_days: ['int', 1, 3] })
   };
+  // The primary key, where it isn't "id".
+  const KEY = { preferences: 'user_id' };
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const err = (code, message) => ({ code, message });
   // The value as Postgres would store it, or an error.
@@ -71,7 +77,7 @@
     for (const [col, [, required, def]] of Object.entries(SCHEMA[table])) {
       if (!hasCol(table, col)) continue;
       if (col in row) out[col] = row[col];
-      else if (col === 'created_at' || col === 'taken_at') out[col] = new Date().toISOString();
+      else if (SCHEMA[table][col][0] === 'ts') out[col] = new Date().toISOString();
       else if (def !== undefined) out[col] = def;
       else if (required) return { e: err('23502', `null value in column "${col}" of relation "${table}" violates not-null constraint`) };
       else out[col] = null;
@@ -88,7 +94,8 @@
       for (const r of list) {
         const c = checked(table, r);
         if (c.e) return c.e;
-        const i = rows.findIndex(x => String(x.id) === String(c.row.id));
+        const key = KEY[table] || 'id';
+        const i = rows.findIndex(x => String(x[key]) === String(c.row[key]));
         if (i >= 0 && q.op === 'insert') return err('23505', `duplicate key value violates unique constraint "${table}_pkey"`);
         if (i >= 0) { staged.push([i, Object.assign({}, rows[i], c.row)]); continue; }
         const d = withDefaults(table, c.row);

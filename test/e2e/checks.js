@@ -8,6 +8,7 @@
     if (VIEW === 'msum') { document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'msum-open') { toggleMonthDetail('SGD|' + M1); document.getElementById('monthly-summary').closest('.panel').scrollIntoView({ block: 'start' }); return; }
     if (VIEW === 'accounts') { state.balancesMasked = false; showView('accounts'); return; }
+    if (VIEW === 'page') { state.balancesMasked = false; showView(P.get('page') || 'dashboard'); return; }
     if (VIEW === 'import') {
       const mo = new Date(+M1.slice(0, 4), +M1.slice(5, 7) - 1, 1).toLocaleDateString('en-GB', { month: 'short' }), y = M1.slice(0, 4);
       showView('transactions'); openImport();
@@ -889,6 +890,81 @@
         ok(state.theme === 'command' && html.getAttribute('data-skin') === 'command' && btn.getAttribute('aria-label') === 'Switch to light', 'theme: dark → Command Center');
         toggleTheme(); await wait(10);
         ok(state.theme === 'light' && !html.hasAttribute('data-skin'), 'theme: Command Center → light');
+        // Line icons: the menus, logo and theme button swap their emoji for
+        // line icons in Command Center only, and a language switch keeps them.
+        const shown = el => !!el && getComputedStyle(el).display !== 'none';
+        const navIco = () => document.querySelector('.nav-item .icon'), bnIco = () => document.querySelector('.bnav-ico');
+        ok(document.querySelectorAll('.nav-item .icon .line-ico').length === 8 && document.querySelectorAll('.bnav-ico .line-ico').length === 4
+           && shown(navIco().querySelector('.emo')) && !shown(navIco().querySelector('.line-ico')), 'design: menus carry line icons, hidden outside Command Center');
+        setTheme('command'); await wait(10);
+        ok(!shown(navIco().querySelector('.emo')) && shown(navIco().querySelector('.line-ico')) && !shown(bnIco().querySelector('.emo'))
+           && shown(document.querySelector('.logo-mark .line-ico')) && shown($('#theme-toggle-btn .line-ico')), 'design: Command Center shows line icons in the menus, logo and theme button');
+        state.language = 'zh'; applyLanguage(); await wait(10);
+        const navTxt = document.querySelector('.nav-item').textContent;
+        ok(document.querySelectorAll('.nav-item .icon .line-ico').length === 8 && navTxt.includes('仪表盘') && shown(navIco().querySelector('.line-ico')),
+           'design: a language switch keeps the line icons', navTxt);
+        state.language = 'en'; applyLanguage(); await wait(10);
+        // The live strip: on wide screens in Command Center only; its words follow the sync state.
+        const strip = $('#cc-status'), wide = innerWidth >= 1280;
+        renderCommandStatus();
+        ok(shown(strip) === wide && strip.getAttribute('aria-hidden') === 'true' && (!wide || /^\d\d:\d\d:\d\d$/.test(strip.querySelector('.cc-clock').textContent)),
+           'design: the status strip shows on wide screens with a running clock (and does no work when hidden)', `${shown(strip)} ${strip.querySelector('.cc-clock').textContent}`);
+        if (wide) {
+          const keepU = state.userId, keepO = state.outbox, keepF = state.syncFailed;
+          state.userId = null; renderCommandStatus();
+          const st = () => [strip.dataset.mode, strip.querySelector('.cc-state').textContent].join(' ');
+          const s1 = st();
+          state.userId = 'test-user'; state.syncFailed = false; state.outbox = []; renderCommandStatus(); const s2 = st();
+          state.outbox = [{ table: 'transactions', rowId: 'x', kind: 'update', userId: 'test-user', row: {} }, { table: 'goals', rowId: 'y', kind: 'update', userId: 'test-user', row: {} }];
+          renderCommandStatus(); const s3 = st();
+          state.syncFailed = true; renderCommandStatus(); const s4 = st();
+          ok(s1 === 'local LOCAL' && s2 === 'ok ONLINE' && s3 === 'wait 2 QUEUED' && s4 === 'down OFFLINE · 2 QUEUED', 'design: the strip reads LOCAL, ONLINE, queued and OFFLINE', [s1, s2, s3, s4].join(' | '));
+          state.userId = keepU; state.outbox = keepO; state.syncFailed = keepF;
+        }
+        setTheme('dark'); await wait(10);
+        ok(!shown(strip), 'design: the status strip is Command Center only');
+        setTheme('light'); await wait(10);
+        // The salary planner's header says whether it's open.
+        const planHead = document.querySelector('#salary-planner-panel .panel-header');
+        const wasOpen = planHead.getAttribute('aria-expanded');
+        toggleSalaryPlanner(); const nowOpen = planHead.getAttribute('aria-expanded'); toggleSalaryPlanner();
+        ok(wasOpen === 'false' && nowOpen === 'true' && planHead.getAttribute('aria-expanded') === 'false', 'design: the salary planner header says when it is open');
+        // A choice reaches the server, and a load (which takes the server's
+        // copy) can't undo it, even one made offline.
+        state.userId = 'test-user'; state.prefsPending = {}; window.__sb.calls.length = 0;
+        setTheme('command'); await wait(20);
+        const prefWrite = window.__sb.calls.find(c => c.table === 'preferences' && c.op === 'upsert');
+        ok(prefWrite && prefWrite.row.theme === 'command' && prefWrite.row.user_id === 'test-user' && !Object.keys(state.prefsPending).length, 'theme: choosing it saves it to the server', JSON.stringify(prefWrite && prefWrite.row));
+        window.__sb.failWrites = true;
+        setTheme('light'); toggleSetting('budgetAlerts', $('#toggle-budget-alerts')); await wait(20);
+        const stored = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+        ok(state.prefsPending.theme === 'light' && state.prefsPending.budget_alerts === state.budgetAlerts && stored.prefsPending && stored.prefsPending.theme === 'light' && stored.prefsUser === 'test-user',
+           'theme: offline, the choice waits to be sent, kept on the device', JSON.stringify(state.prefsPending));
+        const alerts = state.budgetAlerts;
+        const keepT2 = state.transactions.slice(), keepA2 = state.accounts.slice();
+        window.__sb.tables = { transactions: [], budgets: [], goals: [], bills: [], backups: [], accounts: [],
+          preferences: [{ user_id: 'test-user', currency: 'SGD', language: 'en', theme: 'dark', budget_alerts: !alerts, now_assist: true, trend_months: 12, trend_metric: 'expense' }] };
+        await snLoadAll(); await wait(10);
+        ok(state.theme === 'light' && state.budgetAlerts === alerts && document.documentElement.getAttribute('data-theme') === 'light', 'theme: a load keeps the choice made offline, not the server\'s old copy', `${state.theme} / ${state.budgetAlerts}`);
+        window.__sb.failWrites = false; window.__sb.calls.length = 0;
+        await flushPrefs();
+        ok(window.__sb.calls.some(c => c.table === 'preferences' && c.row && c.row.theme === 'light') && !Object.keys(state.prefsPending).length, 'theme: back online, it is sent and nothing is left waiting');
+        // A brand-new account's first row starts with this device's settings.
+        window.__sb.tables.preferences = []; window.__sb.calls.length = 0;
+        await snLoadAll(); await wait(10);
+        const seed = window.__sb.calls.find(c => c.table === 'preferences' && c.op === 'insert');
+        ok(seed && seed.row.theme === 'light' && seed.row.budget_alerts === alerts && seed.row.trend_months === state.trendMonths, 'theme: a new account\'s settings row starts with this device\'s choices', JSON.stringify(seed && seed.row));
+        // Another account signing in on this device never gets them.
+        window.__sb.failWrites = true;
+        setTheme('dark'); await wait(20);
+        const waiting = state.prefsPending.theme === 'dark' && state.prefsUser === 'test-user';
+        window.__sb.failWrites = false; window.__sb.calls.length = 0;
+        state.userId = 'other-user';
+        window.__sb.tables.preferences = [{ user_id: 'other-user', currency: 'SGD', language: 'en', theme: 'command', budget_alerts: true, now_assist: true, trend_months: 6, trend_metric: 'expense' }];
+        await snLoadAll(); await wait(20);
+        ok(waiting && state.theme === 'command' && !window.__sb.calls.some(c => c.table === 'preferences' && c.op !== 'select') && !Object.keys(state.prefsPending).length,
+           'theme: settings waiting for one account are not given to another', `${state.theme} ${JSON.stringify(window.__sb.calls.filter(c => c.table === 'preferences').map(c => c.op))}`);
+        state.transactions = keepT2; state.accounts = keepA2; state.userId = null; state.outbox = [];
         setTheme(keepTheme); await wait(10);
       }
 

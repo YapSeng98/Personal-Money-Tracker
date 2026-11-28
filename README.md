@@ -226,6 +226,13 @@ One row per user: `currency`, `language`, `theme`, `budget_alerts`, `now_assist`
 `monthly_income_target`, `ai_api_key`, and the alert settings
 `telegram_chat_id`, `notify_budget`, `notify_bills`, `bill_lead_days`.
 
+Settings follow you to every device. Choosing a theme, Budget Alerts, Now
+Assist, or the Analytics trend range or type saves it on the device at once
+and upserts it to this row (`savePrefs`). Until the server confirms it, the
+change waits in `prefsPending`, and a load puts it back over the server's
+older copy, so the choice survives a refresh or going offline. A new account's
+first row starts with this device's settings rather than the server's defaults.
+
 ### `notifications_sent`
 `(user_id, kind, dedupe_key)` — used for bill reminders only; that primary key *is* the "once as due, once if late"
 rule. See [Telegram alerts](#telegram-alerts).
@@ -338,10 +345,18 @@ connection and queues changes in the outbox.
 **Three themes.** Light, Dark and Command Center (Settings → Appearance, or
 the top-bar button, which steps light → dark → Command Center). Command Center
 is the dark theme with a skin on top (`data-theme="dark"` plus
-`data-skin="command"`), so every dark-mode rule still applies: deep navy
-panels with electric-blue edges, a cyan data grid behind the page, Chakra Petch
-for headings and figures, section titles in spaced monospace capitals, and the
-menu icons tinted one cool blue. Its text tokens keep 4.5:1 like the others.
+`data-skin="command"`), so every dark-mode rule still applies. It reads as an
+operations wall: square instrument panels with a bracket at each corner (drawn
+as background gradients, so no pseudo-element is taken), a header rule and a lit
+marker on every panel title, line icons in the menus, logo and theme button (each
+holder keeps its emoji in `.emo` for Light and Dark, `lineIcon()` draws the rest),
+a cyan grid with scan lines behind the page, Chakra Petch figures that line up,
+and outlined buttons that light up on hover. From 1280px the top bar carries a
+live status strip (`#cc-status`): the connection (ONLINE, n QUEUED, OFFLINE,
+n NOT SAVED, or LOCAL when signed out), a clock, and the last sync. It changes its
+text nodes in place, so the once-a-second tick doesn't wake the accessibility
+observer, and it is hidden from screen readers since the sync badge and month bar
+say the same. Its text tokens keep 4.5:1 like the others.
 
 **Accessible by default.** A few page-wide rules (`a11yPass`, re-run whenever
 the page changes) keep every new form and button accessible: a `<label>` labels
@@ -545,7 +560,7 @@ picker labels running under their arrow, text under 10px, inputs under 16px
 (iPhone zooms in on those), controls too small to tap (WCAG 2.5.8) or hidden
 behind the bottom bar, and windows wider than the screen. Every run checks
 320px, 360px in Chinese, 390px and a phone on its side; `--fit` checks every
-size with a report, and `--fit-shots DIR` saves screenshots of every screen,
+size with a report, `--page-shots DIR [--themes=command] [--sizes=1280x800,390x844]` saves each main page to look at, and `--fit-shots DIR` saves screenshots of every screen,
 scrolled top to bottom.
 
 `--pdf DIR` saves the monthly statement as PDF exactly as Print → Save as PDF
