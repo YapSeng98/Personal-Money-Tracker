@@ -207,7 +207,32 @@ Function logs are at
 
 ---
 
+## Quick add from Telegram (optional)
+
+Message your bot `lunch 12.50`, `grab 18.40 maybank` or `+4000 salary` and the
+transaction is added to your book: today, in the account you name after the
+amount (or the one you used before for the same thing), with the category you
+used before. It replies with what it logged; send `undo` to remove the last one,
+`help` for the examples. It uses the same bot, chat id and two secrets as the
+alerts, so there is nothing new to set.
+
+1. Deploy the function (once):
+   ```bash
+   supabase functions deploy pfmt-telegram --no-verify-jwt
+   ```
+   or paste `supabase/functions/pfmt-telegram/index.ts` and `parse.js` into
+   **Edge Functions → Deploy a new function → Via Editor**, named `pfmt-telegram`,
+   with "Verify JWT" off.
+2. In PFMT → **Settings → Alerts → Quick add from Telegram**, press **Turn on
+   quick add**. That registers the function as your bot's webhook.
+
+Only a chat whose id is saved in exactly one PFMT account can add anything, and
+Telegram's own secret header is checked on every message.
+
 ## If you ever need to redeploy the function
+
+Quick add lives in `supabase/functions/pfmt-telegram/` (`index.ts`, `parse.js`);
+deploy it the same way, with `--no-verify-jwt`. The alerts function is below.
 
 The source is in `supabase/functions/pfmt-notify/`. Two files:
 

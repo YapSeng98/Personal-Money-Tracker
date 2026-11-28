@@ -1657,6 +1657,23 @@
         renderAll();
       }
 
+      // ── Quick add from Telegram: the Settings button ──
+      {
+        const keepUser = state.userId, keepChat = state.telegramChatId, keepInvoke = sb.functions.invoke;
+        state.userId = 'test-user'; state.telegramChatId = '555';
+        nav('settings'); setSettingsGroup('alerts'); await wait(10);
+        ok(getComputedStyle($('#tg-quick-btn')).display !== 'none' && /Quick add from Telegram/.test($('#view-settings').textContent), 'telegram: Alerts offers quick add');
+        let called = null;
+        sb.functions.invoke = async (name, opts) => { called = [name, opts]; return { data: { ok: true }, error: null }; };
+        await setupTelegramQuickAdd();
+        ok(called && called[0] === 'pfmt-telegram' && called[1].body.action === 'setup' && /^On\./.test($('#tg-quick-status').textContent), 'telegram: Turn on asks the function to register the bot', JSON.stringify(called));
+        sb.functions.invoke = async () => ({ data: null, error: { message: 'Function not found' } });
+        await setupTelegramQuickAdd();
+        ok(/Function not found/.test($('#tg-quick-status').textContent) && /may not be deployed/.test($('#tg-quick-status').textContent), 'telegram: if the function is not there yet, it says so');
+        sb.functions.invoke = keepInvoke; state.userId = keepUser; state.telegramChatId = keepChat; $('#tg-quick-status').textContent = '';
+        setSettingsGroup('account');
+      }
+
       // ── Empty states ────────────────────────────────────────────────────
       const savedT = state.transactions, savedA = state.accounts;
       state.transactions = []; renderAll(); nav('analytics'); await wait(10);

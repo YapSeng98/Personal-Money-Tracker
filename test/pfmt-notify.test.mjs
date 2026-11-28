@@ -325,5 +325,32 @@ globalThis.fetch = realFetch;
 ok(r.status === 500 && /chat not found/.test(b.error ?? ''),
    "a telegram failure surfaces telegram's own reason", JSON.stringify(b));
 
+// ── running high: once a month per category from the daily run ──
+// Dining: 100 in each of June, July and August by the 10th, then 190 by 10 Sep.
+sent.length = 0; claimed.clear(); writes.length = 0;
+const trendRows = ['2026-06', '2026-07', '2026-08'].map((m, i) => ({ id: 'tr' + i, type: 'expense', amount: 100, description: 'Dinner', category: 'Dining <out>',
+  account: 'DBS Checking', date: m + '-05', currency: 'SGD', transfer_group: null }));
+trendRows.push({ id: 'tr9', type: 'expense', amount: 190, description: 'Dinner', category: 'Dining <out>', account: 'DBS Checking', date: '2026-09-06', currency: 'SGD', transfer_group: null });
+TXNS.push(...trendRows);
+Date.now = () => Date.parse('2026-09-10T00:00:00Z');
+r = await post({}, { 'x-pfmt-cron-secret': 'cron-secret' });
+const firstRun = sent.map(m => m.text).join('\n');
+r = await post({}, { 'x-pfmt-cron-secret': 'cron-secret' });
+const secondRun = sent.slice(1).map(m => m.text).join('\n');
+Date.now = realNow;
+ok(/Dining &lt;out&gt;<\/b> is running high — S\$190\.00 so far, usually S\$100\.00 by now \(▲90%\)/.test(firstRun) && writes.includes('trend|2026-09|SGD|Dining <out>'),
+   'the daily run says when a category is running high, escaped, and records it', firstRun);
+ok(!/running high/.test(secondRun), 'the next daily run does not say it again that month', secondRun);
+sent.length = 0;
+r = await post({ mode: 'check', today: '2026-09-10', month: '2026-09' }, { Authorization: 'Bearer good-jwt' });
+ok(/Dining &lt;out&gt;<\/b> is running high/.test(sent.map(m => m.text).join('\n')), 'a manual check shows it again');
+sent.length = 0; claimed.clear();
+r = await post({ mode: 'check', today: '2026-09-05', month: '2026-09' }, { Authorization: 'Bearer good-jwt' });
+ok(!/running high/.test(sent.map(m => m.text).join('\n')), 'not before the 7th, when a few days say little');
+sent.length = 0;
+r = await post({ mode: 'check', kind: 'expense', category: 'Dining <out>', currency: 'SGD', today: '2026-09-10', month: '2026-09' }, { Authorization: 'Bearer good-jwt' });
+ok(!/running high/.test(sent.map(m => m.text).join('\n')), 'never right after an expense');
+TXNS.splice(-4);
+
 console.log(`\n${fail === 0 ? 'PASS' : 'FAIL'} — ${pass} checks passed, ${fail} failed\n`);
 process.exit(fail === 0 ? 0 : 1);

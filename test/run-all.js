@@ -23,7 +23,8 @@ const SUITES = [
   'balance-and-fx.test.js',      // Update balance lands on the figure typed; the one-currency total converts once
   'insights.test.js',            // running high, budgets from history, year in review
   'returns-and-repeats.test.js', // investment returns (Modified Dietz), monthly repeat suggestions
-  'pfmt-notify.test.mjs'         // the Edge Function itself, under a stubbed Deno
+  'pfmt-notify.test.mjs',        // the alerts Edge Function, under a stubbed Deno
+  'pfmt-telegram.test.mjs'       // quick add from Telegram: reading a message, the webhook, undo, setup
 ];
 
 let bad = 0;

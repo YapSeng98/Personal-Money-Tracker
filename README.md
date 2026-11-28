@@ -192,7 +192,16 @@ transaction in that account's currency, recomputed on render.
 | `currency` | text | never converted — each row stays in its own currency |
 | `transfer_group` | text | shared id linking the two legs of a transfer or funded asset |
 | `transfer_peer` | text | the other leg's account, rebuilt on load |
-| `is_recurring`, `recurring_frequency`, `next_run_date` | | carried, not yet acted on |
+| `is_recurring`, `recurring_frequency`, `next_run_date` | | a row that repeats; `runRecurring()` adds each one on its day |
+| `owed_by` | text | on an expense: who will pay it back (migration 008). Claims count without it |
+| `settles` | uuid | on a payback: the expense it pays back, so part payments show (008) |
+| `receipt_path` | text | the receipt photo in Storage, `receipts/<user id>/<id>.jpg` (008) |
+
+### `notes`
+My notes (migration 008): things to pay, collect or record later. `body`, and
+optionally `kind` (`expense` · `income` · `transfer`), `amount`, `currency`,
+`due_date`; `done_at` and `txn_id` once recorded. Synced through the outbox like
+the rest; until 008 runs they stay on the device, and are sent once it has.
 
 ### `budgets`
 | Column | Type | Notes |
@@ -234,12 +243,35 @@ older copy, so the choice survives a refresh or going offline. A new account's
 first row starts with this device's settings rather than the server's defaults.
 
 ### `notifications_sent`
-`(user_id, kind, dedupe_key)` — used for bill reminders only; that primary key *is* the "once as due, once if late"
-rule. See [Telegram alerts](#telegram-alerts).
+`(user_id, kind, dedupe_key)` — that primary key *is* the "once as due, once if late"
+rule for bills, and "once a month per category" for running-high alerts (`kind`
+'trend', allowed by migration 009). See [Telegram alerts](#telegram-alerts).
 
 ### `backups`
 `taken_at`, `device`, `counts` — a note each time a backup is downloaded, so the
 "time for a backup" reminder follows the person across devices (migration 005).
+
+### What the app does, at a glance
+
+- **Dashboard**: the balance board per currency, notes coming up, money owed to
+  you, recent entries and spending by category.
+- **Transactions**: search by words, amounts (`>100`), type, account, category,
+  a year, the last 3 months or a date range, with saved searches; suggestions to
+  make a hand-typed monthly entry repeat; one ⋯ per row on a phone.
+- **Notes**: *My notes* for things to pay, collect or record later (Record it
+  turns one into the transaction), and *On transactions* for what was written
+  on rows, with #tags.
+- **Analytics**: Monthly Review (a row per currency that adds up on screen),
+  Running high (categories well above the average of the 3 months before, each
+  counted to the same day), Spending Trend, Monthly In & Out, Year in review.
+- **Accounts**: net worth, Update balance, investment returns (Modified Dietz:
+  money moved in or out is never profit), and the one-currency total.
+- **Budgets** offer amounts from your own history; **Wall display** is a live
+  full-screen board; a **new version** bar offers Reload after each update;
+  long-pressing the installed app offers Add expense, income, transfer or Update
+  balance.
+- **Telegram**: budget, bill and running-high alerts, and quick add ("lunch
+  12.50"). See [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
 
 ---
 
@@ -597,14 +629,18 @@ cp index.html daily-money-tracker-app.html
 ### The database
 
 Run the files in [`supabase/migrations/`](supabase/migrations/) in order, in the
-Supabase SQL Editor: 001 (the original tables) through 007 (remembers the order
-accounts are arranged in). They are additive and safe to re-run. Until 007 runs,
-the app keeps the account order on each device and never sends it.
+Supabase SQL Editor: 001 (the original tables) through 009. 007 remembers the
+order accounts are arranged in; 008 adds My notes, money owed, receipt photos
+(a private `receipts` bucket) and saved searches; 009 lets the alert run record
+running-high alerts. They are additive and safe to re-run. Until a migration
+runs, the app keeps what it adds on each device and never sends a column or
+table the server doesn't have yet.
 
 ### The Edge Function
 
-See [TELEGRAM_SETUP.md § redeploy](TELEGRAM_SETUP.md#if-you-ever-need-to-redeploy-the-function).
-Remember `--no-verify-jwt`, and run `node tools/sync-shared-rules.js` first.
+Two: `pfmt-notify` (alerts) and `pfmt-telegram` (quick add). See
+[TELEGRAM_SETUP.md § redeploy](TELEGRAM_SETUP.md#if-you-ever-need-to-redeploy-the-function).
+Remember `--no-verify-jwt` for both, and run `node tools/sync-shared-rules.js` first.
 
 ### Before pushing anything
 

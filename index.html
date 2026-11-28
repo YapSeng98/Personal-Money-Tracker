@@ -2436,6 +2436,16 @@ button.txn-note:focus-visible{outline:2px solid var(--indigo);outline-offset:1px
           </div>
         </div>
 
+        <!-- Quick add from Telegram -->
+        <div class="settings-section" data-group="alerts">
+          <h3>Quick add from Telegram</h3>
+          <div class="setting-sub" style="margin-bottom:10px;line-height:1.5;">Message your PFMT bot <b>lunch 12.50</b> or <b>grab 18.40 maybank</b> and it is logged in your book, with the category and account you used before for the same thing. Send <b>undo</b> to take the last one back. Uses the chat id above.</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" id="tg-quick-btn" onclick="setupTelegramQuickAdd()">Turn on quick add</button>
+            <span class="setting-sub" id="tg-quick-status" aria-live="polite"></span>
+          </div>
+        </div>
+
         <!-- AI Configuration -->
         <div class="settings-section">
           <h3 data-lkey="settings_ai_config">AI Configuration</h3>
@@ -8119,12 +8129,29 @@ function setSettingsGroup(g) {
   document.querySelectorAll('#view-settings .settings-section').forEach(sec => {
     const h = sec.querySelector('h3');
     const key = h && h.getAttribute('data-lkey');
-    sec.hidden = (SETTINGS_GROUP_OF[key] || 'data') !== g;
+    sec.hidden = (sec.dataset.group || SETTINGS_GROUP_OF[key] || 'data') !== g;
   });
   document.querySelectorAll('#view-settings .set-tab').forEach(b => {
     const on = b.dataset.group === g;
     b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on));
   });
+}
+
+// ── Quick add from Telegram ─────────────────────────────────
+// Asks the pfmt-telegram function to register itself as the bot's webhook.
+async function setupTelegramQuickAdd() {
+  const st = document.getElementById('tg-quick-status');
+  if (!state.userId) { showToast('Sign in first', 'warning'); return; }
+  if (!state.telegramChatId) { showToast('Enter your Telegram chat id first (Alerts on Telegram, above)', 'warning'); return; }
+  st.textContent = 'Turning it on…';
+  try {
+    const { data, error } = await sb.functions.invoke('pfmt-telegram', { body: { action: 'setup' } });
+    if (error || !data || !data.ok) throw new Error((data && data.error) || (error && error.message) || 'no answer from the server');
+    st.textContent = 'On. Message your bot "lunch 12.50" to try it.';
+    showToast('Telegram quick add is on', 'success');
+  } catch (e) {
+    st.textContent = `Not turned on: ${e.message}. The pfmt-telegram function may not be deployed yet (see TELEGRAM_SETUP.md).`;
+  }
 }
 
 // ── Money owed to you ───────────────────────────────────────

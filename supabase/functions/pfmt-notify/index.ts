@@ -25,7 +25,7 @@
 // The money maths, copied verbatim from index.html — see that file's
 // "PFMT SHARED MONEY RULES" block, and tools/sync-shared-rules.js.
 import {
-  pfmtPrevMonth, pfmtBudgetAlerts, pfmtBillsToRemind
+  pfmtPrevMonth, pfmtBudgetAlerts, pfmtBillsToRemind, pfmtSpendTrends
 } from './shared-money-rules.js';
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL') ?? '';
@@ -175,7 +175,9 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
   }
 
   // Rollover looks at the previous month, so the window starts there.
-  const from = pfmtPrevMonth(month) + '-01';
+  // Three months before this one: last month for budget rollover, all three
+  // for "running high", which sets this month against their average.
+  const from = pfmtPrevMonth(pfmtPrevMonth(pfmtPrevMonth(month))) + '-01';
   const [txnRows, budgetRows, billRows] = await Promise.all([
     dbGet(`transactions?user_id=eq.${pref.user_id}&date=gte.${from}` +
           `&select=id,type,amount,description,category,account,date,currency,transfer_group`),
@@ -270,6 +272,24 @@ async function runForUser(pref: Pref, mode: string, today: string, month: string
                  : `due in ${d.days} day${d.days === 1 ? '' : 's'}`;
       const amt  = d.bill.amountVaries ? `~${money(d.bill.amount, cur)}` : money(d.bill.amount, cur);
       lines.push({ cur, text: `${d.days < 0 ? '🔴' : '📅'} <b>${esc(d.bill.name)}</b> ${amt} — ${when} (${d.due})` });
+    }
+  }
+
+  // Running high: a category well above its usual (pfmtSpendTrends, the same
+  // rule as the Monthly Review). Sent once a month per category by the daily
+  // run, and shown again by a manual check; never after an expense, and not
+  // before the 7th, when a few days of a month say little.
+  if (pref.notify_budget && scope.kind !== 'expense') {
+    const day = Number(today.slice(8, 10));
+    if (day >= 7) {
+      for (const x of pfmtSpendTrends(txns, month, day, fallbackCur).filter((x: { high: boolean }) => x.high)) {
+        const key = `${month}|${x.currency}|${x.category}`;
+        if (scope.kind === 'cron') {
+          if (!await claim(pref.user_id, 'trend', key)) { already.push(`${x.category} running high`); continue; }
+          claimed.push(['trend', key]);
+        }
+        lines.push({ cur: x.currency, text: `📈 <b>${esc(x.category)}</b> is running high — ${money(x.now, x.currency)} so far, usually ${money(x.usual, x.currency)} by now (▲${x.pct}%)` });
+      }
     }
   }
 
