@@ -901,8 +901,8 @@
         const shown = el => !!el && getComputedStyle(el).display !== 'none';
         const navIco = () => document.querySelector('.nav-item .icon'), bnIco = () => document.querySelector('.bnav-ico');
         const navN = document.querySelectorAll('.nav-item').length;
-        ok(navN >= 10 && document.querySelectorAll('.nav-item .icon .line-ico').length === navN && document.querySelectorAll('.bnav-ico .line-ico').length === 4
-           && shown(navIco().querySelector('.emo')) && !shown(navIco().querySelector('.line-ico')), 'design: menus carry line icons, hidden outside Command Center');
+        ok(document.querySelectorAll('.nav-item .icon .line-ico').length === document.querySelectorAll('.nav-item .icon').length && document.querySelectorAll('.bnav-ico .line-ico').length === 4
+           && !shown(navIco().querySelector('.emo')) && shown(navIco().querySelector('.line-ico')) && shown(document.querySelector('.logo-mark .line-ico')), 'design: menus, logo and actions use line icons in every theme')
         setTheme('command'); await wait(10);
         ok(!shown(navIco().querySelector('.emo')) && shown(navIco().querySelector('.line-ico')) && !shown(bnIco().querySelector('.emo'))
            && shown(document.querySelector('.logo-mark .line-ico')) && shown($('#theme-toggle-btn .line-ico')), 'design: Command Center shows line icons in the menus, logo and theme button');
@@ -1438,6 +1438,58 @@
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(10);
         ok(!$('#wall-modal').classList.contains('open') && _wallTick === null, 'wall: Escape closes it and stops its clock');
         state.transactions = keepT; state.accounts = keepA; state.balancesMasked = keepMask; renderAll();
+      }
+
+      // ── Design tweaks: a lighter list, a shorter form, settings in groups ──
+      {
+        const shown = el => !!el && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
+        const phone = innerWidth <= 600;
+        nav('transactions'); await wait(10);
+        const row = $('#all-txns .txn-row[data-tid]');
+        const acts = [...row.querySelectorAll('.txn-actions .icon-btn')];
+        ok(acts.every(b => b.querySelector('.line-ico')) && !/[↻✏🗑]/.test(row.querySelector('.txn-actions').textContent),
+           'design: row actions are line icons, not emoji');
+        ok(phone ? acts.filter(shown).length === 1 && shown(row.querySelector('.icon-btn.more')) : acts.filter(shown).length === 3 && !shown(row.querySelector('.icon-btn.more')),
+           phone ? 'design: on a phone a row shows one ⋯ button' : 'design: on a wide screen a row shows its three actions');
+        openTxnSheet(row.dataset.tid);
+        const sheet = $('#txn-sheet');
+        ok(sheet.classList.contains('open') && $$('#sheet-acts .sheet-btn').length >= 4 && /Edit/.test(sheet.textContent) && /Delete/.test(sheet.textContent),
+           'design: ⋯ opens the row\'s actions: again today, edit, note, delete');
+        $$('#sheet-acts .sheet-btn').find(b => /^Edit$/.test(b.textContent.trim())).click(); await wait(10);
+        ok(!sheet.classList.contains('open') && $('#txn-modal').classList.contains('open') && $('#txn-edit-id').value === row.dataset.tid, 'design: an action from the list closes it and does the job');
+        closeTxnModal();
+        if (phone) {
+          row.querySelector('.txn-name').click(); await wait(10);
+          ok(sheet.classList.contains('open'), 'design: on a phone, tapping the row itself opens its actions');
+          closeTxnSheet();
+        }
+        // The add form: currency follows the account; the rest under More options.
+        openTxnModal(); setType('expense', $('#tab-expense'));
+        const acc = state.accounts.find(a => (a.currency || state.currency) === 'MYR') || state.accounts[0];
+        setSelectVal('txn-account', acc.name); $('#txn-account').dispatchEvent(new Event('change'));
+        ok(!shown($('#txn-currency-group')) && $('#txn-currency').value === (acc.currency || state.currency) && $('#txn-modal .amount-prefix').textContent === (CUR_SYM[acc.currency || state.currency] || acc.currency).trim(),
+           'design: the currency follows the account and shows in the amount box, no picker', $('#txn-modal .amount-prefix').textContent);
+        ok(!$('#txn-more').open && /note, repeat/.test($('#txn-more-sub').textContent), 'design: notes, repeat, owed and receipt wait under More options');
+        closeTxnModal();
+        const noted = state.transactions.find(t => t.notes && !t.transferGroup);
+        if (noted) { openTxnModal(noted.id); ok($('#txn-more').open && /note/.test($('#txn-more-sub').textContent), 'design: editing a row with a note opens More options'); closeTxnModal(); }
+        // Settings in groups
+        nav('settings'); await wait(10);
+        const visible = () => $$('#view-settings .settings-section').filter(shown).map(s => (s.querySelector('h3') || {}).textContent);
+        ok($$('#view-settings .set-tab').length === 5 && $('#view-settings .set-tab.active').dataset.group === 'account' && visible().length >= 2 && !visible().includes('App Lock'),
+           'design: Settings opens on Account, one group at a time', visible().join(', '));
+        setSettingsGroup('security');
+        ok(visible().includes('App Lock') && visible().includes('Change Password') && !visible().includes('Appearance') && $('#view-settings .set-tab[data-group="security"]').getAttribute('aria-selected') === 'true',
+           'design: Security holds the PIN lock and password', visible().join(', '));
+        setSettingsGroup('prefs');
+        ok(visible().includes('Appearance'), 'design: Preferences holds the theme');
+        const all = $$('#view-settings .settings-section').length, seen = new Set();
+        ['account', 'prefs', 'alerts', 'data', 'security'].forEach(g => { setSettingsGroup(g); $$('#view-settings .settings-section').filter(shown).forEach(s => seen.add(s)); });
+        ok(seen.size === all, 'design: every settings section is under one of the tabs', `${seen.size} of ${all}`);
+        setSettingsGroup('account');
+        // The balance card: no "— · —" for a currency with nothing in or out.
+        nav('dashboard'); await wait(10);
+        ok(!/—\s*·\s*—/.test($('.balance-hero').textContent), 'design: the balance card leaves out empty money-in and money-out');
       }
 
       // ── My notes: things to pay, collect or record later ──

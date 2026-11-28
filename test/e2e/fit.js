@@ -110,6 +110,12 @@
       'budget-suggest': () => { openBudgetModal(); setSelectVal('budget-cat', 'Food & Drink'); renderBudgetSuggestions(); },
       'year-review': () => { showView('analytics'); openYearReview(); },
       'wall': () => openWall(),
+      'txn-sheet': () => { showView('transactions'); openTxnSheet(long.id); },
+      'txn-more-open': () => { openTxnModal(long.id); $('#txn-more').open = true; },
+      'settings-prefs': () => { showView('settings'); setSettingsGroup('prefs'); },
+      'settings-alerts': () => { showView('settings'); setSettingsGroup('alerts'); },
+      'settings-data': () => { showView('settings'); setSettingsGroup('data'); },
+      'settings-security': () => { showView('settings'); setSettingsGroup('security'); },
       'my-notes': () => {
         const d = n => addDaysStr(localDateStr(), n);
         state.notes = [
@@ -131,7 +137,7 @@
         showView('dashboard');
       },
       'owed-all': () => { SCREENS['owed'](); openOwedModal(); },
-      'txn-owed': () => { txnType('expense'); $('#txn-owed').checked = true; renderOwedField(); $('#txn-owed-by').value = 'Mei'; },
+      'txn-owed': () => { txnType('expense'); $('#txn-more').open = true; $('#txn-owed').checked = true; renderOwedField(); $('#txn-owed-by').value = 'Mei'; },
       'txn-settle': () => { SCREENS['owed'](); markOwedPaid('fit-owe-2'); },
       'receipt-view': () => { $('#receipt-view-img').src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='; $('#receipt-title').textContent = 'Receipt · ' + (POISON ? BAD('rcpt') : 'Annual family health insurance premium'); $('#receipt-modal').classList.add('open'); },
       'transactions-filters': () => {
@@ -182,6 +188,7 @@
       $('#update-bar').hidden = true;
       if (state.transactions.some(t => /^fit-(rep|owe)-/.test(String(t.id)))) state.transactions = state.transactions.filter(t => !/^fit-(rep|owe)-/.test(String(t.id)));
       state.savedSearches = []; state.repeatDismissed = []; state.notes = [];
+      if (typeof setSettingsGroup === 'function') setSettingsGroup('account');
       if (typeof cancelPlanEdit === 'function' && _planEditing) cancelPlanEdit();
       if ($('#filter-period').value || $('#filter-min').value) clearFilters();
       stopWall();
