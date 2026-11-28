@@ -50,7 +50,7 @@ function extract(name) {
 }
 
 const NAMES = ['pfmtMatchBills', 'PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
-  'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
+  'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtCategorySpentTo', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
   'CLAIMS_CATEGORY', 'paybackOffsets', 'trendTotals', 'monthlyInOut', 'summaryMonthKeys', 'isFlow', 'legsByGroup', 'transferPartner', 'isCrossCurrencyLeg', 'isAssetGroup', 'sortTxnsDesc', 'getMonthTxns',
   'localYM', 'localDateStr', 'daysInMonth', 'daysSoFarIn', 'countEvents', 'curStats',
   'getBudgetSpent', 'getBudgetPayback', 'prevMonthKey', 'getBudgetRollover',

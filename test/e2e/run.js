@@ -283,6 +283,10 @@ async function runOffline(dt) {
     ok(await until("!!navigator.serviceWorker && !!navigator.serviceWorker.controller"), 'offline: the service worker installs and takes over the page');
     const manifest = await evalAsync("fetch('manifest.webmanifest').then(r => r.json()).then(m => m.name + '|' + m.icons.length + '|' + m.display)").catch(e => String(e));
     ok(/PFMT.*\|3\|standalone/.test(manifest), 'install: the manifest names the app, with 3 icons, standalone', manifest);
+    const shortcuts = await evalAsync("fetch('manifest.webmanifest').then(r => r.json()).then(m => Promise.all(m.shortcuts.map(s => fetch(s.icons[0].src).then(r => s.url + (r.ok ? ':icon' : ':no-icon'))))).then(a => a.join(' '))").catch(e => String(e));
+    ok(shortcuts === './?add=expense:icon ./?add=income:icon ./?add=transfer:icon ./?add=balance:icon', 'install: long-press shortcuts for expense, income, transfer and balance, each with its icon', shortcuts);
+    const fresh = await evalAsync("checkForUpdate(true).then(v => v + '|' + document.getElementById('update-bar').hidden)").catch(e => String(e));
+    ok(fresh === 'false|true', 'update: the page just served is not taken for a new version', fresh);
     const icons = await evalAsync("Promise.all(['icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png'].map(u => fetch(u).then(r => r.ok))).then(a => a.every(Boolean))");
     ok(icons, 'install: every icon it lists exists');
     await dt.send('Page.reload', {}, page.sessionId);

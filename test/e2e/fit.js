@@ -97,6 +97,9 @@
       'txn-suggest': () => { txnType('expense'); $('#txn-desc').value = 'a'; showDescSuggestions(); },
       'txn-suggest-transfer': () => { txnType('transfer'); showDescSuggestions(); },
       'budget-new': () => openBudgetModal(),
+      'budget-suggest': () => { openBudgetModal(); setSelectVal('budget-cat', 'Food & Drink'); renderBudgetSuggestions(); },
+      'year-review': () => { showView('analytics'); openYearReview(); },
+      'update-bar': () => { showView('dashboard'); _updateReady = true; _updateDismissed = false; $('#update-bar').hidden = false; },
       'budget-edit': () => openBudgetModal(1),
       'bill-new': () => openBillModal(),
       'bill-edit': () => openBillModal('b2'),
@@ -126,6 +129,7 @@
       closeSidebar();
       $('#login-overlay').style.display = 'none';
       const toast = $('#toast'); if (toast) toast.classList.remove('show');
+      $('#update-bar').hidden = true;
       $$('.main, .modal-backdrop, .modal').forEach(el => { el.scrollTop = 0; el.scrollLeft = 0; });
     };
 

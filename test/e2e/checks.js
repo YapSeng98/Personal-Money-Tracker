@@ -1192,6 +1192,76 @@
         renderAll();
       }
 
+      // ── Insights: running high, budgets from history, year in review ──
+      {
+        const keepT = state.transactions.slice(), keepReview = state.reviewMonth;
+        const ago = n => { let m = M0; for (let i = 0; i < n; i++) m = prevMonthKey(m); return m; };
+        let seq = 0;
+        const add = (mk, day, amount, category, type = 'expense') => state.transactions.push({ id: 'ins-' + (++seq), type, amount, description: 'Insight ' + category,
+          category, account: 'DBS Checking', date: `${mk}-${String(day).padStart(2, '0')}`, currency: 'SGD', notes: '', created: '2026-01-01T00:00:00Z' });
+        // Hobbies: 100 a month for three months, then 180 (80% up). Trips: only once before, so no usual.
+        // Snacks: 10 a month, then 15 (50% up but only 5 more).
+        [4, 3, 2].forEach(n => { add(ago(n), 5, 100, 'Hobbies'); add(ago(n), 6, 10, 'Snacks'); });
+        add(M1, 5, 180, 'Hobbies'); add(M1, 6, 15, 'Snacks');
+        add(ago(3), 7, 50, 'Trips'); add(M1, 7, 500, 'Trips');
+        state.reviewMonth = M1; nav('analytics'); await wait(10);
+        const tr = $('#review-trends').textContent;
+        ok(/Running high/.test(tr) && /Hobbies/.test(tr) && /▲ 80%/.test(tr) && /S\$180\.00 against a usual S\$100\.00/.test(tr),
+           'insights: a category well above its usual is flagged in Monthly Review, with both figures', tr);
+        ok(!/Trips/.test(tr) && !/Snacks/.test(tr), 'insights: no usual (one month only), or a small rise in money, is not flagged', tr);
+        // Budgets from history (the sums themselves are proven in insights.test.js):
+        // the chips show what budgetSuggestions() works out for the picked category.
+        openBudgetModal();
+        const opts = $$('#budget-cat option').map(o => o.value);
+        const spentCat = opts.find(c => budgetSuggestions(state.transactions, c, 'SGD', localYM(), 'SGD'));
+        const unspent = opts.find(c => !budgetSuggestions(state.transactions, c, 'SGD', localYM(), 'SGD'));
+        $('#budget-cat').value = spentCat; $('#budget-currency').value = 'SGD'; renderBudgetSuggestions();
+        const want = budgetSuggestions(state.transactions, spentCat, 'SGD', localYM(), 'SGD');
+        const chips = $$('#budget-suggest .bsug-chip');
+        ok(chips.length === 3 && chips[0].textContent.includes(fmtWithCur(want.avg3, 'SGD')) && chips[1].textContent.includes(fmtWithCur(want.avg6, 'SGD')) && chips[2].textContent.includes(fmtWithCur(want.last, 'SGD')),
+           'insights: budget suggestions show the 3-month and 6-month averages and last month', `${spentCat}: ` + chips.map(c => c.textContent).join(' | '));
+        chips[0].click();
+        ok(Number($('#budget-amount').value) === want.avg3 && chips[0].classList.contains('on'), 'insights: tapping a suggestion fills in the amount');
+        if (unspent) { $('#budget-cat').value = unspent; renderBudgetSuggestions(); }
+        ok(!unspent || !$('#budget-suggest').textContent.trim(), 'insights: a category never spent on offers nothing', unspent);
+        closeBudgetModal();
+        // Year in review: the same income and spending as Monthly In & Out for those months.
+        const year = Number(M0.slice(0, 4));
+        openYearReview(year); await wait(10);
+        const months = []; for (let i = 1; i <= Number(M0.slice(5, 7)); i++) months.push(`${year}-${String(i).padStart(2, '0')}`);
+        const io = monthlyInOut(months).byCur.SGD || {};
+        const inc = r2(Object.values(io).reduce((s, m) => s + m.inc, 0)), exp = r2(Object.values(io).reduce((s, m) => s + m.exp, 0));
+        const yr = yearReview(state.transactions, state.accounts, year, localDateStr(), state.currency).byCur.SGD;
+        ok(yr && near(yr.income, inc) && near(yr.spent, exp), 'insights: year in review agrees with Monthly In & Out for the year', `${yr && yr.income}/${yr && yr.spent} vs ${inc}/${exp}`);
+        const body = $('#year-body').textContent;
+        ok($('#year-modal').classList.contains('open') && body.includes(fmtWithCur(yr.income, 'SGD')) && body.includes(fmtWithCur(yr.spent, 'SGD')) && /Where it went/.test(body) && /Hobbies/.test(body),
+           'insights: the year window shows income, spending and where it went', body.slice(0, 200));
+        ok($('#year-next').disabled && $('#year-title').textContent === `${year} in review`, 'insights: the year in progress is the latest one offered');
+        closeYearReview();
+        state.transactions = keepT; state.reviewMonth = keepReview; renderAll();
+      }
+
+      // ── New version bar and home-screen shortcuts ──
+      {
+        const bar = $('#update-bar');
+        const page = () => { const d = document.documentElement.cloneNode(true); const extra = d.querySelector('#stmt-page-style'); if (extra) extra.parentNode.removeChild(extra); return d.outerHTML; };
+        ok(bar.hidden && !isNewVersionText(page()), 'update: this page, fetched again, is not a new version');
+        ok(isNewVersionText(page().replace('</style>', '.new-rule{}</style>')), 'update: a page whose styles or script changed is a new version');
+        ok(!isNewVersionText('<html><body>Offline</body></html>'), 'update: an error page is not mistaken for a new version');
+        _updateReady = true; bar.hidden = false;
+        ok(getComputedStyle(bar).display !== 'none' && /New version available/.test(bar.textContent) && $('#update-reload'), 'update: the bar says so, with Reload');
+        dismissUpdate();
+        ok(bar.hidden, 'update: Later hides it');
+        _updateReady = false; _updateDismissed = false;
+        const keepUrl = location.pathname + location.search;
+        history.replaceState(null, '', location.pathname + location.search + '&add=transfer');
+        _launchHandled = false; handleLaunchAction();
+        ok($('#txn-modal').classList.contains('open') && $('#tab-transfer').classList.contains('active') && !/add=/.test(location.search),
+           'shortcuts: ?add=transfer opens the transfer form, and the address forgets it', location.search);
+        closeTxnModal();
+        history.replaceState(null, '', keepUrl);
+      }
+
       // ── Empty states ────────────────────────────────────────────────────
       const savedT = state.transactions, savedA = state.accounts;
       state.transactions = []; renderAll(); nav('analytics'); await wait(10);

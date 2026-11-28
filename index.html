@@ -1044,6 +1044,73 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 .bal-diff .down{color:var(--coral-t);}
 .bal-diff .tip{display:block;margin-top:6px;color:var(--amber-t);}
 
+/* ── New version bar ── */
+.update-bar{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;padding:10px 32px;background:var(--indigo-s);border-bottom:1px solid var(--indigo);color:var(--ink);font-size:13.5px;flex-shrink:0;}
+.update-bar[hidden]{display:none!important;}
+.update-bar .ub-ico{color:var(--indigo-t);display:flex;}
+.update-bar .ub-text{flex:1;min-width:200px;display:flex;flex-direction:column;}
+.update-bar .ub-text b{font-size:14px;}
+.update-bar .ub-sub{color:var(--ink2);font-size:12.5px;}
+.update-bar .btn-ghost{color:var(--ink2);border-color:var(--indigo);}
+@media(max-width:900px){.update-bar{padding:10px 16px;}}
+/* ── Budgets from your history ── */
+.bsug-wrap:empty{display:none;}
+.bsug-wrap{margin-top:10px;}
+.bsug-lbl{font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+.bsug{display:flex;flex-wrap:wrap;gap:8px;}
+.bsug-chip{font:inherit;font-size:12.5px;padding:7px 11px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);color:var(--ink);cursor:pointer;min-height:36px;}
+.bsug-chip b{font-family:var(--fm);font-weight:700;}
+.bsug-chip:hover,.bsug-chip.on{border-color:var(--indigo);background:var(--indigo-s);}
+.bsug-note{font-size:11.5px;color:var(--muted);margin-top:6px;}
+/* ── Running high (Monthly Review) ── */
+.trends{margin:0 0 18px;border:1px solid var(--border);border-left:3px solid var(--coral);border-radius:12px;padding:12px 14px;background:var(--surface);}
+.trends.calm{border-left-color:var(--jade);}
+.trends-h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--coral-t);margin-bottom:4px;}
+.trends.calm .trends-h{color:var(--jade-t);}
+.trends-sub{font-size:12px;color:var(--muted);margin-bottom:6px;}
+.trend-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 0;border-top:1px solid var(--border);}
+.trend-row:first-of-type{border-top:0;}
+.trend-cat{font-weight:600;font-size:13.5px;}
+.trend-fig{display:block;font-family:var(--fm);font-size:12px;color:var(--muted);}
+.trend-pct{font-family:var(--fm);font-weight:700;color:var(--coral-t);font-size:13px;white-space:nowrap;}
+.trend-bars{display:flex;align-items:flex-end;gap:3px;height:28px;width:44px;}
+.trend-bars i{flex:1;border-radius:2px 2px 0 0;background:var(--border);min-height:2px;}
+.trend-bars i.now{background:var(--coral);}
+/* ── Year in review ── */
+.yr-banner{display:flex;align-items:center;gap:14px;width:100%;margin-bottom:20px;padding:14px 18px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.yr-banner:hover{border-color:var(--indigo);}
+.yr-banner-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.yr-banner-txt b{font-family:var(--fd);font-size:15px;}
+.yr-banner-txt span{font-size:12.5px;color:var(--muted);}
+.yr-banner-go{font-size:24px;color:var(--indigo-t);line-height:1;}
+.modal-wide{width:760px;}
+.yr-nav{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.yr-nav-label{font-family:var(--fd);font-weight:700;font-size:16px;min-width:52px;text-align:center;}
+.yr-span{font-size:12px;color:var(--muted);margin-left:auto;}
+.yr-cur{margin-bottom:24px;}
+.yr-cur:last-child{margin-bottom:0;}
+.yr-cur-h{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--indigo-t);margin:0 0 10px;}
+.yr-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+.yr-tile{background:var(--surface);border-radius:12px;padding:10px 12px;min-width:0;}
+.yr-tile-l{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.yr-tile-v{display:block;font-family:var(--fd);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.yr-tile-v.pos{color:var(--jade-t);} .yr-tile-v.neg{color:var(--coral-t);}
+.yr-tile-s{display:block;font-size:11.5px;color:var(--muted);}
+.yr-sub-h{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px;}
+.yr-months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;align-items:end;height:86px;}
+.yr-months i{display:block;background:var(--indigo);border-radius:3px 3px 0 0;min-height:2px;}
+.yr-months i.none{background:var(--border);}
+.yr-mlbl{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;font-size:10.5px;color:var(--muted);text-align:center;margin:4px 0 14px;}
+.yr-cat{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;padding:4px 0;}
+.yr-cat-n{overflow-wrap:anywhere;}
+.yr-cat-t{height:8px;border-radius:4px;background:var(--surface);overflow:hidden;}
+.yr-cat-t i{display:block;height:100%;background:var(--indigo);border-radius:4px;}
+.yr-cat-v{font-family:var(--fm);font-size:12px;white-space:nowrap;}
+@media(max-width:600px){
+  .yr-tiles{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .yr-cat{grid-template-columns:minmax(0,1fr) auto;}
+  .yr-cat-t{grid-column:1/-1;order:3;}
+}
 /* ── ANALYTICS ── */
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .analytics-grid>*{min-width:0;}
@@ -1500,6 +1567,12 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
       <button class="btn btn-jade" onclick="openTxnModal()" aria-label="Add transaction"><span class="desktop-only">+ Add Transaction</span><span class="mobile-only">+</span></button>
     </div>
   </div>
+  <div class="update-bar" id="update-bar" role="status" hidden>
+    <span class="ub-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>
+    <span class="ub-text"><b>New version available</b><span class="ub-sub">Reload to use it. Your data and anything not yet synced stay as they are.</span></span>
+    <button class="btn btn-primary btn-sm" id="update-reload" onclick="applyUpdate()">Reload</button>
+    <button class="btn btn-ghost btn-sm" onclick="dismissUpdate()">Later</button>
+  </div>
   <div class="month-nav" id="month-nav-bar">
     <button class="month-nav-btn" onclick="changeMonth(-1)" title="Previous month">‹</button>
     <span class="month-nav-label" id="month-label">—</span>
@@ -1726,6 +1799,10 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 
     <!-- ════ ANALYTICS ════ -->
     <div class="view" id="view-analytics">
+      <button class="yr-banner" id="yr-banner" onclick="openYearReview()">
+        <span class="yr-banner-txt"><b id="yr-banner-title">Year in review</b><span>Income, spending, what you kept and how your net worth moved, for the whole year.</span></span>
+        <span class="yr-banner-go" aria-hidden="true">›</span>
+      </button>
       <div class="analytics-grid" style="margin-bottom:20px;">
         <div class="stat-card"><div class="stat-card-label">Total Income</div><div id="an-income">—</div><div class="stat-card-sub">All time</div></div>
         <div class="stat-card"><div class="stat-card-label">Total Expenses</div><div id="an-expense">—</div><div class="stat-card-sub">All time</div></div>
@@ -1744,6 +1821,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
           </div>
         </div>
         <div id="review-summary" class="review-summary"></div>
+        <div id="review-trends"></div>
         <div class="chart-bar-wrap" id="analytics-chart"><div class="empty"><div class="icon">📊</div><p>Add transactions to see breakdown</p></div></div>
       </div>
       <div class="panel" style="margin-bottom:20px;">
@@ -2266,6 +2344,22 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
 <!-- ════════════════════════════════════════════ -->
 <!-- BUDGET MODAL (Add + Edit)                    -->
 <!-- ════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="year-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="year-title">Year in review</div>
+      <button class="modal-close" onclick="closeYearReview()">✕</button>
+    </div>
+    <div class="yr-nav">
+      <button class="month-nav-btn" id="year-prev" onclick="changeReviewYear(-1)" title="Previous year">‹</button>
+      <span class="yr-nav-label" id="year-label">—</span>
+      <button class="month-nav-btn" id="year-next" onclick="changeReviewYear(1)" title="Next year">›</button>
+      <span class="yr-span" id="year-span"></span>
+    </div>
+    <div id="year-body"></div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="budget-modal">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -2275,7 +2369,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
     <div id="budget-edit-badge" class="modal-edit-badge" style="display:none;">✏️ Editing budget</div>
     <div class="form-group">
       <label class="form-label">Category</label>
-      <select class="form-input" id="budget-cat">
+      <select class="form-input" id="budget-cat" onchange="renderBudgetSuggestions()">
         <option>Food & Drink</option><option>Transport</option><option>Groceries</option>
         <option>Shopping</option><option>Bills</option><option>Rental</option><option>Health</option>
         <option>Entertainment</option><option>Sport</option><option>Education</option><option>Travel</option><option>Investment</option><option>Other</option>
@@ -2287,6 +2381,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
         <span class="amount-prefix">$</span>
         <input class="form-input" type="number" id="budget-amount" placeholder="0.00" step="0.01">
       </div>
+      <div id="budget-suggest" class="bsug-wrap"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Current Spent<span style="font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:4px;">— optional override</span></label>
@@ -2306,7 +2401,7 @@ html[data-skin="command"] .hero-cur-net{text-shadow:0 0 22px rgba(120,190,255,.3
       </div>
       <div class="form-group">
         <label class="form-label">Currency</label>
-        <select class="form-input" id="budget-currency">
+        <select class="form-input" id="budget-currency" onchange="renderBudgetSuggestions()">
           <option value="SGD">SGD</option>
           <option value="USD">USD</option>
           <option value="AUD">AUD</option>
@@ -3062,10 +3157,15 @@ function pfmtDaysInMonth(ym) {
 // What a category cost in one month, in one currency. The single figure behind
 // every budget bar, the dashboard tile and the alerts.
 function pfmtBudgetSpent(txns, category, currency, month, fallbackCur) {
+  return pfmtCategorySpentTo(txns, category, currency, month, 31, fallbackCur);
+}
+// The same figure counted only up to a day of the month (that day included),
+// so a month in progress can be set beside the same days of earlier months.
+function pfmtCategorySpentTo(txns, category, currency, month, lastDay, fallbackCur) {
   const cur  = currency || fallbackCur;
   const mine = txns.filter(function (t) {
     return t.date.slice(0, 7) === month && t.category === category &&
-           (t.currency || fallbackCur) === cur;
+           (t.currency || fallbackCur) === cur && Number(t.date.slice(8, 10)) <= lastDay;
   });
   const spent = mine.filter(function (t) { return t.type === 'expense' && pfmtIsFlow(t); })
                     .reduce(function (s, t) { return s + t.amount; }, 0);
@@ -3080,6 +3180,41 @@ function pfmtBudgetSpent(txns, category, currency, month, fallbackCur) {
   // Past what was spent it stops offsetting, and the budget shows what went out.
   if (back > spent) return Math.round(spent * 100) / 100;
   return Math.round((spent - back) * 100) / 100;
+}
+
+// Categories running well above their usual: a month's spending (to `lastDay`)
+// against the average of the three months before it, each counted to the same
+// day, so a month in progress is never set beside whole ones. A finished month
+// is compared with whole months. A category needs spending in at least two of
+// those three months to have a "usual" at all, so a once-a-year trip is never
+// flagged. Flagged only when both 20% and 20 (in its own currency) above.
+const PFMT_TREND_MIN_PCT = 20;
+const PFMT_TREND_MIN_AMT = 20;
+function pfmtSpendTrends(txns, month, lastDay, fallbackCur) {
+  const whole = lastDay >= pfmtDaysInMonth(month);
+  const keys = {};
+  txns.forEach(function (t) {
+    if (t.type === 'expense' && pfmtIsFlow(t)) keys[(t.currency || fallbackCur) + '|' + t.category] = true;
+  });
+  const out = [];
+  Object.keys(keys).forEach(function (k) {
+    const cur = k.slice(0, k.indexOf('|')), cat = k.slice(k.indexOf('|') + 1);
+    const now = pfmtCategorySpentTo(txns, cat, cur, month, lastDay, fallbackCur);
+    const past = [];
+    let m = month;
+    for (let i = 0; i < 3; i++) {
+      m = pfmtPrevMonth(m);
+      const dim = pfmtDaysInMonth(m);
+      past.push(pfmtCategorySpentTo(txns, cat, cur, m, whole ? dim : Math.min(lastDay, dim), fallbackCur));
+    }
+    if (past.filter(function (v) { return v > 0; }).length < 2) return;
+    const usual = Math.round((past[0] + past[1] + past[2]) / 3 * 100) / 100;
+    if (!(usual > 0)) return;
+    const pct = Math.round((now / usual - 1) * 100);
+    out.push({ category: cat, currency: cur, now: now, usual: usual, pct: pct, past: past,
+               high: pct >= PFMT_TREND_MIN_PCT && now - usual >= PFMT_TREND_MIN_AMT });
+  });
+  return out.sort(function (a, b) { return b.pct - a.pct || (a.category < b.category ? -1 : 1); });
 }
 
 // Last month's unspent room, for budgets with rollover switched on. Capped at
@@ -5234,11 +5369,42 @@ function openBudgetModal(id = null) {
   } else {
     document.getElementById('budget-cat').disabled = false;
   }
+  renderBudgetSuggestions();
   document.getElementById('budget-modal').classList.add('open');
 }
 function closeBudgetModal() {
   document.getElementById('budget-cat').disabled = false;
   document.getElementById('budget-modal').classList.remove('open');
+}
+
+// Budget amounts from what was really spent: the last month, and the averages
+// of the last three and six whole months (months with nothing count as 0).
+function budgetSuggestions(txns, category, currency, month, fallbackCur) {
+  const months = [];
+  let m = month;
+  for (let i = 0; i < 6; i++) { m = pfmtPrevMonth(m); months.push(m); }
+  const spent = months.map(mk => pfmtBudgetSpent(txns, category, currency, mk, fallbackCur));
+  if (!spent.some(v => v > 0)) return null;
+  const avg = n => Math.round(spent.slice(0, n).reduce((s, v) => s + v, 0) / n * 100) / 100;
+  return { last: spent[0], avg3: avg(3), avg6: avg(6), months, spent };
+}
+function renderBudgetSuggestions() {
+  const box = document.getElementById('budget-suggest');
+  if (!box) return;
+  const cat = document.getElementById('budget-cat').value;
+  const cur = document.getElementById('budget-currency').value || state.currency;
+  const s = budgetSuggestions(state.transactions, cat, cur, localYM(), state.currency);
+  if (!s) { box.innerHTML = ''; return; }
+  const typed = Number(document.getElementById('budget-amount').value);
+  const chip = (label, v) => `<button type="button" class="bsug-chip${typed === v ? ' on' : ''}" data-v="${v}" onclick="useBudgetSuggestion(this)">${label} <b>${fmtWithCur(v, cur)}</b></button>`;
+  const first = getMonthLabel(s.months[5]), last = getMonthLabel(s.months[0]);
+  box.innerHTML = `<div class="bsug-lbl">From your spending</div><div class="bsug">`
+    + chip('3-month average', s.avg3) + chip('6-month average', s.avg6) + chip('Last month', s.last)
+    + `</div><div class="bsug-note">${esc(cat)} in ${cur}, ${esc(first)} to ${esc(last)}. Tap one to use it.</div>`;
+}
+function useBudgetSuggestion(btn) {
+  document.getElementById('budget-amount').value = btn.dataset.v;
+  document.querySelectorAll('#budget-suggest .bsug-chip').forEach(b => b.classList.toggle('on', b === btn));
 }
 
 async function saveBudget() {
@@ -8058,8 +8224,126 @@ function wholePercents(values, total) {
   return shares;
 }
 
+// Running high: categories well above their usual this month (see
+// pfmtSpendTrends). The month in progress is judged up to today.
+function renderReviewTrends(mk) {
+  const el = document.getElementById('review-trends');
+  if (!el) return;
+  const today = localDateStr();
+  if (!mk || mk > today.slice(0, 7)) { el.innerHTML = ''; return; }
+  const lastDay = mk === today.slice(0, 7) ? Number(today.slice(8, 10)) : pfmtDaysInMonth(mk);
+  const all = pfmtSpendTrends(state.transactions, mk, lastDay, state.currency);
+  if (!all.length) { el.innerHTML = ''; return; }
+  const high = all.filter(x => x.high);
+  const sofar = lastDay < pfmtDaysInMonth(mk) ? ` (1–${lastDay} ${getMonthLabel(mk).split(' ')[0]}, against the same days before)` : '';
+  if (!high.length) {
+    el.innerHTML = `<div class="trends calm"><div class="trends-h">Nothing running high</div><div class="trends-sub" style="margin:0">Every category is within ${PFMT_TREND_MIN_PCT}% of its usual${esc(sofar)}.</div></div>`;
+    return;
+  }
+  const rows = high.map(x => {
+    const max = Math.max(x.now, ...x.past) || 1;
+    const bar = (v, cls) => `<i class="${cls}" style="height:${Math.max(4, Math.round(v / max * 100))}%"></i>`;
+    return `<div class="trend-row"><span class="trend-bars" aria-hidden="true">${bar(x.past[2], '')}${bar(x.past[1], '')}${bar(x.past[0], '')}${bar(x.now, 'now')}</span>`
+      + `<span><span class="trend-cat">${esc(x.category)}</span><span class="trend-fig">${fmtWithCur(x.now, x.currency)} against a usual ${fmtWithCur(x.usual, x.currency)}</span></span>`
+      + `<span class="trend-pct">▲ ${x.pct}%</span></div>`;
+  }).join('');
+  el.innerHTML = `<div class="trends"><div class="trends-h">Running high</div><div class="trends-sub">Against your average for the 3 months before${esc(sofar)}.</div>${rows}</div>`;
+}
+
+// ── Year in review ─────────────────────────────────────────────
+// One year, per currency: income and spending counted exactly as Monthly In &
+// Out counts them (income rows; spending net of paybacks per category and
+// month, pfmtBudgetSpent), what was kept, where it went, and how the
+// accounts in that currency moved from 31 Dec the year before.
+function yearReview(txns, accounts, year, today, fallbackCur) {
+  const lastMonth = String(year) === today.slice(0, 4) ? Number(today.slice(5, 7)) : 12;
+  const months = [];
+  for (let i = 1; i <= lastMonth; i++) months.push(`${year}-${String(i).padStart(2, '0')}`);
+  const inYear = txns.filter(t => t.date.slice(0, 4) === String(year) && t.date.slice(0, 7) <= months[months.length - 1]);
+  const byCur = {};
+  const cur = c => byCur[c] = byCur[c] || { income: 0, spent: 0, months: months.map(() => 0), cats: {} };
+  inYear.forEach(t => {
+    if (!pfmtIsFlow(t)) return;
+    if (t.type === 'income') cur(t.currency || fallbackCur).income += t.amount;
+    if (t.type === 'expense') cur(t.currency || fallbackCur).cats[t.category] = 0;
+  });
+  Object.keys(byCur).forEach(c => {
+    const r = byCur[c];
+    Object.keys(r.cats).forEach(cat => {
+      months.forEach((mk, i) => {
+        const v = pfmtBudgetSpent(inYear, cat, c, mk, fallbackCur);
+        r.cats[cat] += v; r.months[i] += v;
+      });
+    });
+    r.income = Math.round(r.income * 100) / 100;
+    r.months = r.months.map(v => Math.round(v * 100) / 100);
+    r.spent = Math.round(r.months.reduce((s, v) => s + v, 0) * 100) / 100;
+    r.kept = r.income > 0 ? Math.round((r.income - r.spent) / r.income * 1000) / 10 : null;
+    r.cats = Object.entries(r.cats).map(([category, v]) => ({ category, amount: Math.round(v * 100) / 100 }))
+      .filter(x => x.amount > 0).sort((a, b) => b.amount - a.amount || a.category.localeCompare(b.category));
+  });
+  const end = String(year) === today.slice(0, 4) ? today : `${year}-12-31`, start = `${year - 1}-12-31`;
+  accounts.forEach(a => {
+    const c = a.currency || fallbackCur;
+    const r = byCur[c] || (byCur[c] = { income: 0, spent: 0, months: months.map(() => 0), cats: [], kept: null });
+    r.worthStart = Math.round(((r.worthStart || 0) + balanceOn(a, start)) * 100) / 100;
+    r.worthEnd = Math.round(((r.worthEnd || 0) + balanceOn(a, end)) * 100) / 100;
+  });
+  Object.values(byCur).forEach(r => { if (r.worthEnd !== undefined) r.worthChange = Math.round((r.worthEnd - r.worthStart) * 100) / 100; });
+  return { year, months, end, byCur };
+}
+let _reviewYear = null;
+function reviewYears() {
+  const first = state.transactions.reduce((m, t) => t.date < m ? t.date : m, localDateStr());
+  return { first: Number(first.slice(0, 4)), last: Number(localDateStr().slice(0, 4)) };
+}
+function openYearReview(year) {
+  _reviewYear = year || Number(localDateStr().slice(0, 4));
+  renderYearReview();
+  document.getElementById('year-modal').classList.add('open');
+}
+function closeYearReview() { document.getElementById('year-modal').classList.remove('open'); }
+function changeReviewYear(d) {
+  const { first, last } = reviewYears();
+  _reviewYear = Math.min(last, Math.max(first, _reviewYear + d));
+  renderYearReview();
+}
+function renderYearReview() {
+  const year = _reviewYear, { first, last } = reviewYears();
+  const r = yearReview(state.transactions, state.accounts, year, localDateStr(), state.currency);
+  document.getElementById('year-title').textContent = `${year} in review`;
+  document.getElementById('year-label').textContent = year;
+  document.getElementById('year-prev').disabled = year <= first;
+  document.getElementById('year-next').disabled = year >= last;
+  const endLbl = new Date(r.end + 'T00:00:00').toLocaleDateString('en-SG', { day: 'numeric', month: 'short' });
+  document.getElementById('year-span').textContent = `1 Jan – ${endLbl} ${year}`;
+  const body = document.getElementById('year-body');
+  const curs = Object.keys(r.byCur).filter(c => { const x = r.byCur[c]; return x.income || x.spent || x.worthChange; })
+    .sort((a, b) => (b === state.currency) - (a === state.currency) || a.localeCompare(b));
+  if (!curs.length) { body.innerHTML = `<div class="empty"><div class="icon">📅</div><p>Nothing recorded in ${year}.</p></div>`; return; }
+  const ML = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  body.innerHTML = curs.map(c => {
+    const x = r.byCur[c];
+    const tile = (l, v, s, cls = '') => `<div class="yr-tile"><span class="yr-tile-l">${l}</span><span class="yr-tile-v ${cls}">${v}</span><span class="yr-tile-s">${s}</span></div>`;
+    const worth = x.worthChange === undefined ? tile('Net worth', '—', 'no accounts in ' + c)
+      : tile('Net worth', (x.worthChange > 0 ? '+' : '') + fmtSigned(x.worthChange, c), fmtSigned(x.worthEnd, c) + ' at the end', x.worthChange > 0 ? 'pos' : x.worthChange < 0 ? 'neg' : '');
+    const maxM = Math.max(...x.months, 0);
+    const monthsHTML = maxM > 0 ? `<div class="yr-sub-h">Spent month by month</div><div class="yr-months" role="img" aria-label="Spending by month in ${c}">`
+      + ML.map((l, i) => i < x.months.length ? `<i class="${x.months[i] ? '' : 'none'}" style="height:${x.months[i] ? Math.max(3, Math.round(x.months[i] / maxM * 100)) : 2}%" title="${getMonthLabel(r.months[i])}: ${fmtWithCur(x.months[i], c)}"></i>` : '<span></span>').join('')
+      + `</div><div class="yr-mlbl" aria-hidden="true">${ML.map(l => `<span>${l}</span>`).join('')}</div>` : '';
+    const top = x.cats.slice(0, 6), maxC = top.length ? top[0].amount : 1;
+    const catsHTML = top.length ? `<div class="yr-sub-h">Where it went</div>` + top.map(k => `<div class="yr-cat"><span class="yr-cat-n">${catIcon(k.category)} ${esc(k.category)}</span><span class="yr-cat-t"><i style="width:${Math.max(2, Math.round(k.amount / maxC * 1000) / 10)}%"></i></span><span class="yr-cat-v">${fmtWithCur(k.amount, c)}</span></div>`).join('') : '';
+    return `<section class="yr-cur"><h3 class="yr-cur-h">${c}</h3><div class="yr-tiles">`
+      + tile('Income', fmtWithCur(x.income, c), 'money in', 'pos')
+      + tile('Spent', fmtWithCur(x.spent, c), 'after paybacks', 'neg')
+      + tile('Kept', x.kept === null ? '—' : x.kept.toFixed(1) + '%', x.kept === null ? 'no income' : 'of income')
+      + worth + `</div>${monthsHTML}${catsHTML}</section>`;
+  }).join('');
+}
+
 function renderMonthlyReview() {
   const mk = state.reviewMonth;
+  renderReviewTrends(mk);
   const labelEl = document.getElementById('review-month-label');
   if (labelEl) labelEl.textContent = getMonthLabel(mk);
   const todayBtn = document.getElementById('review-today-btn');
@@ -11017,6 +11301,8 @@ function _showSNLogin() {
 function _hideSNLogin() {
   const ol = document.getElementById('login-overlay');
   if (ol) ol.style.display = 'none';
+  // The app is on screen: a home-screen shortcut can open its form now.
+  setTimeout(handleLaunchAction, 0);
 }
 
 // ── Load all data from Supabase ────────────────────────────────
@@ -11362,6 +11648,77 @@ async function startApp() {
   } else {
     _setLoginLoading(false);
     _showSNLogin();
+  }
+}
+
+// ── New version bar ─────────────────────────────────────────────
+// The page's own scripts and styles, as parsed (this runs while the page is
+// still loading, before anything adds one): nothing changes them at runtime,
+// so a copy of the page fetched past every cache that differs from them means
+// a new version is on the server. No version number to remember to bump.
+function pageFingerprint(doc) {
+  let h = 2166136261;
+  doc.querySelectorAll('script:not([src]), style').forEach(n => {
+    const s = n.textContent;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  });
+  return (h >>> 0).toString(16);
+}
+const _bootPrint = pageFingerprint(document);
+// A fetched copy of the page is a new version when it is a real page (it has
+// the app's script) and its scripts and styles differ from these.
+function isNewVersionText(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  return !!doc.querySelector('script:not([src])') && pageFingerprint(doc) !== _bootPrint;
+}
+let _updateCheckedAt = 0, _updateReady = false, _updateDismissed = false;
+async function checkForUpdate(force) {
+  if (_updateReady || !/^https?:$/.test(location.protocol) || navigator.onLine === false) return _updateReady;
+  if (!force && Date.now() - _updateCheckedAt < 10 * 60 * 1000) return false;
+  _updateCheckedAt = Date.now();
+  try {
+    const res = await fetch(location.pathname + '?fresh=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return false;
+    if (!isNewVersionText(await res.text())) return false;
+    _updateReady = true;
+    if (!_updateDismissed) document.getElementById('update-bar').hidden = false;
+    return true;
+  } catch (e) { return false; }
+}
+async function applyUpdate() {
+  const btn = document.getElementById('update-reload');
+  if (btn) { btn.disabled = true; btn.textContent = 'Reloading…'; }
+  // Refresh the browser's copy first, so the reload can't land on the old one.
+  try { await fetch(location.pathname, { cache: 'reload' }); } catch (e) {}
+  location.reload();
+}
+function dismissUpdate() {
+  _updateDismissed = true;
+  document.getElementById('update-bar').hidden = true;
+}
+setTimeout(() => checkForUpdate(true), 8000);
+setInterval(() => { if (!document.hidden) checkForUpdate(); }, 30 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+
+// ── Home-screen shortcuts ───────────────────────────────────────
+// Long-pressing the installed app's icon offers these (manifest "shortcuts");
+// each opens ./?add=<what>, handled once the book is on screen.
+let _launchHandled = false;
+function handleLaunchAction() {
+  if (_launchHandled) return;
+  const params = new URLSearchParams(location.search);
+  const add = params.get('add');
+  if (!add) return;
+  _launchHandled = true;
+  params.delete('add');
+  history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash);
+  if (['expense', 'income', 'transfer', 'payback'].includes(add)) {
+    openTxnModal();
+    setType(add, document.getElementById('tab-' + add));
+  } else if (add === 'balance') {
+    state.balancesMasked = false;
+    showView('accounts');
+    showToast('Tap ⚖ Update balance on the account', 'info');
   }
 }
 

@@ -47,10 +47,15 @@ function pfmtDaysInMonth(ym) {
 // What a category cost in one month, in one currency. The single figure behind
 // every budget bar, the dashboard tile and the alerts.
 function pfmtBudgetSpent(txns, category, currency, month, fallbackCur) {
+  return pfmtCategorySpentTo(txns, category, currency, month, 31, fallbackCur);
+}
+// The same figure counted only up to a day of the month (that day included),
+// so a month in progress can be set beside the same days of earlier months.
+function pfmtCategorySpentTo(txns, category, currency, month, lastDay, fallbackCur) {
   const cur  = currency || fallbackCur;
   const mine = txns.filter(function (t) {
     return t.date.slice(0, 7) === month && t.category === category &&
-           (t.currency || fallbackCur) === cur;
+           (t.currency || fallbackCur) === cur && Number(t.date.slice(8, 10)) <= lastDay;
   });
   const spent = mine.filter(function (t) { return t.type === 'expense' && pfmtIsFlow(t); })
                     .reduce(function (s, t) { return s + t.amount; }, 0);
@@ -65,6 +70,41 @@ function pfmtBudgetSpent(txns, category, currency, month, fallbackCur) {
   // Past what was spent it stops offsetting, and the budget shows what went out.
   if (back > spent) return Math.round(spent * 100) / 100;
   return Math.round((spent - back) * 100) / 100;
+}
+
+// Categories running well above their usual: a month's spending (to `lastDay`)
+// against the average of the three months before it, each counted to the same
+// day, so a month in progress is never set beside whole ones. A finished month
+// is compared with whole months. A category needs spending in at least two of
+// those three months to have a "usual" at all, so a once-a-year trip is never
+// flagged. Flagged only when both 20% and 20 (in its own currency) above.
+const PFMT_TREND_MIN_PCT = 20;
+const PFMT_TREND_MIN_AMT = 20;
+function pfmtSpendTrends(txns, month, lastDay, fallbackCur) {
+  const whole = lastDay >= pfmtDaysInMonth(month);
+  const keys = {};
+  txns.forEach(function (t) {
+    if (t.type === 'expense' && pfmtIsFlow(t)) keys[(t.currency || fallbackCur) + '|' + t.category] = true;
+  });
+  const out = [];
+  Object.keys(keys).forEach(function (k) {
+    const cur = k.slice(0, k.indexOf('|')), cat = k.slice(k.indexOf('|') + 1);
+    const now = pfmtCategorySpentTo(txns, cat, cur, month, lastDay, fallbackCur);
+    const past = [];
+    let m = month;
+    for (let i = 0; i < 3; i++) {
+      m = pfmtPrevMonth(m);
+      const dim = pfmtDaysInMonth(m);
+      past.push(pfmtCategorySpentTo(txns, cat, cur, m, whole ? dim : Math.min(lastDay, dim), fallbackCur));
+    }
+    if (past.filter(function (v) { return v > 0; }).length < 2) return;
+    const usual = Math.round((past[0] + past[1] + past[2]) / 3 * 100) / 100;
+    if (!(usual > 0)) return;
+    const pct = Math.round((now / usual - 1) * 100);
+    out.push({ category: cat, currency: cur, now: now, usual: usual, pct: pct, past: past,
+               high: pct >= PFMT_TREND_MIN_PCT && now - usual >= PFMT_TREND_MIN_AMT });
+  });
+  return out.sort(function (a, b) { return b.pct - a.pct || (a.category < b.category ? -1 : 1); });
 }
 
 // Last month's unspent room, for budgets with rollover switched on. Capped at
@@ -202,6 +242,10 @@ export {
   pfmtPrevMonth,
   pfmtDaysInMonth,
   pfmtBudgetSpent,
+  pfmtCategorySpentTo,
+  pfmtSpendTrends,
+  PFMT_TREND_MIN_PCT,
+  PFMT_TREND_MIN_AMT,
   pfmtBudgetRollover,
   pfmtBudgetLimit,
   pfmtAlertAt,

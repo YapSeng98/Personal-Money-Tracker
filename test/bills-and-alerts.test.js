@@ -55,7 +55,7 @@ const BLOCK      = HTML.slice(blockStart, blockEnd);
 if (!BLOCK.trim()) { console.error('could not find the shared block in index.html'); process.exit(1); }
 
 const EXPORTS = ['PFMT_CLAIMS_CATEGORY', 'pfmtIsFlow', 'pfmtPaybackOffsets', 'pfmtPrevMonth',
-  'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
+  'pfmtDaysInMonth', 'pfmtBudgetSpent', 'pfmtCategorySpentTo', 'pfmtBudgetRollover', 'pfmtBudgetLimit',
   'pfmtAlertAt', 'pfmtBudgetAlerts', 'pfmtBillDueDate', 'pfmtMatchBills', 'pfmtBillStatus',
   'pfmtDaysUntil', 'pfmtBillsToRemind'];
 const R = new Function(BLOCK + `\nreturn {${EXPORTS.join(',')}};`)();
